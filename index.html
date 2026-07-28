@@ -176,7 +176,7 @@ const firebaseConfig = {
 const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
 
 /* ===== מזהה Google לחיבור Drive (ראה SETUP.md — שלב Drive). אינו סוד — מיועד לקוד ציבורי ===== */
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "695537337833-vm3a96jco852267tt9hsf6l830gopo8q.apps.googleusercontent.com";
 const DRIVE_READY = !GOOGLE_CLIENT_ID.includes("YOUR_");
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
@@ -466,7 +466,8 @@ async function driveListFolder(parentId){
 async function driveEnsureRoot(){
   DB.settings.drive=DB.settings.drive||{};
   if(DB.settings.drive.rootId) return DB.settings.drive.rootId;
-  const f=await driveMkFolder("מערכת רישום — מסמכי תלמידות", null);
+  const name=(DB.settings.drive.rootName||"").trim() || "מסמכי רישום תלמידות (מהמערכת)";
+  const f=await driveMkFolder(name, null);
   DB.settings.drive.rootId=f.id; DB.settings.drive.rootLink=f.webViewLink; DB.settings.drive.years=DB.settings.drive.years||{}; save();
   return f.id;
 }
@@ -503,12 +504,19 @@ function renderDriveBox(){
     <div class="note">${on?'✅ מחובר/ת ל-Google Drive במכשיר זה.':'לא מחובר/ת עדיין במכשיר זה.'}</div>
     <div class="row" style="margin-top:10px">
       <button class="btn" id="drive-connect" type="button">${on?'🔄 חבר/י מחדש':'🔗 חבר/י Google Drive'}</button>
-      ${d.rootLink?`<a class="btn ghost" href="${esc(d.rootLink)}" target="_blank">📂 פתח תיקיית השורש</a>`:''}
+      ${d.rootLink?`<a class="btn ghost" href="${esc(d.rootLink)}" target="_blank">📂 פתח תיקיית האב</a>`:''}
       ${on?'<button class="btn ghost" id="drive-disc" type="button" style="margin-inline-start:auto">ניתוק</button>':''}
     </div>
+    ${d.rootId
+      ? `<div class="hint" style="margin-top:8px">תיקיית האב: <b>${esc(d.rootName||'מסמכי רישום תלמידות (מהמערכת)')}</b> — כל תיקיות הילדות נוצרות בתוכה, מסודרות לפי שנה.</div>`
+      : `<div class="row" style="margin-top:10px">
+          <div class="field grow"><label>שם תיקיית האב בדרייב (תיווצר אוטומטית בפעם הראשונה)</label><input id="drive-rootname" value="${esc(d.rootName||'מסמכי רישום תלמידות (מהמערכת)')}"></div>
+          <button class="btn ghost" id="drive-savename" type="button" style="align-self:end">שמירת שם</button>
+        </div>`}
     <div class="hint">התחבר/י תמיד עם <b>אותו חשבון Google</b> (מומלץ חשבון הארגון) כדי שכל התיקיות יישבו במקום אחד ויהיו נגישות. הגישה מוגבלת אך ורק לקבצים שהמערכת יוצרת.</div>`;
   $("#drive-connect").onclick=async ()=>{ try{ await driveToken(true); toast("חובר ל-Google Drive"); renderDriveBox(); }catch(e){ toast(driveErrHe(e)); } };
   const dc=$("#drive-disc"); if(dc) dc.onclick=()=>{ driveDisconnect(); toast("נותק מ-Drive"); renderDriveBox(); };
+  const sn=$("#drive-savename"); if(sn) sn.onclick=()=>{ DB.settings.drive=DB.settings.drive||{}; DB.settings.drive.rootName=$("#drive-rootname").value.trim(); save(); toast("שם תיקיית האב נשמר"); };
 }
 
 /* ============================================================
