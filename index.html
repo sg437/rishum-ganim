@@ -868,7 +868,8 @@ function openStudent(s){
     if(up) up.onchange=async ()=>{
       const files=[...up.files]; if(!files.length) return;
       try{ status("מעלה…"); persistCurrent(); await driveEnsureChildFolder(s);
-        for(const f of files){ await driveUploadFile(f, s.driveFolderId); }
+        const ident=[s.lastName,s.firstName].filter(Boolean).join(" ")+(s.tz?(" · "+s.tz):"");
+        for(const f of files){ const base=f.name.replace(fileExt(f.name),"")+(ident?(" · "+ident):""); await driveUploadNamed(f, s.driveFolderId, base); }
         status("הועלו "+files.length+" קבצים ✓"); toast("המסמכים הועלו לדרייב"); listChildFiles();
       }catch(e){ console.error(e); status(""); toast(driveErrHe(e)); }
       up.value="";
@@ -1859,9 +1860,10 @@ function viewSettings(root){
       <div class="field" style="min-width:150px"><label>לשנה</label><select id="pr-to">${DB.years.map(y=>`<option ${y===DB.activeYear?'selected':''}>${esc(y)}</option>`).join("")}</select></div>
       <label class="check" style="align-self:end"><input type="checkbox" id="pr-age" checked ${dis}> קדם גיל ב-1</label>
       <label class="check" style="align-self:end"><input type="checkbox" id="pr-skip5" checked ${dis}> אל תעביר גיל 5 (מסיימות) — פרט לילדות השארות</label>
+      <label class="check" style="align-self:end"><input type="checkbox" id="pr-keepId" checked ${dis}> העבר גם את מסמך צילום ת"ז (מסמך קבוע)</label>
       <button class="btn" id="doPromote" style="align-self:end" ${dis}>בצע קידום</button>
     </div>
-    <div class="note" style="margin-top:8px">כל הפרטים האישיים כולל <b>מספר הזהות (ת"ז)</b>, השם, ההורים והכתובת <b>עוברים אוטומטית</b> לשנת היעד — רק המסמכים מתאפסים (עולים מחדש). ילדות בגיל 5 (מסיימות) לא יועברו — למעט ילדות המסומנות "השארות", שיועברו ללא קידום גיל.</div>
+    <div class="note" style="margin-top:8px">כל הפרטים האישיים כולל <b>מספר הזהות (ת"ז)</b>, השם, ההורים והכתובת <b>עוברים אוטומטית</b> לשנת היעד. <b>צילום ת"ז</b> (הסימון והקובץ הפיזי המצורף) עובר גם הוא כברירת מחדל — כי זהו מסמך קבוע; שאר המסמכים (נספח, תקנון) מתאפסים ועולים מחדש. ילדות בגיל 5 (מסיימות) לא יועברו — למעט ילדות המסומנות "השארות", שיועברו ללא קידום גיל.</div>
   </div>
 
   <div class="panel">
@@ -1945,7 +1947,7 @@ function viewSettings(root){
   if(admin) $("#addYear").onclick=()=>{ const y=$("#new-year").value.trim(); if(!y)return; if(DB.years.includes(y)){toast("שנה קיימת");return;} DB.years.push(y); save(); route(); toast("נוספה שנה"); };
 
   if(admin) $("#doPromote").onclick=()=>{
-    const from=$("#pr-from").value, to=$("#pr-to").value, bump=$("#pr-age").checked, skip5=$("#pr-skip5").checked;
+    const from=$("#pr-from").value, to=$("#pr-to").value, bump=$("#pr-age").checked, skip5=$("#pr-skip5").checked, keepId=$("#pr-keepId").checked;
     if(from===to){ toast("בחר/י שנת מקור ושנת יעד שונות"); return; }
     const src=DB.students.filter(s=>s.year===from);
     if(!src.length){ toast("אין תלמידות בשנת המקור"); return; }
@@ -1960,8 +1962,14 @@ function viewSettings(root){
       // ילדת השארות נשארת באותו גיל (חוזרת על השנה); אחרת מקדמים גיל ב-1
       if(bump && s.age && !isRetention) n.age=String(+s.age+1);
       n.docs={nispach:false,idCopy:false,takanon:false};
+      n.docFiles={};
+      // צילום ת"ז הוא מסמך קבוע — מעבירים את הסימון ואת הקובץ הפיזי המצורף לשנה הבאה
+      if(keepId){
+        if(s.docs && s.docs.idCopy) n.docs.idCopy=true;
+        if(s.docFiles && s.docFiles.idCopy) n.docFiles.idCopy=JSON.parse(JSON.stringify(s.docFiles.idCopy));
+      }
       n.special.approvalFather=n.special.approvalMother=n.special.paymentArrangement=n.special.retentionDoc=false;
-      n.driveFolder=""; n.createdAt=new Date().toISOString();
+      n.driveFolder=""; n.driveFolderId=""; n.createdAt=new Date().toISOString();
       DB.students.push(n); added++; });
     save(); route(); toast(`קודמו ${added} תלמידות לשנת ${to}${skipped5?` · דולגו ${skipped5} בגיל 5`:''}`);
   };
