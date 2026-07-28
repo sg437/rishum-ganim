@@ -503,8 +503,15 @@ async function driveCall(action, payload){
   let force=false;
   for(let attempt=0; attempt<2; attempt++){
     const idToken=await driveIdToken(force);
+    const json=JSON.stringify(Object.assign({action, idToken}, payload||{}));
+    // Apps Script לעיתים משמיט את גוף בקשת ה-POST החוצה-מקור (בגלל הפניה פנימית),
+    // ואז הטוקן לא מגיע. לכן בקשות קטנות נשלחות בשאילתת ה-URL ששורדת הפניות,
+    // ורק העלאות גדולות (base64) נשלחות בגוף הבקשה.
+    let url=APPS_SCRIPT_URL, opts;
+    if(json.length < 6000){ url=APPS_SCRIPT_URL+"?data="+encodeURIComponent(json); opts={ method:"POST" }; }
+    else { opts={ method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: json }; }
     let r;
-    try{ r=await fetch(APPS_SCRIPT_URL, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(Object.assign({action, idToken}, payload||{})) }); }
+    try{ r=await fetch(url, opts); }
     catch(e){ throw new Error("network"); }
     let data; try{ data=await r.json(); }catch(e){ throw new Error("bad-response"); }
     if(data && data.ok===false){
