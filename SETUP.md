@@ -88,38 +88,34 @@ const firebaseConfig = {
 השכבה החינמית של Firebase (Spark) כוללת בערך 50K קריאות ו-20K כתיבות ליום ו-1GB אחסון —
 הרבה מעבר לצורך של רשת גני ילדות. אין חיוב ללא שדרוג יזום לתוכנית בתשלום.
 
+
 ---
 
-# חיבור Google Drive (שלב נוסף — תיקייה אוטומטית + העלאת מסמכים) 📁
+# חיבור Google Drive — "גשר" חינמי (Google Apps Script) 📁
 
-מאפשר: ליצור תיקייה בדרייב לכל ילדה (לפי שנה/שם/ת"ז) ולהעלות אליה מסמכים ישירות מהתיק.
-משתמשים באותו פרויקט Google של Firebase. הגישה מוגבלת אך ורק לקבצים שהמערכת יוצרת (scope בשם `drive.file`).
+מאפשר לכל משתמש שמחובר לתוכנה (עם המייל שלו) ליצור תיקייה לכל ילדה, להעלות מסמכים, לצפות ולהוריד —
+בלי חיבור Google אישי. הכל נשמר ב-Drive של חשבון אחד (הארגון), מסודר לפי שנה.
 
-> **חשוב:** להתחבר תמיד עם **אותו חשבון Google** (מומלץ חשבון הארגון). כך כל התיקיות יושבות במקום אחד ונגישות לכולם.
+> אם ביצעת קודם שלבים של "OAuth client ID" (Drive API / Client ID) — הם כבר **לא נחוצים** בגישה הזו. אפשר להשאיר, לא מזיק.
 
-## שלב D1 — הפעלת Google Drive API
-1. היכנס/י ל־https://console.cloud.google.com ובחר/י למעלה את הפרויקט **`rishum-ganim-fad40`** (אותו פרויקט של Firebase).
-2. בתפריט (☰) → **APIs & Services → Library**.
-3. חפש/י **"Google Drive API"** → לחצ/י עליו → **Enable**.
+## שלב G1 — יצירת הסקריפט
+1. היכנס/י ל־https://script.google.com עם **חשבון ה-Drive של הארגון** (כל הקבצים ייווצרו שם!).
+2. לחצ/י **New project**.
+3. מחק/י את מה שכתוב ב-`Code.gs`, והדבק/י במקומו את **כל** התוכן של הקובץ **`APPS_SCRIPT.gs`** שנמצא במאגר.
+4. שמור/י (אייקון הדיסקט 💾).
 
-## שלב D2 — מסך ההסכמה (OAuth consent screen)
-1. תפריט (☰) → **APIs & Services → OAuth consent screen**.
-2. בחר/י **External** → **Create**.
-3. מלא/י: **App name** = `רישום גני ילדות`, **User support email** = האימייל שלך, ולמטה **Developer contact** = האימייל שלך → **Save and continue**.
-4. במסך **Scopes** — פשוט **Save and continue** (לא צריך להוסיף כלום).
-5. במסך **Test users** → **Add users** → הוסף/י את כתובות ה-Gmail של מי שישתמש בדרייב (למשל `7684252sg@gmail.com`) → **Save and continue** → **Back to dashboard**.
+## שלב G2 — פרסום כ-Web App
+5. למעלה מימין: **Deploy → New deployment**.
+6. ליד "Select type" לחצ/י על גלגל השיניים ⚙️ ובחר/י **Web app**.
+7. הגדר/י:
+   - **Execute as:** `Me` (חשבון הארגון).
+   - **Who has access:** `Anyone`.
+8. לחצ/י **Deploy**. יופיע בקשת הרשאה → **Authorize access** → בחר/י את חשבון הארגון → אם יופיע מסך "unverified": **Advanced → Go to ... (unsafe) → Allow**.
+9. יופיע **Web app URL** שמסתיים ב-`/exec`. העתק/י אותו ושלח/י לי.
 
-## שלב D3 — יצירת מזהה OAuth (Client ID)
-1. תפריט (☰) → **APIs & Services → Credentials**.
-2. למעלה **+ Create credentials → OAuth client ID**.
-3. **Application type** = **Web application**.
-4. **Name** = `rishum-ganim web`.
-5. תחת **Authorized JavaScript origins** → **Add URI** → הזן/י בדיוק:
-   `https://sg437.github.io`
-   (אפשר להוסיף עוד URI `http://localhost` לבדיקות מקומיות — לא חובה.)
-6. לחצ/י **Create**.
-7. יופיע חלון עם **Client ID** (מחרוזת שמסתיימת ב-`.apps.googleusercontent.com`). העתק/י אותו ושלח/י לי — אני אכניס אותו לקוד ואדחוף.
-
-## שלב D4 — שימוש
-- **הגדרות → חיבור Google Drive → "חבר Google Drive"** (פעם אחת בכל מכשיר; אשר/י את ההרשאה).
-- בכל תיק ילדה → מקטע **"תיקיית דרייב"** → **"צור תיקייה בדרייב"**, ואז **"העלאת מסמכים"**.
+## שלב G3 — שימוש
+- אני מכניס את הכתובת לקוד ומעלה לאוויר. מאז:
+- כל משתמש נכנס לתוכנה עם **המייל שלו** → בתיק הילדה: **"צור תיקייה בדרייב"** → **"העלאת מסמכים"**.
+- הקבצים מופיעים עם **קישור ישיר ל-Drive** וכפתור **הורדה**.
+- **הגדרות → חיבור Google Drive:** בדיקת חיבור, פתיחת תיקיית האב, ומתן גישה ישירה ל-Drive למשתמש לפי אימייל Google (למי שרוצה גם לפתוח קבצים ישירות ב-Drive).
+- לשינוי שם תיקיית האב: ערוך/י את `ROOT_FOLDER_NAME` בראש `APPS_SCRIPT.gs`.
