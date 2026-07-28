@@ -87,3 +87,39 @@ const firebaseConfig = {
 ### עלות
 השכבה החינמית של Firebase (Spark) כוללת בערך 50K קריאות ו-20K כתיבות ליום ו-1GB אחסון —
 הרבה מעבר לצורך של רשת גני ילדות. אין חיוב ללא שדרוג יזום לתוכנית בתשלום.
+
+---
+
+# חיבור Google Drive (שלב נוסף — תיקייה אוטומטית + העלאת מסמכים) 📁
+
+מאפשר: ליצור תיקייה בדרייב לכל ילדה (לפי שנה/שם/ת"ז) ולהעלות אליה מסמכים ישירות מהתיק.
+משתמשים באותו פרויקט Google של Firebase. הגישה מוגבלת אך ורק לקבצים שהמערכת יוצרת (scope בשם `drive.file`).
+
+> **חשוב:** להתחבר תמיד עם **אותו חשבון Google** (מומלץ חשבון הארגון). כך כל התיקיות יושבות במקום אחד ונגישות לכולם.
+
+## שלב D1 — הפעלת Google Drive API
+1. היכנס/י ל־https://console.cloud.google.com ובחר/י למעלה את הפרויקט **`rishum-ganim-fad40`** (אותו פרויקט של Firebase).
+2. בתפריט (☰) → **APIs & Services → Library**.
+3. חפש/י **"Google Drive API"** → לחצ/י עליו → **Enable**.
+
+## שלב D2 — מסך ההסכמה (OAuth consent screen)
+1. תפריט (☰) → **APIs & Services → OAuth consent screen**.
+2. בחר/י **External** → **Create**.
+3. מלא/י: **App name** = `רישום גני ילדות`, **User support email** = האימייל שלך, ולמטה **Developer contact** = האימייל שלך → **Save and continue**.
+4. במסך **Scopes** — פשוט **Save and continue** (לא צריך להוסיף כלום).
+5. במסך **Test users** → **Add users** → הוסף/י את כתובות ה-Gmail של מי שישתמש בדרייב (למשל `7684252sg@gmail.com`) → **Save and continue** → **Back to dashboard**.
+
+## שלב D3 — יצירת מזהה OAuth (Client ID)
+1. תפריט (☰) → **APIs & Services → Credentials**.
+2. למעלה **+ Create credentials → OAuth client ID**.
+3. **Application type** = **Web application**.
+4. **Name** = `rishum-ganim web`.
+5. תחת **Authorized JavaScript origins** → **Add URI** → הזן/י בדיוק:
+   `https://sg437.github.io`
+   (אפשר להוסיף עוד URI `http://localhost` לבדיקות מקומיות — לא חובה.)
+6. לחצ/י **Create**.
+7. יופיע חלון עם **Client ID** (מחרוזת שמסתיימת ב-`.apps.googleusercontent.com`). העתק/י אותו ושלח/י לי — אני אכניס אותו לקוד ואדחוף.
+
+## שלב D4 — שימוש
+- **הגדרות → חיבור Google Drive → "חבר Google Drive"** (פעם אחת בכל מכשיר; אשר/י את ההרשאה).
+- בכל תיק ילדה → מקטע **"תיקיית דרייב"** → **"צור תיקייה בדרייב"**, ואז **"העלאת מסמכים"**.

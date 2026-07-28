@@ -174,6 +174,10 @@ const firebaseConfig = {
   appId: "1:695537337833:web:8f1e46f6d6b4c8e5a37778"
 };
 const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
+
+/* ===== מזהה Google לחיבור Drive (ראה SETUP.md — שלב Drive). אינו סוד — מיועד לקוד ציבורי ===== */
+const GOOGLE_CLIENT_ID = "695537337833-vm3a96jco852267tt9hsf6l830gopo8q.apps.googleusercontent.com";
+const DRIVE_READY = !GOOGLE_CLIENT_ID.includes("YOUR_");
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
@@ -260,7 +264,7 @@ function makeStudent(){ return {
   special:{ divorced:false, approvalFather:false, approvalMother:false,
             outOfCity:false, paymentArrangement:false,
             retention:false, retentionDoc:false },
-  driveFolder:"", notes:"", createdAt:new Date().toISOString()
+  driveFolder:"", driveFolderId:"", notes:"", createdAt:new Date().toISOString()
 };}
 function makeGan(){ return {
   id:uid(), internalSymbol:"", ganSymbol:"", teacherName:"", age:"", education:"רגיל",
@@ -405,6 +409,114 @@ function renderAuthBox(){
   $("#au-signout").onclick=doSignOut;
   $("#au-reset").onclick=async ()=>{ if(!currentUser||!currentUser.email){ toast("אין אימייל"); return; }
     try{ await sendPasswordResetEmail(auth,currentUser.email); toast("נשלח מייל לאיפוס סיסמה"); }catch(e){ toast("שגיאה בשליחה"); } };
+}
+
+/* ============================================================
+   חיבור Google Drive — תיקייה לכל ילדה + העלאת מסמכים (scope מצומצם: drive.file)
+   ============================================================ */
+const DRIVE_SCOPE="https://www.googleapis.com/auth/drive.file";
+let _gisReady=null, _tokenClient=null, _driveToken=null, _driveTokenExp=0;
+function driveConnected(){ try{ return !!localStorage.getItem("rg-drive-on"); }catch(e){ return false; } }
+function loadGIS(){
+  if(_gisReady) return _gisReady;
+  _gisReady=new Promise((res,rej)=>{
+    if(window.google && google.accounts && google.accounts.oauth2) return res();
+    const s=document.createElement("script"); s.src="https://accounts.google.com/gsi/client"; s.async=true; s.defer=true;
+    s.onload=()=>res(); s.onerror=()=>rej(new Error("GIS load failed")); document.head.appendChild(s);
+  });
+  return _gisReady;
+}
+async function driveToken(interactive){
+  if(!DRIVE_READY) throw new Error("drive-not-configured");
+  if(_driveToken && Date.now()<_driveTokenExp-60000) return _driveToken;
+  await loadGIS();
+  if(!_tokenClient) _tokenClient=google.accounts.oauth2.initTokenClient({ client_id:GOOGLE_CLIENT_ID, scope:DRIVE_SCOPE, callback:()=>{} });
+  return await new Promise((resolve,reject)=>{
+    _tokenClient.callback=(resp)=>{ if(resp && resp.access_token){ _driveToken=resp.access_token; _driveTokenExp=Date.now()+((resp.expires_in||3600)*1000); try{ localStorage.setItem("rg-drive-on","1"); }catch(e){} resolve(_driveToken); } else reject(resp||new Error("no-token")); };
+    try{ _tokenClient.requestAccessToken({ prompt: interactive?"consent":"" }); }catch(e){ reject(e); }
+  });
+}
+function driveDisconnect(){ try{ if(_driveToken && window.google) google.accounts.oauth2.revoke(_driveToken,()=>{}); }catch(e){} _driveToken=null; _driveTokenExp=0; try{ localStorage.removeItem("rg-drive-on"); }catch(e){} }
+async function driveFetch(url, opts={}, interactive=false){
+  let token=await driveToken(interactive);
+  let headers=Object.assign({}, opts.headers, { Authorization:"Bearer "+token });
+  let r=await fetch(url, Object.assign({}, opts, {headers}));
+  if(r.status===401){ _driveToken=null; token=await driveToken(true); headers=Object.assign({}, opts.headers, { Authorization:"Bearer "+token }); r=await fetch(url, Object.assign({}, opts, {headers})); }
+  if(!r.ok) throw new Error("Drive "+r.status+": "+(await r.text()).slice(0,150));
+  return r;
+}
+async function driveMkFolder(name, parentId){
+  const meta={ name:String(name||"תיקייה"), mimeType:"application/vnd.google-apps.folder" }; if(parentId) meta.parents=[parentId];
+  const r=await driveFetch("https://www.googleapis.com/drive/v3/files?fields=id,webViewLink",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(meta) });
+  return r.json();
+}
+async function driveUploadFile(file, parentId){
+  const meta={ name:file.name }; if(parentId) meta.parents=[parentId];
+  const form=new FormData();
+  form.append("metadata", new Blob([JSON.stringify(meta)],{type:"application/json"}));
+  form.append("file", file);
+  const r=await driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink",{ method:"POST", body:form });
+  return r.json();
+}
+async function driveListFolder(parentId){
+  const q=encodeURIComponent("'"+parentId+"' in parents and trashed=false");
+  const r=await driveFetch("https://www.googleapis.com/drive/v3/files?q="+q+"&fields=files(id,name,webViewLink,mimeType)&orderBy=folder,name");
+  return (await r.json()).files||[];
+}
+async function driveEnsureRoot(){
+  DB.settings.drive=DB.settings.drive||{};
+  if(DB.settings.drive.rootId) return DB.settings.drive.rootId;
+  const name=(DB.settings.drive.rootName||"").trim() || "מסמכי רישום תלמידות (מהמערכת)";
+  const f=await driveMkFolder(name, null);
+  DB.settings.drive.rootId=f.id; DB.settings.drive.rootLink=f.webViewLink; DB.settings.drive.years=DB.settings.drive.years||{}; save();
+  return f.id;
+}
+async function driveEnsureYear(year){
+  const root=await driveEnsureRoot();
+  DB.settings.drive.years=DB.settings.drive.years||{};
+  if(DB.settings.drive.years[year]) return DB.settings.drive.years[year];
+  const f=await driveMkFolder(String(year), root);
+  DB.settings.drive.years[year]=f.id; save();
+  return f.id;
+}
+async function driveEnsureChildFolder(student){
+  if(student.driveFolderId) return student.driveFolderId;
+  const yf=await driveEnsureYear(student.year);
+  const name=([student.lastName,student.firstName].filter(Boolean).join(" ")+(student.tz?(" · "+student.tz):"")) || ("ילדה "+student.id);
+  const f=await driveMkFolder(name, yf);
+  student.driveFolderId=f.id; student.driveFolder=f.webViewLink;
+  const i=DB.students.findIndex(x=>x.id===student.id); if(i>=0){ DB.students[i].driveFolderId=f.id; DB.students[i].driveFolder=f.webViewLink; }
+  save();
+  return f.id;
+}
+function driveErrHe(e){
+  const m=String((e&&e.message)||e||"");
+  if(m.includes("drive-not-configured")) return "חיבור הדרייב לא הוגדר (ראה SETUP.md)";
+  if(m.includes("access_denied")||m.includes("interaction")||m.includes("popup")||m.includes("no-token")) return "החיבור לדרייב בוטל או נדחה";
+  if(m.includes("Drive 40")) return "שגיאת הרשאה בדרייב — התחבר/י מחדש עם אותו חשבון Google";
+  return "שגיאת דרייב — נסה/י שוב, או חבר/י מחדש בהגדרות";
+}
+function renderDriveBox(){
+  const box=$("#drive-box"); if(!box) return;
+  if(!DRIVE_READY){ box.innerHTML=`<div class="note">חיבור הדרייב עדיין לא הוגדר. יש להשלים את שלב ה-Google Drive ב-SETUP.md (הפעלת Drive API ומזהה OAuth) ולהזין מזהה.</div>`; return; }
+  const on=driveConnected(); const d=DB.settings.drive||{};
+  box.innerHTML=`
+    <div class="note">${on?'✅ מחובר/ת ל-Google Drive במכשיר זה.':'לא מחובר/ת עדיין במכשיר זה.'}</div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="drive-connect" type="button">${on?'🔄 חבר/י מחדש':'🔗 חבר/י Google Drive'}</button>
+      ${d.rootLink?`<a class="btn ghost" href="${esc(d.rootLink)}" target="_blank">📂 פתח תיקיית האב</a>`:''}
+      ${on?'<button class="btn ghost" id="drive-disc" type="button" style="margin-inline-start:auto">ניתוק</button>':''}
+    </div>
+    ${d.rootId
+      ? `<div class="hint" style="margin-top:8px">תיקיית האב: <b>${esc(d.rootName||'מסמכי רישום תלמידות (מהמערכת)')}</b> — כל תיקיות הילדות נוצרות בתוכה, מסודרות לפי שנה.</div>`
+      : `<div class="row" style="margin-top:10px">
+          <div class="field grow"><label>שם תיקיית האב בדרייב (תיווצר אוטומטית בפעם הראשונה)</label><input id="drive-rootname" value="${esc(d.rootName||'מסמכי רישום תלמידות (מהמערכת)')}"></div>
+          <button class="btn ghost" id="drive-savename" type="button" style="align-self:end">שמירת שם</button>
+        </div>`}
+    <div class="hint">התחבר/י תמיד עם <b>אותו חשבון Google</b> (מומלץ חשבון הארגון) כדי שכל התיקיות יישבו במקום אחד ויהיו נגישות. הגישה מוגבלת אך ורק לקבצים שהמערכת יוצרת.</div>`;
+  $("#drive-connect").onclick=async ()=>{ try{ await driveToken(true); toast("חובר ל-Google Drive"); renderDriveBox(); }catch(e){ toast(driveErrHe(e)); } };
+  const dc=$("#drive-disc"); if(dc) dc.onclick=()=>{ driveDisconnect(); toast("נותק מ-Drive"); renderDriveBox(); };
+  const sn=$("#drive-savename"); if(sn) sn.onclick=()=>{ DB.settings.drive=DB.settings.drive||{}; DB.settings.drive.rootName=$("#drive-rootname").value.trim(); save(); toast("שם תיקיית האב נשמר"); };
 }
 
 /* ============================================================
@@ -557,11 +669,11 @@ function openStudent(s){
   </fieldset>
   <fieldset><legend>תיקיית דרייב</legend>
     <div class="grid g2">
-      <div><label>קישור לתיקיית התלמידה בדרייב</label><input id="s-driveFolder" value="${esc(s.driveFolder)}" placeholder="הדבק/י כאן קישור לתיקייה"></div>
+      <div><label>קישור לתיקיית התלמידה בדרייב</label><input id="s-driveFolder" value="${esc(s.driveFolder)}" placeholder="${DRIVE_READY?'ייווצר אוטומטית בלחיצה על הכפתור למטה':'הדבק/י כאן קישור לתיקייה'}"></div>
       <div><label>שם תיקייה מומלץ</label><input id="s-folderSuggest" value="${esc(folderSuggest)}" readonly>
         <div class="hint">מבנה: שנה / שם משפחה שם · ת"ז · <button class="btn ghost sm" id="copyFolder" type="button">העתק שם</button></div></div>
     </div>
-    <div class="note" style="margin-top:8px">פתיחת תיקייה אוטומטית בדרייב תתווסף בשלב חיבור חשבון Google. בינתיים — פותחים תיקייה ידנית עם השם המומלץ ומדביקים כאן קישור.</div>
+    <div id="s-drive-actions" style="margin-top:10px"></div>
   </fieldset>
   <fieldset><legend>הערות וסיום</legend>
     <div><label>הערות</label><textarea id="s-notes" rows="2">${esc(s.notes)}</textarea></div>
@@ -593,6 +705,49 @@ function openStudent(s){
   const refreshSuggest=()=>{ const tmp=collect(); $("#s-folderSuggest").value=suggestFolder(tmp); };
   ["s-firstName","s-lastName","s-tz"].forEach(id=> $("#"+id).oninput=refreshSuggest);
   $("#copyFolder").onclick=()=>{ navigator.clipboard?.writeText($("#s-folderSuggest").value).then(()=>toast("שם התיקייה הועתק"),()=>{}); };
+
+  function persistCurrent(){ const data=collect(); const i=DB.students.findIndex(x=>x.id===s.id); if(i>=0) DB.students[i]=data; else DB.students.push(data); Object.assign(s,data); return data; }
+  function listChildFiles(){
+    const box=$("#s-drive-files"); if(!box||!s.driveFolderId) return;
+    box.innerHTML=`<div class="hint">טוען קבצים…</div>`;
+    driveListFolder(s.driveFolderId).then(files=>{
+      if(!files.length){ box.innerHTML=`<div class="hint">אין עדיין קבצים בתיקייה.</div>`; return; }
+      box.innerHTML=`<div class="hint">קבצים בתיקייה (${files.length}):</div><div class="row" style="gap:6px;margin-top:4px">`+
+        files.map(f=>`<a class="btn ghost sm" href="${esc(f.webViewLink)}" target="_blank">${f.mimeType&&f.mimeType.includes("folder")?'📁':'📄'} ${esc(f.name)}</a>`).join("")+`</div>`;
+    }).catch(()=>{ box.innerHTML=`<div class="hint">שגיאה בטעינת רשימת הקבצים.</div>`; });
+  }
+  function renderStudentDrive(){
+    const host=$("#s-drive-actions"); if(!host) return;
+    if(!DRIVE_READY){ host.innerHTML=`<div class="note">חיבור אוטומטי לדרייב אינו מוגדר עדיין (אפשר להדביק קישור ידנית למעלה). ראה SETUP.md.</div>`; return; }
+    host.innerHTML=`
+      <div class="row">
+        <button class="btn ghost" id="s-drive-open" type="button">${s.driveFolderId?'📂 פתח תיקייה בדרייב':'📁 צור תיקייה בדרייב'}</button>
+        <label class="btn ghost" style="display:${s.driveFolderId?'inline-flex':'none'};align-items:center;gap:6px" id="s-drive-uplabel">⬆️ העלאת מסמכים<input type="file" id="s-drive-file" hidden multiple></label>
+        <span id="s-drive-status" class="hint" style="align-self:center"></span>
+      </div>
+      <div id="s-drive-files" style="margin-top:8px"></div>`;
+    const status=m=>{ const e=$("#s-drive-status"); if(e) e.textContent=m||""; };
+    $("#s-drive-open").onclick=async ()=>{
+      try{
+        if(s.driveFolderId){ window.open(s.driveFolder||("https://drive.google.com/drive/folders/"+s.driveFolderId),"_blank"); return; }
+        status("יוצר תיקייה…"); persistCurrent();
+        await driveEnsureChildFolder(s);
+        const inp=$("#s-driveFolder"); if(inp) inp.value=s.driveFolder||"";
+        status("התיקייה נוצרה ✓"); toast("נוצרה תיקייה בדרייב"); renderStudentDrive(); listChildFiles();
+      }catch(e){ console.error(e); status(""); toast(driveErrHe(e)); }
+    };
+    const up=$("#s-drive-file");
+    if(up) up.onchange=async ()=>{
+      const files=[...up.files]; if(!files.length) return;
+      try{ status("מעלה…"); persistCurrent(); await driveEnsureChildFolder(s);
+        for(const f of files){ await driveUploadFile(f, s.driveFolderId); }
+        status("הועלו "+files.length+" קבצים ✓"); toast("המסמכים הועלו לדרייב"); listChildFiles();
+      }catch(e){ console.error(e); status(""); toast(driveErrHe(e)); }
+      up.value="";
+    };
+    if(s.driveFolderId) listChildFiles();
+  }
+  renderStudentDrive();
 
   function collect(){
     const g=id=>$("#"+id), val=id=>g(id)?.value.trim()??"", chk=id=>!!g(id)?.checked;
@@ -1268,6 +1423,12 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
+    <h2>חיבור Google Drive</h2>
+    <div class="sub">חיבור (פר-מכשיר) המאפשר יצירת תיקייה אוטומטית לכל ילדה והעלאת מסמכים ישירות מהתיק אל הדרייב.</div>
+    <div id="drive-box"></div>
+  </div>
+
+  <div class="panel">
     <h2>גיבוי ושחזור</h2>
     <div class="sub">הנתונים נשמרים בענן ומסונכרנים אוטומטית. אפשר לייצא גיבוי JSON, ולשחזר קובץ גיבוי — כולל גיבוי מהגרסה הישנה בטלפון (כך מעבירים את הנתונים שהוזנו שם אל הענן).</div>
     <div class="row">
@@ -1277,6 +1438,7 @@ function viewSettings(root){
   </div>`;
 
   renderAuthBox();
+  renderDriveBox();
 
   // years
   const yb=$("#years-box");
