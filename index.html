@@ -532,6 +532,8 @@ async function driveUploadNamed(file, folderId, baseName){
   return await driveCall("upload", { folderId, name, mimeType:file.type||"application/octet-stream", dataB64 });
 }
 async function driveShare(email, role){ return await driveCall("share", { email, role:role||"reader" }); }
+/* העתקת קובץ קיים לתיקייה אחרת (למשל צילום ת"ז לתיקיית השנה החדשה) — סעיף 5 */
+async function driveCopyFile(fileId, folderId, name){ return await driveCall("copy", { fileId, folderId, name }); }
 function b64ToBlobDownload(name, mimeType, b64){
   const bin=atob(b64||""); const arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
   const blob=new Blob([arr],{type:mimeType||"application/octet-stream"}); const a=document.createElement("a");
@@ -1861,8 +1863,10 @@ function viewSettings(root){
       <label class="check" style="align-self:end"><input type="checkbox" id="pr-age" checked ${dis}> קדם גיל ב-1</label>
       <label class="check" style="align-self:end"><input type="checkbox" id="pr-skip5" checked ${dis}> אל תעביר גיל 5 (מסיימות) — פרט לילדות השארות</label>
       <label class="check" style="align-self:end"><input type="checkbox" id="pr-keepId" checked ${dis}> העבר גם את מסמך צילום ת"ז (מסמך קבוע)</label>
+      ${DRIVE_READY?`<label class="check" style="align-self:end"><input type="checkbox" id="pr-copyId" checked ${dis}> העתק פיזית את קובץ ת"ז לתיקיית השנה החדשה (איטי יותר)</label>`:""}
       <button class="btn" id="doPromote" style="align-self:end" ${dis}>בצע קידום</button>
     </div>
+    <div id="pr-status" class="hint" style="margin-top:6px"></div>
     <div class="note" style="margin-top:8px">כל הפרטים האישיים כולל <b>מספר הזהות (ת"ז)</b>, השם, ההורים והכתובת <b>עוברים אוטומטית</b> לשנת היעד. <b>צילום ת"ז</b> (הסימון והקובץ הפיזי המצורף) עובר גם הוא כברירת מחדל — כי זהו מסמך קבוע; שאר המסמכים (נספח, תקנון) מתאפסים ועולים מחדש. ילדות בגיל 5 (מסיימות) לא יועברו — למעט ילדות המסומנות "השארות", שיועברו ללא קידום גיל.</div>
   </div>
 
@@ -1946,13 +1950,15 @@ function viewSettings(root){
     if(DB.activeYear===y)DB.activeYear=DB.years[0]; save(); route(); });
   if(admin) $("#addYear").onclick=()=>{ const y=$("#new-year").value.trim(); if(!y)return; if(DB.years.includes(y)){toast("שנה קיימת");return;} DB.years.push(y); save(); route(); toast("נוספה שנה"); };
 
-  if(admin) $("#doPromote").onclick=()=>{
+  if(admin) $("#doPromote").onclick=async ()=>{
     const from=$("#pr-from").value, to=$("#pr-to").value, bump=$("#pr-age").checked, skip5=$("#pr-skip5").checked, keepId=$("#pr-keepId").checked;
+    const copyId = keepId && DRIVE_READY && !!($("#pr-copyId")&&$("#pr-copyId").checked);
     if(from===to){ toast("בחר/י שנת מקור ושנת יעד שונות"); return; }
     const src=DB.students.filter(s=>s.year===from);
     if(!src.length){ toast("אין תלמידות בשנת המקור"); return; }
     const existing=new Set(DB.students.filter(s=>s.year===to).map(s=>digits(s.tz)).filter(Boolean));
     let added=0, skipped5=0;
+    const toCopy=[]; // {id: מזהה התלמידה החדשה, src: מזהה קובץ ת"ז המקורי}
     src.forEach(s=>{ if(s.tz && existing.has(digits(s.tz))) return; // כבר קיימת ביעד
       const isRetention = !!(s.special && s.special.retention);
       // אל תעביר ילדות בגיל 5 (מסיימות), למעט המסומנות בהשארות
@@ -1966,12 +1972,36 @@ function viewSettings(root){
       // צילום ת"ז הוא מסמך קבוע — מעבירים את הסימון ואת הקובץ הפיזי המצורף לשנה הבאה
       if(keepId){
         if(s.docs && s.docs.idCopy) n.docs.idCopy=true;
-        if(s.docFiles && s.docFiles.idCopy) n.docFiles.idCopy=JSON.parse(JSON.stringify(s.docFiles.idCopy));
+        if(s.docFiles && s.docFiles.idCopy){
+          n.docFiles.idCopy=JSON.parse(JSON.stringify(s.docFiles.idCopy));
+          if(copyId && s.docFiles.idCopy.id) toCopy.push({ id:n.id, src:s.docFiles.idCopy.id });
+        }
       }
       n.special.approvalFather=n.special.approvalMother=n.special.paymentArrangement=n.special.retentionDoc=false;
       n.driveFolder=""; n.driveFolderId=""; n.createdAt=new Date().toISOString();
       DB.students.push(n); added++; });
     save(); route(); toast(`קודמו ${added} תלמידות לשנת ${to}${skipped5?` · דולגו ${skipped5} בגיל 5`:''}`);
+
+    // מעבר אסינכרוני: העתקה פיזית של קובצי ת"ז לתיקיות השנה החדשה (לא חוסם את הקידום)
+    if(copyId && toCopy.length){
+      const st=$("#pr-status");
+      let done=0, failed=0;
+      for(const c of toCopy){
+        const n=DB.students.find(x=>x.id===c.id); if(!n) continue;
+        if(st) st.textContent=`מעתיק קובצי ת"ז לתיקיות השנה החדשה… ${done+failed}/${toCopy.length}`;
+        try{
+          await driveEnsureChildFolder(n);
+          const nm='צילום תעודת זהות · '+([n.lastName,n.firstName].filter(Boolean).join(" "))+(n.tz?(" · "+n.tz):"");
+          const res=await driveCopyFile(c.src, n.driveFolderId, nm);
+          const cur=DB.students.find(x=>x.id===c.id);
+          if(cur){ cur.docFiles=cur.docFiles||{}; cur.docFiles.idCopy={ id:res.id||"", name:res.name||nm, link:res.link||"" }; }
+          done++;
+        }catch(e){ console.error(e); failed++; }
+      }
+      save();
+      if(st) st.textContent="";
+      toast(`הועתקו ${done} קובצי ת"ז לתיקיות השנה${failed?` · ${failed} נכשלו (נשמר קישור לשנה הקודמת)`:''}`);
+    }
   };
 
   // historical — נעול כברירת מחדל כדי לא לשנות בטעות מספרי תלמידים שהוזנו (סעיף 14)

@@ -34,6 +34,7 @@ function doPost(e){
       case 'childFolder': return json_(out, childFolder_(req.year, req.name));
       case 'list':        return json_(out, list_(req.folderId));
       case 'upload':      return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
+      case 'copy':        return json_(out, copy_(req.fileId, req.folderId, req.name));
       case 'download':    return json_(out, download_(req.fileId));
       case 'share':       return json_(out, share_(req.email, req.role));
       default:            return json_(out, {ok:false, error:'unknown-action'});
@@ -95,6 +96,12 @@ function upload_(folderId, name, mimeType, dataB64){
   var blob = Utilities.newBlob(Utilities.base64Decode(dataB64), mimeType || 'application/octet-stream', name || 'file');
   var file = f.createFile(blob);
   return { ok:true, id:file.getId(), name:file.getName(), link:file.getUrl() };
+}
+function copy_(fileId, folderId, name){
+  var file = DriveApp.getFileById(fileId);
+  var folder = DriveApp.getFolderById(folderId);
+  var c = file.makeCopy(name || file.getName(), folder);
+  return { ok:true, id:c.getId(), name:c.getName(), link:c.getUrl() };
 }
 function download_(fileId){
   var file = DriveApp.getFileById(fileId);
