@@ -497,16 +497,25 @@ function renderAuthBox(){
    חיבור Google Drive — דרך "גשר" (Google Apps Script) הרץ בחשבון הארגון.
    כל משתמש מחובר לתוכנה יכול ליצור תיקיות/להעלות/לצפות/להוריד — ללא חיבור Google אישי.
    ============================================================ */
-async function driveIdToken(){ if(!currentUser) throw new Error("not-logged-in"); return await currentUser.getIdToken(); }
+async function driveIdToken(force){ if(!currentUser) throw new Error("not-logged-in"); return await currentUser.getIdToken(!!force); }
 async function driveCall(action, payload){
   if(!DRIVE_READY) throw new Error("drive-not-configured");
-  const idToken=await driveIdToken();
-  let r;
-  try{ r=await fetch(APPS_SCRIPT_URL, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(Object.assign({action, idToken}, payload||{})) }); }
-  catch(e){ throw new Error("network"); }
-  let data; try{ data=await r.json(); }catch(e){ throw new Error("bad-response"); }
-  if(!data || data.ok===false) throw new Error((data&&data.error)||"drive-error");
-  return data;
+  let force=false;
+  for(let attempt=0; attempt<2; attempt++){
+    const idToken=await driveIdToken(force);
+    let r;
+    try{ r=await fetch(APPS_SCRIPT_URL, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(Object.assign({action, idToken}, payload||{})) }); }
+    catch(e){ throw new Error("network"); }
+    let data; try{ data=await r.json(); }catch(e){ throw new Error("bad-response"); }
+    if(data && data.ok===false){
+      // טוקן פג תוקף / לא תקף — רענון כפוי של הטוקן וניסיון חוזר אחד (מונע "בעיית הרשאה")
+      if((data.error==='unauthorized' || data.error==='token') && !force){ force=true; continue; }
+      throw new Error(data.error||"drive-error");
+    }
+    if(!data) throw new Error("drive-error");
+    return data;
+  }
+  throw new Error("drive-error");
 }
 async function drivePing(){ const res=await driveCall("ping",{}); if(res.rootLink){ DB.settings.drive=DB.settings.drive||{}; DB.settings.drive.rootLink=res.rootLink; save(); } return res; }
 async function driveEnsureChildFolder(student){
