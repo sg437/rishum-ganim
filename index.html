@@ -3,21 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0e7c86">
+<meta name="theme-color" content="#4a9d5b">
 <title>מערכת רישום וקליטת תלמידות</title>
 <style>
 :root{
-  --bg:#e9f1f1;--surface:#fff;--surface-2:#f3f9f8;--ink:#10242b;--ink-soft:#3d555c;
-  --muted:#6a8087;--border:#d8e6e5;--accent:#0e7c86;--accent-strong:#0a5f68;--accent-soft:#d6eceb;
+  --bg:#eaf4ec;--surface:#fff;--surface-2:#f1f8f2;--ink:#12251a;--ink-soft:#3d5546;
+  --muted:#6a8072;--border:#d5e7d9;--accent:#4a9d5b;--accent-strong:#357a44;--accent-soft:#d8eede;
   --brass:#9c6f2c;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a15b12;--warn-soft:#f6e6d2;
   --bad:#a5342b;--bad-soft:#f5dcd9;
-  --shadow:0 1px 2px rgba(16,36,43,.06),0 10px 30px rgba(16,36,43,.08);--radius:14px}
-@media(prefers-color-scheme:dark){:root{--bg:#081317;--surface:#0f2129;--surface-2:#16303a;--ink:#e9f4f4;
-  --ink-soft:#b2c8cc;--muted:#7d979d;--border:#22404a;--accent:#3bb2bd;--accent-strong:#5cc9d3;--accent-soft:#10333c;
+  --shadow:0 1px 2px rgba(16,43,24,.06),0 10px 30px rgba(16,43,24,.08);--radius:14px}
+@media(prefers-color-scheme:dark){:root{--bg:#0a1710;--surface:#0f2117;--surface-2:#163021;--ink:#e9f4ec;
+  --ink-soft:#b2ccb8;--muted:#7d977f;--border:#22402c;--accent:#4cbf6a;--accent-strong:#6ad684;--accent-soft:#103322;
   --brass:#cc9c56;--good:#54b888;--good-soft:#123527;--warn:#d9a25a;--warn-soft:#3a2c15;
   --bad:#e07b6f;--bad-soft:#3a1c18;--shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.4)}}
-:root[data-theme="light"]{--bg:#e9f1f1;--surface:#fff;--surface-2:#f3f9f8;--ink:#10242b;--ink-soft:#3d555c;--muted:#6a8087;--border:#d8e6e5;--accent:#0e7c86;--accent-strong:#0a5f68;--accent-soft:#d6eceb;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a15b12;--warn-soft:#f6e6d2;--bad:#a5342b;--bad-soft:#f5dcd9}
-:root[data-theme="dark"]{--bg:#081317;--surface:#0f2129;--surface-2:#16303a;--ink:#e9f4f4;--ink-soft:#b2c8cc;--muted:#7d979d;--border:#22404a;--accent:#3bb2bd;--accent-strong:#5cc9d3;--accent-soft:#10333c;--good:#54b888;--good-soft:#123527;--warn:#d9a25a;--warn-soft:#3a2c15;--bad:#e07b6f;--bad-soft:#3a1c18}
+:root[data-theme="light"]{--bg:#eaf4ec;--surface:#fff;--surface-2:#f1f8f2;--ink:#12251a;--ink-soft:#3d5546;--muted:#6a8072;--border:#d5e7d9;--accent:#4a9d5b;--accent-strong:#357a44;--accent-soft:#d8eede;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a15b12;--warn-soft:#f6e6d2;--bad:#a5342b;--bad-soft:#f5dcd9}
+:root[data-theme="dark"]{--bg:#0a1710;--surface:#0f2117;--surface-2:#163021;--ink:#e9f4ec;--ink-soft:#b2ccb8;--muted:#7d977f;--border:#22402c;--accent:#4cbf6a;--accent-strong:#6ad684;--accent-soft:#103322;--good:#54b888;--good-soft:#123527;--warn:#d9a25a;--warn-soft:#3a2c15;--bad:#e07b6f;--bad-soft:#3a1c18}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);direction:rtl;line-height:1.55;
   font-family:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif;font-size:15px}
@@ -38,6 +38,18 @@ header.top{position:sticky;top:0;z-index:30;background:var(--surface);border-bot
 .top-spacer{flex:1}
 .year-pick{display:flex;align-items:center;gap:6px;background:var(--accent-soft);padding:5px 10px;border-radius:999px;font-weight:800;color:var(--accent-strong)}
 .year-pick select{width:auto;background:transparent;border:0;font-weight:800;color:var(--accent-strong);padding:2px 4px}
+.brand .logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.edu-pick{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--border);padding:3px;border-radius:999px}
+.edu-pick button{background:transparent;color:var(--ink-soft);padding:5px 12px;border-radius:999px;font-size:.85rem;font-weight:800}
+.edu-pick button.active{background:var(--accent);color:#fff}
+.doc-row{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:7px 10px;flex-wrap:wrap}
+.doc-row .lbl{display:flex;align-items:center;gap:8px;font-weight:600;flex:1;min-width:150px;cursor:pointer}
+.doc-row .lbl input{width:auto;margin:0}
+.doc-rows{display:grid;gap:8px;grid-template-columns:repeat(2,1fr)}
+@media(max-width:640px){.doc-rows{grid-template-columns:1fr}}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--accent-strong)}
+th.sortable .arr{font-size:.7rem;opacity:.7;margin-inline-start:3px}
 .icon-btn{background:var(--surface-2);border:1px solid var(--border);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:1.05rem}
 
 /* nav */
@@ -137,8 +149,9 @@ body.locked nav.tabs,body.locked .year-pick,body.locked #themeBtn,body.locked #l
 
 <header class="top">
   <div class="top-inner">
-    <div class="brand"><span class="logo">🎒</span> מערכת רישום וקליטת תלמידות</div>
+    <div class="brand" id="brandBox"><span class="logo">🎒</span> מערכת רישום וקליטת תלמידות</div>
     <div class="top-spacer"></div>
+    <div class="edu-pick" id="eduPick"></div>
     <div class="year-pick">שנה: <select id="yearSelect"></select></div>
     <button class="icon-btn" id="lockBtn" title="נעילה" style="display:none">🔒</button>
     <button class="icon-btn" id="themeBtn" title="מצב תצוגה">🌓</button>
@@ -181,6 +194,20 @@ const DRIVE_READY = !APPS_SCRIPT_URL.includes("YOUR_");
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
+const STAFF_ROLES = ["גננת","סייעת","סייעת ב'","סייעת רפואית","סייעת צמודה"]; // תפקידי צוות לשיבוץ
+/* תוכניות/מועדונים לרישום ילדה (סעיף 9) */
+const PROGRAMS = [
+  ["tzaharon","צהרון"],
+  ["campHanukkah","קייטנת חנוכה"],
+  ["campNisan","קייטנת ניסן"],
+  ["campEndYear","קייטנת סוף שנה"]
+];
+/* מסמכי התלמידה — מפתח, כותרת (סעיפים 11–12) */
+const STUDENT_DOCS = [
+  ["nispach","נספח"],
+  ["idCopy",'צילום תעודת זהות'],
+  ["takanon","תקנון"]
+];
 
 /* ---------- מודל נתונים ---------- */
 function blankDB(){
@@ -190,9 +217,11 @@ function blankDB(){
     students: [],       // ראה makeStudent
     gans: [],           // ראה makeGan
     management: [],      // {id, dept, name, role, phone}
+    staff: [],           // ראה makeStaff — מאגר אנשי צוות הגנים (סעיף 16)
+    assignments: {},     // { [year]: { [ganId]: { [role]: {staffId,name,phone} } } } — שיבוץ (סעיף 17)
     municipality: {},    // { [year]: [ '123456789', ... ] }  ת"ז מרשימת העירייה
     historical: {},      // { [year]: {periodA,periodB,periodC,final} } סיכומי שנים קודמות
-    settings: { gansTarget: 29 } // יעד מספר גנים (ניתן לשינוי)
+    settings: { gansTarget: 29, admins: [] } // יעד מספר גנים + מנהלי מערכת (סעיף 15)
   };
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -218,12 +247,13 @@ async function runPush(){
 async function pushAll(){
   if(!db) return;
   // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
-  const meta={ activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, settings:DB.settings };
-  const gans=DB.gans.slice(), management=DB.management.slice();
+  const meta={ activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, settings:DB.settings, assignments:DB.assignments };
+  const gans=DB.gans.slice(), management=DB.management.slice(), staff=DB.staff.slice();
   const byYear={}; DB.students.forEach(s=>{ (byYear[s.year]=byYear[s.year]||[]).push(s); });
   await setDoc(doc(db,"app","meta"), meta);
   await setDoc(doc(db,"app","gans"), { gans });
   await setDoc(doc(db,"app","management"), { management });
+  await setDoc(doc(db,"app","staff"), { staff });
   const wantIds=new Set();
   for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await setDoc(doc(db,"app",id), { year:y, students:byYear[y] }); }
   for(const id of [...knownStudentDocs]){ if(!wantIds.has(id)){ try{ await deleteDoc(doc(db,"app",id)); }catch(e){} knownStudentDocs.delete(id); } }
@@ -235,12 +265,25 @@ function rebuildDB(docsMap){
   DB.activeYear = meta.activeYear && DB.years.includes(meta.activeYear) ? meta.activeYear : DB.years[0];
   DB.municipality = meta.municipality||{};
   DB.historical = meta.historical||{};
-  DB.settings = meta.settings||{ gansTarget:29 };
+  DB.settings = meta.settings||{ gansTarget:29, admins:[] };
+  if(!Array.isArray(DB.settings.admins)) DB.settings.admins=[];
+  DB.assignments = meta.assignments||{};
   DB.gans = (docsMap.get("gans")||{}).gans||[];
   DB.management = (docsMap.get("management")||{}).management||[];
+  DB.staff = (docsMap.get("staff")||{}).staff||[];
   const studs=[];
   for(const [id,val] of docsMap){ if(id.startsWith("students_") && val && Array.isArray(val.students)) studs.push(...val.students); }
-  DB.students = studs;
+  DB.students = studs.map(normStudent);
+}
+/* השלמת שדות חדשים לרשומות ישנות שנשמרו לפני העדכון */
+function normStudent(s){
+  s.docs = Object.assign({ nispach:false, idCopy:false, takanon:false }, s.docs||{});
+  s.docFiles = s.docFiles||{};
+  s.programs = Object.assign({ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, s.programs||{});
+  s.special = Object.assign({ divorced:false, approvalFather:false, approvalMother:false,
+    outOfCity:false, paymentArrangement:false, retention:false, retentionDoc:false,
+    other:false, otherText:"" }, s.special||{});
+  return s;
 }
 
 /* ---------- כלי עזר ---------- */
@@ -254,6 +297,29 @@ function digits(s){ return String(s||"").replace(/\D/g,""); }
 function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // ברירת מחדל: חינוך רגיל
 function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
 
+/* ---------- מיתוג: כותרת ולוגו ניתנים לשינוי (סעיפים 1–2) ---------- */
+const DEFAULT_TITLE = "מערכת רישום וקליטת תלמידות";
+const DEFAULT_LOGO = "🎒";
+function appTitle(){ return (DB.settings && DB.settings.appTitle) || DEFAULT_TITLE; }
+function appLogo(){ return (DB.settings && DB.settings.appLogo) || DEFAULT_LOGO; }
+function logoHtml(){ const l=appLogo(); return /^(https?:|data:)/i.test(l) ? `<img src="${esc(l)}" alt="לוגו">` : esc(l); }
+function applyBranding(){
+  const t=appTitle(); document.title=t;
+  const box=$("#brandBox"); if(box) box.innerHTML=`<span class="logo">${logoHtml()}</span> ${esc(t)}`;
+}
+
+/* ---------- הרשאות: רק מנהל משנה הגדרות מערכת (סעיף 15) ---------- */
+function isAdmin(){
+  const admins=(DB.settings&&DB.settings.admins)||[];
+  if(!admins.length) return true; // עוד לא הוגדרו מנהלים — כל מחובר יכול (איתחול)
+  const em=(currentUser&&currentUser.email||"").toLowerCase();
+  return admins.map(x=>String(x).toLowerCase()).includes(em);
+}
+
+/* ---------- סינון "תיקיית" חינוך רגיל / מיוחד (סעיף 8) ---------- */
+let activeEdu = ""; // "" = הכל, "רגיל", 'ח"מ'
+function eduScope(list){ return activeEdu ? list.filter(x=>eduLabel(x)===activeEdu) : list; }
+
 /* ---------- תבניות רשומות ---------- */
 function makeStudent(){ return {
   id:uid(), year:DB.activeYear, tz:"", firstName:"", lastName:"", dob:"",
@@ -261,10 +327,17 @@ function makeStudent(){ return {
   ganId:"", age:"", period:"א", education:"רגיל",
   registeredByUs:true, absorbedMunicipality:false, finished:false,
   docs:{ nispach:false, idCopy:false, takanon:false },
+  docFiles:{}, // { [docKey]: {id,name,link} } — קובץ פיזי שצורף לכל מסמך (סעיף 12)
+  programs:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, // סעיף 9
   special:{ divorced:false, approvalFather:false, approvalMother:false,
             outOfCity:false, paymentArrangement:false,
-            retention:false, retentionDoc:false },
+            retention:false, retentionDoc:false,
+            other:false, otherText:"" }, // סעיף 3 — "אחר" עם טקסט חופשי
   driveFolder:"", driveFolderId:"", notes:"", createdAt:new Date().toISOString()
+};}
+function makeStaff(){ return {
+  id:uid(), name:"", role:"סייעת", phone:"", mobile:"", city:"", notes:"",
+  createdAt:new Date().toISOString()
 };}
 function makeGan(){ return {
   id:uid(), internalSymbol:"", ganSymbol:"", teacherName:"", age:"", education:"רגיל",
@@ -279,6 +352,8 @@ function makeGan(){ return {
 const TABS = [
   {id:"students",  label:"תלמידות"},
   {id:"gans",      label:"גנים"},
+  {id:"staff",     label:"צוות"},
+  {id:"assign",    label:"שיבוץ"},
   {id:"reports",   label:"דוחות ואחוזים"},
   {id:"municipality", label:"עירייה"},
   {id:"export",    label:"ייצוא"},
@@ -297,13 +372,20 @@ function renderTabs(){
 function renderYearSelect(){
   $("#yearSelect").innerHTML = DB.years.map(y=>`<option ${y===DB.activeYear?'selected':''}>${esc(y)}</option>`).join("");
 }
+function renderEduPick(){
+  const box=$("#eduPick"); if(!box) return;
+  const opts=[["","הכל"],["רגיל","חינוך רגיל"],['ח"מ',"חינוך מיוחד"]];
+  box.innerHTML=opts.map(o=>`<button data-edu="${esc(o[0])}" class="${activeEdu===o[0]?'active':''}">${esc(o[1])}</button>`).join("");
+  box.querySelectorAll("[data-edu]").forEach(b=> b.onclick=()=>{ activeEdu=b.dataset.edu; route(); });
+}
 
 function route(){
-  renderTabs(); renderYearSelect();
+  applyBranding();
+  renderTabs(); renderYearSelect(); renderEduPick();
   const lb=$("#lockBtn"); if(lb) lb.style.display=currentUser?"grid":"none";
   const v = $("#view");
-  ({students:viewStudents, gans:viewGans, reports:viewReports, municipality:viewMunicipality,
-    export:viewExport, management:viewManagement, settings:viewSettings}[active]||viewStudents)(v);
+  ({students:viewStudents, gans:viewGans, staff:viewStaff, assign:viewAssign, reports:viewReports,
+    municipality:viewMunicipality, export:viewExport, management:viewManagement, settings:viewSettings}[active]||viewStudents)(v);
 }
 
 /* ============================================================
@@ -442,6 +524,13 @@ async function driveUploadFile(file, folderId){
   const dataB64=await fileToB64(file);
   return await driveCall("upload", { folderId, name:file.name, mimeType:file.type||"application/octet-stream", dataB64 });
 }
+/* העלאה עם שם קובץ קבוע (שומר על סיומת המקור) — סעיף 11 */
+function fileExt(name){ const m=String(name||"").match(/\.[A-Za-z0-9]{1,8}$/); return m?m[0]:""; }
+async function driveUploadNamed(file, folderId, baseName){
+  const dataB64=await fileToB64(file);
+  const name=String(baseName||"קובץ").replace(/[\/\\:*?"<>|]/g,"-") + fileExt(file.name);
+  return await driveCall("upload", { folderId, name, mimeType:file.type||"application/octet-stream", dataB64 });
+}
 async function driveShare(email, role){ return await driveCall("share", { email, role:role||"reader" }); }
 function b64ToBlobDownload(name, mimeType, b64){
   const bin=atob(b64||""); const arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
@@ -483,16 +572,18 @@ function renderDriveBox(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gan:"", age:"", city:"", period:"", edu:"", muni:"", showFinished:false };
+let stuFilter = { q:"", gan:"", age:"", city:"", period:"", edu:"", muni:"", status:"active" };
+let stuSort = { key:"name", dir:1 }; // מיון לפי עמודה (סעיף 10)
 
 function viewStudents(root){
-  const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+  const gans = eduScope(DB.gans.slice()).sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
   const cities = [...new Set(studentsOfYear().map(s=>s.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const scopeNote = activeEdu ? ` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}` : "";
   root.innerHTML = `
   <div class="panel">
     <div class="section-title">
-      <div><h2>תיקי התלמידות · שנת ${esc(DB.activeYear)}</h2>
-        <div class="sub">תיק לכל ילדה עם כל הפרטים, המסמכים והשונות. סימון "סיימה גן" מוציא אותה מהרשימה.</div></div>
+      <div><h2>תיקי התלמידות · שנת ${esc(DB.activeYear)}${esc(scopeNote)}</h2>
+        <div class="sub">תיק לכל ילדה עם כל הפרטים, המסמכים והשונות. סימון "סיימה גן" מעביר אותה ל"שסיימו" (אינה נמחקת — ניתן לצפות בה דרך סינון הסטטוס). לחיצה על כותרת עמודה ממיינת.</div></div>
       <div class="row" style="gap:8px">
         <button class="btn ghost" id="importStu">⬆️ ייבוא מקובץ</button>
         <button class="btn" id="addStu">➕ הוספת ילדה</button>
@@ -504,34 +595,54 @@ function viewStudents(root){
       <div class="field"><label>גיל</label><select id="f-age"><option value="">הכל</option>${[2,3,4,5,6].map(a=>`<option ${stuFilter.age==a?'selected':''}>${a}</option>`).join("")}</select></div>
       <div class="field"><label>עיר</label><select id="f-city"><option value="">הכל</option>${cities.map(c=>`<option ${stuFilter.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
       <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
-      <div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
+      ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
       <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
-      <div class="field"><label class="check" style="margin-top:18px"><input type="checkbox" id="f-fin" ${stuFilter.showFinished?'checked':''}> הצג שסיימו</label></div>
+      <div class="field"><label>סטטוס</label><select id="f-status">
+        <option value="active" ${stuFilter.status==='active'?'selected':''}>פעילות</option>
+        <option value="finished" ${stuFilter.status==='finished'?'selected':''}>שסיימו / יצאו</option>
+        <option value="all" ${stuFilter.status==='all'?'selected':''}>הכל</option>
+      </select></div>
     </div>
     <div id="stuTable"></div>
   </div>`;
 
-  $("#addStu").onclick = ()=> openStudent(makeStudent());
+  $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#importStu").onclick = ()=> openImport();
-  const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ stuFilter[key]= e.type==='checkbox'?e.checked:e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-gan","gan");bind("#f-age","age");bind("#f-city","city");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-fin","showFinished");
+  const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
+  bind("#f-q","q");bind("#f-gan","gan");bind("#f-age","age");bind("#f-city","city");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-status","status");
   renderStuTable();
 }
 
 function filteredStudents(){
   const f=stuFilter, q=f.q.trim();
-  return studentsOfYear().filter(s=>{
-    if(!f.showFinished && s.finished) return false;
+  const eduFilter = activeEdu || f.edu;
+  const list = studentsOfYear().filter(s=>{
+    if(f.status==='active' && s.finished) return false;
+    if(f.status==='finished' && !s.finished) return false;
     if(q){ const hay=(s.firstName+" "+s.lastName+" "+s.tz).toLowerCase(); if(!hay.includes(q.toLowerCase())) return false; }
     if(f.gan && s.ganId!==f.gan) return false;
     if(f.age && String(s.age)!==String(f.age)) return false;
     if(f.city && s.city!==f.city) return false;
     if(f.period && s.period!==f.period) return false;
-    if(f.edu && eduLabel(s)!==f.edu) return false;
+    if(eduFilter && eduLabel(s)!==eduFilter) return false;
     if(f.muni==='yes' && !s.absorbedMunicipality) return false;
     if(f.muni==='no' && s.absorbedMunicipality) return false;
     return true;
-  }).sort((a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he")|| (a.firstName||"").localeCompare(b.firstName||"","he"));
+  });
+  return sortStudents(list);
+}
+function sortStudents(list){
+  const k=stuSort.key, d=stuSort.dir;
+  const cmpTxt=(a,b)=>String(a||"").localeCompare(String(b||""),"he");
+  const cmpNum=(a,b)=>(+a||0)-(+b||0);
+  const val={
+    name:s=>[s.lastName,s.firstName].filter(Boolean).join(" "),
+    tz:s=>s.tz, gan:s=>ganName(s.ganId), age:s=>s.age, city:s=>s.city,
+    period:s=>PERIODS.indexOf(s.period), edu:s=>eduLabel(s)
+  };
+  const getter=val[k]||val.name;
+  const numeric = (k==='age'||k==='period');
+  return list.slice().sort((a,b)=>{ const r= numeric?cmpNum(getter(a),getter(b)):cmpTxt(getter(a),getter(b)); return r*d || cmpTxt(val.name(a),val.name(b)); });
 }
 
 function docDots(s){
@@ -540,10 +651,16 @@ function docDots(s){
   return `<span class="dot-list">${mk(d.nispach,'נספח')}${mk(d.idCopy,'צילום ת"ז')}${mk(d.takanon,'תקנון')}</span>`;
 }
 function specialBadges(s){
-  const b=[]; const sp=s.special;
+  const b=[]; const sp=s.special||{};
   if(sp.divorced) b.push('<span class="pill warn">גרושים</span>');
   if(sp.outOfCity) b.push('<span class="pill warn">ילדת חוץ</span>');
   if(sp.retention) b.push('<span class="pill warn">השארות</span>');
+  if(sp.other) b.push('<span class="pill warn">'+(sp.otherText?esc(sp.otherText):'אחר')+'</span>');
+  return b.join(" ");
+}
+function programBadges(s){
+  const p=s.programs||{}; const b=[];
+  PROGRAMS.forEach(([k,lbl])=>{ if(p[k]) b.push(`<span class="pill ok" style="background:var(--accent-soft);color:var(--accent-strong)">${esc(lbl)}</span>`); });
   return b.join(" ");
 }
 
@@ -551,10 +668,13 @@ function renderStuTable(){
   renderTabs();
   const list = filteredStudents();
   const host = $("#stuTable");
+  const statusLbl = { active:"פעילות", finished:"שסיימו / יצאו", all:"כל הסטטוסים" }[stuFilter.status]||"";
   if(!list.length){ host.innerHTML = `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`; return; }
+  const arr=k=> stuSort.key===k ? `<span class="arr">${stuSort.dir>0?'▲':'▼'}</span>` : "";
+  const th=(k,lbl)=>`<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>`;
   host.innerHTML = `<div class="table-wrap"><table><thead><tr>
-    <th>שם מלא</th><th>ת"ז</th><th>גן</th><th>גיל</th><th>עיר</th><th>מועד</th><th>חינוך</th>
-    <th>מסמכים</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
+    ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
+    <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
     ${list.map(s=>`<tr>
       <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
       <td>${esc(s.tz)||'—'}</td>
@@ -564,6 +684,7 @@ function renderStuTable(){
       <td><span class="pill neutral">${esc(s.period)}</span></td>
       <td>${eduBadge(s)}</td>
       <td>${docDots(s)}</td>
+      <td>${programBadges(s)||'<span class="pill neutral">—</span>'}</td>
       <td>${specialBadges(s)||'<span class="pill neutral">—</span>'}</td>
       <td>${s.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
       <td>${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
@@ -571,8 +692,9 @@ function renderStuTable(){
         <button class="btn ghost sm" data-edit="${s.id}">פתח תיק</button>
       </td></tr>`).join("")}
   </tbody></table></div>
-  <div class="hint">מוצגות ${list.length} תלמידות ${stuFilter.showFinished?'(כולל שסיימו)':'(פעילות)'}.</div>`;
+  <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}).</div>`;
   host.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=>{ const s=DB.students.find(x=>x.id===b.dataset.edit); openStudent(JSON.parse(JSON.stringify(s))); });
+  host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(stuSort.key===k) stuSort.dir*=-1; else { stuSort.key=k; stuSort.dir=1; } renderStuTable(); });
 }
 
 /* טופס תיק ילדה */
@@ -614,10 +736,12 @@ function openStudent(s){
     </div>
   </fieldset>
   <fieldset><legend>מסמכים</legend>
+    <div class="hint" style="margin-bottom:8px">מסמנים וי לכל מסמך שהתקבל, ולוחצים 📎 כדי לצרף את הקובץ עצמו לתיקיית הדרייב של הילדה. שם הקובץ נקבע אוטומטית (סוג המסמך · שם הילדה · ת"ז).</div>
+    <div class="doc-rows" id="doc-rows"></div>
+  </fieldset>
+  <fieldset><legend>תוכניות ומועדונים</legend>
     <div class="checks">
-      <label class="check"><input type="checkbox" id="d-nispach" ${s.docs.nispach?'checked':''}> נספח</label>
-      <label class="check"><input type="checkbox" id="d-idCopy" ${s.docs.idCopy?'checked':''}> צילום תעודת זהות</label>
-      <label class="check"><input type="checkbox" id="d-takanon" ${s.docs.takanon?'checked':''}> תקנון</label>
+      ${PROGRAMS.map(([k,lbl])=>`<label class="check"><input type="checkbox" id="pg-${k}" ${(s.programs&&s.programs[k])?'checked':''}> ${esc(lbl)}</label>`).join("")}
     </div>
   </fieldset>
   <fieldset><legend>שונות</legend>
@@ -625,6 +749,7 @@ function openStudent(s){
       <label class="check"><input type="checkbox" id="sp-divorced" ${s.special.divorced?'checked':''}> הורים גרושים</label>
       <label class="check"><input type="checkbox" id="sp-outOfCity" ${s.special.outOfCity?'checked':''}> ילדת חוץ (מחוץ לעיר)</label>
       <label class="check"><input type="checkbox" id="sp-retention" ${s.special.retention?'checked':''}> ילדת השארות</label>
+      <label class="check"><input type="checkbox" id="sp-other" ${s.special.other?'checked':''}> אחר</label>
     </div>
     <div id="sp-extra" class="checks" style="margin-top:8px"></div>
   </fieldset>
@@ -658,10 +783,47 @@ function openStudent(s){
     if($("#sp-retention").checked){
       parts.push(`<label class="check"><input type="checkbox" id="sp-retentionDoc" ${s.special.retentionDoc?'checked':''}> מסמך השארות קיים</label>`);
     }
+    if($("#sp-other").checked){
+      parts.push(`<div style="grid-column:1/-1"><label>פירוט "אחר"</label><input id="sp-otherText" value="${esc(s.special.otherText||"")}" placeholder="פרט/י…"></div>`);
+    }
     div.innerHTML = parts.join("");
   }
-  ["sp-divorced","sp-outOfCity","sp-retention"].forEach(id=> $("#"+id).onchange=renderExtra);
+  ["sp-divorced","sp-outOfCity","sp-retention","sp-other"].forEach(id=> $("#"+id).onchange=renderExtra);
   renderExtra();
+
+  /* מסמכים — סימון + צירוף קובץ פיזי לתיקיית הדרייב (סעיפים 11–12) */
+  function docFileBaseName(label){
+    const nm=[s.lastName,s.firstName].filter(Boolean).join(" ")||"ללא שם";
+    return `${label} · ${nm}${s.tz?(" · "+s.tz):""}`;
+  }
+  function renderDocRows(){
+    const host=$("#doc-rows"); if(!host) return;
+    host.innerHTML = STUDENT_DOCS.map(([k,lbl])=>{
+      const f=(s.docFiles||{})[k];
+      const attached = f? `<a class="btn ghost sm" href="${esc(f.link||'#')}" target="_blank" title="פתח קובץ">📄 ${esc(f.name||'קובץ')}</a>` : "";
+      const attachBtn = DRIVE_READY
+        ? `<label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:4px" title="צרף קובץ">📎<input type="file" class="doc-file" data-k="${k}" hidden></label>`
+        : "";
+      return `<div class="doc-row">
+        <label class="lbl"><input type="checkbox" class="d-chk" data-k="${k}" ${(s.docs&&s.docs[k])?'checked':''}> ${esc(lbl)}</label>
+        ${attached}${attachBtn}
+      </div>`;
+    }).join("");
+    host.querySelectorAll(".d-chk").forEach(cb=> cb.onchange=()=>{ s.docs[cb.dataset.k]=cb.checked; });
+    host.querySelectorAll(".doc-file").forEach(inp=> inp.onchange=async ()=>{
+      const file=inp.files[0]; if(!file) return;
+      const k=inp.dataset.k, lbl=(STUDENT_DOCS.find(d=>d[0]===k)||[,k])[1];
+      try{
+        toast("מעלה מסמך…"); persistCurrent(); await driveEnsureChildFolder(s);
+        const res=await driveUploadNamed(file, s.driveFolderId, docFileBaseName(lbl));
+        s.docFiles=s.docFiles||{}; s.docFiles[k]={ id:res.fileId||res.id||"", name:res.name||file.name, link:res.link||res.webViewLink||"" };
+        s.docs[k]=true; renderDocRows(); persistCurrent(); save();
+        toast("המסמך צורף ✓");
+      }catch(e){ console.error(e); toast(driveErrHe(e)); }
+      inp.value="";
+    });
+  }
+  renderDocRows();
 
   const refreshSuggest=()=>{ const tmp=collect(); $("#s-folderSuggest").value=suggestFolder(tmp); };
   ["s-firstName","s-lastName","s-tz"].forEach(id=> $("#"+id).oninput=refreshSuggest);
@@ -717,6 +879,8 @@ function openStudent(s){
 
   function collect(){
     const g=id=>$("#"+id), val=id=>g(id)?.value.trim()??"", chk=id=>!!g(id)?.checked;
+    const docs={}; STUDENT_DOCS.forEach(([k])=>{ const cb=document.querySelector(`.d-chk[data-k="${k}"]`); docs[k]= cb? cb.checked : !!(s.docs&&s.docs[k]); });
+    const programs={}; PROGRAMS.forEach(([k])=>{ programs[k]=chk("pg-"+k); });
     return Object.assign({}, s, {
       firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"), dob:val("s-dob"),
       motherName:val("s-motherName"), fatherName:val("s-fatherName"),
@@ -725,10 +889,11 @@ function openStudent(s){
       ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
-      docs:{ nispach:chk("d-nispach"), idCopy:chk("d-idCopy"), takanon:chk("d-takanon") },
+      docs, docFiles:s.docFiles||{}, programs,
       special:{ divorced:chk("sp-divorced"), approvalFather:chk("sp-approvalFather"), approvalMother:chk("sp-approvalMother"),
                 outOfCity:chk("sp-outOfCity"), paymentArrangement:chk("sp-paymentArrangement"),
-                retention:chk("sp-retention"), retentionDoc:chk("sp-retentionDoc") }
+                retention:chk("sp-retention"), retentionDoc:chk("sp-retentionDoc"),
+                other:chk("sp-other"), otherText:val("sp-otherText") }
     });
   }
 
@@ -927,23 +1092,47 @@ function openImport(){
 /* ============================================================
    טאב גנים
    ============================================================ */
+let ganFilter = { q:"", zone:"", status:"" };
+function gansScoped(){
+  return eduScope(DB.gans.slice()).filter(g=>{
+    const q=ganFilter.q.trim().toLowerCase();
+    if(q){ const hay=(g.teacherName+" "+g.ganSymbol+" "+g.internalSymbol+" "+g.address+" "+g.zone).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(ganFilter.zone && g.zone!==ganFilter.zone) return false;
+    if(ganFilter.status==='active' && !g.active) return false;
+    if(ganFilter.status==='off' && g.active) return false;
+    return true;
+  }).sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+}
 function viewGans(root){
+  const zones=[...new Set(DB.gans.map(g=>g.zone).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const scopeNote = activeEdu ? ` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}` : "";
   root.innerHTML = `
   <div class="panel">
     <div class="section-title">
-      <div><h2>רשימת הגנים</h2><div class="sub">כל פרטי הגן, קיבולת, ומסמכים. גן שאינו פעיל אינו נספר במניין הגנים.</div></div>
-      <button class="btn" id="addGan">➕ הוספת גן</button>
+      <div><h2>רשימת הגנים${esc(scopeNote)}</h2><div class="sub">כל פרטי הגן, קיבולת, ומסמכים. גן שאינו פעיל אינו נספר במניין הגנים.</div></div>
+      <div class="row" style="gap:8px">
+        <button class="btn ghost" id="exportGans">📤 ייצוא / הדפסה</button>
+        <button class="btn" id="addGan">➕ הוספת גן</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="field grow"><label>חיפוש (גננת / סמל / כתובת)</label><input id="fg-q" value="${esc(ganFilter.q)}" placeholder="הקלד/י…"></div>
+      <div class="field"><label>אזור</label><select id="fg-zone"><option value="">הכל</option>${zones.map(z=>`<option ${ganFilter.zone===z?'selected':''}>${esc(z)}</option>`).join("")}</select></div>
+      <div class="field"><label>סטטוס</label><select id="fg-status"><option value="">הכל</option><option value="active" ${ganFilter.status==='active'?'selected':''}>פעיל</option><option value="off" ${ganFilter.status==='off'?'selected':''}>כבוי</option></select></div>
     </div>
     <div id="ganTable"></div>
   </div>`;
-  $("#addGan").onclick=()=>openGan(makeGan());
+  $("#addGan").onclick=()=>{ const g=makeGan(); if(activeEdu) g.education=activeEdu; openGan(g); };
+  $("#exportGans").onclick=openGanExport;
+  const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ ganFilter[key]=e.value; renderGanTable(); }; };
+  bind("#fg-q","q"); bind("#fg-zone","zone"); bind("#fg-status","status");
   renderGanTable();
 }
 function renderGanTable(){
   renderTabs();
-  const list = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+  const list = gansScoped();
   const host=$("#ganTable");
-  if(!list.length){ host.innerHTML=`<div class="empty">אין גנים עדיין. לחצ/י "הוספת גן".</div>`; return; }
+  if(!list.length){ host.innerHTML=`<div class="empty">אין גנים התואמים לסינון. לחצ/י "הוספת גן".</div>`; return; }
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
     <th>גננת</th><th>סמל פנימי</th><th>סמל גן</th><th>גיל</th><th>חינוך</th><th>כתובת</th><th>אזור</th>
     <th>טל' גן</th><th>נייד גננת</th><th>סייעת</th><th>קיבולת</th><th>רשומות</th><th>סטטוס</th><th></th></tr></thead><tbody>
@@ -1025,18 +1214,87 @@ function openGan(g){
   if(!isNew) $("#delGan").onclick=()=>{ if(confirm("למחוק את הגן?")){ DB.gans=DB.gans.filter(x=>x.id!==g.id); save(); closeModal(); route(); toast("הגן נמחק"); } };
 }
 
+/* ייצוא/הדפסה של רשימת הגנים לפי בחירה (סעיף 6) */
+const GAN_EXPORT_FIELDS = [
+  ["internalSymbol","סמל פנימי",g=>g.internalSymbol],
+  ["ganSymbol","סמל הגן",g=>g.ganSymbol],
+  ["teacherName","גננת",g=>g.teacherName],
+  ["age","גיל",g=>g.age],
+  ["education","חינוך",g=>eduLabel(g)],
+  ["address","כתובת",g=>g.address],
+  ["zone","אזור",g=>g.zone],
+  ["phoneGan","טלפון בגן",g=>g.phoneGan],
+  ["phoneHome","טלפון בבית",g=>g.phoneHome],
+  ["teacherMobile","נייד גננת",g=>g.teacherMobile],
+  ["assistantName","סייעת",g=>g.assistantName],
+  ["assistantMobile","נייד סייעת",g=>g.assistantMobile],
+  ["capacity","קיבולת",g=>g.capacity],
+  ["records","רשומות",g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length],
+  ["status","סטטוס",g=>g.active?"פעיל":"כבוי"]
+];
+let ganExportSel=null;
+function openGanExport(){
+  if(!ganExportSel) ganExportSel=new Set(GAN_EXPORT_FIELDS.map(f=>f[0]));
+  modal(`
+    <h3>ייצוא / הדפסה — רשימת גנים</h3>
+    <div class="note">מיוצאים הגנים לפי הסינון הפעיל כרגע במסך הגנים${activeEdu?` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})`:''}. בחר/י אילו שדות לכלול.</div>
+    <fieldset style="margin-top:10px"><legend>שדות</legend>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn ghost sm" id="gx-all" type="button">סמן הכל</button>
+        <button class="btn ghost sm" id="gx-none" type="button">נקה הכל</button>
+      </div>
+      <div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+        ${GAN_EXPORT_FIELDS.map(f=>`<label class="check"><input type="checkbox" class="gx-col" value="${f[0]}" ${ganExportSel.has(f[0])?'checked':''}> ${esc(f[1])}</label>`).join("")}
+      </div>
+    </fieldset>
+    <div class="foot">
+      <button class="btn" id="gx-csv" type="button">⬇️ ייצוא לאקסל (CSV)</button>
+      <button class="btn ghost" id="gx-pdf" type="button">🖨️ הדפסה / PDF</button>
+      <button class="btn ghost" id="gx-cancel" type="button" style="margin-inline-start:auto">סגירה</button>
+    </div>`);
+  $("#gx-cancel").onclick=closeModal;
+  const rerender=()=> $("#modal").querySelectorAll(".gx-col").forEach(cb=>cb.checked=ganExportSel.has(cb.value));
+  $("#modal").querySelectorAll(".gx-col").forEach(cb=> cb.onchange=()=>{ if(cb.checked)ganExportSel.add(cb.value); else ganExportSel.delete(cb.value); });
+  $("#gx-all").onclick=()=>{ ganExportSel=new Set(GAN_EXPORT_FIELDS.map(f=>f[0])); rerender(); };
+  $("#gx-none").onclick=()=>{ ganExportSel=new Set(); rerender(); };
+  const cols=()=>GAN_EXPORT_FIELDS.filter(f=>ganExportSel.has(f[0]));
+  $("#gx-csv").onclick=()=>{
+    const C=cols(), rows=gansScoped();
+    if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
+    if(!rows.length){ toast("אין גנים לייצוא"); return; }
+    const csv=[C.map(c=>c[1]).join(",")].concat(rows.map(g=>C.map(c=>csvCell(c[2](g))).join(","))).join("\r\n");
+    downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `גנים_${DB.activeYear}.csv`); toast("קובץ אקסל נוצר");
+  };
+  $("#gx-pdf").onclick=()=>{
+    const C=cols(), rows=gansScoped(); if(!C.length||!rows.length){ toast("אין נתונים"); return; }
+    printTable(`רשימת גנים · ${DB.activeYear}${activeEdu?` · חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'}`:''}`, C.map(c=>c[1]), rows.map(g=>C.map(c=>c[2](g))));
+  };
+}
+/* הדפסה של טבלה כלשהי בחלון נפרד (ל-PDF) */
+function printTable(title, headers, rows){
+  const w=window.open("","_blank"); if(!w){ toast("החלון נחסם — אפשר/י חלונות קופצים"); return; }
+  const style=`<style>body{font-family:Arial,"Assistant",sans-serif;direction:rtl;padding:18px;color:#12251a}
+    h1{font-size:18px;margin:0 0 12px} table{border-collapse:collapse;width:100%;font-size:13px}
+    th,td{border:1px solid #bcd;padding:6px 8px;text-align:right} th{background:#e6f3e9}</style>`;
+  w.document.write(`<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${esc(title)}</title>${style}</head><body>
+    <h1>${esc(title)}</h1>
+    <table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></body></html>`);
+  w.document.close(); setTimeout(()=>{ w.focus(); w.print(); }, 250);
+}
+
 /* ============================================================
    טאב דוחות ואחוזים
    ============================================================ */
 function viewReports(root){
-  const list = studentsOfYear().filter(s=>!s.finished);
+  const list = eduScope(studentsOfYear().filter(s=>!s.finished));
   const total = list.length;
-  const activeGans = DB.gans.filter(g=>g.active);
+  const activeGans = eduScope(DB.gans.filter(g=>g.active));
   const target = DB.settings.gansTarget || activeGans.length || 1;
   const avg = total / (target||1);
   const absorbed = list.filter(s=>s.absorbedMunicipality).length;
 
-  const byPeriod = PERIODS.map(p=>({p, n: studentsOfYear().filter(s=>s.period===p && !s.finished).length}));
+  const byPeriod = PERIODS.map(p=>({p, n: eduScope(studentsOfYear().filter(s=>s.period===p && !s.finished)).length}));
 
   // פילוח לפי גן
   const perGan = activeGans.map(g=>({g, n:list.filter(s=>s.ganId===g.id).length}))
@@ -1182,6 +1440,224 @@ function viewMunicipality(root){
 }
 
 /* ============================================================
+   טאב צוות — מאגר אנשי צוות הגנים (סעיף 16), עם מיון וסינון (סעיף 13)
+   ============================================================ */
+let staffFilter = { q:"", role:"" };
+let staffSort = { key:"name", dir:1 };
+function staffFiltered(){
+  const q=staffFilter.q.trim().toLowerCase();
+  const list=DB.staff.filter(m=>{
+    if(staffFilter.role && m.role!==staffFilter.role) return false;
+    if(q){ const hay=(m.name+" "+m.role+" "+m.phone+" "+m.mobile+" "+m.city).toLowerCase(); if(!hay.includes(q)) return false; }
+    return true;
+  });
+  const k=staffSort.key, d=staffSort.dir;
+  const roleIdx=m=>{ const i=STAFF_ROLES.indexOf(m.role); return i<0?99:i; };
+  return list.sort((a,b)=>{
+    let r; if(k==='role') r=roleIdx(a)-roleIdx(b);
+    else r=String(a[k]||"").localeCompare(String(b[k]||""),"he");
+    return r*d || String(a.name||"").localeCompare(String(b.name||""),"he");
+  });
+}
+function viewStaff(root){
+  root.innerHTML=`
+  <div class="panel">
+    <div class="section-title">
+      <div><h2>רשימת צוות הגנים</h2><div class="sub">מאגר כללי של כל אנשי הצוות (גננת, סייעת, סייעת ב', סייעת רפואית, סייעת צמודה) — משמש לשיבוץ בגנים. אפשר לייבא מקובץ.</div></div>
+      <div class="row" style="gap:8px">
+        <button class="btn ghost" id="impStaff">⬆️ ייבוא מקובץ</button>
+        <button class="btn" id="addStaff">➕ הוספת איש/אשת צוות</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="field grow"><label>חיפוש (שם / טלפון / עיר)</label><input id="fs-q" value="${esc(staffFilter.q)}" placeholder="הקלד/י…"></div>
+      <div class="field"><label>תפקיד</label><select id="fs-role"><option value="">הכל</option>${STAFF_ROLES.map(r=>`<option ${staffFilter.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
+    </div>
+    <div id="staffTable"></div>
+  </div>`;
+  $("#addStaff").onclick=()=>openStaff(makeStaff());
+  $("#impStaff").onclick=openStaffImport;
+  const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ staffFilter[key]=e.value; renderStaffTable(); }; };
+  bind("#fs-q","q"); bind("#fs-role","role");
+  renderStaffTable();
+}
+function renderStaffTable(){
+  renderTabs();
+  const list=staffFiltered();
+  const host=$("#staffTable");
+  if(!list.length){ host.innerHTML=`<div class="empty">אין אנשי צוות התואמים לסינון. לחצ/י "הוספת איש/אשת צוות".</div>`; return; }
+  const arr=k=> staffSort.key===k?`<span class="arr">${staffSort.dir>0?'▲':'▼'}</span>`:"";
+  const th=(k,l)=>`<th class="sortable" data-sort="${k}">${l}${arr(k)}</th>`;
+  host.innerHTML=`<div class="table-wrap"><table><thead><tr>
+    ${th("name","שם")}${th("role","תפקיד")}${th("phone","טלפון")}${th("mobile","נייד")}${th("city","עיר")}<th></th></tr></thead><tbody>
+    ${list.map(m=>`<tr>
+      <td><b>${esc(m.name)}</b></td>
+      <td><span class="pill neutral">${esc(m.role)||'—'}</span></td>
+      <td>${m.phone?`<a href="tel:${esc(m.phone)}">${esc(m.phone)}</a>`:'—'}</td>
+      <td>${m.mobile?`<a href="tel:${esc(m.mobile)}">${esc(m.mobile)}</a>`:'—'}</td>
+      <td>${esc(m.city)||'—'}</td>
+      <td class="actions"><button class="btn ghost sm" data-em="${m.id}">עריכה</button></td></tr>`).join("")}
+  </tbody></table></div><div class="hint">${list.length} אנשי צוות.</div>`;
+  host.querySelectorAll("[data-em]").forEach(b=>b.onclick=()=>openStaff(JSON.parse(JSON.stringify(DB.staff.find(x=>x.id===b.dataset.em)))));
+  host.querySelectorAll("[data-sort]").forEach(t=>t.onclick=()=>{ const k=t.dataset.sort; if(staffSort.key===k)staffSort.dir*=-1; else{staffSort.key=k;staffSort.dir=1;} renderStaffTable(); });
+}
+function openStaff(m){
+  const isNew=!DB.staff.some(x=>x.id===m.id);
+  modal(`<h3>${isNew?'איש/אשת צוות חדש':'עריכת איש/אשת צוות'}</h3>
+    <div class="grid g2">
+      <div><label>שם</label><input id="st-name" value="${esc(m.name)}"></div>
+      <div><label>תפקיד</label><select id="st-role">${STAFF_ROLES.map(r=>`<option ${m.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
+      <div><label>טלפון</label><input id="st-phone" value="${esc(m.phone)}" inputmode="tel"></div>
+      <div><label>נייד</label><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
+      <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
+      <div><label>הערות</label><input id="st-notes" value="${esc(m.notes)}"></div>
+    </div>
+    <div class="foot"><button class="btn" id="saveSt">💾 שמירה</button><button class="btn ghost" id="cancelSt">ביטול</button>
+      ${!isNew?'<button class="btn danger" id="delSt" style="margin-inline-start:auto">מחיקה</button>':''}</div>`);
+  $("#saveSt").onclick=()=>{ const val=id=>$("#"+id).value.trim();
+    const data=Object.assign({},m,{name:val("st-name"),role:val("st-role"),phone:val("st-phone"),mobile:val("st-mobile"),city:val("st-city"),notes:val("st-notes")});
+    if(!data.name){ toast("יש להזין שם"); return; }
+    const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0)DB.staff[i]=data; else DB.staff.push(data);
+    save(); closeModal(); route(); toast("נשמר"); };
+  $("#cancelSt").onclick=closeModal;
+  if(!isNew)$("#delSt").onclick=()=>{ if(confirm("למחוק?")){ DB.staff=DB.staff.filter(x=>x.id!==m.id); save(); closeModal(); route(); } };
+}
+function openStaffImport(){
+  modal(`
+    <h3>ייבוא אנשי צוות מקובץ</h3>
+    <div class="note">מדביקים/מעלים קובץ עם כותרות. עמודות מזוהות: שם, תפקיד, טלפון, נייד, עיר, הערות. תפקיד שאינו מזוהה יסומן כ"סייעת".</div>
+    <fieldset style="margin-top:10px"><legend>קובץ / הדבקה</legend>
+      <div class="row" style="margin-bottom:8px">
+        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="sti-file" accept=".csv,.txt" hidden></label>
+        <button class="btn ghost sm" id="sti-template" type="button">⬇️ הורדת תבנית</button>
+      </div>
+      <textarea id="sti-text" rows="6" placeholder="שם,תפקיד,טלפון,נייד,עיר&#10;מרים כהן,גננת,02-1234567,050-1234567,ירושלים"></textarea>
+    </fieldset>
+    <div class="foot">
+      <button class="btn" id="sti-do" type="button">⬆️ ייבא</button>
+      <button class="btn ghost" id="sti-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
+    </div>
+    <div id="sti-out" style="margin-top:10px"></div>`);
+  const map={ "שם":"name","שםמלא":"name","שםהעובד":"name","שםהעובדת":"name",
+    "תפקיד":"role","טלפון":"phone","טל":"phone","נייד":"mobile","סלולרי":"mobile","פלאפון":"mobile","טלפוןנייד":"mobile",
+    "עיר":"city","יישוב":"city","ישוב":"city","הערות":"notes","הערה":"notes" };
+  const normRole=v=>{ const t=String(v||"").replace(/\s/g,""); const hit=STAFF_ROLES.find(r=>r.replace(/\s/g,"")===t); return hit||(t.includes("גננת")?"גננת":(t.includes("רפואי")?"סייעת רפואית":(t.includes("צמוד")?"סייעת צמודה":(/ב'?$/.test(t)&&t.includes("סייעת")?"סייעת ב'":"סייעת")))); };
+  $("#sti-cancel").onclick=closeModal;
+  $("#sti-template").onclick=()=>{ const csv=["שם,תפקיד,טלפון,נייד,עיר,הערות","מרים כהן,גננת,02-1234567,050-1234567,ירושלים,"].join("\r\n"); downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}),"תבנית-צוות.csv"); };
+  $("#sti-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ $("#sti-text").value=r.result; toast("הקובץ נטען"); }; r.readAsText(f,"utf-8"); };
+  $("#sti-do").onclick=()=>{
+    const rows=parseTable($("#sti-text").value);
+    if(rows.length<2){ $("#sti-out").innerHTML=`<div class="empty">לא זוהו שורות נתונים.</div>`; return; }
+    const header=rows[0].map(normHeader); const idx={}; header.forEach((h,i)=>{ const k=map[h]; if(k&&idx[k]==null)idx[k]=i; });
+    if(idx.name==null){ $("#sti-out").innerHTML=`<div class="note">לא זוהתה עמודת "שם".</div>`; return; }
+    let added=0;
+    for(let r=1;r<rows.length;r++){ const c=rows[r]; const g=k=>idx[k]!=null?String(c[idx[k]]??"").trim():"";
+      const name=g("name"); if(!name) continue;
+      const m=makeStaff(); m.name=name; m.role=normRole(g("role")); m.phone=g("phone"); m.mobile=g("mobile"); m.city=g("city"); m.notes=g("notes");
+      DB.staff.push(m); added++;
+    }
+    save(); closeModal(); route(); toast(`יובאו ${added} אנשי צוות`);
+  };
+}
+
+/* ============================================================
+   טאב שיבוץ — שיבוץ אנשי צוות לגנים לפי שנה (סעיפים 17–18)
+   ============================================================ */
+function asgYear(){ return DB.assignments[DB.activeYear] || (DB.assignments[DB.activeYear]={}); }
+function ganAsg(ganId){ const y=asgYear(); return y[ganId] || (y[ganId]={}); }
+function viewAssign(root){
+  const gans=eduScope(DB.gans.slice()).sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+  const scopeNote = activeEdu ? ` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}` : "";
+  root.innerHTML=`
+  <div class="panel">
+    <div class="section-title">
+      <div><h2>שיבוץ צוות · שנת ${esc(DB.activeYear)}${esc(scopeNote)}</h2>
+        <div class="sub">לכל גן משבצים אנשי צוות לפי תפקיד. השמות נמשכים ממאגר הצוות (טאב "צוות"). בחירת עובד/ת ממלאת אוטומטית שם וטלפון — וניתן לערוך ידנית.</div></div>
+      <button class="btn ghost" id="exportAsg">📤 ייצוא / הדפסה</button>
+    </div>
+    ${!gans.length?`<div class="empty">אין גנים ${activeEdu?'בסינון זה':''}. הוסף/י גנים בטאב "גנים".</div>`:`<div id="asgList"></div>`}
+  </div>`;
+  $("#exportAsg").onclick=openAsgExport;
+  const host=$("#asgList"); if(!host) return;
+  host.innerHTML=gans.map(g=>{
+    const reg=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
+    const a=ganAsg(g.id);
+    const fixed=[["סמל פנימי",g.internalSymbol],["סמל גן",g.ganSymbol],["גיל",g.age],["חינוך",eduLabel(g)],
+      ["כתובת",g.address],["אזור",g.zone],["טל' גן",g.phoneGan],["קיבולת",g.capacity],["רשומות",reg],["סטטוס",g.active?"פעיל":"כבוי"]];
+    return `<div class="panel" style="margin-bottom:12px">
+      <h3 style="color:var(--accent-strong);margin-bottom:6px">${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</h3>
+      <div class="hint" style="margin-bottom:10px">${fixed.filter(f=>f[1]!==""&&f[1]!=null).map(f=>`${esc(f[0])}: <b>${esc(f[1])}</b>`).join(" · ")}</div>
+      <div class="grid" style="gap:10px">
+        ${STAFF_ROLES.map(role=>{
+          const cur=a[role]||{};
+          const opts=DB.staff.filter(m=>m.role===role);
+          return `<div class="row" style="gap:8px;align-items:flex-end" data-gan="${g.id}" data-role="${esc(role)}">
+            <div class="field" style="min-width:150px"><label>${esc(role)}</label>
+              <select class="asg-staff">
+                <option value="">— בחר/י —</option>
+                ${opts.map(m=>`<option value="${m.id}" ${cur.staffId===m.id?'selected':''}>${esc(m.name)}${m.mobile||m.phone?(' · '+esc(m.mobile||m.phone)):''}</option>`).join("")}
+              </select></div>
+            <div class="field" style="min-width:140px"><label>שם</label><input class="asg-name" value="${esc(cur.name||"")}"></div>
+            <div class="field" style="min-width:130px"><label>טלפון</label><input class="asg-phone" value="${esc(cur.phone||"")}" inputmode="tel"></div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }).join("");
+  const commit=(ganId,role,val)=>{ const a=ganAsg(ganId); if(!val.staffId && !val.name && !val.phone) delete a[role]; else a[role]=val; save(); };
+  host.querySelectorAll("[data-gan]").forEach(rowEl=>{
+    const ganId=rowEl.dataset.gan, role=rowEl.dataset.role;
+    const sel=rowEl.querySelector(".asg-staff"), nm=rowEl.querySelector(".asg-name"), ph=rowEl.querySelector(".asg-phone");
+    sel.onchange=()=>{ const m=DB.staff.find(x=>x.id===sel.value); if(m){ nm.value=m.name||""; ph.value=m.mobile||m.phone||""; }
+      commit(ganId,role,{ staffId:sel.value, name:nm.value.trim(), phone:ph.value.trim() }); };
+    const man=()=>commit(ganId,role,{ staffId:sel.value, name:nm.value.trim(), phone:ph.value.trim() });
+    nm.onchange=man; ph.onchange=man;
+  });
+}
+/* ייצוא/הדפסה של שיבוץ (סעיף 18) */
+function openAsgExport(){
+  const withPhoneDefault=true;
+  modal(`
+    <h3>ייצוא / הדפסה — שיבוץ ${esc(DB.activeYear)}</h3>
+    <div class="note">מיוצא השיבוץ של הגנים לפי סינון החינוך הפעיל${activeEdu?` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})`:' (כל החינוך)'}. אפשר לכלול/להשמיט מספרי טלפון.</div>
+    <fieldset style="margin-top:10px"><legend>אפשרויות</legend>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="ax-phones" ${withPhoneDefault?'checked':''}> כלול מספרי טלפון</label>
+        <label class="check"><input type="checkbox" id="ax-fixed" checked> כלול נתוני גן קבועים (סמל, גיל, כתובת…)</label>
+      </div>
+    </fieldset>
+    <div class="foot">
+      <button class="btn" id="ax-csv" type="button">⬇️ ייצוא לאקסל (CSV)</button>
+      <button class="btn ghost" id="ax-pdf" type="button">🖨️ הדפסה / PDF</button>
+      <button class="btn ghost" id="ax-cancel" type="button" style="margin-inline-start:auto">סגירה</button>
+    </div>`);
+  $("#ax-cancel").onclick=closeModal;
+  const build=()=>{
+    const phones=$("#ax-phones").checked, fixed=$("#ax-fixed").checked;
+    const gans=eduScope(DB.gans.slice()).sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+    const headers=[]; if(fixed) headers.push("סמל פנימי","סמל גן","גיל","חינוך","כתובת","אזור","טל' גן","קיבולת","רשומות","סטטוס");
+    STAFF_ROLES.forEach(r=>{ headers.push(r); if(phones) headers.push(r+" — טלפון"); });
+    const rows=gans.map(g=>{
+      const reg=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
+      const a=ganAsg(g.id); const row=[];
+      if(fixed) row.push(g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.address,g.zone,g.phoneGan,g.capacity,reg,g.active?"פעיל":"כבוי");
+      STAFF_ROLES.forEach(r=>{ const c=a[r]||{}; row.push(c.name||""); if(phones) row.push(c.phone||""); });
+      return row;
+    });
+    return { headers, rows };
+  };
+  $("#ax-csv").onclick=()=>{
+    const {headers,rows}=build(); if(!rows.length){ toast("אין גנים לייצוא"); return; }
+    const csv=[headers.join(",")].concat(rows.map(r=>r.map(csvCell).join(","))).join("\r\n");
+    downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `שיבוץ_${DB.activeYear}${activeEdu==='ח"מ'?'_מיוחד':(activeEdu?'_רגיל':'')}.csv`); toast("קובץ אקסל נוצר");
+  };
+  $("#ax-pdf").onclick=()=>{
+    const {headers,rows}=build(); if(!rows.length){ toast("אין נתונים"); return; }
+    printTable(`שיבוץ צוות · ${DB.activeYear}${activeEdu?` · חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'}`:''}`, headers, rows);
+  };
+}
+
+/* ============================================================
    טאב ייצוא
    ============================================================ */
 /* כל השדות הזמינים לייצוא — [מפתח, כותרת, פונקציית ערך] */
@@ -1209,6 +1685,11 @@ const EXPORT_FIELDS = [
   ["divorced","גרושים",s=>s.special.divorced?"✓":""],
   ["outOfCity","ילדת חוץ",s=>s.special.outOfCity?"✓":""],
   ["retention","השארות",s=>s.special.retention?"✓":""],
+  ["other","אחר",s=>s.special&&s.special.other?(s.special.otherText||"✓"):""],
+  ["tzaharon","צהרון",s=>s.programs&&s.programs.tzaharon?"✓":""],
+  ["campHanukkah","קייטנת חנוכה",s=>s.programs&&s.programs.campHanukkah?"✓":""],
+  ["campNisan","קייטנת ניסן",s=>s.programs&&s.programs.campNisan?"✓":""],
+  ["campEndYear","קייטנת סוף שנה",s=>s.programs&&s.programs.campEndYear?"✓":""],
   ["notes","הערות",s=>s.notes]
 ];
 const EXPORT_DEFAULT = ["lastName","firstName","tz","dob","motherName","fatherName","street","building","city","gan","age","period","education","nispach","idCopy","takanon","registeredByUs","absorbedMunicipality","divorced","outOfCity","retention"];
@@ -1247,7 +1728,7 @@ function viewExport(root){
     <div id="x-out" style="margin-top:14px"></div>
   </div>`;
   const gather=()=>{
-    const gv=$("#x-gan").value, av=$("#x-age").value, pv=$("#x-period").value, ev=$("#x-edu").value, mv=$("#x-muni").value, fv=$("#x-fin").value;
+    const gv=$("#x-gan").value, av=$("#x-age").value, pv=$("#x-period").value, ev=(activeEdu||$("#x-edu").value), mv=$("#x-muni").value, fv=$("#x-fin").value;
     return studentsOfYear().filter(s=>{
       if(fv!=='yes' && s.finished) return false;
       if(gv && s.ganId!==gv) return false;
@@ -1342,14 +1823,31 @@ function openMgmt(m){
    טאב הגדרות — שנים, מעבר גיל, נתונים היסטוריים, מספר גנים, גיבוי
    ============================================================ */
 function viewSettings(root){
+  const admin=isAdmin();
+  const dis = admin? "" : "disabled";
   root.innerHTML=`
+  ${admin?"":`<div class="panel"><div class="note">🔒 חלק מההגדרות (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, ניהול מנהלים) פתוחות לעריכה רק למנהל מערכת. אפשר לצפות אך לא לשנות. פנה/י למנהל להוספתך.</div></div>`}
+
+  <div class="panel">
+    <h2>מיתוג — כותרת ולוגו</h2>
+    <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר להזין אימוג'י (למשל 🎒) או כתובת/קישור לתמונה.</div>
+    <div class="grid g2">
+      <div><label>כותרת ראשית</label><input id="br-title" value="${esc(appTitle())}" ${dis}></div>
+      <div><label>לוגו (אימוג'י או קישור לתמונה)</label><input id="br-logo" value="${esc(appLogo())}" ${dis}></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="saveBrand" ${dis}>💾 שמור מיתוג</button>
+      <button class="btn ghost" id="resetBrand" ${dis}>איפוס לברירת מחדל</button>
+    </div>
+  </div>
+
   <div class="panel">
     <h2>שנים</h2>
     <div class="sub">כל שנה מנוהלת בנפרד (תשפ"ז, תשפ"ח, וכו'). הבחירה בראש המסך קובעת על איזו שנה עובדים.</div>
     <div id="years-box"></div>
     <div class="row" style="margin-top:10px">
-      <div class="field" style="min-width:160px"><label>הוספת שנה</label><input id="new-year" placeholder='לדוגמה: תשפ"ט'></div>
-      <button class="btn" id="addYear" style="align-self:end">הוסף שנה</button>
+      <div class="field" style="min-width:160px"><label>הוספת שנה</label><input id="new-year" placeholder='לדוגמה: תשפ"ט' ${dis}></div>
+      <button class="btn" id="addYear" style="align-self:end" ${dis}>הוסף שנה</button>
     </div>
   </div>
 
@@ -1359,11 +1857,11 @@ function viewSettings(root){
     <div class="row">
       <div class="field" style="min-width:150px"><label>משנה</label><select id="pr-from">${DB.years.map(y=>`<option>${esc(y)}</option>`).join("")}</select></div>
       <div class="field" style="min-width:150px"><label>לשנה</label><select id="pr-to">${DB.years.map(y=>`<option ${y===DB.activeYear?'selected':''}>${esc(y)}</option>`).join("")}</select></div>
-      <label class="check" style="align-self:end"><input type="checkbox" id="pr-age" checked> קדם גיל ב-1</label>
-      <label class="check" style="align-self:end"><input type="checkbox" id="pr-skip5" checked> אל תעביר גיל 5 (מסיימות) — פרט לילדות השארות</label>
-      <button class="btn" id="doPromote" style="align-self:end">בצע קידום</button>
+      <label class="check" style="align-self:end"><input type="checkbox" id="pr-age" checked ${dis}> קדם גיל ב-1</label>
+      <label class="check" style="align-self:end"><input type="checkbox" id="pr-skip5" checked ${dis}> אל תעביר גיל 5 (מסיימות) — פרט לילדות השארות</label>
+      <button class="btn" id="doPromote" style="align-self:end" ${dis}>בצע קידום</button>
     </div>
-    <div class="note" style="margin-top:8px">התלמידות המקודמות ייכנסו לשנת היעד עם מסמכים לא מסומנים (עולים מחדש). ילדות בגיל 5 (מסיימות) לא יועברו — למעט ילדות המסומנות "השארות", שיועברו ללא קידום גיל. ניתן אח"כ רק לבחור שנה ולבדוק אם בוצע רישום.</div>
+    <div class="note" style="margin-top:8px">כל הפרטים האישיים כולל <b>מספר הזהות (ת"ז)</b>, השם, ההורים והכתובת <b>עוברים אוטומטית</b> לשנת היעד — רק המסמכים מתאפסים (עולים מחדש). ילדות בגיל 5 (מסיימות) לא יועברו — למעט ילדות המסומנות "השארות", שיועברו ללא קידום גיל.</div>
   </div>
 
   <div class="panel">
@@ -1376,10 +1874,20 @@ function viewSettings(root){
     <h2>יעד מספר גנים</h2>
     <div class="sub">משמש לחישוב הממוצע לגן בדשבורד. לדוגמה מתלבטים להוריד מ-29 ל-28.</div>
     <div class="row">
-      <div class="field" style="min-width:150px"><label>מספר גנים ליעד</label><input id="gt" inputmode="numeric" value="${esc(DB.settings.gansTarget)}"></div>
-      <button class="btn" id="saveGT" style="align-self:end">שמור</button>
+      <div class="field" style="min-width:150px"><label>מספר גנים ליעד</label><input id="gt" inputmode="numeric" value="${esc(DB.settings.gansTarget)}" ${dis}></div>
+      <button class="btn" id="saveGT" style="align-self:end" ${dis}>שמור</button>
       <div class="hint" style="align-self:end">גנים פעילים כרגע במערכת: ${DB.gans.filter(g=>g.active).length}</div>
     </div>
+  </div>
+
+  <div class="panel">
+    <h2>מנהלי מערכת</h2>
+    <div class="sub">רק כתובות אימייל שברשימה זו יכולות לשנות את הגדרות המערכת (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים). אם הרשימה ריקה — כל משתמש מחובר יכול (עד שמוסיפים מנהל ראשון).</div>
+    <div id="admins-box"></div>
+    ${admin?`<div class="row" style="margin-top:10px">
+      <div class="field grow"><label>הוספת מנהל (אימייל)</label><input id="new-admin" type="email" inputmode="email" placeholder="name@example.com"></div>
+      <button class="btn" id="addAdmin" style="align-self:end">הוסף מנהל</button>
+    </div>`:""}
   </div>
 
   <div class="panel">
@@ -1406,16 +1914,37 @@ function viewSettings(root){
   renderAuthBox();
   renderDriveBox();
 
+  // מיתוג (כותרת + לוגו)
+  if(admin){
+    $("#saveBrand").onclick=()=>{ DB.settings.appTitle=$("#br-title").value.trim(); DB.settings.appLogo=$("#br-logo").value.trim(); save(); applyBranding(); toast("המיתוג נשמר"); };
+    $("#resetBrand").onclick=()=>{ delete DB.settings.appTitle; delete DB.settings.appLogo; save(); route(); toast("הוחזר לברירת מחדל"); };
+  }
+
+  // מנהלי מערכת
+  const ab=$("#admins-box");
+  const admins=(DB.settings.admins||[]);
+  ab.innerHTML = admins.length
+    ? `<div class="row" style="gap:8px">${admins.map(e=>`<span class="pill ok" style="padding:6px 12px">${esc(e)} ${admin?`<button class="btn ghost sm" data-delA="${esc(e)}" style="padding:0 6px;margin-inline-start:6px">✕</button>`:''}</span>`).join("")}</div>`
+    : `<div class="hint">אין עדיין מנהלים מוגדרים — כל משתמש מחובר יכול לשנות הגדרות. מומלץ להוסיף את עצמך כמנהל.</div>`;
+  if(admin){
+    ab.querySelectorAll("[data-delA]").forEach(b=>b.onclick=()=>{ const e=b.dataset.dela;
+      if(admins.length===1 && !confirm("זהו המנהל האחרון. לאחר הסרתו כל משתמש יוכל לשנות הגדרות. להמשיך?")) return;
+      DB.settings.admins=admins.filter(x=>x!==e); save(); route(); toast("הוסר מנהל"); });
+    $("#addAdmin").onclick=()=>{ const e=$("#new-admin").value.trim().toLowerCase(); if(!e)return;
+      if(admins.map(x=>x.toLowerCase()).includes(e)){ toast("כבר ברשימה"); return; }
+      DB.settings.admins=admins.concat(e); save(); route(); toast("נוסף מנהל"); };
+  }
+
   // years
   const yb=$("#years-box");
-  yb.innerHTML=`<div class="row" style="gap:8px">${DB.years.map(y=>`<span class="pill ${y===DB.activeYear?'ok':'neutral'}" style="padding:6px 12px">${esc(y)} ${DB.years.length>1?`<button class="btn ghost sm" data-dely="${esc(y)}" style="padding:0 6px;margin-inline-start:6px">✕</button>`:''}</span>`).join("")}</div>`;
+  yb.innerHTML=`<div class="row" style="gap:8px">${DB.years.map(y=>`<span class="pill ${y===DB.activeYear?'ok':'neutral'}" style="padding:6px 12px">${esc(y)} ${(admin&&DB.years.length>1)?`<button class="btn ghost sm" data-dely="${esc(y)}" style="padding:0 6px;margin-inline-start:6px">✕</button>`:''}</span>`).join("")}</div>`;
   yb.querySelectorAll("[data-dely]").forEach(b=>b.onclick=()=>{ const y=b.dataset.dely;
     if(studentsOfYear(y).length && !confirm(`בשנת ${y} יש תלמידות. למחוק את השנה ואת התלמידות שבה?`)) return;
     DB.years=DB.years.filter(x=>x!==y); DB.students=DB.students.filter(s=>s.year!==y);
     if(DB.activeYear===y)DB.activeYear=DB.years[0]; save(); route(); });
-  $("#addYear").onclick=()=>{ const y=$("#new-year").value.trim(); if(!y)return; if(DB.years.includes(y)){toast("שנה קיימת");return;} DB.years.push(y); save(); route(); toast("נוספה שנה"); };
+  if(admin) $("#addYear").onclick=()=>{ const y=$("#new-year").value.trim(); if(!y)return; if(DB.years.includes(y)){toast("שנה קיימת");return;} DB.years.push(y); save(); route(); toast("נוספה שנה"); };
 
-  $("#doPromote").onclick=()=>{
+  if(admin) $("#doPromote").onclick=()=>{
     const from=$("#pr-from").value, to=$("#pr-to").value, bump=$("#pr-age").checked, skip5=$("#pr-skip5").checked;
     if(from===to){ toast("בחר/י שנת מקור ושנת יעד שונות"); return; }
     const src=DB.students.filter(s=>s.year===from);
@@ -1437,34 +1966,45 @@ function viewSettings(root){
     save(); route(); toast(`קודמו ${added} תלמידות לשנת ${to}${skipped5?` · דולגו ${skipped5} בגיל 5`:''}`);
   };
 
-  // historical
+  // historical — נעול כברירת מחדל כדי לא לשנות בטעות מספרי תלמידים שהוזנו (סעיף 14)
   const hb=$("#hist-box");
   const histFinal=h=>(+h.periodA||0)+(+h.periodB||0)+(+h.periodC||0); // סופי = סכום א׳+ב׳+ג׳
+  let histUnlocked=false;
   const drawHist=()=>{
-    hb.innerHTML=`<div class="table-wrap"><table><thead><tr><th>שנה</th><th>מועד א׳</th><th>מועד ב׳</th><th>מועד ג׳</th><th>סופי (סיכום)</th><th></th></tr></thead><tbody>
+    const editable = admin && histUnlocked;
+    const ro = editable? "" : "readonly";
+    hb.innerHTML=`
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <div class="note" style="flex:1">🔒 המספרים נעולים כדי לא לשנות בטעות נתונים שכבר הוזנו משנים קודמות.${admin?' לחצ/י "אפשר עריכה" כדי לעדכן.':' רק מנהל מערכת יכול לפתוח לעריכה.'}</div>
+      ${admin?`<button class="btn ghost sm" id="hist-lock" style="align-self:center">${editable?'🔓 נעל שוב':'✏️ אפשר עריכה'}</button>`:''}
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>שנה</th><th>מועד א׳</th><th>מועד ב׳</th><th>מועד ג׳</th><th>סופי (סיכום)</th>${editable?'<th></th>':''}</tr></thead><tbody>
       ${DB.years.map(y=>{const h=DB.historical[y]||{};return `<tr>
         <td><b>${esc(y)}</b></td>
-        <td><input class="hist-p" data-h="${esc(y)}|periodA" value="${esc(h.periodA??"")}" inputmode="numeric" style="width:80px"></td>
-        <td><input class="hist-p" data-h="${esc(y)}|periodB" value="${esc(h.periodB??"")}" inputmode="numeric" style="width:80px"></td>
-        <td><input class="hist-p" data-h="${esc(y)}|periodC" value="${esc(h.periodC??"")}" inputmode="numeric" style="width:80px"></td>
+        <td><input class="hist-p" data-h="${esc(y)}|periodA" value="${esc(h.periodA??"")}" inputmode="numeric" style="width:80px" ${ro}></td>
+        <td><input class="hist-p" data-h="${esc(y)}|periodB" value="${esc(h.periodB??"")}" inputmode="numeric" style="width:80px" ${ro}></td>
+        <td><input class="hist-p" data-h="${esc(y)}|periodC" value="${esc(h.periodC??"")}" inputmode="numeric" style="width:80px" ${ro}></td>
         <td><input data-final value="${histFinal(h)||""}" style="width:80px;font-weight:800;background:var(--surface)" readonly title="סכום מועדים א׳+ב׳+ג׳ (מחושב אוטומטית)"></td>
-        <td class="actions"><button class="btn ghost sm" data-livey="${esc(y)}">מלא מנתוני המערכת</button></td></tr>`;}).join("")}
-    </tbody></table></div><div class="hint">עמודת "סופי" מחושבת אוטומטית כסכום מועדים א׳+ב׳+ג׳. ערכים ריקים לא נשמרים. "מלא מנתוני המערכת" ממלא לפי הרישום בפועל של אותה שנה.</div>`;
-    hb.querySelectorAll("input.hist-p").forEach(inp=> inp.oninput=inp.onchange=()=>{
-      const [y,k]=inp.dataset.h.split("|"); DB.historical[y]=DB.historical[y]||{};
-      const v=inp.value.trim(); if(v==="") delete DB.historical[y][k]; else DB.historical[y][k]=+v;
-      const h=DB.historical[y]; const f=histFinal(h);
-      const cell=inp.closest("tr").querySelector("[data-final]"); if(cell) cell.value=f||"";
-      if(f>0) h.final=f; else delete h.final; save(); });
-    hb.querySelectorAll("[data-livey]").forEach(b=>b.onclick=()=>{ const y=b.dataset.livey;
-      const ys=DB.students.filter(s=>s.year===y);
-      const pa=ys.filter(s=>s.period==='א').length, pb=ys.filter(s=>s.period==='ב').length, pc=ys.filter(s=>s.period==='ג').length;
-      DB.historical[y]={ periodA:pa, periodB:pb, periodC:pc, final:pa+pb+pc };
-      save(); drawHist(); toast("מולא מנתוני המערכת"); });
+        ${editable?`<td class="actions"><button class="btn ghost sm" data-livey="${esc(y)}">מלא מנתוני המערכת</button></td>`:''}</tr>`;}).join("")}
+    </tbody></table></div><div class="hint">עמודת "סופי" מחושבת אוטומטית כסכום מועדים א׳+ב׳+ג׳.</div>`;
+    const lk=$("#hist-lock"); if(lk) lk.onclick=()=>{ histUnlocked=!histUnlocked; drawHist(); };
+    if(editable){
+      hb.querySelectorAll("input.hist-p").forEach(inp=> inp.oninput=inp.onchange=()=>{
+        const [y,k]=inp.dataset.h.split("|"); DB.historical[y]=DB.historical[y]||{};
+        const v=inp.value.trim(); if(v==="") delete DB.historical[y][k]; else DB.historical[y][k]=+v;
+        const h=DB.historical[y]; const f=histFinal(h);
+        const cell=inp.closest("tr").querySelector("[data-final]"); if(cell) cell.value=f||"";
+        if(f>0) h.final=f; else delete h.final; save(); });
+      hb.querySelectorAll("[data-livey]").forEach(b=>b.onclick=()=>{ const y=b.dataset.livey;
+        const ys=DB.students.filter(s=>s.year===y);
+        const pa=ys.filter(s=>s.period==='א').length, pb=ys.filter(s=>s.period==='ב').length, pc=ys.filter(s=>s.period==='ג').length;
+        DB.historical[y]={ periodA:pa, periodB:pb, periodC:pc, final:pa+pb+pc };
+        save(); drawHist(); toast("מולא מנתוני המערכת"); });
+    }
   };
   drawHist();
 
-  $("#saveGT").onclick=()=>{ const v=+$("#gt").value; if(v>0){DB.settings.gansTarget=v;save();toast("נשמר");} };
+  if(admin) $("#saveGT").onclick=()=>{ const v=+$("#gt").value; if(v>0){DB.settings.gansTarget=v;save();toast("נשמר");} };
 
   $("#exportAll").onclick=()=>{ downloadBlob(new Blob([JSON.stringify(DB,null,2)],{type:"application/json"}), `גיבוי-רישום-${new Date().toISOString().slice(0,10)}.json`); };
   $("#importAll").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader();
