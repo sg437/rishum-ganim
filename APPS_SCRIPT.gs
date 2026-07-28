@@ -18,7 +18,7 @@
 
 // מפתח ה-Web של Firebase (זהה ל-apiKey ב-index.html) — משמש לאימות שהבקשה
 // מגיעה ממשתמש שמחובר לתוכנה. אינו סוד.
-var FIREBASE_API_KEY = 'AIzaSyBRIWtqtPXxd-W0WR3nB-iGn0Qn9ml-Q8I';
+var FIREBASE_API_KEY = 'AIzaSyDgzdCFEaH7exqluwO0D5Hb7PkVumqdVcU';
 
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
