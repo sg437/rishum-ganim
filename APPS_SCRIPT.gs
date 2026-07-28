@@ -27,7 +27,9 @@ function doPost(e){
   var out = ContentService.createTextOutput();
   out.setMimeType(ContentService.MimeType.JSON);
   try{
-    var req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    // תומך גם בשליחה דרך שאילתת ה-URL (?data=) וגם בגוף הבקשה — כי Apps Script
+    // לעיתים משמיט את גוף ה-POST החוצה-מקור, והנתונים בשאילתה שורדים הפניות.
+    var req = JSON.parse((e && e.parameter && e.parameter.data) || (e && e.postData && e.postData.contents) || '{}');
     if(!verifyToken_(req.idToken)) return json_(out, {ok:false, error:'unauthorized'});
     switch(req.action){
       case 'ping':        return json_(out, ping_());
