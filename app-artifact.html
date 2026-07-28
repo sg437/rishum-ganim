@@ -107,8 +107,6 @@ legend{font-weight:800;color:var(--accent-strong);padding:0 6px;font-size:.9rem}
 .checks{display:grid;gap:8px;grid-template-columns:repeat(2,1fr)}
 @media(max-width:640px){.checks{grid-template-columns:1fr}}
 .hidden{display:none!important}
-body.locked nav.tabs,body.locked .year-pick,body.locked #themeBtn,body.locked #lockBtn{display:none!important}
-.login-card{max-width:420px;margin:6vh auto}
 .hint{font-size:.8rem;color:var(--muted);margin-top:6px}
 .note{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);color:var(--warn);
   border-radius:10px;padding:9px 12px;font-size:.84rem;font-weight:600}
@@ -126,12 +124,12 @@ body.locked nav.tabs,body.locked .year-pick,body.locked #themeBtn,body.locked #l
 }
 </style>
 
+
 <header class="top">
   <div class="top-inner">
     <div class="brand"><span class="logo">🎒</span> מערכת רישום וקליטת תלמידות</div>
     <div class="top-spacer"></div>
     <div class="year-pick">שנה: <select id="yearSelect"></select></div>
-    <button class="icon-btn" id="lockBtn" title="נעילה" style="display:none">🔒</button>
     <button class="icon-btn" id="themeBtn" title="מצב תצוגה">🌓</button>
   </div>
   <nav class="tabs" id="tabs"></nav>
@@ -152,7 +150,6 @@ body.locked nav.tabs,body.locked .year-pick,body.locked #themeBtn,body.locked #l
 
 const LS_KEY = "rishum-ganim-db-v1";
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
-const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
 
 /* ---------- מודל נתונים ---------- */
@@ -185,14 +182,12 @@ function ganById(id){ return DB.gans.find(g=>g.id===id); }
 function ganName(id){ const g=ganById(id); return g? (g.teacherName? g.teacherName : ("גן "+ (g.ganSymbol||g.internalSymbol||""))) : "—"; }
 function studentsOfYear(y=DB.activeYear){ return DB.students.filter(s=>s.year===y); }
 function digits(s){ return String(s||"").replace(/\D/g,""); }
-function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // ברירת מחדל: חינוך רגיל
-function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
 
 /* ---------- תבניות רשומות ---------- */
 function makeStudent(){ return {
   id:uid(), year:DB.activeYear, tz:"", firstName:"", lastName:"", dob:"",
-  motherName:"", fatherName:"", phone:"", mobile:"", street:"", building:"", city:"",
-  ganId:"", age:"", period:"א", education:"רגיל",
+  motherName:"", fatherName:"", street:"", building:"", city:"",
+  ganId:"", age:"", period:"א",
   registeredByUs:true, absorbedMunicipality:false, finished:false,
   docs:{ nispach:false, idCopy:false, takanon:false },
   special:{ divorced:false, approvalFather:false, approvalMother:false,
@@ -201,7 +196,7 @@ function makeStudent(){ return {
   driveFolder:"", notes:"", createdAt:new Date().toISOString()
 };}
 function makeGan(){ return {
-  id:uid(), internalSymbol:"", ganSymbol:"", teacherName:"", age:"", education:"רגיל",
+  id:uid(), internalSymbol:"", ganSymbol:"", teacherName:"", age:"",
   address:"", street:"", zone:"", phoneGan:"", phoneHome:"",
   teacherMobile:"", assistantName:"", assistantMobile:"",
   capacity:"", active:true, docsNote:"", createdAt:new Date().toISOString()
@@ -234,111 +229,15 @@ function renderYearSelect(){
 
 function route(){
   renderTabs(); renderYearSelect();
-  const a=loadAuth(); const lb=$("#lockBtn"); if(lb) lb.style.display=a.enabled?"grid":"none";
   const v = $("#view");
   ({students:viewStudents, gans:viewGans, reports:viewReports, municipality:viewMunicipality,
     export:viewExport, management:viewManagement, settings:viewSettings}[active]||viewStudents)(v);
 }
 
 /* ============================================================
-   אבטחה — נעילת כניסה עם שם משתמש וסיסמה (הגנה בסיסית בצד הלקוח)
-   ============================================================ */
-const AUTH_KEY = "rishum-ganim-auth-v1";
-const SESS_UNLOCK = "rg-unlocked";
-/* גיבוב עקבי (cyrb53) — עובד בכל דפדפן וללא תלות בהקשר מאובטח */
-function hashPass(str){
-  let h1=0xdeadbeef, h2=0x41c6ce57;
-  for(let i=0,ch;i<str.length;i++){ ch=str.charCodeAt(i); h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677); }
-  h1=Math.imul(h1^(h1>>>16),2246822507); h1^=Math.imul(h2^(h2>>>13),3266489909);
-  h2=Math.imul(h2^(h2>>>16),2246822507); h2^=Math.imul(h1^(h1>>>13),3266489909);
-  return (h2>>>0).toString(16).padStart(8,"0")+(h1>>>0).toString(16).padStart(8,"0");
-}
-function passDigest(user,pass){ return hashPass(String(user).trim().toLowerCase()+"::"+String(pass)); }
-function loadAuth(){ try{ const v=localStorage.getItem(AUTH_KEY); if(v) return Object.assign({enabled:false,username:"",hash:""}, JSON.parse(v)); }catch(e){} return {enabled:false,username:"",hash:""}; }
-function saveAuth(a){ try{ localStorage.setItem(AUTH_KEY, JSON.stringify(a)); }catch(e){} }
-function isUnlocked(){ try{ return sessionStorage.getItem(SESS_UNLOCK)==="1"; }catch(e){ return false; } }
-function setUnlocked(v){ try{ v? sessionStorage.setItem(SESS_UNLOCK,"1") : sessionStorage.removeItem(SESS_UNLOCK); }catch(e){} }
-
-function boot(){
-  const auth=loadAuth();
-  if(auth.enabled && !isUnlocked()) renderLogin(auth);
-  else { document.body.classList.remove("locked"); route(); }
-}
-function renderLogin(auth){
-  document.body.classList.add("locked");
-  $("#view").innerHTML=`
-  <div class="panel login-card">
-    <h2>🔒 כניסה למערכת</h2>
-    <div class="sub">הזן/י שם משתמש וסיסמה כדי להיכנס.</div>
-    <div class="grid" style="gap:10px">
-      <div><label>שם משתמש</label><input id="lg-user" autocomplete="username"></div>
-      <div><label>סיסמה</label><input id="lg-pass" type="password" autocomplete="current-password"></div>
-    </div>
-    <div id="lg-err" class="note" style="display:none;margin-top:10px"></div>
-    <div class="foot"><button class="btn" id="lg-go">כניסה</button></div>
-  </div>`;
-  const go=()=>{
-    const u=$("#lg-user").value.trim(), p=$("#lg-pass").value;
-    if(u.toLowerCase()===String(auth.username).toLowerCase() && passDigest(u,p)===auth.hash){
-      setUnlocked(true); document.body.classList.remove("locked"); route(); toast("ברוך/ה הבא/ה");
-    } else { const e=$("#lg-err"); e.style.display="block"; e.textContent="שם משתמש או סיסמה שגויים"; }
-  };
-  $("#lg-go").onclick=go;
-  ["lg-user","lg-pass"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{ if(e.key==="Enter") go(); }));
-  $("#lg-user").focus();
-}
-function lockNow(){ setUnlocked(false); renderLogin(loadAuth()); }
-function renderAuthBox(){
-  const box=$("#auth-box"); if(!box) return; const a=loadAuth();
-  if(!a.enabled){
-    box.innerHTML=`
-      <div class="grid g3">
-        <div><label>שם משתמש</label><input id="au-user" autocomplete="username"></div>
-        <div><label>סיסמה (4 תווים לפחות)</label><input id="au-pass" type="password" autocomplete="new-password"></div>
-        <div><label>אימות סיסמה</label><input id="au-pass2" type="password" autocomplete="new-password"></div>
-      </div>
-      <div class="row" style="margin-top:10px"><button class="btn" id="au-enable">🔒 הפעל נעילה</button></div>`;
-    $("#au-enable").onclick=()=>{
-      const u=$("#au-user").value.trim(), p=$("#au-pass").value, p2=$("#au-pass2").value;
-      if(!u){ toast("הזן/י שם משתמש"); return; }
-      if(p.length<4){ toast("סיסמה קצרה מדי (4 תווים לפחות)"); return; }
-      if(p!==p2){ toast("הסיסמאות אינן תואמות"); return; }
-      saveAuth({enabled:true, username:u, hash:passDigest(u,p)}); setUnlocked(true);
-      toast("הנעילה הופעלה"); route();
-    };
-  } else {
-    box.innerHTML=`
-      <div class="note">🔒 הנעילה פעילה · שם משתמש: <b>${esc(a.username)}</b></div>
-      <div class="grid g3" style="margin-top:10px">
-        <div><label>סיסמה נוכחית</label><input id="au-cur" type="password" autocomplete="current-password"></div>
-        <div><label>סיסמה חדשה</label><input id="au-new" type="password" autocomplete="new-password"></div>
-        <div><label>אימות חדשה</label><input id="au-new2" type="password" autocomplete="new-password"></div>
-      </div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="au-change">שינוי סיסמה</button>
-        <button class="btn ghost" id="au-lock">🔒 נעל עכשיו</button>
-        <button class="btn danger" id="au-disable" style="margin-inline-start:auto">ביטול נעילה</button>
-      </div>`;
-    $("#au-change").onclick=()=>{
-      const cur=$("#au-cur").value, nw=$("#au-new").value, nw2=$("#au-new2").value;
-      if(passDigest(a.username,cur)!==a.hash){ toast("סיסמה נוכחית שגויה"); return; }
-      if(nw.length<4){ toast("סיסמה חדשה קצרה מדי (4 תווים לפחות)"); return; }
-      if(nw!==nw2){ toast("אימות הסיסמה אינו תואם"); return; }
-      saveAuth(Object.assign({},a,{hash:passDigest(a.username,nw)})); toast("הסיסמה עודכנה"); renderAuthBox();
-    };
-    $("#au-lock").onclick=lockNow;
-    $("#au-disable").onclick=()=>{
-      const cur=$("#au-cur").value;
-      if(passDigest(a.username,cur)!==a.hash){ toast("להסרת הנעילה — הזן/י את הסיסמה הנוכחית בשדה 'סיסמה נוכחית'"); return; }
-      saveAuth({enabled:false,username:"",hash:""}); toast("הנעילה בוטלה"); route();
-    };
-  }
-}
-
-/* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gan:"", age:"", city:"", period:"", edu:"", muni:"", showFinished:false };
+let stuFilter = { q:"", gan:"", age:"", city:"", period:"", muni:"", showFinished:false };
 
 function viewStudents(root){
   const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
@@ -348,10 +247,7 @@ function viewStudents(root){
     <div class="section-title">
       <div><h2>תיקי התלמידות · שנת ${esc(DB.activeYear)}</h2>
         <div class="sub">תיק לכל ילדה עם כל הפרטים, המסמכים והשונות. סימון "סיימה גן" מוציא אותה מהרשימה.</div></div>
-      <div class="row" style="gap:8px">
-        <button class="btn ghost" id="importStu">⬆️ ייבוא מקובץ</button>
-        <button class="btn" id="addStu">➕ הוספת ילדה</button>
-      </div>
+      <button class="btn" id="addStu">➕ הוספת ילדה</button>
     </div>
     <div class="toolbar">
       <div class="field grow"><label>חיפוש (שם / ת"ז)</label><input id="f-q" value="${esc(stuFilter.q)}" placeholder="הקלד/י שם או ת&quot;ז…"></div>
@@ -359,7 +255,6 @@ function viewStudents(root){
       <div class="field"><label>גיל</label><select id="f-age"><option value="">הכל</option>${[2,3,4,5,6].map(a=>`<option ${stuFilter.age==a?'selected':''}>${a}</option>`).join("")}</select></div>
       <div class="field"><label>עיר</label><select id="f-city"><option value="">הכל</option>${cities.map(c=>`<option ${stuFilter.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
       <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
-      <div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
       <div class="field"><label class="check" style="margin-top:18px"><input type="checkbox" id="f-fin" ${stuFilter.showFinished?'checked':''}> הצג שסיימו</label></div>
     </div>
@@ -367,9 +262,8 @@ function viewStudents(root){
   </div>`;
 
   $("#addStu").onclick = ()=> openStudent(makeStudent());
-  $("#importStu").onclick = ()=> openImport();
   const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ stuFilter[key]= e.type==='checkbox'?e.checked:e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-gan","gan");bind("#f-age","age");bind("#f-city","city");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-fin","showFinished");
+  bind("#f-q","q");bind("#f-gan","gan");bind("#f-age","age");bind("#f-city","city");bind("#f-period","period");bind("#f-muni","muni");bind("#f-fin","showFinished");
   renderStuTable();
 }
 
@@ -382,7 +276,6 @@ function filteredStudents(){
     if(f.age && String(s.age)!==String(f.age)) return false;
     if(f.city && s.city!==f.city) return false;
     if(f.period && s.period!==f.period) return false;
-    if(f.edu && eduLabel(s)!==f.edu) return false;
     if(f.muni==='yes' && !s.absorbedMunicipality) return false;
     if(f.muni==='no' && s.absorbedMunicipality) return false;
     return true;
@@ -408,7 +301,7 @@ function renderStuTable(){
   const host = $("#stuTable");
   if(!list.length){ host.innerHTML = `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`; return; }
   host.innerHTML = `<div class="table-wrap"><table><thead><tr>
-    <th>שם מלא</th><th>ת"ז</th><th>גן</th><th>גיל</th><th>עיר</th><th>מועד</th><th>חינוך</th>
+    <th>שם מלא</th><th>ת"ז</th><th>גן</th><th>גיל</th><th>עיר</th><th>מועד</th>
     <th>מסמכים</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
     ${list.map(s=>`<tr>
       <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
@@ -417,7 +310,6 @@ function renderStuTable(){
       <td>${esc(s.age)||'—'}</td>
       <td>${esc(s.city)||'—'}</td>
       <td><span class="pill neutral">${esc(s.period)}</span></td>
-      <td>${eduBadge(s)}</td>
       <td>${docDots(s)}</td>
       <td>${specialBadges(s)||'<span class="pill neutral">—</span>'}</td>
       <td>${s.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
@@ -445,8 +337,6 @@ function openStudent(s){
       <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(s.dob)}"></div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
-      <div><label>טלפון</label><input id="s-phone" value="${esc(s.phone)}" inputmode="tel"></div>
-      <div><label>נייד</label><input id="s-mobile" value="${esc(s.mobile)}" inputmode="tel"></div>
     </div>
   </fieldset>
   <fieldset><legend>כתובת</legend>
@@ -461,7 +351,6 @@ function openStudent(s){
       <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
       <div><label>גיל</label><select id="s-age"><option value="">—</option>${[2,3,4,5,6].map(a=>`<option ${String(s.age)==String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
-      <div><label>חינוך</label><select id="s-education">${EDU_TYPES.map(t=>`<option ${eduLabel(s)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
     </div>
     <div class="checks" style="margin-top:10px">
       <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
@@ -527,9 +416,8 @@ function openStudent(s){
     return Object.assign({}, s, {
       firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"), dob:val("s-dob"),
       motherName:val("s-motherName"), fatherName:val("s-fatherName"),
-      phone:val("s-phone"), mobile:val("s-mobile"),
       street:val("s-street"), building:val("s-building"), city:val("s-city"),
-      ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
+      ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"),
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
       docs:{ nispach:chk("d-nispach"), idCopy:chk("d-idCopy"), takanon:chk("d-takanon") },
@@ -555,183 +443,6 @@ function suggestFolder(s){
 }
 
 /* ============================================================
-   ייבוא מרוכז של תלמידות מקובץ (CSV / הדבקה מאקסל)
-   ============================================================ */
-/* עמודות שהמערכת יודעת לזהות בקובץ (כותרות בעברית, ללא תלות ברווחים/מרכאות) */
-const IMPORT_HEADER_MAP = {
-  "שםמשפחה":"lastName","משפחה":"lastName",
-  "שםפרטי":"firstName","פרטי":"firstName","שם":"firstName","שםהילד":"firstName","שםהילדה":"firstName","שםהתלמידה":"firstName",
-  "תז":"tz","תעודתזהות":"tz","מספרזהות":"tz","זהות":"tz","מסזהות":"tz",
-  "תאריךלידה":"dob","תלידה":"dob","תאריך":"dob","לידה":"dob",
-  "שםהאם":"motherName","אם":"motherName","אמא":"motherName","שםאם":"motherName","שםהאמא":"motherName","שםאמא":"motherName",
-  "שםהאב":"fatherName","אב":"fatherName","אבא":"fatherName","שםאב":"fatherName","שםהאבא":"fatherName","שםאבא":"fatherName",
-  "טלפון":"phone","טלפוןבית":"phone","טל":"phone","טלפוןבבית":"phone",
-  "נייד":"mobile","טלפוןנייד":"mobile","סלולרי":"mobile","פלאפון":"mobile","נייד2":"mobile",
-  "רחוב":"street","כתובת":"street",
-  "בניין":"building","מספרבית":"building","בית":"building","מסבית":"building","מספרבניין":"building",
-  "עיר":"city","יישוב":"city","ישוב":"city",
-  "גן":"gan","שםהגן":"gan","גננת":"gan","שםגננת":"gan","שיבוץ":"gan","גןמשובצת":"gan",
-  "גיל":"age",
-  "מועד":"period","מועדרישום":"period",
-  "חינוך":"education","סוגחינוך":"education",
-  "הערות":"notes","הערה":"notes",
-  "קלוטבעירייה":"absorbed","קלוט":"absorbed",
-  "נרשמהעלידינו":"regByUs","נרשמה":"regByUs"
-};
-function normHeader(h){ return String(h||"").replace(/["'.׳״]/g,"").replace(/\s+/g,"").trim(); }
-function truthyCell(v){ return /^(כן|yes|true|1|✓|v|קלוט|נרשמה|כ)$/i.test(String(v??"").trim()); }
-function normEduVal(v){ const t=String(v??"").replace(/\s/g,""); if(!t) return "רגיל"; return /(מיוחד|חינוךמיוחד|ח"?מ|חמ|special)/i.test(t)?'ח"מ':"רגיל"; }
-function normPeriodVal(v){ const t=String(v??"").trim(); return PERIODS.includes(t)?t:"א"; }
-function normDateVal(v){
-  const t=String(v??"").trim(); if(!t) return "";
-  let m=t.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
-  if(m){ let d=m[1],mo=m[2],y=m[3]; if(y.length===2)y="20"+y; return `${y.padStart(4,"0")}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`; }
-  m=t.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/);
-  if(m){ return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`; }
-  return t;
-}
-/* פענוח CSV/הדבקה — תומך בפסיקים או טאבים, מרכאות, ותאים רב-שורתיים */
-function parseTable(text){
-  text=String(text||"").replace(/^﻿/,"");
-  const firstLine=text.split(/\r?\n/)[0]||"";
-  const delim=(firstLine.split("\t").length > firstLine.split(",").length) ? "\t" : ",";
-  const rows=[]; let row=[], cur="", inq=false;
-  for(let i=0;i<text.length;i++){ const ch=text[i];
-    if(inq){ if(ch==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else inq=false; } else cur+=ch; }
-    else { if(ch==='"' && cur===""){ inq=true; } /* מרכאה נחשבת ציטוט רק בתחילת תא */
-      else if(ch===delim){ row.push(cur); cur=""; }
-      else if(ch==='\n'){ row.push(cur); rows.push(row); row=[]; cur=""; }
-      else if(ch==='\r'){ /* מטופל ע"י \n */ }
-      else cur+=ch; }
-  }
-  if(cur!==""||row.length){ row.push(cur); rows.push(row); }
-  return rows.filter(r=>r.some(c=>String(c).trim()!==""));
-}
-/* התאמת שם/סמל גן מהקובץ לגן קיים במערכת */
-function matchGanText(text){
-  const t=String(text||"").trim(); if(!t) return "";
-  const nz=x=>String(x||"").trim();
-  const g = DB.gans.find(g=>nz(g.teacherName)===t)
-        || DB.gans.find(g=>nz(g.ganSymbol)===t)
-        || DB.gans.find(g=>nz(g.internalSymbol)===t)
-        || DB.gans.find(g=>nz(g.teacherName) && (t.includes(nz(g.teacherName)) || nz(g.teacherName).includes(t)));
-  return g? g.id : "";
-}
-/* בניית רשומות מהטבלה שנקראה */
-function buildImportRows(rows, opts){
-  if(!rows.length) return { list:[], mapped:[] };
-  const header=rows[0].map(normHeader);
-  const idx={}; header.forEach((h,i)=>{ const k=IMPORT_HEADER_MAP[h]; if(k && idx[k]==null) idx[k]=i; });
-  const mapped=Object.keys(idx); // אילו שדות זוהו
-  const existing=new Set(studentsOfYear().map(s=>digits(s.tz)).filter(Boolean));
-  const seen=new Set();
-  const list=[];
-  for(let r=1;r<rows.length;r++){
-    const cells=rows[r];
-    const g=key=> idx[key]!=null ? String(cells[idx[key]]??"").trim() : "";
-    const st=makeStudent();
-    st.lastName=g("lastName"); st.firstName=g("firstName"); st.tz=digits(g("tz"));
-    st.dob=normDateVal(g("dob")); st.motherName=g("motherName"); st.fatherName=g("fatherName");
-    st.phone=g("phone"); st.mobile=g("mobile");
-    st.street=g("street"); st.building=g("building"); st.city=g("city");
-    st.age=g("age").replace(/[^\d]/g,""); st.period=normPeriodVal(g("period")); st.education=normEduVal(g("education"));
-    st.notes=g("notes");
-    const ganText=g("gan"); st.ganId=matchGanText(ganText);
-    st.absorbedMunicipality = idx.absorbed!=null ? truthyCell(g("absorbed")) : !!opts.absorbed;
-    st.registeredByUs        = idx.regByUs!=null ? truthyCell(g("regByUs"))  : !!opts.reg;
-    if(!st.firstName && !st.lastName && !st.tz) continue; // שורה ריקה
-    const dup = st.tz && (existing.has(st.tz) || seen.has(st.tz));
-    if(st.tz) seen.add(st.tz);
-    list.push({ st, ganText, ganMatched:!!st.ganId, dup });
-  }
-  return { list, mapped };
-}
-function importTemplateCSV(){
-  const headers=["שם משפחה","שם פרטי",'ת"ז',"תאריך לידה","שם האם","שם האב","טלפון","נייד","רחוב","בניין","עיר","גן","גיל","מועד","חינוך","קלוט בעירייה","הערות"];
-  const example=["ישראלי","שרה","123456789","2021-09-01","רבקה","יעקב","03-1234567","050-1234567","הרב קוק","12","ירושלים","הגננת מרים","3","א","רגיל","כן",""];
-  const csv=[headers.join(","), example.map(csvCell).join(",")].join("\r\n");
-  downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `תבנית-ייבוא-תלמידות.csv`);
-}
-function openImport(){
-  const state={ list:[], mapped:[] };
-  modal(`
-  <h3>ייבוא מרוכז של תלמידות · שנת ${esc(DB.activeYear)}</h3>
-  <div class="note">מעלים קובץ CSV (או מדביקים ישירות מאקסל) והמערכת פותחת תיק נפרד לכל שורה, לפי הכותרות. הכותרות המזוהות: שם משפחה, שם פרטי, ת"ז, תאריך לידה, שם האם, שם האב, טלפון, נייד, רחוב, בניין, עיר, גן, גיל, מועד, חינוך, קלוט בעירייה, הערות. עמודות שלא זוהו — יידלגו.</div>
-  <fieldset style="margin-top:12px"><legend>קובץ / הדבקה</legend>
-    <div class="row" style="margin-bottom:8px">
-      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="imp-file" accept=".csv,.txt" hidden></label>
-      <button class="btn ghost sm" id="imp-template" type="button">⬇️ הורדת תבנית</button>
-    </div>
-    <label>או הדבקה ישירה (שורת כותרות ואז שורה לכל תלמידה)</label>
-    <textarea id="imp-text" rows="6" placeholder='שם משפחה,שם פרטי,ת"ז,עיר,גן,גיל,מועד,חינוך&#10;ישראלי,שרה,123456789,ירושלים,הגננת מרים,3,א,רגיל'></textarea>
-  </fieldset>
-  <fieldset><legend>הגדרות ברירת מחדל לייבוא</legend>
-    <div class="checks">
-      <label class="check"><input type="checkbox" id="imp-absorbed" checked> סמן את כולם כ"קלוט בעירייה"</label>
-      <label class="check"><input type="checkbox" id="imp-reg" checked> סמן את כולם כ"נרשמה על ידינו"</label>
-      <label class="check"><input type="checkbox" id="imp-skipdup" checked> דלג על ת"ז שכבר קיימת בשנה זו</label>
-    </div>
-    <div class="hint">אם בקובץ יש עמודת "קלוט בעירייה" / "נרשמה על ידינו" — הערך שבקובץ גובר על ברירות המחדל.</div>
-  </fieldset>
-  <div class="row">
-    <button class="btn ghost" id="imp-preview" type="button">🔎 תצוגה מקדימה</button>
-    <button class="btn" id="imp-do" type="button" disabled>⬆️ ייבא תלמידות</button>
-    <button class="btn ghost" id="imp-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
-  </div>
-  <div id="imp-out" style="margin-top:14px"></div>`);
-
-  $("#imp-template").onclick=importTemplateCSV;
-  $("#imp-cancel").onclick=closeModal;
-  $("#imp-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader();
-    r.onload=()=>{ $("#imp-text").value=r.result; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }; r.readAsText(f,"utf-8"); };
-
-  const opts=()=>({ absorbed:$("#imp-absorbed").checked, reg:$("#imp-reg").checked, skipdup:$("#imp-skipdup").checked });
-
-  $("#imp-preview").onclick=()=>{
-    const rows=parseTable($("#imp-text").value);
-    const out=$("#imp-out");
-    if(rows.length<2){ out.innerHTML=`<div class="empty">לא זוהו שורות נתונים. ודא/י ששורה ראשונה היא כותרות ואחריה שורה לכל תלמידה.</div>`; $("#imp-do").disabled=true; return; }
-    const built=buildImportRows(rows, opts());
-    state.list=built.list; state.mapped=built.mapped;
-    if(!built.mapped.length){ out.innerHTML=`<div class="note">לא זוהתה אף עמודה מוכרת בשורת הכותרות. הורד/י את התבנית לדוגמה של הכותרות.</div>`; $("#imp-do").disabled=true; return; }
-    const skipdup=opts().skipdup;
-    const newCnt=state.list.filter(x=>!(skipdup&&x.dup)).length;
-    const dupCnt=state.list.filter(x=>x.dup).length;
-    const ganMiss=state.list.filter(x=>x.ganText && !x.ganMatched);
-    const show=state.list.slice(0,25);
-    out.innerHTML=`
-      <div class="stats" style="margin-bottom:10px">
-        <div class="stat hero"><div class="k">ייווצרו תיקים</div><div class="v">${newCnt}</div></div>
-        <div class="stat"><div class="k">כפולים (ת"ז קיים)</div><div class="v">${dupCnt}</div></div>
-        <div class="stat"><div class="k">שורות בקובץ</div><div class="v">${state.list.length}</div></div>
-        <div class="stat"><div class="k">גן לא זוהה</div><div class="v">${ganMiss.length}</div></div>
-      </div>
-      <div class="hint" style="margin-bottom:8px">עמודות שזוהו: ${state.mapped.map(esc).join(", ")}.</div>
-      ${ganMiss.length?`<div class="note" style="margin-bottom:8px">גנים מהקובץ שלא הותאמו לגן קיים (התיק ייפתח ללא שיבוץ): ${[...new Set(ganMiss.map(x=>x.ganText))].slice(0,12).map(esc).join(", ")}</div>`:""}
-      <div class="table-wrap"><table><thead><tr>
-        <th>שם משפחה</th><th>שם פרטי</th><th>ת"ז</th><th>טלפון</th><th>עיר</th><th>גן</th><th>גיל</th><th>מועד</th><th>חינוך</th><th>קלוט</th><th>סטטוס</th></tr></thead><tbody>
-        ${show.map(x=>`<tr style="${x.dup&&skipdup?'opacity:.5':''}">
-          <td>${esc(x.st.lastName)||'—'}</td><td>${esc(x.st.firstName)||'—'}</td><td>${esc(x.st.tz)||'—'}</td>
-          <td>${esc(x.st.mobile||x.st.phone)||'—'}</td><td>${esc(x.st.city)||'—'}</td>
-          <td>${x.st.ganId?esc(ganName(x.st.ganId)):(x.ganText?('<span class="pill warn">'+esc(x.ganText)+' ⚠</span>'):'—')}</td>
-          <td>${esc(x.st.age)||'—'}</td><td><span class="pill neutral">${esc(x.st.period)}</span></td><td>${eduBadge(x.st)}</td>
-          <td>${x.st.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
-          <td>${x.dup?'<span class="pill warn">כפול</span>':'<span class="pill ok">חדש</span>'}</td></tr>`).join("")}
-      </tbody></table></div>
-      <div class="hint">${state.list.length>25?`מוצגות 25 מתוך ${state.list.length} שורות. `:''}לחצ/י "ייבא תלמידות" לפתיחת התיקים.</div>`;
-    $("#imp-do").disabled = newCnt===0;
-  };
-
-  $("#imp-do").onclick=()=>{
-    const skipdup=opts().skipdup;
-    const toAdd=state.list.filter(x=>!(skipdup&&x.dup)).map(x=>x.st);
-    if(!toAdd.length){ toast("אין תלמידות חדשות לייבוא"); return; }
-    toAdd.forEach(st=>DB.students.push(st));
-    save(); closeModal(); route(); toast(`יובאו ${toAdd.length} תלמידות לשנת ${DB.activeYear}`);
-  };
-}
-
-/* ============================================================
    טאב גנים
    ============================================================ */
 function viewGans(root){
@@ -752,7 +463,7 @@ function renderGanTable(){
   const host=$("#ganTable");
   if(!list.length){ host.innerHTML=`<div class="empty">אין גנים עדיין. לחצ/י "הוספת גן".</div>`; return; }
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
-    <th>גננת</th><th>סמל פנימי</th><th>סמל גן</th><th>גיל</th><th>חינוך</th><th>כתובת</th><th>אזור</th>
+    <th>גננת</th><th>סמל פנימי</th><th>סמל גן</th><th>גיל</th><th>כתובת</th><th>אזור</th>
     <th>טל' גן</th><th>נייד גננת</th><th>סייעת</th><th>קיבולת</th><th>רשומות</th><th>סטטוס</th><th></th></tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
@@ -761,7 +472,6 @@ function renderGanTable(){
         <td>${esc(g.internalSymbol)||'—'}</td>
         <td>${esc(g.ganSymbol)||'—'}</td>
         <td>${esc(g.age)||'—'}</td>
-        <td>${eduBadge(g)}</td>
         <td>${esc(g.address)||'—'}</td>
         <td>${esc(g.zone)||'—'}</td>
         <td>${esc(g.phoneGan)||'—'}</td>
@@ -785,7 +495,6 @@ function openGan(g){
       <div><label>סמל פנימי</label><input id="g-internalSymbol" value="${esc(g.internalSymbol)}"></div>
       <div><label>סמל הגן</label><input id="g-ganSymbol" value="${esc(g.ganSymbol)}"></div>
       <div><label>גיל</label><select id="g-age"><option value="">—</option>${[2,3,4,5,6].map(a=>`<option ${String(g.age)==String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
-      <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
       <div><label>שם הסייעת</label><input id="g-assistantName" value="${esc(g.assistantName)}"></div>
       <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}"></div>
@@ -818,7 +527,7 @@ function openGan(g){
   $("#saveGan").onclick=()=>{
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{
-      internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),education:val("g-education"),
+      internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),
       teacherName:val("g-teacherName"),assistantName:val("g-assistantName"),capacity:val("g-capacity"),
       address:val("g-address"),street:val("g-street"),zone:val("g-zone"),
       phoneGan:val("g-phoneGan"),phoneHome:val("g-phoneHome"),teacherMobile:val("g-teacherMobile"),
@@ -991,61 +700,19 @@ function viewMunicipality(root){
 /* ============================================================
    טאב ייצוא
    ============================================================ */
-/* כל השדות הזמינים לייצוא — [מפתח, כותרת, פונקציית ערך] */
-const EXPORT_FIELDS = [
-  ["lastName","שם משפחה",s=>s.lastName],
-  ["firstName","שם פרטי",s=>s.firstName],
-  ["tz",'ת"ז',s=>s.tz],
-  ["dob","תאריך לידה",s=>s.dob],
-  ["motherName","שם האם",s=>s.motherName],
-  ["fatherName","שם האב",s=>s.fatherName],
-  ["phone","טלפון",s=>s.phone],
-  ["mobile","נייד",s=>s.mobile],
-  ["street","רחוב",s=>s.street],
-  ["building","בניין",s=>s.building],
-  ["city","עיר",s=>s.city],
-  ["gan","גן",s=>ganName(s.ganId)],
-  ["age","גיל",s=>s.age],
-  ["period","מועד",s=>s.period],
-  ["education","חינוך",s=>eduLabel(s)],
-  ["nispach","נספח",s=>s.docs.nispach?"✓":""],
-  ["idCopy",'צילום ת"ז',s=>s.docs.idCopy?"✓":""],
-  ["takanon","תקנון",s=>s.docs.takanon?"✓":""],
-  ["registeredByUs","נרשמה על ידינו",s=>s.registeredByUs?"כן":"לא"],
-  ["absorbedMunicipality","קלוט בעירייה",s=>s.absorbedMunicipality?"כן":"לא"],
-  ["divorced","גרושים",s=>s.special.divorced?"✓":""],
-  ["outOfCity","ילדת חוץ",s=>s.special.outOfCity?"✓":""],
-  ["retention","השארות",s=>s.special.retention?"✓":""],
-  ["notes","הערות",s=>s.notes]
-];
-const EXPORT_DEFAULT = ["lastName","firstName","tz","dob","motherName","fatherName","street","building","city","gan","age","period","education","nispach","idCopy","takanon","registeredByUs","absorbedMunicipality","divorced","outOfCity","retention"];
-let exportSel = null; // Set של מפתחות שנבחרו — נשמר בין רינדורים
-
 function viewExport(root){
-  if(!exportSel) exportSel = new Set(EXPORT_DEFAULT);
   const gans=DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
   root.innerHTML=`
   <div class="panel">
     <h2>ייצוא רשימות</h2>
-    <div class="sub">בחר/י סינון, בחר/י אילו שדות לכלול, וייצא/י לאקסל (CSV שנפתח באקסל עם עברית תקינה) או ל-PDF (הדפסה → שמירה כ-PDF).</div>
+    <div class="sub">בחר/י סינון, וייצא/י לאקסל (CSV שנפתח באקסל עם עברית תקינה) או ל-PDF (הדפסה → שמירה כ-PDF).</div>
     <div class="toolbar">
       <div class="field"><label>גן</label><select id="x-gan"><option value="">כל הגנים</option>${gans.map(g=>`<option value="${g.id}">${esc(ganName(g.id))}</option>`).join("")}</select></div>
       <div class="field"><label>גיל</label><select id="x-age"><option value="">הכל</option>${[2,3,4,5,6].map(a=>`<option>${a}</option>`).join("")}</select></div>
       <div class="field"><label>מועד</label><select id="x-period"><option value="">הכל</option>${PERIODS.map(p=>`<option>${p}</option>`).join("")}</select></div>
-      <div class="field"><label>חינוך</label><select id="x-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div>
       <div class="field"><label>קלוט בעירייה</label><select id="x-muni"><option value="">הכל</option><option value="yes">רק קלוטות</option><option value="no">רק לא קלוטות</option></select></div>
       <div class="field"><label>כולל שסיימו</label><select id="x-fin"><option value="no">לא</option><option value="yes">כן</option></select></div>
     </div>
-    <fieldset><legend>שדות לייצוא</legend>
-      <div class="row" style="margin-bottom:8px">
-        <button class="btn ghost sm" id="x-all" type="button">סמן הכל</button>
-        <button class="btn ghost sm" id="x-none" type="button">נקה הכל</button>
-        <button class="btn ghost sm" id="x-def" type="button">ברירת מחדל</button>
-      </div>
-      <div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
-        ${EXPORT_FIELDS.map(f=>`<label class="check"><input type="checkbox" class="x-col" value="${f[0]}" ${exportSel.has(f[0])?'checked':''}> ${esc(f[1])}</label>`).join("")}
-      </div>
-    </fieldset>
     <div class="row">
       <button class="btn" id="x-preview">🔎 תצוגה מקדימה</button>
       <button class="btn ghost" id="x-csv">⬇️ ייצוא לאקסל (CSV)</button>
@@ -1054,40 +721,38 @@ function viewExport(root){
     <div id="x-out" style="margin-top:14px"></div>
   </div>`;
   const gather=()=>{
-    const gv=$("#x-gan").value, av=$("#x-age").value, pv=$("#x-period").value, ev=$("#x-edu").value, mv=$("#x-muni").value, fv=$("#x-fin").value;
+    const gv=$("#x-gan").value, av=$("#x-age").value, pv=$("#x-period").value, mv=$("#x-muni").value, fv=$("#x-fin").value;
     return studentsOfYear().filter(s=>{
       if(fv!=='yes' && s.finished) return false;
       if(gv && s.ganId!==gv) return false;
       if(av && String(s.age)!==av) return false;
       if(pv && s.period!==pv) return false;
-      if(ev && eduLabel(s)!==ev) return false;
       if(mv==='yes' && !s.absorbedMunicipality) return false;
       if(mv==='no' && s.absorbedMunicipality) return false;
       return true;
     }).sort((a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he"));
   };
-  const cols=()=> EXPORT_FIELDS.filter(f=>exportSel.has(f[0]));
+  const COLS=[
+    ["שם משפחה",s=>s.lastName],["שם פרטי",s=>s.firstName],['ת"ז',s=>s.tz],["תאריך לידה",s=>s.dob],
+    ["שם האם",s=>s.motherName],["שם האב",s=>s.fatherName],["רחוב",s=>s.street],["בניין",s=>s.building],["עיר",s=>s.city],
+    ["גן",s=>ganName(s.ganId)],["גיל",s=>s.age],["מועד",s=>s.period],
+    ["נספח",s=>s.docs.nispach?"✓":""],['צילום ת"ז',s=>s.docs.idCopy?"✓":""],["תקנון",s=>s.docs.takanon?"✓":""],
+    ["נרשמה על ידינו",s=>s.registeredByUs?"כן":"לא"],["קלוט בעירייה",s=>s.absorbedMunicipality?"כן":"לא"],
+    ["גרושים",s=>s.special.divorced?"✓":""],["ילדת חוץ",s=>s.special.outOfCity?"✓":""],["השארות",s=>s.special.retention?"✓":""]
+  ];
   const preview=()=>{
-    const rows=gather(); const C=cols();
+    const rows=gather();
     const out=$("#x-out");
-    if(!C.length){ out.innerHTML=`<div class="note">בחר/י לפחות שדה אחד לייצוא.</div>`; return rows; }
     if(!rows.length){ out.innerHTML=`<div class="empty">אין תלמידות התואמות לסינון.</div>`; return rows; }
-    out.innerHTML=`<div class="table-wrap"><table><thead><tr>${C.map(c=>`<th>${esc(c[1])}</th>`).join("")}</tr></thead>
-      <tbody>${rows.map(s=>`<tr>${C.map(c=>`<td>${esc(c[2](s)??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
-      <div class="hint">${rows.length} שורות · ${C.length} עמודות.</div>`;
+    out.innerHTML=`<div class="table-wrap"><table><thead><tr>${COLS.map(c=>`<th>${esc(c[0])}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map(s=>`<tr>${COLS.map(c=>`<td>${esc(c[1](s)??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      <div class="hint">${rows.length} שורות.</div>`;
     return rows;
   };
-  const rerenderCols=()=>{ root.querySelectorAll(".x-col").forEach(cb=>cb.checked=exportSel.has(cb.value)); preview(); };
-  root.querySelectorAll(".x-col").forEach(cb=> cb.onchange=()=>{ if(cb.checked)exportSel.add(cb.value); else exportSel.delete(cb.value); preview(); });
-  $("#x-all").onclick=()=>{ exportSel=new Set(EXPORT_FIELDS.map(f=>f[0])); rerenderCols(); };
-  $("#x-none").onclick=()=>{ exportSel=new Set(); rerenderCols(); };
-  $("#x-def").onclick=()=>{ exportSel=new Set(EXPORT_DEFAULT); rerenderCols(); };
   $("#x-preview").onclick=preview;
   $("#x-csv").onclick=()=>{
-    const rows=gather(); const C=cols();
-    if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
-    if(!rows.length){ toast("אין נתונים לייצוא"); return; }
-    const csv=[C.map(c=>c[1]).join(",")].concat(rows.map(s=>C.map(c=>csvCell(c[2](s))).join(","))).join("\r\n");
+    const rows=gather(); if(!rows.length){ toast("אין נתונים לייצוא"); return; }
+    const csv=[COLS.map(c=>c[0]).join(",")].concat(rows.map(s=>COLS.map(c=>csvCell(c[1](s))).join(","))).join("\r\n");
     const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"});
     downloadBlob(blob, `תלמידות_${DB.activeYear}.csv`); toast("קובץ אקסל נוצר");
   };
@@ -1167,10 +832,9 @@ function viewSettings(root){
       <div class="field" style="min-width:150px"><label>משנה</label><select id="pr-from">${DB.years.map(y=>`<option>${esc(y)}</option>`).join("")}</select></div>
       <div class="field" style="min-width:150px"><label>לשנה</label><select id="pr-to">${DB.years.map(y=>`<option ${y===DB.activeYear?'selected':''}>${esc(y)}</option>`).join("")}</select></div>
       <label class="check" style="align-self:end"><input type="checkbox" id="pr-age" checked> קדם גיל ב-1</label>
-      <label class="check" style="align-self:end"><input type="checkbox" id="pr-skip5" checked> אל תעביר גיל 5 (מסיימות) — פרט לילדות השארות</label>
       <button class="btn" id="doPromote" style="align-self:end">בצע קידום</button>
     </div>
-    <div class="note" style="margin-top:8px">התלמידות המקודמות ייכנסו לשנת היעד עם מסמכים לא מסומנים (עולים מחדש). ילדות בגיל 5 (מסיימות) לא יועברו — למעט ילדות המסומנות "השארות", שיועברו ללא קידום גיל. ניתן אח"כ רק לבחור שנה ולבדוק אם בוצע רישום.</div>
+    <div class="note" style="margin-top:8px">התלמידות המקודמות ייכנסו לשנת היעד עם מסמכים לא מסומנים (עולים מחדש). ניתן אח"כ רק לבחור שנה ולבדוק אם בוצע רישום.</div>
   </div>
 
   <div class="panel">
@@ -1190,12 +854,6 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
-    <h2>אבטחה — שם משתמש וסיסמה</h2>
-    <div class="sub">נעילת המערכת בכניסה. הגדרה זו נשמרת במכשיר זה. זו הגנה בסיסית מפני גישה מזדמנת — לא הצפנה מלאה של הנתונים.</div>
-    <div id="auth-box"></div>
-  </div>
-
-  <div class="panel">
     <h2>גיבוי ושחזור</h2>
     <div class="sub">הנתונים נשמרים במכשיר זה בלבד. מומלץ לייצא גיבוי מדי פעם.</div>
     <div class="row">
@@ -1203,8 +861,6 @@ function viewSettings(root){
       <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">⬆️ שחזור מגיבוי<input type="file" id="importAll" accept=".json" hidden></label>
     </div>
   </div>`;
-
-  renderAuthBox();
 
   // years
   const yb=$("#years-box");
@@ -1216,50 +872,42 @@ function viewSettings(root){
   $("#addYear").onclick=()=>{ const y=$("#new-year").value.trim(); if(!y)return; if(DB.years.includes(y)){toast("שנה קיימת");return;} DB.years.push(y); save(); route(); toast("נוספה שנה"); };
 
   $("#doPromote").onclick=()=>{
-    const from=$("#pr-from").value, to=$("#pr-to").value, bump=$("#pr-age").checked, skip5=$("#pr-skip5").checked;
+    const from=$("#pr-from").value, to=$("#pr-to").value, bump=$("#pr-age").checked;
     if(from===to){ toast("בחר/י שנת מקור ושנת יעד שונות"); return; }
     const src=DB.students.filter(s=>s.year===from);
     if(!src.length){ toast("אין תלמידות בשנת המקור"); return; }
     const existing=new Set(DB.students.filter(s=>s.year===to).map(s=>digits(s.tz)).filter(Boolean));
-    let added=0, skipped5=0;
+    let added=0;
     src.forEach(s=>{ if(s.tz && existing.has(digits(s.tz))) return; // כבר קיימת ביעד
-      const isRetention = !!(s.special && s.special.retention);
-      // אל תעביר ילדות בגיל 5 (מסיימות), למעט המסומנות בהשארות
-      if(skip5 && String(s.age)==='5' && !isRetention){ skipped5++; return; }
       const n=JSON.parse(JSON.stringify(s));
       n.id=uid(); n.year=to; n.finished=false; n.period="א"; n.absorbedMunicipality=false;
-      // ילדת השארות נשארת באותו גיל (חוזרת על השנה); אחרת מקדמים גיל ב-1
-      if(bump && s.age && !isRetention) n.age=String(+s.age+1);
+      if(bump && s.age) n.age=String(+s.age+1);
       n.docs={nispach:false,idCopy:false,takanon:false};
       n.special.approvalFather=n.special.approvalMother=n.special.paymentArrangement=n.special.retentionDoc=false;
       n.driveFolder=""; n.createdAt=new Date().toISOString();
       DB.students.push(n); added++; });
-    save(); route(); toast(`קודמו ${added} תלמידות לשנת ${to}${skipped5?` · דולגו ${skipped5} בגיל 5`:''}`);
+    save(); route(); toast(`קודמו ${added} תלמידות לשנת ${to}`);
   };
 
   // historical
   const hb=$("#hist-box");
-  const histFinal=h=>(+h.periodA||0)+(+h.periodB||0)+(+h.periodC||0); // סופי = סכום א׳+ב׳+ג׳
   const drawHist=()=>{
-    hb.innerHTML=`<div class="table-wrap"><table><thead><tr><th>שנה</th><th>מועד א׳</th><th>מועד ב׳</th><th>מועד ג׳</th><th>סופי (סיכום)</th><th></th></tr></thead><tbody>
+    hb.innerHTML=`<div class="table-wrap"><table><thead><tr><th>שנה</th><th>מועד א׳</th><th>מועד ב׳</th><th>מועד ג׳</th><th>סופי</th><th></th></tr></thead><tbody>
       ${DB.years.map(y=>{const h=DB.historical[y]||{};return `<tr>
         <td><b>${esc(y)}</b></td>
-        <td><input class="hist-p" data-h="${esc(y)}|periodA" value="${esc(h.periodA??"")}" inputmode="numeric" style="width:80px"></td>
-        <td><input class="hist-p" data-h="${esc(y)}|periodB" value="${esc(h.periodB??"")}" inputmode="numeric" style="width:80px"></td>
-        <td><input class="hist-p" data-h="${esc(y)}|periodC" value="${esc(h.periodC??"")}" inputmode="numeric" style="width:80px"></td>
-        <td><input data-final value="${histFinal(h)||""}" style="width:80px;font-weight:800;background:var(--surface)" readonly title="סכום מועדים א׳+ב׳+ג׳ (מחושב אוטומטית)"></td>
+        <td><input data-h="${esc(y)}|periodA" value="${esc(h.periodA??"")}" style="width:80px"></td>
+        <td><input data-h="${esc(y)}|periodB" value="${esc(h.periodB??"")}" style="width:80px"></td>
+        <td><input data-h="${esc(y)}|periodC" value="${esc(h.periodC??"")}" style="width:80px"></td>
+        <td><input data-h="${esc(y)}|final" value="${esc(h.final??"")}" style="width:80px"></td>
         <td class="actions"><button class="btn ghost sm" data-livey="${esc(y)}">מלא מנתוני המערכת</button></td></tr>`;}).join("")}
-    </tbody></table></div><div class="hint">עמודת "סופי" מחושבת אוטומטית כסכום מועדים א׳+ב׳+ג׳. ערכים ריקים לא נשמרים. "מלא מנתוני המערכת" ממלא לפי הרישום בפועל של אותה שנה.</div>`;
-    hb.querySelectorAll("input.hist-p").forEach(inp=> inp.oninput=inp.onchange=()=>{
+    </tbody></table></div><div class="hint">ערכים ריקים לא נשמרים. "מלא מנתוני המערכת" ממלא לפי הרישום בפועל של אותה שנה.</div>`;
+    hb.querySelectorAll("input[data-h]").forEach(inp=> inp.onchange=()=>{
       const [y,k]=inp.dataset.h.split("|"); DB.historical[y]=DB.historical[y]||{};
-      const v=inp.value.trim(); if(v==="") delete DB.historical[y][k]; else DB.historical[y][k]=+v;
-      const h=DB.historical[y]; const f=histFinal(h);
-      const cell=inp.closest("tr").querySelector("[data-final]"); if(cell) cell.value=f||"";
-      if(f>0) h.final=f; else delete h.final; save(); });
+      const v=inp.value.trim(); if(v==="") delete DB.historical[y][k]; else DB.historical[y][k]=+v; save(); });
     hb.querySelectorAll("[data-livey]").forEach(b=>b.onclick=()=>{ const y=b.dataset.livey;
       const ys=DB.students.filter(s=>s.year===y);
-      const pa=ys.filter(s=>s.period==='א').length, pb=ys.filter(s=>s.period==='ב').length, pc=ys.filter(s=>s.period==='ג').length;
-      DB.historical[y]={ periodA:pa, periodB:pb, periodC:pc, final:pa+pb+pc };
+      DB.historical[y]={ periodA:ys.filter(s=>s.period==='א').length, periodB:ys.filter(s=>s.period==='ב').length,
+        periodC:ys.filter(s=>s.period==='ג').length, final:ys.filter(s=>!s.finished).length };
       save(); drawHist(); toast("מולא מנתוני המערכת"); });
   };
   drawHist();
@@ -1282,7 +930,6 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ active=b.dataset.tab; route(); window.scrollTo(0,0); } });
 $("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; save(); route(); });
-$("#lockBtn").onclick=lockNow;
 
 /* theme */
 (function(){ const KEY="rg-theme"; const saved=localStorage.getItem(KEY); if(saved)document.documentElement.dataset.theme=saved;
@@ -1296,5 +943,5 @@ if(!DB.gans.length && !DB.students.length){
   DB.gans.push(g1,g2); save();
 }
 
-boot();
+route();
 </script>
