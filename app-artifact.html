@@ -1,0 +1,947 @@
+<style>
+:root{
+  --bg:#e9f1f1;--surface:#fff;--surface-2:#f3f9f8;--ink:#10242b;--ink-soft:#3d555c;
+  --muted:#6a8087;--border:#d8e6e5;--accent:#0e7c86;--accent-strong:#0a5f68;--accent-soft:#d6eceb;
+  --brass:#9c6f2c;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a15b12;--warn-soft:#f6e6d2;
+  --bad:#a5342b;--bad-soft:#f5dcd9;
+  --shadow:0 1px 2px rgba(16,36,43,.06),0 10px 30px rgba(16,36,43,.08);--radius:14px}
+@media(prefers-color-scheme:dark){:root{--bg:#081317;--surface:#0f2129;--surface-2:#16303a;--ink:#e9f4f4;
+  --ink-soft:#b2c8cc;--muted:#7d979d;--border:#22404a;--accent:#3bb2bd;--accent-strong:#5cc9d3;--accent-soft:#10333c;
+  --brass:#cc9c56;--good:#54b888;--good-soft:#123527;--warn:#d9a25a;--warn-soft:#3a2c15;
+  --bad:#e07b6f;--bad-soft:#3a1c18;--shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.4)}}
+:root[data-theme="light"]{--bg:#e9f1f1;--surface:#fff;--surface-2:#f3f9f8;--ink:#10242b;--ink-soft:#3d555c;--muted:#6a8087;--border:#d8e6e5;--accent:#0e7c86;--accent-strong:#0a5f68;--accent-soft:#d6eceb;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a15b12;--warn-soft:#f6e6d2;--bad:#a5342b;--bad-soft:#f5dcd9}
+:root[data-theme="dark"]{--bg:#081317;--surface:#0f2129;--surface-2:#16303a;--ink:#e9f4f4;--ink-soft:#b2c8cc;--muted:#7d979d;--border:#22404a;--accent:#3bb2bd;--accent-strong:#5cc9d3;--accent-soft:#10333c;--good:#54b888;--good-soft:#123527;--warn:#d9a25a;--warn-soft:#3a2c15;--bad:#e07b6f;--bad-soft:#3a1c18}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);direction:rtl;line-height:1.55;
+  font-family:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif;font-size:15px}
+h1,h2,h3{margin:0}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;font-weight:700}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);
+  border-radius:9px;padding:8px 10px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+label{font-size:.82rem;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:4px}
+a{color:var(--accent)}
+
+/* header */
+header.top{position:sticky;top:0;z-index:30;background:var(--surface);border-bottom:1px solid var(--border);
+  box-shadow:var(--shadow)}
+.top-inner{max-width:1200px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.12rem}
+.brand .logo{width:36px;height:36px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:1.2rem}
+.top-spacer{flex:1}
+.year-pick{display:flex;align-items:center;gap:6px;background:var(--accent-soft);padding:5px 10px;border-radius:999px;font-weight:800;color:var(--accent-strong)}
+.year-pick select{width:auto;background:transparent;border:0;font-weight:800;color:var(--accent-strong);padding:2px 4px}
+.icon-btn{background:var(--surface-2);border:1px solid var(--border);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:1.05rem}
+
+/* nav */
+nav.tabs{max-width:1200px;margin:0 auto;padding:8px 16px 0;display:flex;gap:6px;flex-wrap:wrap}
+nav.tabs button{background:transparent;color:var(--ink-soft);padding:9px 15px;border-radius:10px 10px 0 0;border:1px solid transparent;border-bottom:0;font-weight:700}
+nav.tabs button.active{background:var(--surface);color:var(--accent-strong);border-color:var(--border);box-shadow:0 -2px 0 var(--accent) inset}
+nav.tabs .count{background:var(--accent-soft);color:var(--accent-strong);border-radius:999px;padding:0 7px;font-size:.75rem;margin-inline-start:6px}
+
+main{max-width:1200px;margin:0 auto;padding:18px 16px 80px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:16px}
+.panel h2{font-size:1.15rem;margin-bottom:4px}
+.panel .sub{color:var(--muted);font-size:.86rem;margin-bottom:14px}
+
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+.btn{background:var(--accent);color:#fff;padding:9px 16px}
+.btn:hover{background:var(--accent-strong)}
+.btn.ghost{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--border)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent-strong)}
+.btn.sm{padding:5px 11px;font-size:.85rem}
+.btn.danger{background:var(--bad-soft);color:var(--bad)}
+.btn.danger:hover{background:var(--bad);color:#fff}
+
+/* toolbar */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.toolbar .field{min-width:130px}
+.toolbar .field.grow{flex:1;min-width:180px}
+.toolbar .field label{margin-bottom:3px}
+
+/* table */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:720px}
+th,td{padding:9px 11px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:var(--surface-2);font-weight:800;color:var(--ink-soft);position:sticky;top:0}
+tbody tr:hover{background:var(--surface-2)}
+td.actions{white-space:nowrap}
+.empty{padding:34px;text-align:center;color:var(--muted)}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.76rem;font-weight:800}
+.pill.ok{background:var(--good-soft);color:var(--good)}
+.pill.no{background:var(--bad-soft);color:var(--bad)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.neutral{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.dot-list{display:flex;gap:3px}
+.doc-dot{width:16px;height:16px;border-radius:50%;font-size:10px;display:grid;place-items:center;font-weight:800}
+.doc-dot.on{background:var(--good);color:#fff}
+.doc-dot.off{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.stat{background:linear-gradient(200deg,var(--surface-2),var(--surface));border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.stat .k{font-size:.78rem;color:var(--muted);font-weight:700}
+.stat .v{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin-top:2px}
+.stat .v small{font-size:.9rem;color:var(--muted);font-weight:700}
+.stat.hero{background:radial-gradient(120% 140% at 88% -20%,color-mix(in srgb,var(--accent) 26%,transparent),transparent 60%),linear-gradient(200deg,var(--surface-2),var(--surface))}
+
+.bar{height:9px;background:var(--surface-2);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
+.bar > i{display:block;height:100%;background:var(--accent);border-radius:999px}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(6,18,22,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:24px 14px;overflow:auto}
+.overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);width:min(760px,100%);padding:20px 22px}
+.modal h3{font-size:1.2rem;margin-bottom:14px}
+.modal .foot{display:flex;gap:10px;justify-content:flex-start;margin-top:18px;flex-wrap:wrap}
+fieldset{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:0 0 12px}
+legend{font-weight:800;color:var(--accent-strong);padding:0 6px;font-size:.9rem}
+.check{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;cursor:pointer}
+.check input{width:auto;margin:0}
+.checks{display:grid;gap:8px;grid-template-columns:repeat(2,1fr)}
+@media(max-width:640px){.checks{grid-template-columns:1fr}}
+.hidden{display:none!important}
+.hint{font-size:.8rem;color:var(--muted);margin-top:6px}
+.note{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);color:var(--warn);
+  border-radius:10px;padding:9px 12px;font-size:.84rem;font-weight:600}
+.toast{position:fixed;bottom:20px;inset-inline-start:50%;transform:translateX(50%);background:var(--ink);color:var(--bg);
+  padding:11px 18px;border-radius:12px;font-weight:700;box-shadow:var(--shadow);z-index:90;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(50%) translateY(-4px)}
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+
+@media print{
+  header.top,nav.tabs,.toolbar,.no-print{display:none!important}
+  body{background:#fff}
+  main{padding:0}
+  .panel{box-shadow:none;border:0}
+  th{position:static}
+}
+</style>
+
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand"><span class="logo">🎒</span> מערכת רישום וקליטת תלמידות</div>
+    <div class="top-spacer"></div>
+    <div class="year-pick">שנה: <select id="yearSelect"></select></div>
+    <button class="icon-btn" id="themeBtn" title="מצב תצוגה">🌓</button>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+
+<main id="view"></main>
+
+<!-- modal host -->
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   מערכת רישום וקליטת תלמידות  —  אפליקציה עצמאית (client-side)
+   כל הנתונים נשמרים במכשיר (localStorage). מוכן לחיבור דרייב בהמשך.
+   ============================================================ */
+
+const LS_KEY = "rishum-ganim-db-v1";
+const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
+const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
+
+/* ---------- מודל נתונים ---------- */
+function blankDB(){
+  return {
+    activeYear: 'תשפ"ז',
+    years: DEFAULT_YEARS.slice(),
+    students: [],       // ראה makeStudent
+    gans: [],           // ראה makeGan
+    management: [],      // {id, dept, name, role, phone}
+    municipality: {},    // { [year]: [ '123456789', ... ] }  ת"ז מרשימת העירייה
+    historical: {},      // { [year]: {periodA,periodB,periodC,final} } סיכומי שנים קודמות
+    settings: { gansTarget: 29 } // יעד מספר גנים (ניתן לשינוי)
+  };
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+let DB = load();
+function load(){
+  try{ const v=localStorage.getItem(LS_KEY); if(v){ return Object.assign(blankDB(), JSON.parse(v)); } }catch(e){}
+  return blankDB();
+}
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){ toast("שגיאת שמירה — ייתכן שהאחסון מלא"); } }
+
+/* ---------- כלי עזר ---------- */
+const $  = (s,r=document)=>r.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+function ganById(id){ return DB.gans.find(g=>g.id===id); }
+function ganName(id){ const g=ganById(id); return g? (g.teacherName? g.teacherName : ("גן "+ (g.ganSymbol||g.internalSymbol||""))) : "—"; }
+function studentsOfYear(y=DB.activeYear){ return DB.students.filter(s=>s.year===y); }
+function digits(s){ return String(s||"").replace(/\D/g,""); }
+
+/* ---------- תבניות רשומות ---------- */
+function makeStudent(){ return {
+  id:uid(), year:DB.activeYear, tz:"", firstName:"", lastName:"", dob:"",
+  motherName:"", fatherName:"", street:"", building:"", city:"",
+  ganId:"", age:"", period:"א",
+  registeredByUs:true, absorbedMunicipality:false, finished:false,
+  docs:{ nispach:false, idCopy:false, takanon:false },
+  special:{ divorced:false, approvalFather:false, approvalMother:false,
+            outOfCity:false, paymentArrangement:false,
+            retention:false, retentionDoc:false },
+  driveFolder:"", notes:"", createdAt:new Date().toISOString()
+};}
+function makeGan(){ return {
+  id:uid(), internalSymbol:"", ganSymbol:"", teacherName:"", age:"",
+  address:"", street:"", zone:"", phoneGan:"", phoneHome:"",
+  teacherMobile:"", assistantName:"", assistantMobile:"",
+  capacity:"", active:true, docsNote:"", createdAt:new Date().toISOString()
+};}
+
+/* ============================================================
+   ניווט / טאבים
+   ============================================================ */
+const TABS = [
+  {id:"students",  label:"תלמידות"},
+  {id:"gans",      label:"גנים"},
+  {id:"reports",   label:"דוחות ואחוזים"},
+  {id:"municipality", label:"עירייה"},
+  {id:"export",    label:"ייצוא"},
+  {id:"management",label:"הנהלה"},
+  {id:"settings",  label:"הגדרות"}
+];
+let active = "students";
+
+function renderTabs(){
+  const counts = { students: studentsOfYear().filter(s=>!s.finished).length, gans: DB.gans.filter(g=>g.active).length };
+  $("#tabs").innerHTML = TABS.map(t=>{
+    const c = counts[t.id]!=null ? `<span class="count">${counts[t.id]}</span>` : "";
+    return `<button data-tab="${t.id}" class="${t.id===active?'active':''}">${t.label}${c}</button>`;
+  }).join("");
+}
+function renderYearSelect(){
+  $("#yearSelect").innerHTML = DB.years.map(y=>`<option ${y===DB.activeYear?'selected':''}>${esc(y)}</option>`).join("");
+}
+
+function route(){
+  renderTabs(); renderYearSelect();
+  const v = $("#view");
+  ({students:viewStudents, gans:viewGans, reports:viewReports, municipality:viewMunicipality,
+    export:viewExport, management:viewManagement, settings:viewSettings}[active]||viewStudents)(v);
+}
+
+/* ============================================================
+   טאב תלמידות
+   ============================================================ */
+let stuFilter = { q:"", gan:"", age:"", city:"", period:"", muni:"", showFinished:false };
+
+function viewStudents(root){
+  const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+  const cities = [...new Set(studentsOfYear().map(s=>s.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  root.innerHTML = `
+  <div class="panel">
+    <div class="section-title">
+      <div><h2>תיקי התלמידות · שנת ${esc(DB.activeYear)}</h2>
+        <div class="sub">תיק לכל ילדה עם כל הפרטים, המסמכים והשונות. סימון "סיימה גן" מוציא אותה מהרשימה.</div></div>
+      <button class="btn" id="addStu">➕ הוספת ילדה</button>
+    </div>
+    <div class="toolbar">
+      <div class="field grow"><label>חיפוש (שם / ת"ז)</label><input id="f-q" value="${esc(stuFilter.q)}" placeholder="הקלד/י שם או ת&quot;ז…"></div>
+      <div class="field"><label>גן</label><select id="f-gan"><option value="">הכל</option>${gans.map(g=>`<option value="${g.id}" ${stuFilter.gan===g.id?'selected':''}>${esc(ganName(g.id))}</option>`).join("")}</select></div>
+      <div class="field"><label>גיל</label><select id="f-age"><option value="">הכל</option>${[2,3,4,5,6].map(a=>`<option ${stuFilter.age==a?'selected':''}>${a}</option>`).join("")}</select></div>
+      <div class="field"><label>עיר</label><select id="f-city"><option value="">הכל</option>${cities.map(c=>`<option ${stuFilter.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
+      <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
+      <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
+      <div class="field"><label class="check" style="margin-top:18px"><input type="checkbox" id="f-fin" ${stuFilter.showFinished?'checked':''}> הצג שסיימו</label></div>
+    </div>
+    <div id="stuTable"></div>
+  </div>`;
+
+  $("#addStu").onclick = ()=> openStudent(makeStudent());
+  const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ stuFilter[key]= e.type==='checkbox'?e.checked:e.value; renderStuTable(); }; };
+  bind("#f-q","q");bind("#f-gan","gan");bind("#f-age","age");bind("#f-city","city");bind("#f-period","period");bind("#f-muni","muni");bind("#f-fin","showFinished");
+  renderStuTable();
+}
+
+function filteredStudents(){
+  const f=stuFilter, q=f.q.trim();
+  return studentsOfYear().filter(s=>{
+    if(!f.showFinished && s.finished) return false;
+    if(q){ const hay=(s.firstName+" "+s.lastName+" "+s.tz).toLowerCase(); if(!hay.includes(q.toLowerCase())) return false; }
+    if(f.gan && s.ganId!==f.gan) return false;
+    if(f.age && String(s.age)!==String(f.age)) return false;
+    if(f.city && s.city!==f.city) return false;
+    if(f.period && s.period!==f.period) return false;
+    if(f.muni==='yes' && !s.absorbedMunicipality) return false;
+    if(f.muni==='no' && s.absorbedMunicipality) return false;
+    return true;
+  }).sort((a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he")|| (a.firstName||"").localeCompare(b.firstName||"","he"));
+}
+
+function docDots(s){
+  const d=s.docs;
+  const mk=(on,t)=>`<span class="doc-dot ${on?'on':'off'}" title="${t}">${on?'✓':'·'}</span>`;
+  return `<span class="dot-list">${mk(d.nispach,'נספח')}${mk(d.idCopy,'צילום ת"ז')}${mk(d.takanon,'תקנון')}</span>`;
+}
+function specialBadges(s){
+  const b=[]; const sp=s.special;
+  if(sp.divorced) b.push('<span class="pill warn">גרושים</span>');
+  if(sp.outOfCity) b.push('<span class="pill warn">ילדת חוץ</span>');
+  if(sp.retention) b.push('<span class="pill warn">השארות</span>');
+  return b.join(" ");
+}
+
+function renderStuTable(){
+  renderTabs();
+  const list = filteredStudents();
+  const host = $("#stuTable");
+  if(!list.length){ host.innerHTML = `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`; return; }
+  host.innerHTML = `<div class="table-wrap"><table><thead><tr>
+    <th>שם מלא</th><th>ת"ז</th><th>גן</th><th>גיל</th><th>עיר</th><th>מועד</th>
+    <th>מסמכים</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
+    ${list.map(s=>`<tr>
+      <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
+      <td>${esc(s.tz)||'—'}</td>
+      <td>${esc(ganName(s.ganId))}</td>
+      <td>${esc(s.age)||'—'}</td>
+      <td>${esc(s.city)||'—'}</td>
+      <td><span class="pill neutral">${esc(s.period)}</span></td>
+      <td>${docDots(s)}</td>
+      <td>${specialBadges(s)||'<span class="pill neutral">—</span>'}</td>
+      <td>${s.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
+      <td>${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
+      <td class="actions">
+        <button class="btn ghost sm" data-edit="${s.id}">פתח תיק</button>
+      </td></tr>`).join("")}
+  </tbody></table></div>
+  <div class="hint">מוצגות ${list.length} תלמידות ${stuFilter.showFinished?'(כולל שסיימו)':'(פעילות)'}.</div>`;
+  host.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=>{ const s=DB.students.find(x=>x.id===b.dataset.edit); openStudent(JSON.parse(JSON.stringify(s))); });
+}
+
+/* טופס תיק ילדה */
+function openStudent(s){
+  const isNew = !DB.students.some(x=>x.id===s.id);
+  const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+  const folderSuggest = suggestFolder(s);
+  modal(`
+  <h3>${isNew?'תיק ילדה חדש':'תיק ילדה'} · שנת ${esc(s.year)}</h3>
+  <fieldset><legend>פרטים אישיים</legend>
+    <div class="grid g3">
+      <div><label>שם פרטי</label><input id="s-firstName" value="${esc(s.firstName)}"></div>
+      <div><label>שם משפחה</label><input id="s-lastName" value="${esc(s.lastName)}"></div>
+      <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"></div>
+      <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(s.dob)}"></div>
+      <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
+      <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
+    </div>
+  </fieldset>
+  <fieldset><legend>כתובת</legend>
+    <div class="grid g3">
+      <div><label>רחוב</label><input id="s-street" value="${esc(s.street)}"></div>
+      <div><label>מספר בניין</label><input id="s-building" value="${esc(s.building)}"></div>
+      <div><label>עיר</label><input id="s-city" value="${esc(s.city)}"></div>
+    </div>
+  </fieldset>
+  <fieldset><legend>שיבוץ ורישום</legend>
+    <div class="grid g3">
+      <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
+      <div><label>גיל</label><select id="s-age"><option value="">—</option>${[2,3,4,5,6].map(a=>`<option ${String(s.age)==String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
+      <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
+    </div>
+    <div class="checks" style="margin-top:10px">
+      <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
+      <label class="check"><input type="checkbox" id="s-absorbedMunicipality" ${s.absorbedMunicipality?'checked':''}> קלוט בעירייה</label>
+    </div>
+  </fieldset>
+  <fieldset><legend>מסמכים</legend>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="d-nispach" ${s.docs.nispach?'checked':''}> נספח</label>
+      <label class="check"><input type="checkbox" id="d-idCopy" ${s.docs.idCopy?'checked':''}> צילום תעודת זהות</label>
+      <label class="check"><input type="checkbox" id="d-takanon" ${s.docs.takanon?'checked':''}> תקנון</label>
+    </div>
+  </fieldset>
+  <fieldset><legend>שונות</legend>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="sp-divorced" ${s.special.divorced?'checked':''}> הורים גרושים</label>
+      <label class="check"><input type="checkbox" id="sp-outOfCity" ${s.special.outOfCity?'checked':''}> ילדת חוץ (מחוץ לעיר)</label>
+      <label class="check"><input type="checkbox" id="sp-retention" ${s.special.retention?'checked':''}> ילדת השארות</label>
+    </div>
+    <div id="sp-extra" class="checks" style="margin-top:8px"></div>
+  </fieldset>
+  <fieldset><legend>תיקיית דרייב</legend>
+    <div class="grid g2">
+      <div><label>קישור לתיקיית התלמידה בדרייב</label><input id="s-driveFolder" value="${esc(s.driveFolder)}" placeholder="הדבק/י כאן קישור לתיקייה"></div>
+      <div><label>שם תיקייה מומלץ</label><input id="s-folderSuggest" value="${esc(folderSuggest)}" readonly>
+        <div class="hint">מבנה: שנה / שם משפחה שם · ת"ז · <button class="btn ghost sm" id="copyFolder" type="button">העתק שם</button></div></div>
+    </div>
+    <div class="note" style="margin-top:8px">פתיחת תיקייה אוטומטית בדרייב תתווסף בשלב חיבור חשבון Google. בינתיים — פותחים תיקייה ידנית עם השם המומלץ ומדביקים כאן קישור.</div>
+  </fieldset>
+  <fieldset><legend>הערות וסיום</legend>
+    <div><label>הערות</label><textarea id="s-notes" rows="2">${esc(s.notes)}</textarea></div>
+    <label class="check" style="margin-top:10px;background:var(--warn-soft);border-color:var(--warn)"><input type="checkbox" id="s-finished" ${s.finished?'checked':''}> ✔️ סיימה עם הגן (בסימון זה יוצאת מהרשימה)</label>
+  </fieldset>
+  <div class="foot">
+    <button class="btn" id="saveStu">💾 שמירה</button>
+    <button class="btn ghost" id="cancelStu">ביטול</button>
+    ${!isNew?'<button class="btn danger" id="delStu" style="margin-inline-start:auto">מחיקת תיק</button>':''}
+  </div>`);
+
+  function renderExtra(){
+    const div=$("#sp-extra"); const parts=[];
+    if($("#sp-divorced").checked){
+      parts.push(`<label class="check"><input type="checkbox" id="sp-approvalFather" ${s.special.approvalFather?'checked':''}> אישור מיוחד מהאב</label>`);
+      parts.push(`<label class="check"><input type="checkbox" id="sp-approvalMother" ${s.special.approvalMother?'checked':''}> אישור מיוחד מהאם</label>`);
+    }
+    if($("#sp-outOfCity").checked){
+      parts.push(`<label class="check"><input type="checkbox" id="sp-paymentArrangement" ${s.special.paymentArrangement?'checked':''}> הסדר תשלום מול הרשות</label>`);
+    }
+    if($("#sp-retention").checked){
+      parts.push(`<label class="check"><input type="checkbox" id="sp-retentionDoc" ${s.special.retentionDoc?'checked':''}> מסמך השארות קיים</label>`);
+    }
+    div.innerHTML = parts.join("");
+  }
+  ["sp-divorced","sp-outOfCity","sp-retention"].forEach(id=> $("#"+id).onchange=renderExtra);
+  renderExtra();
+
+  const refreshSuggest=()=>{ const tmp=collect(); $("#s-folderSuggest").value=suggestFolder(tmp); };
+  ["s-firstName","s-lastName","s-tz"].forEach(id=> $("#"+id).oninput=refreshSuggest);
+  $("#copyFolder").onclick=()=>{ navigator.clipboard?.writeText($("#s-folderSuggest").value).then(()=>toast("שם התיקייה הועתק"),()=>{}); };
+
+  function collect(){
+    const g=id=>$("#"+id), val=id=>g(id)?.value.trim()??"", chk=id=>!!g(id)?.checked;
+    return Object.assign({}, s, {
+      firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"), dob:val("s-dob"),
+      motherName:val("s-motherName"), fatherName:val("s-fatherName"),
+      street:val("s-street"), building:val("s-building"), city:val("s-city"),
+      ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"),
+      registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
+      finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
+      docs:{ nispach:chk("d-nispach"), idCopy:chk("d-idCopy"), takanon:chk("d-takanon") },
+      special:{ divorced:chk("sp-divorced"), approvalFather:chk("sp-approvalFather"), approvalMother:chk("sp-approvalMother"),
+                outOfCity:chk("sp-outOfCity"), paymentArrangement:chk("sp-paymentArrangement"),
+                retention:chk("sp-retention"), retentionDoc:chk("sp-retentionDoc") }
+    });
+  }
+
+  $("#saveStu").onclick=()=>{
+    const data=collect();
+    if(!data.firstName && !data.lastName){ toast("יש להזין לפחות שם"); return; }
+    const i=DB.students.findIndex(x=>x.id===s.id);
+    if(i>=0) DB.students[i]=data; else DB.students.push(data);
+    save(); closeModal(); route(); toast(isNew?"נוסף תיק ילדה":"התיק נשמר");
+  };
+  $("#cancelStu").onclick=closeModal;
+  if(!isNew) $("#delStu").onclick=()=>{ if(confirm("למחוק את תיק הילדה לצמיתות?")){ DB.students=DB.students.filter(x=>x.id!==s.id); save(); closeModal(); route(); toast("התיק נמחק"); } };
+}
+function suggestFolder(s){
+  const name=[s.lastName,s.firstName].filter(Boolean).join(" ")||"ללא שם";
+  return `${s.year} / ${name}${s.tz?(" · "+s.tz):""}`;
+}
+
+/* ============================================================
+   טאב גנים
+   ============================================================ */
+function viewGans(root){
+  root.innerHTML = `
+  <div class="panel">
+    <div class="section-title">
+      <div><h2>רשימת הגנים</h2><div class="sub">כל פרטי הגן, קיבולת, ומסמכים. גן שאינו פעיל אינו נספר במניין הגנים.</div></div>
+      <button class="btn" id="addGan">➕ הוספת גן</button>
+    </div>
+    <div id="ganTable"></div>
+  </div>`;
+  $("#addGan").onclick=()=>openGan(makeGan());
+  renderGanTable();
+}
+function renderGanTable(){
+  renderTabs();
+  const list = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+  const host=$("#ganTable");
+  if(!list.length){ host.innerHTML=`<div class="empty">אין גנים עדיין. לחצ/י "הוספת גן".</div>`; return; }
+  host.innerHTML=`<div class="table-wrap"><table><thead><tr>
+    <th>גננת</th><th>סמל פנימי</th><th>סמל גן</th><th>גיל</th><th>כתובת</th><th>אזור</th>
+    <th>טל' גן</th><th>נייד גננת</th><th>סייעת</th><th>קיבולת</th><th>רשומות</th><th>סטטוס</th><th></th></tr></thead><tbody>
+    ${list.map(g=>{
+      const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
+      return `<tr>
+        <td><b>${esc(g.teacherName)||'—'}</b></td>
+        <td>${esc(g.internalSymbol)||'—'}</td>
+        <td>${esc(g.ganSymbol)||'—'}</td>
+        <td>${esc(g.age)||'—'}</td>
+        <td>${esc(g.address)||'—'}</td>
+        <td>${esc(g.zone)||'—'}</td>
+        <td>${esc(g.phoneGan)||'—'}</td>
+        <td>${esc(g.teacherMobile)||'—'}</td>
+        <td>${esc(g.assistantName)||'—'}</td>
+        <td>${esc(g.capacity)||'—'}</td>
+        <td><span class="pill ${g.capacity&&reg>+g.capacity?'no':'ok'}">${reg}${g.capacity?(' / '+esc(g.capacity)):''}</span></td>
+        <td>${g.active?'<span class="pill ok">פעיל</span>':'<span class="pill neutral">כבוי</span>'}</td>
+        <td class="actions"><button class="btn ghost sm" data-editg="${g.id}">עריכה</button></td></tr>`;
+    }).join("")}
+  </tbody></table></div>
+  <div class="hint">${DB.gans.filter(g=>g.active).length} גנים פעילים מתוך ${DB.gans.length}.</div>`;
+  host.querySelectorAll("[data-editg]").forEach(b=> b.onclick=()=>{ const g=DB.gans.find(x=>x.id===b.dataset.editg); openGan(JSON.parse(JSON.stringify(g))); });
+}
+function openGan(g){
+  const isNew=!DB.gans.some(x=>x.id===g.id);
+  modal(`
+  <h3>${isNew?'גן חדש':'עריכת גן'}</h3>
+  <fieldset><legend>זיהוי הגן</legend>
+    <div class="grid g3">
+      <div><label>סמל פנימי</label><input id="g-internalSymbol" value="${esc(g.internalSymbol)}"></div>
+      <div><label>סמל הגן</label><input id="g-ganSymbol" value="${esc(g.ganSymbol)}"></div>
+      <div><label>גיל</label><select id="g-age"><option value="">—</option>${[2,3,4,5,6].map(a=>`<option ${String(g.age)==String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
+      <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
+      <div><label>שם הסייעת</label><input id="g-assistantName" value="${esc(g.assistantName)}"></div>
+      <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}"></div>
+    </div>
+  </fieldset>
+  <fieldset><legend>כתובת ואזור</legend>
+    <div class="grid g3">
+      <div><label>כתובת הגן</label><input id="g-address" value="${esc(g.address)}"></div>
+      <div><label>רחוב</label><input id="g-street" value="${esc(g.street)}"></div>
+      <div><label>אזור בעיר</label><input id="g-zone" value="${esc(g.zone)}" placeholder="לסינון לפי אזורים"></div>
+    </div>
+  </fieldset>
+  <fieldset><legend>טלפונים</legend>
+    <div class="grid g4">
+      <div><label>טלפון בגן</label><input id="g-phoneGan" value="${esc(g.phoneGan)}"></div>
+      <div><label>טלפון בבית</label><input id="g-phoneHome" value="${esc(g.phoneHome)}"></div>
+      <div><label>נייד גננת</label><input id="g-teacherMobile" value="${esc(g.teacherMobile)}"></div>
+      <div><label>נייד סייעת</label><input id="g-assistantMobile" value="${esc(g.assistantMobile)}"></div>
+    </div>
+  </fieldset>
+  <fieldset><legend>מסמכים והפעלה</legend>
+    <div><label>מסמכים הקשורים לגן (הערה/קישורים)</label><textarea id="g-docsNote" rows="2">${esc(g.docsNote)}</textarea></div>
+    <label class="check" style="margin-top:10px"><input type="checkbox" id="g-active" ${g.active?'checked':''}> גן פעיל (נספר במניין הגנים)</label>
+  </fieldset>
+  <div class="foot">
+    <button class="btn" id="saveGan">💾 שמירה</button>
+    <button class="btn ghost" id="cancelGan">ביטול</button>
+    ${!isNew?'<button class="btn danger" id="delGan" style="margin-inline-start:auto">מחיקה</button>':''}
+  </div>`);
+  $("#saveGan").onclick=()=>{
+    const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
+    const data=Object.assign({},g,{
+      internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),
+      teacherName:val("g-teacherName"),assistantName:val("g-assistantName"),capacity:val("g-capacity"),
+      address:val("g-address"),street:val("g-street"),zone:val("g-zone"),
+      phoneGan:val("g-phoneGan"),phoneHome:val("g-phoneHome"),teacherMobile:val("g-teacherMobile"),
+      assistantMobile:val("g-assistantMobile"),docsNote:val("g-docsNote"),active:chk("g-active")
+    });
+    if(!data.teacherName && !data.ganSymbol && !data.internalSymbol){ toast("יש להזין לפחות שם גננת או סמל"); return; }
+    const i=DB.gans.findIndex(x=>x.id===g.id); if(i>=0)DB.gans[i]=data; else DB.gans.push(data);
+    save(); closeModal(); route(); toast(isNew?"נוסף גן":"הגן נשמר");
+  };
+  $("#cancelGan").onclick=closeModal;
+  if(!isNew) $("#delGan").onclick=()=>{ if(confirm("למחוק את הגן?")){ DB.gans=DB.gans.filter(x=>x.id!==g.id); save(); closeModal(); route(); toast("הגן נמחק"); } };
+}
+
+/* ============================================================
+   טאב דוחות ואחוזים
+   ============================================================ */
+function viewReports(root){
+  const list = studentsOfYear().filter(s=>!s.finished);
+  const total = list.length;
+  const activeGans = DB.gans.filter(g=>g.active);
+  const target = DB.settings.gansTarget || activeGans.length || 1;
+  const avg = total / (target||1);
+  const absorbed = list.filter(s=>s.absorbedMunicipality).length;
+
+  const byPeriod = PERIODS.map(p=>({p, n: studentsOfYear().filter(s=>s.period===p && !s.finished).length}));
+
+  // פילוח לפי גן
+  const perGan = activeGans.map(g=>({g, n:list.filter(s=>s.ganId===g.id).length}))
+                 .sort((a,b)=>b.n-a.n);
+  const maxGan = Math.max(1,...perGan.map(x=>x.n));
+
+  root.innerHTML = `
+  <div class="panel">
+    <h2>סיכום שנת ${esc(DB.activeYear)}</h2>
+    <div class="sub">מתעדכן אוטומטית עם כל רישום.</div>
+    <div class="stats">
+      <div class="stat hero"><div class="k">סה"כ תלמידות רשומות</div><div class="v">${total}</div></div>
+      <div class="stat"><div class="k">ממוצע לגן</div><div class="v">${avg.toFixed(1)}<small> / ${target} גנים</small></div></div>
+      <div class="stat"><div class="k">גנים פעילים</div><div class="v">${activeGans.length}</div></div>
+      <div class="stat"><div class="k">קלוטות בעירייה</div><div class="v">${absorbed}<small> (${total?Math.round(absorbed/total*100):0}%)</small></div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>פילוח לפי מועד רישום</h2>
+    <div class="stats" style="margin-top:10px">
+      ${byPeriod.map(x=>`<div class="stat"><div class="k">מועד ${x.p}</div><div class="v">${x.n}</div></div>`).join("")}
+    </div>
+    <div class="hint">"סופי" = רישום שסומן כמועד הסופי. עד פתיחת השנה סופרים לפי א׳/ב׳/ג׳.</div>
+  </div>
+
+  <div class="panel">
+    <h2>התפלגות לפי גן · אחוז מכלל הרישום</h2>
+    <div class="sub">כמה תלמידות בכל גן וכמה זה באחוזים מתוך ${total} התלמידות.</div>
+    ${!perGan.length?'<div class="empty">אין גנים פעילים.</div>':
+    `<div class="table-wrap"><table><thead><tr><th>גן</th><th>תלמידות</th><th>אחוז</th><th style="width:36%">מד</th></tr></thead><tbody>
+      ${perGan.map(x=>{const pct=total?x.n/total*100:0;return `<tr>
+        <td><b>${esc(ganName(x.g.id))}</b></td><td>${x.n}</td><td>${pct.toFixed(1)}%</td>
+        <td><div class="bar"><i style="width:${x.n/maxGan*100}%"></i></div></td></tr>`;}).join("")}
+    </tbody></table></div>`}
+  </div>
+
+  <div class="panel">
+    <h2>בחירה לפי אזורים</h2>
+    <div class="sub">בחר/י אזורים/רחובות וקבל/י סיכום תלמידות עבורם.</div>
+    <div id="zonePick"></div>
+  </div>
+
+  <div class="panel">
+    <h2>מחשבון תחזית באחוזים</h2>
+    <div class="sub">משווה מועד א׳ של שנה קודמת לסופי שלה, ומחיל את היחס על מועד א׳ הנוכחי — הערכה לפתיחת השנה.</div>
+    <div id="projection"></div>
+  </div>`;
+
+  renderZonePick($("#zonePick"), list);
+  renderProjection($("#projection"));
+}
+
+function renderZonePick(host, list){
+  const zones=[...new Set(DB.gans.filter(g=>g.active&&g.zone).map(g=>g.zone))].sort((a,b)=>a.localeCompare(b,"he"));
+  if(!zones.length){ host.innerHTML=`<div class="note">כדי להשתמש באזורים — מלא/י שדה "אזור בעיר" בכרטיס הגן.</div>`; return; }
+  host.innerHTML=`<div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
+    ${zones.map(z=>`<label class="check"><input type="checkbox" class="zone-cb" value="${esc(z)}"> ${esc(z)}</label>`).join("")}
+  </div><div id="zoneResult" style="margin-top:12px"></div>`;
+  const recalc=()=>{
+    const sel=[...host.querySelectorAll(".zone-cb:checked")].map(c=>c.value);
+    const res=$("#zoneResult");
+    if(!sel.length){ res.innerHTML=`<div class="hint">בחר/י אזור אחד או יותר.</div>`; return; }
+    const gansIn=DB.gans.filter(g=>g.active&&sel.includes(g.zone));
+    const ids=new Set(gansIn.map(g=>g.id));
+    const n=list.filter(s=>ids.has(s.ganId)).length;
+    res.innerHTML=`<div class="stats"><div class="stat hero"><div class="k">תלמידות באזורים שנבחרו (${sel.map(esc).join(", ")})</div><div class="v">${n}<small> · ${gansIn.length} גנים</small></div></div></div>`;
+  };
+  host.querySelectorAll(".zone-cb").forEach(c=>c.onchange=recalc); recalc();
+}
+
+function renderProjection(host){
+  const prevYears=DB.years.filter(y=>y!==DB.activeYear);
+  const curA = studentsOfYear().filter(s=>s.period==='א' && !s.finished).length;
+  host.innerHTML=`
+    <div class="row">
+      <div class="field" style="min-width:180px"><label>שנת בסיס להשוואה</label>
+        <select id="pj-year">${prevYears.map(y=>`<option>${esc(y)}</option>`).join("")||'<option value="">— אין —</option>'}</select></div>
+      <div class="field" style="min-width:150px"><label>מועד א׳ (שנה קודמת)</label><input id="pj-prevA" inputmode="numeric" placeholder="מספר"></div>
+      <div class="field" style="min-width:150px"><label>סופי (שנה קודמת)</label><input id="pj-prevFinal" inputmode="numeric" placeholder="מספר"></div>
+      <div class="field" style="min-width:150px"><label>מועד א׳ (השנה)</label><input id="pj-curA" value="${curA}"></div>
+    </div>
+    <div class="hint">אם יש נתונים היסטוריים שמורים (טאב הגדרות) — הם ימולאו אוטומטית לפי בחירת השנה.</div>
+    <div id="pj-out" style="margin-top:12px"></div>`;
+  const fill=()=>{ const y=$("#pj-year").value; const h=DB.historical[y];
+    if(h){ if(h.periodA!=null)$("#pj-prevA").value=h.periodA; if(h.final!=null)$("#pj-prevFinal").value=h.final; } calc(); };
+  const calc=()=>{
+    const pa=+$("#pj-prevA").value, pf=+$("#pj-prevFinal").value, ca=+$("#pj-curA").value;
+    const out=$("#pj-out");
+    if(!(pa>0)||!(pf>0)||!(ca>=0)){ out.innerHTML=`<div class="hint">מלא/י את שלושת המספרים לקבלת תחזית.</div>`; return; }
+    const ratio=pf/pa, proj=Math.round(ca*ratio), growth=Math.round((ratio-1)*100);
+    out.innerHTML=`<div class="stats">
+      <div class="stat"><div class="k">יחס גדילה (שנה קודמת)</div><div class="v">×${ratio.toFixed(2)}<small> (${growth>=0?'+':''}${growth}%)</small></div></div>
+      <div class="stat hero"><div class="k">תחזית סופי להשנה</div><div class="v">${proj}<small> תלמידות (הערכה)</small></div></div>
+      <div class="stat"><div class="k">מבוסס על מועד א׳ נוכחי</div><div class="v">${ca}</div></div>
+    </div><div class="hint">תחזית בהשערה בלבד, לפי מגמת השנה שנבחרה.</div>`;
+  };
+  $("#pj-year").onchange=fill; ["pj-prevA","pj-prevFinal","pj-curA"].forEach(id=>$("#"+id).oninput=calc); fill();
+}
+
+/* ============================================================
+   טאב עירייה — התאמה לפי ת"ז
+   ============================================================ */
+function viewMunicipality(root){
+  const stored = DB.municipality[DB.activeYear]||[];
+  root.innerHTML=`
+  <div class="panel">
+    <h2>רשימת העירייה · שנת ${esc(DB.activeYear)}</h2>
+    <div class="sub">הדבק/י או העלה/י את רשימת תעודות הזהות שקיבלת מהעירייה. המערכת תבצע התאמה (VLOOKUP) לפי ת"ז ותסמן כל תלמידה כ"קלוט בעירייה".</div>
+    <div class="grid g2">
+      <div>
+        <label>הדבקת ת"ז (שורה לכל אחת, או מופרד בפסיקים)</label>
+        <textarea id="muni-text" rows="8" placeholder="123456789&#10;987654321&#10;…">${stored.join("\n")}</textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn" id="muni-run">🔗 בצע התאמה וסמן</button>
+          <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="muni-file" accept=".csv,.txt" hidden></label>
+        </div>
+      </div>
+      <div id="muni-result"><div class="hint">התוצאה תופיע כאן לאחר ההתאמה.</div></div>
+    </div>
+  </div>`;
+  $("#muni-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ const nums=(r.result.match(/\d{5,}/g)||[]); $("#muni-text").value=[...new Set(nums)].join("\n"); toast(nums.length+" מספרים נטענו מהקובץ"); }; r.readAsText(f,"utf-8"); };
+  $("#muni-run").onclick=()=>{
+    const nums=[...new Set(($("#muni-text").value.match(/\d{5,}/g)||[]))];
+    DB.municipality[DB.activeYear]=nums;
+    const set=new Set(nums);
+    let matched=0, already=0;
+    const rows=studentsOfYear();
+    rows.forEach(s=>{ if(s.tz && set.has(digits(s.tz))){ if(!s.absorbedMunicipality)matched++; else already++; s.absorbedMunicipality=true; } });
+    save();
+    const inSystem=new Set(rows.map(s=>digits(s.tz)).filter(Boolean));
+    const notFound=nums.filter(n=>!inSystem.has(n));
+    $("#muni-result").innerHTML=`
+      <div class="stats">
+        <div class="stat hero"><div class="k">סומנו כקלוטות עכשיו</div><div class="v">${matched}</div></div>
+        <div class="stat"><div class="k">כבר היו מסומנות</div><div class="v">${already}</div></div>
+        <div class="stat"><div class="k">ברשימת העירייה</div><div class="v">${nums.length}</div></div>
+        <div class="stat"><div class="k">בעירייה ולא במערכת</div><div class="v">${notFound.length}</div></div>
+      </div>
+      ${notFound.length?`<div class="note" style="margin-top:10px">${notFound.length} ת"ז מופיעות ברשימת העירייה אך אינן במערכת (ייתכן שטרם נרשמו אצלנו):<br>${notFound.slice(0,40).map(esc).join(", ")}${notFound.length>40?' …':''}</div>`:''}`;
+    toast("ההתאמה בוצעה");
+  };
+}
+
+/* ============================================================
+   טאב ייצוא
+   ============================================================ */
+function viewExport(root){
+  const gans=DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+  root.innerHTML=`
+  <div class="panel">
+    <h2>ייצוא רשימות</h2>
+    <div class="sub">בחר/י סינון, וייצא/י לאקסל (CSV שנפתח באקסל עם עברית תקינה) או ל-PDF (הדפסה → שמירה כ-PDF).</div>
+    <div class="toolbar">
+      <div class="field"><label>גן</label><select id="x-gan"><option value="">כל הגנים</option>${gans.map(g=>`<option value="${g.id}">${esc(ganName(g.id))}</option>`).join("")}</select></div>
+      <div class="field"><label>גיל</label><select id="x-age"><option value="">הכל</option>${[2,3,4,5,6].map(a=>`<option>${a}</option>`).join("")}</select></div>
+      <div class="field"><label>מועד</label><select id="x-period"><option value="">הכל</option>${PERIODS.map(p=>`<option>${p}</option>`).join("")}</select></div>
+      <div class="field"><label>קלוט בעירייה</label><select id="x-muni"><option value="">הכל</option><option value="yes">רק קלוטות</option><option value="no">רק לא קלוטות</option></select></div>
+      <div class="field"><label>כולל שסיימו</label><select id="x-fin"><option value="no">לא</option><option value="yes">כן</option></select></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="x-preview">🔎 תצוגה מקדימה</button>
+      <button class="btn ghost" id="x-csv">⬇️ ייצוא לאקסל (CSV)</button>
+      <button class="btn ghost" id="x-pdf">🖨️ ייצוא ל-PDF / הדפסה</button>
+    </div>
+    <div id="x-out" style="margin-top:14px"></div>
+  </div>`;
+  const gather=()=>{
+    const gv=$("#x-gan").value, av=$("#x-age").value, pv=$("#x-period").value, mv=$("#x-muni").value, fv=$("#x-fin").value;
+    return studentsOfYear().filter(s=>{
+      if(fv!=='yes' && s.finished) return false;
+      if(gv && s.ganId!==gv) return false;
+      if(av && String(s.age)!==av) return false;
+      if(pv && s.period!==pv) return false;
+      if(mv==='yes' && !s.absorbedMunicipality) return false;
+      if(mv==='no' && s.absorbedMunicipality) return false;
+      return true;
+    }).sort((a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he"));
+  };
+  const COLS=[
+    ["שם משפחה",s=>s.lastName],["שם פרטי",s=>s.firstName],['ת"ז',s=>s.tz],["תאריך לידה",s=>s.dob],
+    ["שם האם",s=>s.motherName],["שם האב",s=>s.fatherName],["רחוב",s=>s.street],["בניין",s=>s.building],["עיר",s=>s.city],
+    ["גן",s=>ganName(s.ganId)],["גיל",s=>s.age],["מועד",s=>s.period],
+    ["נספח",s=>s.docs.nispach?"✓":""],['צילום ת"ז',s=>s.docs.idCopy?"✓":""],["תקנון",s=>s.docs.takanon?"✓":""],
+    ["נרשמה על ידינו",s=>s.registeredByUs?"כן":"לא"],["קלוט בעירייה",s=>s.absorbedMunicipality?"כן":"לא"],
+    ["גרושים",s=>s.special.divorced?"✓":""],["ילדת חוץ",s=>s.special.outOfCity?"✓":""],["השארות",s=>s.special.retention?"✓":""]
+  ];
+  const preview=()=>{
+    const rows=gather();
+    const out=$("#x-out");
+    if(!rows.length){ out.innerHTML=`<div class="empty">אין תלמידות התואמות לסינון.</div>`; return rows; }
+    out.innerHTML=`<div class="table-wrap"><table><thead><tr>${COLS.map(c=>`<th>${esc(c[0])}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map(s=>`<tr>${COLS.map(c=>`<td>${esc(c[1](s)??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      <div class="hint">${rows.length} שורות.</div>`;
+    return rows;
+  };
+  $("#x-preview").onclick=preview;
+  $("#x-csv").onclick=()=>{
+    const rows=gather(); if(!rows.length){ toast("אין נתונים לייצוא"); return; }
+    const csv=[COLS.map(c=>c[0]).join(",")].concat(rows.map(s=>COLS.map(c=>csvCell(c[1](s))).join(","))).join("\r\n");
+    const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"});
+    downloadBlob(blob, `תלמידות_${DB.activeYear}.csv`); toast("קובץ אקסל נוצר");
+  };
+  $("#x-pdf").onclick=()=>{ const rows=preview(); if(!rows.length){ toast("אין נתונים"); return; } setTimeout(()=>window.print(),120); };
+  preview();
+}
+function csvCell(v){ v=String(v??""); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function downloadBlob(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); }
+
+/* ============================================================
+   טאב הנהלה
+   ============================================================ */
+function viewManagement(root){
+  root.innerHTML=`
+  <div class="panel">
+    <div class="section-title">
+      <div><h2>טלפוני ההנהלה הראשית</h2><div class="sub">אנשי קשר לפי אגפים. ניתן לעדכן בהמשך.</div></div>
+      <button class="btn" id="addM">➕ הוספת איש קשר</button>
+    </div>
+    <div id="mTable"></div>
+  </div>`;
+  $("#addM").onclick=()=>openMgmt({id:uid(),dept:"",name:"",role:"",phone:""});
+  renderMgmt();
+}
+function renderMgmt(){
+  const host=$("#mTable");
+  if(!DB.management.length){ host.innerHTML=`<div class="empty">אין אנשי קשר עדיין.</div>`; return; }
+  const byDept={}; DB.management.forEach(m=>{(byDept[m.dept||"כללי"]=byDept[m.dept||"כללי"]||[]).push(m);});
+  host.innerHTML=Object.keys(byDept).sort((a,b)=>a.localeCompare(b,"he")).map(d=>`
+    <h3 style="margin:14px 0 8px;color:var(--accent-strong)">${esc(d)}</h3>
+    <div class="table-wrap"><table><thead><tr><th>שם</th><th>תפקיד</th><th>טלפון</th><th></th></tr></thead><tbody>
+      ${byDept[d].map(m=>`<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.role)||'—'}</td>
+        <td>${m.phone?`<a href="tel:${esc(m.phone)}">${esc(m.phone)}</a>`:'—'}</td>
+        <td class="actions"><button class="btn ghost sm" data-em="${m.id}">עריכה</button></td></tr>`).join("")}
+    </tbody></table></div>`).join("");
+  host.querySelectorAll("[data-em]").forEach(b=>b.onclick=()=>openMgmt(JSON.parse(JSON.stringify(DB.management.find(x=>x.id===b.dataset.em)))));
+}
+function openMgmt(m){
+  const isNew=!DB.management.some(x=>x.id===m.id);
+  modal(`<h3>${isNew?'איש קשר חדש':'עריכת איש קשר'}</h3>
+    <div class="grid g2">
+      <div><label>אגף / מחלקה</label><input id="m-dept" value="${esc(m.dept)}" placeholder="לדוגמה: רישום, כספים, פיקוח"></div>
+      <div><label>שם</label><input id="m-name" value="${esc(m.name)}"></div>
+      <div><label>תפקיד</label><input id="m-role" value="${esc(m.role)}"></div>
+      <div><label>טלפון</label><input id="m-phone" value="${esc(m.phone)}" inputmode="tel"></div>
+    </div>
+    <div class="foot"><button class="btn" id="saveM">💾 שמירה</button><button class="btn ghost" id="cancelM">ביטול</button>
+      ${!isNew?'<button class="btn danger" id="delM" style="margin-inline-start:auto">מחיקה</button>':''}</div>`);
+  $("#saveM").onclick=()=>{ const val=id=>$("#"+id).value.trim();
+    const data={id:m.id,dept:val("m-dept"),name:val("m-name"),role:val("m-role"),phone:val("m-phone")};
+    if(!data.name){ toast("יש להזין שם"); return; }
+    const i=DB.management.findIndex(x=>x.id===m.id); if(i>=0)DB.management[i]=data; else DB.management.push(data);
+    save(); closeModal(); route(); toast("נשמר"); };
+  $("#cancelM").onclick=closeModal;
+  if(!isNew)$("#delM").onclick=()=>{ if(confirm("למחוק?")){ DB.management=DB.management.filter(x=>x.id!==m.id); save(); closeModal(); route(); } };
+}
+
+/* ============================================================
+   טאב הגדרות — שנים, מעבר גיל, נתונים היסטוריים, מספר גנים, גיבוי
+   ============================================================ */
+function viewSettings(root){
+  root.innerHTML=`
+  <div class="panel">
+    <h2>שנים</h2>
+    <div class="sub">כל שנה מנוהלת בנפרד (תשפ"ז, תשפ"ח, וכו'). הבחירה בראש המסך קובעת על איזו שנה עובדים.</div>
+    <div id="years-box"></div>
+    <div class="row" style="margin-top:10px">
+      <div class="field" style="min-width:160px"><label>הוספת שנה</label><input id="new-year" placeholder='לדוגמה: תשפ"ט'></div>
+      <button class="btn" id="addYear" style="align-self:end">הוסף שנה</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>מעבר שנה — קידום גיל</h2>
+    <div class="sub">בתחילת שנה חדשה: מעתיקים את התלמידות משנה קודמת, מקדמים גיל (3→4), ומאפסים מסמכים — כך שכל המסמכים עולים מחדש. אפשר לבחור מאיזו שנה ולאיזו.</div>
+    <div class="row">
+      <div class="field" style="min-width:150px"><label>משנה</label><select id="pr-from">${DB.years.map(y=>`<option>${esc(y)}</option>`).join("")}</select></div>
+      <div class="field" style="min-width:150px"><label>לשנה</label><select id="pr-to">${DB.years.map(y=>`<option ${y===DB.activeYear?'selected':''}>${esc(y)}</option>`).join("")}</select></div>
+      <label class="check" style="align-self:end"><input type="checkbox" id="pr-age" checked> קדם גיל ב-1</label>
+      <button class="btn" id="doPromote" style="align-self:end">בצע קידום</button>
+    </div>
+    <div class="note" style="margin-top:8px">התלמידות המקודמות ייכנסו לשנת היעד עם מסמכים לא מסומנים (עולים מחדש). ניתן אח"כ רק לבחור שנה ולבדוק אם בוצע רישום.</div>
+  </div>
+
+  <div class="panel">
+    <h2>נתונים היסטוריים (שנים קודמות)</h2>
+    <div class="sub">הזנת הסיכומים הסופיים של שנים קודמות — לפני שהתוכנה עבדה. משמשים למחשבון האחוזים. משנת ההפעלה ואילך הכל מסונכרן אוטומטית.</div>
+    <div id="hist-box"></div>
+  </div>
+
+  <div class="panel">
+    <h2>יעד מספר גנים</h2>
+    <div class="sub">משמש לחישוב הממוצע לגן בדשבורד. לדוגמה מתלבטים להוריד מ-29 ל-28.</div>
+    <div class="row">
+      <div class="field" style="min-width:150px"><label>מספר גנים ליעד</label><input id="gt" inputmode="numeric" value="${esc(DB.settings.gansTarget)}"></div>
+      <button class="btn" id="saveGT" style="align-self:end">שמור</button>
+      <div class="hint" style="align-self:end">גנים פעילים כרגע במערכת: ${DB.gans.filter(g=>g.active).length}</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>גיבוי ושחזור</h2>
+    <div class="sub">הנתונים נשמרים במכשיר זה בלבד. מומלץ לייצא גיבוי מדי פעם.</div>
+    <div class="row">
+      <button class="btn ghost" id="exportAll">⬇️ ייצוא גיבוי (JSON)</button>
+      <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">⬆️ שחזור מגיבוי<input type="file" id="importAll" accept=".json" hidden></label>
+    </div>
+  </div>`;
+
+  // years
+  const yb=$("#years-box");
+  yb.innerHTML=`<div class="row" style="gap:8px">${DB.years.map(y=>`<span class="pill ${y===DB.activeYear?'ok':'neutral'}" style="padding:6px 12px">${esc(y)} ${DB.years.length>1?`<button class="btn ghost sm" data-dely="${esc(y)}" style="padding:0 6px;margin-inline-start:6px">✕</button>`:''}</span>`).join("")}</div>`;
+  yb.querySelectorAll("[data-dely]").forEach(b=>b.onclick=()=>{ const y=b.dataset.dely;
+    if(studentsOfYear(y).length && !confirm(`בשנת ${y} יש תלמידות. למחוק את השנה ואת התלמידות שבה?`)) return;
+    DB.years=DB.years.filter(x=>x!==y); DB.students=DB.students.filter(s=>s.year!==y);
+    if(DB.activeYear===y)DB.activeYear=DB.years[0]; save(); route(); });
+  $("#addYear").onclick=()=>{ const y=$("#new-year").value.trim(); if(!y)return; if(DB.years.includes(y)){toast("שנה קיימת");return;} DB.years.push(y); save(); route(); toast("נוספה שנה"); };
+
+  $("#doPromote").onclick=()=>{
+    const from=$("#pr-from").value, to=$("#pr-to").value, bump=$("#pr-age").checked;
+    if(from===to){ toast("בחר/י שנת מקור ושנת יעד שונות"); return; }
+    const src=DB.students.filter(s=>s.year===from);
+    if(!src.length){ toast("אין תלמידות בשנת המקור"); return; }
+    const existing=new Set(DB.students.filter(s=>s.year===to).map(s=>digits(s.tz)).filter(Boolean));
+    let added=0;
+    src.forEach(s=>{ if(s.tz && existing.has(digits(s.tz))) return; // כבר קיימת ביעד
+      const n=JSON.parse(JSON.stringify(s));
+      n.id=uid(); n.year=to; n.finished=false; n.period="א"; n.absorbedMunicipality=false;
+      if(bump && s.age) n.age=String(+s.age+1);
+      n.docs={nispach:false,idCopy:false,takanon:false};
+      n.special.approvalFather=n.special.approvalMother=n.special.paymentArrangement=n.special.retentionDoc=false;
+      n.driveFolder=""; n.createdAt=new Date().toISOString();
+      DB.students.push(n); added++; });
+    save(); route(); toast(`קודמו ${added} תלמידות לשנת ${to}`);
+  };
+
+  // historical
+  const hb=$("#hist-box");
+  const drawHist=()=>{
+    hb.innerHTML=`<div class="table-wrap"><table><thead><tr><th>שנה</th><th>מועד א׳</th><th>מועד ב׳</th><th>מועד ג׳</th><th>סופי</th><th></th></tr></thead><tbody>
+      ${DB.years.map(y=>{const h=DB.historical[y]||{};return `<tr>
+        <td><b>${esc(y)}</b></td>
+        <td><input data-h="${esc(y)}|periodA" value="${esc(h.periodA??"")}" style="width:80px"></td>
+        <td><input data-h="${esc(y)}|periodB" value="${esc(h.periodB??"")}" style="width:80px"></td>
+        <td><input data-h="${esc(y)}|periodC" value="${esc(h.periodC??"")}" style="width:80px"></td>
+        <td><input data-h="${esc(y)}|final" value="${esc(h.final??"")}" style="width:80px"></td>
+        <td class="actions"><button class="btn ghost sm" data-livey="${esc(y)}">מלא מנתוני המערכת</button></td></tr>`;}).join("")}
+    </tbody></table></div><div class="hint">ערכים ריקים לא נשמרים. "מלא מנתוני המערכת" ממלא לפי הרישום בפועל של אותה שנה.</div>`;
+    hb.querySelectorAll("input[data-h]").forEach(inp=> inp.onchange=()=>{
+      const [y,k]=inp.dataset.h.split("|"); DB.historical[y]=DB.historical[y]||{};
+      const v=inp.value.trim(); if(v==="") delete DB.historical[y][k]; else DB.historical[y][k]=+v; save(); });
+    hb.querySelectorAll("[data-livey]").forEach(b=>b.onclick=()=>{ const y=b.dataset.livey;
+      const ys=DB.students.filter(s=>s.year===y);
+      DB.historical[y]={ periodA:ys.filter(s=>s.period==='א').length, periodB:ys.filter(s=>s.period==='ב').length,
+        periodC:ys.filter(s=>s.period==='ג').length, final:ys.filter(s=>!s.finished).length };
+      save(); drawHist(); toast("מולא מנתוני המערכת"); });
+  };
+  drawHist();
+
+  $("#saveGT").onclick=()=>{ const v=+$("#gt").value; if(v>0){DB.settings.gansTarget=v;save();toast("נשמר");} };
+
+  $("#exportAll").onclick=()=>{ downloadBlob(new Blob([JSON.stringify(DB,null,2)],{type:"application/json"}), `גיבוי-רישום-${new Date().toISOString().slice(0,10)}.json`); };
+  $("#importAll").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader();
+    r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.students){throw 0;} if(confirm("שחזור יחליף את כל הנתונים הקיימים. להמשיך?")){ DB=Object.assign(blankDB(),d); save(); route(); toast("שוחזר בהצלחה"); } }catch(_){ toast("קובץ לא תקין"); } };
+    r.readAsText(f,"utf-8"); };
+}
+
+/* ============================================================
+   מודל / כללי
+   ============================================================ */
+function modal(html){ $("#modal").innerHTML=html; $("#overlay").classList.add("show"); document.body.style.overflow="hidden"; }
+function closeModal(){ $("#overlay").classList.remove("show"); document.body.style.overflow=""; }
+$("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeModal(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+
+$("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ active=b.dataset.tab; route(); window.scrollTo(0,0); } });
+$("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; save(); route(); });
+
+/* theme */
+(function(){ const KEY="rg-theme"; const saved=localStorage.getItem(KEY); if(saved)document.documentElement.dataset.theme=saved;
+  $("#themeBtn").onclick=()=>{ const cur=document.documentElement.dataset.theme|| (matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+    const next=cur==="dark"?"light":"dark"; document.documentElement.dataset.theme=next; localStorage.setItem(KEY,next); }; })();
+
+/* seed לדוגמה בפעם הראשונה (רק אם ריק לגמרי) */
+if(!DB.gans.length && !DB.students.length){
+  const g1=makeGan(); Object.assign(g1,{teacherName:"הגננת מרים",ganSymbol:"101",internalSymbol:"A1",age:"3",address:"רחוב הרב קוק 12",street:"הרב קוק",zone:"מרכז",capacity:"35",phoneGan:"03-0000000"});
+  const g2=makeGan(); Object.assign(g2,{teacherName:"הגננת שרה",ganSymbol:"102",internalSymbol:"A2",age:"4",address:"רחוב הנביאים 5",street:"הנביאים",zone:"צפון",capacity:"35"});
+  DB.gans.push(g1,g2); save();
+}
+
+route();
+</script>
