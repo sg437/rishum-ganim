@@ -124,7 +124,6 @@ legend{font-weight:800;color:var(--accent-strong);padding:0 6px;font-size:.9rem}
 }
 </style>
 
-
 <header class="top">
   <div class="top-inner">
     <div class="brand"><span class="logo">🎒</span> מערכת רישום וקליטת תלמידות</div>
@@ -150,6 +149,7 @@ legend{font-weight:800;color:var(--accent-strong);padding:0 6px;font-size:.9rem}
 
 const LS_KEY = "rishum-ganim-db-v1";
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
+const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
 
 /* ---------- מודל נתונים ---------- */
@@ -182,12 +182,14 @@ function ganById(id){ return DB.gans.find(g=>g.id===id); }
 function ganName(id){ const g=ganById(id); return g? (g.teacherName? g.teacherName : ("גן "+ (g.ganSymbol||g.internalSymbol||""))) : "—"; }
 function studentsOfYear(y=DB.activeYear){ return DB.students.filter(s=>s.year===y); }
 function digits(s){ return String(s||"").replace(/\D/g,""); }
+function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // ברירת מחדל: חינוך רגיל
+function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
 
 /* ---------- תבניות רשומות ---------- */
 function makeStudent(){ return {
   id:uid(), year:DB.activeYear, tz:"", firstName:"", lastName:"", dob:"",
   motherName:"", fatherName:"", street:"", building:"", city:"",
-  ganId:"", age:"", period:"א",
+  ganId:"", age:"", period:"א", education:"רגיל",
   registeredByUs:true, absorbedMunicipality:false, finished:false,
   docs:{ nispach:false, idCopy:false, takanon:false },
   special:{ divorced:false, approvalFather:false, approvalMother:false,
@@ -196,7 +198,7 @@ function makeStudent(){ return {
   driveFolder:"", notes:"", createdAt:new Date().toISOString()
 };}
 function makeGan(){ return {
-  id:uid(), internalSymbol:"", ganSymbol:"", teacherName:"", age:"",
+  id:uid(), internalSymbol:"", ganSymbol:"", teacherName:"", age:"", education:"רגיל",
   address:"", street:"", zone:"", phoneGan:"", phoneHome:"",
   teacherMobile:"", assistantName:"", assistantMobile:"",
   capacity:"", active:true, docsNote:"", createdAt:new Date().toISOString()
@@ -237,7 +239,7 @@ function route(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gan:"", age:"", city:"", period:"", muni:"", showFinished:false };
+let stuFilter = { q:"", gan:"", age:"", city:"", period:"", edu:"", muni:"", showFinished:false };
 
 function viewStudents(root){
   const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
@@ -255,6 +257,7 @@ function viewStudents(root){
       <div class="field"><label>גיל</label><select id="f-age"><option value="">הכל</option>${[2,3,4,5,6].map(a=>`<option ${stuFilter.age==a?'selected':''}>${a}</option>`).join("")}</select></div>
       <div class="field"><label>עיר</label><select id="f-city"><option value="">הכל</option>${cities.map(c=>`<option ${stuFilter.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
       <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
+      <div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
       <div class="field"><label class="check" style="margin-top:18px"><input type="checkbox" id="f-fin" ${stuFilter.showFinished?'checked':''}> הצג שסיימו</label></div>
     </div>
@@ -263,7 +266,7 @@ function viewStudents(root){
 
   $("#addStu").onclick = ()=> openStudent(makeStudent());
   const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ stuFilter[key]= e.type==='checkbox'?e.checked:e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-gan","gan");bind("#f-age","age");bind("#f-city","city");bind("#f-period","period");bind("#f-muni","muni");bind("#f-fin","showFinished");
+  bind("#f-q","q");bind("#f-gan","gan");bind("#f-age","age");bind("#f-city","city");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-fin","showFinished");
   renderStuTable();
 }
 
@@ -276,6 +279,7 @@ function filteredStudents(){
     if(f.age && String(s.age)!==String(f.age)) return false;
     if(f.city && s.city!==f.city) return false;
     if(f.period && s.period!==f.period) return false;
+    if(f.edu && eduLabel(s)!==f.edu) return false;
     if(f.muni==='yes' && !s.absorbedMunicipality) return false;
     if(f.muni==='no' && s.absorbedMunicipality) return false;
     return true;
@@ -301,7 +305,7 @@ function renderStuTable(){
   const host = $("#stuTable");
   if(!list.length){ host.innerHTML = `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`; return; }
   host.innerHTML = `<div class="table-wrap"><table><thead><tr>
-    <th>שם מלא</th><th>ת"ז</th><th>גן</th><th>גיל</th><th>עיר</th><th>מועד</th>
+    <th>שם מלא</th><th>ת"ז</th><th>גן</th><th>גיל</th><th>עיר</th><th>מועד</th><th>חינוך</th>
     <th>מסמכים</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
     ${list.map(s=>`<tr>
       <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
@@ -310,6 +314,7 @@ function renderStuTable(){
       <td>${esc(s.age)||'—'}</td>
       <td>${esc(s.city)||'—'}</td>
       <td><span class="pill neutral">${esc(s.period)}</span></td>
+      <td>${eduBadge(s)}</td>
       <td>${docDots(s)}</td>
       <td>${specialBadges(s)||'<span class="pill neutral">—</span>'}</td>
       <td>${s.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
@@ -351,6 +356,7 @@ function openStudent(s){
       <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
       <div><label>גיל</label><select id="s-age"><option value="">—</option>${[2,3,4,5,6].map(a=>`<option ${String(s.age)==String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
+      <div><label>חינוך</label><select id="s-education">${EDU_TYPES.map(t=>`<option ${eduLabel(s)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
     </div>
     <div class="checks" style="margin-top:10px">
       <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
@@ -417,7 +423,7 @@ function openStudent(s){
       firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"), dob:val("s-dob"),
       motherName:val("s-motherName"), fatherName:val("s-fatherName"),
       street:val("s-street"), building:val("s-building"), city:val("s-city"),
-      ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"),
+      ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
       docs:{ nispach:chk("d-nispach"), idCopy:chk("d-idCopy"), takanon:chk("d-takanon") },
@@ -463,7 +469,7 @@ function renderGanTable(){
   const host=$("#ganTable");
   if(!list.length){ host.innerHTML=`<div class="empty">אין גנים עדיין. לחצ/י "הוספת גן".</div>`; return; }
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
-    <th>גננת</th><th>סמל פנימי</th><th>סמל גן</th><th>גיל</th><th>כתובת</th><th>אזור</th>
+    <th>גננת</th><th>סמל פנימי</th><th>סמל גן</th><th>גיל</th><th>חינוך</th><th>כתובת</th><th>אזור</th>
     <th>טל' גן</th><th>נייד גננת</th><th>סייעת</th><th>קיבולת</th><th>רשומות</th><th>סטטוס</th><th></th></tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
@@ -472,6 +478,7 @@ function renderGanTable(){
         <td>${esc(g.internalSymbol)||'—'}</td>
         <td>${esc(g.ganSymbol)||'—'}</td>
         <td>${esc(g.age)||'—'}</td>
+        <td>${eduBadge(g)}</td>
         <td>${esc(g.address)||'—'}</td>
         <td>${esc(g.zone)||'—'}</td>
         <td>${esc(g.phoneGan)||'—'}</td>
@@ -495,6 +502,7 @@ function openGan(g){
       <div><label>סמל פנימי</label><input id="g-internalSymbol" value="${esc(g.internalSymbol)}"></div>
       <div><label>סמל הגן</label><input id="g-ganSymbol" value="${esc(g.ganSymbol)}"></div>
       <div><label>גיל</label><select id="g-age"><option value="">—</option>${[2,3,4,5,6].map(a=>`<option ${String(g.age)==String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
+      <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
       <div><label>שם הסייעת</label><input id="g-assistantName" value="${esc(g.assistantName)}"></div>
       <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}"></div>
@@ -527,7 +535,7 @@ function openGan(g){
   $("#saveGan").onclick=()=>{
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{
-      internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),
+      internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),education:val("g-education"),
       teacherName:val("g-teacherName"),assistantName:val("g-assistantName"),capacity:val("g-capacity"),
       address:val("g-address"),street:val("g-street"),zone:val("g-zone"),
       phoneGan:val("g-phoneGan"),phoneHome:val("g-phoneHome"),teacherMobile:val("g-teacherMobile"),
@@ -735,7 +743,7 @@ function viewExport(root){
   const COLS=[
     ["שם משפחה",s=>s.lastName],["שם פרטי",s=>s.firstName],['ת"ז',s=>s.tz],["תאריך לידה",s=>s.dob],
     ["שם האם",s=>s.motherName],["שם האב",s=>s.fatherName],["רחוב",s=>s.street],["בניין",s=>s.building],["עיר",s=>s.city],
-    ["גן",s=>ganName(s.ganId)],["גיל",s=>s.age],["מועד",s=>s.period],
+    ["גן",s=>ganName(s.ganId)],["גיל",s=>s.age],["מועד",s=>s.period],["חינוך",s=>eduLabel(s)],
     ["נספח",s=>s.docs.nispach?"✓":""],['צילום ת"ז',s=>s.docs.idCopy?"✓":""],["תקנון",s=>s.docs.takanon?"✓":""],
     ["נרשמה על ידינו",s=>s.registeredByUs?"כן":"לא"],["קלוט בעירייה",s=>s.absorbedMunicipality?"כן":"לא"],
     ["גרושים",s=>s.special.divorced?"✓":""],["ילדת חוץ",s=>s.special.outOfCity?"✓":""],["השארות",s=>s.special.retention?"✓":""]
