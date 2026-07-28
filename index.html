@@ -152,14 +152,28 @@ body.locked nav.tabs,body.locked .year-pick,body.locked #themeBtn,body.locked #l
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
 <div class="toast" id="toast"></div>
 
-<script>
-"use strict";
+<script type="module">
 /* ============================================================
-   מערכת רישום וקליטת תלמידות  —  אפליקציה עצמאית (client-side)
-   כל הנתונים נשמרים במכשיר (localStorage). מוכן לחיבור דרייב בהמשך.
+   מערכת רישום וקליטת תלמידות — גרסה מתארחת (Firebase)
+   נתונים בענן (Firestore) + התחברות (Firebase Auth) → סנכרון בין מכשירים.
    ============================================================ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+         doc, setDoc, deleteDoc, onSnapshot, collection }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-const LS_KEY = "rishum-ganim-db-v1";
+/* ===== הגדרות Firebase — הדבק/י כאן את 6 המפתחות מהפרויקט שלך (ראה SETUP.md) ===== */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.firebasestorage.app",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
@@ -179,12 +193,51 @@ function blankDB(){
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
-let DB = load();
-function load(){
-  try{ const v=localStorage.getItem(LS_KEY); if(v){ return Object.assign(blankDB(), JSON.parse(v)); } }catch(e){}
-  return blankDB();
+let app=null, auth=null, db=null, currentUser=null;
+let DB = blankDB();
+let dataUnsub=null;
+const knownStudentDocs = new Set(); // מזהי מסמכי students_<שנה> הקיימים בענן
+function safeYearId(y){ return "students_"+String(y).replace(/[^0-9A-Za-z֐-׿]/g,"_"); }
+
+/* שמירה לענן — דחייה קצרה לאיגוד שינויים, ושמירה על שינויים מקומיים שטרם נכתבו */
+let _saveTimer=null, savePending=false, cloudDocs=new Map();
+function save(){ if(!db) return; savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250); }
+async function runPush(){
+  try{ await pushAll(); }
+  catch(e){ console.error(e); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
+  finally{
+    savePending=false;
+    rebuildDB(cloudDocs); // הצג את המצב המעודכן (כולל שינויים מרחוק שהגיעו בזמן השמירה)
+    if($("#overlay").classList.contains("show")) pendingRender=true; else route();
+  }
 }
-function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }catch(e){ toast("שגיאת שמירה — ייתכן שהאחסון מלא"); } }
+async function pushAll(){
+  if(!db) return;
+  // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
+  const meta={ activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, settings:DB.settings };
+  const gans=DB.gans.slice(), management=DB.management.slice();
+  const byYear={}; DB.students.forEach(s=>{ (byYear[s.year]=byYear[s.year]||[]).push(s); });
+  await setDoc(doc(db,"app","meta"), meta);
+  await setDoc(doc(db,"app","gans"), { gans });
+  await setDoc(doc(db,"app","management"), { management });
+  const wantIds=new Set();
+  for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await setDoc(doc(db,"app",id), { year:y, students:byYear[y] }); }
+  for(const id of [...knownStudentDocs]){ if(!wantIds.has(id)){ try{ await deleteDoc(doc(db,"app",id)); }catch(e){} knownStudentDocs.delete(id); } }
+}
+/* בנייה מחדש של DB מתוך מסמכי הענן */
+function rebuildDB(docsMap){
+  const meta=docsMap.get("meta")||{};
+  DB.years = (meta.years&&meta.years.length)? meta.years : DEFAULT_YEARS.slice();
+  DB.activeYear = meta.activeYear && DB.years.includes(meta.activeYear) ? meta.activeYear : DB.years[0];
+  DB.municipality = meta.municipality||{};
+  DB.historical = meta.historical||{};
+  DB.settings = meta.settings||{ gansTarget:29 };
+  DB.gans = (docsMap.get("gans")||{}).gans||[];
+  DB.management = (docsMap.get("management")||{}).management||[];
+  const studs=[];
+  for(const [id,val] of docsMap){ if(id.startsWith("students_") && val && Array.isArray(val.students)) studs.push(...val.students); }
+  DB.students = studs;
+}
 
 /* ---------- כלי עזר ---------- */
 const $  = (s,r=document)=>r.querySelector(s);
@@ -243,105 +296,115 @@ function renderYearSelect(){
 
 function route(){
   renderTabs(); renderYearSelect();
-  const a=loadAuth(); const lb=$("#lockBtn"); if(lb) lb.style.display=a.enabled?"grid":"none";
+  const lb=$("#lockBtn"); if(lb) lb.style.display=currentUser?"grid":"none";
   const v = $("#view");
   ({students:viewStudents, gans:viewGans, reports:viewReports, municipality:viewMunicipality,
     export:viewExport, management:viewManagement, settings:viewSettings}[active]||viewStudents)(v);
 }
 
 /* ============================================================
-   אבטחה — נעילת כניסה עם שם משתמש וסיסמה (הגנה בסיסית בצד הלקוח)
+   התחברות (Firebase Auth) + סנכרון נתונים (Firestore)
    ============================================================ */
-const AUTH_KEY = "rishum-ganim-auth-v1";
-const SESS_UNLOCK = "rg-unlocked";
-/* גיבוב עקבי (cyrb53) — עובד בכל דפדפן וללא תלות בהקשר מאובטח */
-function hashPass(str){
-  let h1=0xdeadbeef, h2=0x41c6ce57;
-  for(let i=0,ch;i<str.length;i++){ ch=str.charCodeAt(i); h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677); }
-  h1=Math.imul(h1^(h1>>>16),2246822507); h1^=Math.imul(h2^(h2>>>13),3266489909);
-  h2=Math.imul(h2^(h2>>>16),2246822507); h2^=Math.imul(h1^(h1>>>13),3266489909);
-  return (h2>>>0).toString(16).padStart(8,"0")+(h1>>>0).toString(16).padStart(8,"0");
+let pendingRender=false;
+function firebaseErrHe(code){
+  const m={
+    "auth/invalid-email":"כתובת אימייל לא תקינה",
+    "auth/user-not-found":"משתמש לא נמצא",
+    "auth/wrong-password":"סיסמה שגויה",
+    "auth/invalid-credential":"אימייל או סיסמה שגויים",
+    "auth/missing-password":"יש להזין סיסמה",
+    "auth/too-many-requests":"יותר מדי ניסיונות — נסה/י שוב מאוחר יותר",
+    "auth/network-request-failed":"בעיית רשת — בדוק/י חיבור לאינטרנט"
+  };
+  return m[code]||("שגיאה בהתחברות ("+code+")");
 }
-function passDigest(user,pass){ return hashPass(String(user).trim().toLowerCase()+"::"+String(pass)); }
-function loadAuth(){ try{ const v=localStorage.getItem(AUTH_KEY); if(v) return Object.assign({enabled:false,username:"",hash:""}, JSON.parse(v)); }catch(e){} return {enabled:false,username:"",hash:""}; }
-function saveAuth(a){ try{ localStorage.setItem(AUTH_KEY, JSON.stringify(a)); }catch(e){} }
-function isUnlocked(){ try{ return sessionStorage.getItem(SESS_UNLOCK)==="1"; }catch(e){ return false; } }
-function setUnlocked(v){ try{ v? sessionStorage.setItem(SESS_UNLOCK,"1") : sessionStorage.removeItem(SESS_UNLOCK); }catch(e){} }
+function startDataSync(){
+  if(dataUnsub) return;
+  document.body.classList.remove("locked");
+  cloudDocs=new Map();
+  dataUnsub = onSnapshot(collection(db,"app"), snap=>{
+    snap.docChanges().forEach(ch=>{
+      if(ch.type==="removed"){ cloudDocs.delete(ch.doc.id); knownStudentDocs.delete(ch.doc.id); }
+      else { cloudDocs.set(ch.doc.id, ch.doc.data()); if(ch.doc.id.startsWith("students_")) knownStudentDocs.add(ch.doc.id); }
+    });
+    if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
+    rebuildDB(cloudDocs);
+    if(!cloudDocs.has("meta")) save(); // איתחול ראשוני חד-פעמי (יצירת מסמך meta)
+    if($("#overlay").classList.contains("show")){ pendingRender=true; }
+    else route();
+  }, err=>{ console.error(err); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
+}
+function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); }
 
 function boot(){
-  const auth=loadAuth();
-  if(auth.enabled && !isUnlocked()) renderLogin(auth);
-  else { document.body.classList.remove("locked"); route(); }
+  const lb=$("#lockBtn"); if(lb){ lb.textContent="⎋"; lb.title="יציאה מהמערכת"; lb.onclick=doSignOut; lb.style.display="none"; }
+  if(!CONFIG_READY){ renderSetupNeeded(); return; }
+  try{
+    app=initializeApp(firebaseConfig);
+    auth=getAuth(app);
+    try{ db=initializeFirestore(app,{ localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+    catch(e){ db=initializeFirestore(app,{}); }
+  }catch(e){ console.error(e); renderSetupNeeded(String(e.message||e)); return; }
+  onAuthStateChanged(auth, user=>{
+    currentUser=user;
+    const b=$("#lockBtn"); if(b) b.style.display=user?"grid":"none";
+    if(user){ startDataSync(); }
+    else { stopDataSync(); renderLogin(); }
+  });
 }
-function renderLogin(auth){
+function renderSetupNeeded(extra){
+  document.body.classList.add("locked");
+  $("#view").innerHTML=`<div class="panel login-card">
+    <h2>⚙️ נדרשת הגדרה חד-פעמית</h2>
+    <div class="sub">כדי שהמערכת תעבוד בענן צריך לחבר אותה לפרויקט Firebase.</div>
+    <div class="note" style="margin-top:8px">פתח/י את הקובץ <b>SETUP.md</b> במאגר ופעל/י לפי ההוראות: יצירת פרויקט Firebase, הפעלת Authentication ו-Firestore, והדבקת 6 המפתחות בראש <b>index.html</b>.</div>
+    ${extra?`<div class="note" style="margin-top:8px;background:var(--bad-soft);color:var(--bad);border-color:var(--bad)">${esc(extra)}</div>`:""}
+  </div>`;
+}
+function renderLogin(){
   document.body.classList.add("locked");
   $("#view").innerHTML=`
   <div class="panel login-card">
     <h2>🔒 כניסה למערכת</h2>
-    <div class="sub">הזן/י שם משתמש וסיסמה כדי להיכנס.</div>
+    <div class="sub">התחבר/י עם האימייל והסיסמה שהוגדרו לך.</div>
     <div class="grid" style="gap:10px">
-      <div><label>שם משתמש</label><input id="lg-user" autocomplete="username"></div>
+      <div><label>אימייל</label><input id="lg-user" type="email" autocomplete="username" inputmode="email"></div>
       <div><label>סיסמה</label><input id="lg-pass" type="password" autocomplete="current-password"></div>
     </div>
     <div id="lg-err" class="note" style="display:none;margin-top:10px"></div>
-    <div class="foot"><button class="btn" id="lg-go">כניסה</button></div>
+    <div class="foot"><button class="btn" id="lg-go">כניסה</button>
+      <button class="btn ghost" id="lg-reset" type="button">שכחתי סיסמה</button></div>
   </div>`;
-  const go=()=>{
-    const u=$("#lg-user").value.trim(), p=$("#lg-pass").value;
-    if(u.toLowerCase()===String(auth.username).toLowerCase() && passDigest(u,p)===auth.hash){
-      setUnlocked(true); document.body.classList.remove("locked"); route(); toast("ברוך/ה הבא/ה");
-    } else { const e=$("#lg-err"); e.style.display="block"; e.textContent="שם משתמש או סיסמה שגויים"; }
+  const go=async ()=>{
+    const u=$("#lg-user").value.trim(), p=$("#lg-pass").value, e=$("#lg-err");
+    if(!u||!p){ e.style.display="block"; e.textContent="יש להזין אימייל וסיסמה"; return; }
+    try{ await signInWithEmailAndPassword(auth,u,p); }
+    catch(err){ e.style.display="block"; e.textContent=firebaseErrHe(err.code); }
   };
   $("#lg-go").onclick=go;
-  ["lg-user","lg-pass"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{ if(e.key==="Enter") go(); }));
+  $("#lg-reset").onclick=async ()=>{
+    const u=$("#lg-user").value.trim(), e=$("#lg-err");
+    if(!u){ e.style.display="block"; e.textContent="הזן/י אימייל ואז לחצ/י שוב על 'שכחתי סיסמה'"; return; }
+    try{ await sendPasswordResetEmail(auth,u); e.style.display="block"; e.style.background="var(--good-soft)"; e.style.color="var(--good)"; e.textContent="נשלח מייל לאיפוס סיסמה — בדוק/י את תיבת הדואר"; }
+    catch(err){ e.style.display="block"; e.textContent=firebaseErrHe(err.code); }
+  };
+  ["lg-user","lg-pass"].forEach(id=>$("#"+id).addEventListener("keydown",ev=>{ if(ev.key==="Enter") go(); }));
   $("#lg-user").focus();
 }
-function lockNow(){ setUnlocked(false); renderLogin(loadAuth()); }
+async function doSignOut(){ try{ await signOut(auth); toast("התנתקת מהמערכת"); }catch(e){} }
 function renderAuthBox(){
-  const box=$("#auth-box"); if(!box) return; const a=loadAuth();
-  if(!a.enabled){
-    box.innerHTML=`
-      <div class="grid g3">
-        <div><label>שם משתמש</label><input id="au-user" autocomplete="username"></div>
-        <div><label>סיסמה (4 תווים לפחות)</label><input id="au-pass" type="password" autocomplete="new-password"></div>
-        <div><label>אימות סיסמה</label><input id="au-pass2" type="password" autocomplete="new-password"></div>
-      </div>
-      <div class="row" style="margin-top:10px"><button class="btn" id="au-enable">🔒 הפעל נעילה</button></div>`;
-    $("#au-enable").onclick=()=>{
-      const u=$("#au-user").value.trim(), p=$("#au-pass").value, p2=$("#au-pass2").value;
-      if(!u){ toast("הזן/י שם משתמש"); return; }
-      if(p.length<4){ toast("סיסמה קצרה מדי (4 תווים לפחות)"); return; }
-      if(p!==p2){ toast("הסיסמאות אינן תואמות"); return; }
-      saveAuth({enabled:true, username:u, hash:passDigest(u,p)}); setUnlocked(true);
-      toast("הנעילה הופעלה"); route();
-    };
-  } else {
-    box.innerHTML=`
-      <div class="note">🔒 הנעילה פעילה · שם משתמש: <b>${esc(a.username)}</b></div>
-      <div class="grid g3" style="margin-top:10px">
-        <div><label>סיסמה נוכחית</label><input id="au-cur" type="password" autocomplete="current-password"></div>
-        <div><label>סיסמה חדשה</label><input id="au-new" type="password" autocomplete="new-password"></div>
-        <div><label>אימות חדשה</label><input id="au-new2" type="password" autocomplete="new-password"></div>
-      </div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="au-change">שינוי סיסמה</button>
-        <button class="btn ghost" id="au-lock">🔒 נעל עכשיו</button>
-        <button class="btn danger" id="au-disable" style="margin-inline-start:auto">ביטול נעילה</button>
-      </div>`;
-    $("#au-change").onclick=()=>{
-      const cur=$("#au-cur").value, nw=$("#au-new").value, nw2=$("#au-new2").value;
-      if(passDigest(a.username,cur)!==a.hash){ toast("סיסמה נוכחית שגויה"); return; }
-      if(nw.length<4){ toast("סיסמה חדשה קצרה מדי (4 תווים לפחות)"); return; }
-      if(nw!==nw2){ toast("אימות הסיסמה אינו תואם"); return; }
-      saveAuth(Object.assign({},a,{hash:passDigest(a.username,nw)})); toast("הסיסמה עודכנה"); renderAuthBox();
-    };
-    $("#au-lock").onclick=lockNow;
-    $("#au-disable").onclick=()=>{
-      const cur=$("#au-cur").value;
-      if(passDigest(a.username,cur)!==a.hash){ toast("להסרת הנעילה — הזן/י את הסיסמה הנוכחית בשדה 'סיסמה נוכחית'"); return; }
-      saveAuth({enabled:false,username:"",hash:""}); toast("הנעילה בוטלה"); route();
-    };
-  }
+  const box=$("#auth-box"); if(!box) return;
+  const email = currentUser? currentUser.email : "—";
+  box.innerHTML=`
+    <div class="note">👤 מחובר/ת כ: <b>${esc(email)}</b></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost" id="au-reset" type="button">שליחת מייל לאיפוס סיסמה</button>
+      <button class="btn danger" id="au-signout" type="button" style="margin-inline-start:auto">יציאה מהמערכת</button>
+    </div>
+    <div class="hint">ניהול משתמשים (הוספה/הסרה/שינוי סיסמה) נעשה בקונסולת Firebase → Authentication. כל משתמש שיתווסף שם יוכל להתחבר כאן.</div>`;
+  $("#au-signout").onclick=doSignOut;
+  $("#au-reset").onclick=async ()=>{ if(!currentUser||!currentUser.email){ toast("אין אימייל"); return; }
+    try{ await sendPasswordResetEmail(auth,currentUser.email); toast("נשלח מייל לאיפוס סיסמה"); }catch(e){ toast("שגיאה בשליחה"); } };
 }
 
 /* ============================================================
@@ -1199,14 +1262,14 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
-    <h2>אבטחה — שם משתמש וסיסמה</h2>
-    <div class="sub">נעילת המערכת בכניסה. הגדרה זו נשמרת במכשיר זה. זו הגנה בסיסית מפני גישה מזדמנת — לא הצפנה מלאה של הנתונים.</div>
+    <h2>חשבון והתחברות</h2>
+    <div class="sub">המערכת מאובטחת בכניסה עם אימייל וסיסמה (Firebase). הנתונים נשמרים בענן ומסונכרנים בין כל המכשירים.</div>
     <div id="auth-box"></div>
   </div>
 
   <div class="panel">
     <h2>גיבוי ושחזור</h2>
-    <div class="sub">הנתונים נשמרים במכשיר זה בלבד. מומלץ לייצא גיבוי מדי פעם.</div>
+    <div class="sub">הנתונים נשמרים בענן ומסונכרנים אוטומטית. אפשר לייצא גיבוי JSON, ולשחזר קובץ גיבוי — כולל גיבוי מהגרסה הישנה בטלפון (כך מעבירים את הנתונים שהוזנו שם אל הענן).</div>
     <div class="row">
       <button class="btn ghost" id="exportAll">⬇️ ייצוא גיבוי (JSON)</button>
       <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">⬆️ שחזור מגיבוי<input type="file" id="importAll" accept=".json" hidden></label>
@@ -1285,25 +1348,17 @@ function viewSettings(root){
    מודל / כללי
    ============================================================ */
 function modal(html){ $("#modal").innerHTML=html; $("#overlay").classList.add("show"); document.body.style.overflow="hidden"; }
-function closeModal(){ $("#overlay").classList.remove("show"); document.body.style.overflow=""; }
+function closeModal(){ $("#overlay").classList.remove("show"); document.body.style.overflow=""; if(pendingRender){ pendingRender=false; route(); } }
 $("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeModal(); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ active=b.dataset.tab; route(); window.scrollTo(0,0); } });
 $("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; save(); route(); });
-$("#lockBtn").onclick=lockNow;
 
 /* theme */
 (function(){ const KEY="rg-theme"; const saved=localStorage.getItem(KEY); if(saved)document.documentElement.dataset.theme=saved;
   $("#themeBtn").onclick=()=>{ const cur=document.documentElement.dataset.theme|| (matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
     const next=cur==="dark"?"light":"dark"; document.documentElement.dataset.theme=next; localStorage.setItem(KEY,next); }; })();
-
-/* seed לדוגמה בפעם הראשונה (רק אם ריק לגמרי) */
-if(!DB.gans.length && !DB.students.length){
-  const g1=makeGan(); Object.assign(g1,{teacherName:"הגננת מרים",ganSymbol:"101",internalSymbol:"A1",age:"3",address:"רחוב הרב קוק 12",street:"הרב קוק",zone:"מרכז",capacity:"35",phoneGan:"03-0000000"});
-  const g2=makeGan(); Object.assign(g2,{teacherName:"הגננת שרה",ganSymbol:"102",internalSymbol:"A2",age:"4",address:"רחוב הנביאים 5",street:"הנביאים",zone:"צפון",capacity:"35"});
-  DB.gans.push(g1,g2); save();
-}
 
 boot();
 </script>
