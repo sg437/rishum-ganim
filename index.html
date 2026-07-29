@@ -203,7 +203,8 @@ const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
 const STAFF_ROLES = ["גננת","סייעת","סייעת ב'","סייעת רפואית","סייעת צמודה","גננת משלימה","סייעת משלימה","גננת ממלאת מקום","סייעת ממלאת מקום"]; // תפקידי צוות (סעיף 2)
-const AGES = ["3","4","5","3/4","4/5"]; // גלאי הילדים — כולל גנים דו-גלאיים (סעיף 6)
+const CHILD_AGES = ["2","3","4","5","6"]; // גיל ילדה בודדת (סעיף 6)
+const GAN_AGES = ["3","4","5","3/4","4/5"]; // גיל הגן — כולל גנים דו-גלאיים 3/4, 4/5 (סעיף 6)
 const WEEK_DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי"]; // ימי שיבוץ למשלימה (סעיף 7)
 /* תפקידי שיבוץ + שדות נוספים לכל תפקיד (סעיף 7):
    extra:"days" — בחירת ימים (משלימה) · extra:"duration" — שנה / מספר חודשים (ממלאת מקום) */
@@ -708,7 +709,7 @@ function renderInstallBox(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gan:"", age:"", city:"", period:"", edu:"", muni:"", status:"active" };
+let stuFilter = { q:"", gan:"", age:[], city:"", period:"", edu:"", muni:"", status:"active" }; // age = ריבוי גלאים (סעיף 6)
 let stuSort = { key:"name", dir:1 }; // מיון לפי עמודה (סעיף 10)
 
 function viewStudents(root){
@@ -728,7 +729,10 @@ function viewStudents(root){
     <div class="toolbar">
       <div class="field grow"><label>חיפוש (שם / ת"ז)</label><input id="f-q" value="${esc(stuFilter.q)}" placeholder="הקלד/י שם או ת&quot;ז…"></div>
       <div class="field"><label>גן</label><select id="f-gan"><option value="">הכל</option>${gans.map(g=>`<option value="${g.id}" ${stuFilter.gan===g.id?'selected':''}>${esc(ganName(g.id))}</option>`).join("")}</select></div>
-      <div class="field"><label>גיל</label><select id="f-age"><option value="">הכל</option>${AGES.map(a=>`<option ${String(stuFilter.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
+      <div class="field"><label>גיל (אפשר לבחור כמה)</label>
+        <div class="row" id="f-age" style="gap:4px;flex-wrap:wrap">
+          ${CHILD_AGES.map(a=>`<button type="button" class="btn sm ${stuFilter.age.includes(a)?'':'ghost'}" data-age="${a}">${a}</button>`).join("")}
+        </div></div>
       <div class="field"><label>עיר</label><select id="f-city"><option value="">הכל</option>${cities.map(c=>`<option ${stuFilter.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
       <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
@@ -745,7 +749,12 @@ function viewStudents(root){
   $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#importStu").onclick = ()=> openImport();
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-gan","gan");bind("#f-age","age");bind("#f-city","city");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-status","status");
+  bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-status","status");
+  // סינון גיל בריבוי בחירה — לחיצה מוסיפה/מסירה גיל (סעיף 6)
+  const ageBox=$("#f-age"); if(ageBox) ageBox.querySelectorAll("[data-age]").forEach(btn=> btn.onclick=()=>{
+    const a=btn.dataset.age, set=new Set(stuFilter.age); set.has(a)?set.delete(a):set.add(a); stuFilter.age=[...set];
+    btn.classList.toggle("ghost"); renderStuTable();
+  });
   renderStuTable();
 }
 
@@ -757,7 +766,7 @@ function filteredStudents(){
     if(f.status==='finished' && !s.finished) return false;
     if(q){ const hay=(s.firstName+" "+s.lastName+" "+s.tz).toLowerCase(); if(!hay.includes(q.toLowerCase())) return false; }
     if(f.gan && s.ganId!==f.gan) return false;
-    if(f.age && String(s.age)!==String(f.age)) return false;
+    if(f.age && f.age.length && !f.age.includes(String(s.age))) return false;
     if(f.city && s.city!==f.city) return false;
     if(f.period && s.period!==f.period) return false;
     if(eduFilter && eduLabel(s)!==eduFilter) return false;
@@ -862,7 +871,7 @@ function openStudent(s){
   <fieldset><legend>שיבוץ ורישום</legend>
     <div class="grid g3">
       <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
-      <div><label>גיל</label><select id="s-age"><option value="">—</option>${AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
+      <div><label>גיל</label><select id="s-age"><option value="">—</option>${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="s-education">${EDU_TYPES.map(t=>`<option ${eduLabel(s)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
     </div>
@@ -1142,7 +1151,7 @@ function buildImportRows(rows, opts){
     st.dob=normDateVal(g("dob")); st.motherName=g("motherName"); st.fatherName=g("fatherName");
     st.phone=g("phone"); st.mobile=g("mobile");
     st.street=g("street"); st.building=g("building"); st.city=g("city");
-    st.age=g("age").replace(/[^\d/]/g,""); st.period=normPeriodVal(g("period")); st.education=normEduVal(g("education"));
+    st.age=g("age").replace(/[^\d]/g,""); st.period=normPeriodVal(g("period")); st.education=normEduVal(g("education"));
     st.notes=g("notes");
     const ganText=g("gan"); st.ganId=matchGanText(ganText);
     st.absorbedMunicipality = idx.absorbed!=null ? truthyCell(g("absorbed")) : !!opts.absorbed;
@@ -1317,7 +1326,7 @@ function openGan(g){
       <div><label>שם הגן</label><input id="g-ganName" value="${esc(g.ganName)}"></div>
       <div><label>סמל פנימי</label><input id="g-internalSymbol" value="${esc(g.internalSymbol)}"></div>
       <div><label>סמל הגן</label><input id="g-ganSymbol" value="${esc(g.ganSymbol)}"></div>
-      <div><label>גיל</label><select id="g-age"><option value="">—</option>${AGES.map(a=>`<option ${String(g.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
+      <div><label>גיל</label><select id="g-age"><option value="">—</option>${GAN_AGES.map(a=>`<option ${String(g.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
       <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}"></div>
@@ -1964,7 +1973,7 @@ function viewExport(root){
     <div class="sub">בחר/י סינון, בחר/י אילו שדות לכלול, וייצא/י לאקסל (CSV שנפתח באקסל עם עברית תקינה) או ל-PDF (הדפסה → שמירה כ-PDF).</div>
     <div class="toolbar">
       <div class="field"><label>גן</label><select id="x-gan"><option value="">כל הגנים</option>${gans.map(g=>`<option value="${g.id}">${esc(ganName(g.id))}</option>`).join("")}</select></div>
-      <div class="field"><label>גיל</label><select id="x-age"><option value="">הכל</option>${AGES.map(a=>`<option>${a}</option>`).join("")}</select></div>
+      <div class="field"><label>גיל</label><select id="x-age"><option value="">הכל</option>${CHILD_AGES.map(a=>`<option>${a}</option>`).join("")}</select></div>
       <div class="field"><label>מועד</label><select id="x-period"><option value="">הכל</option>${PERIODS.map(p=>`<option>${p}</option>`).join("")}</select></div>
       <div class="field"><label>חינוך</label><select id="x-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div>
       <div class="field"><label>קלוט בעירייה</label><select id="x-muni"><option value="">הכל</option><option value="yes">רק קלוטות</option><option value="no">רק לא קלוטות</option></select></div>
