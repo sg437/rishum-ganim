@@ -271,6 +271,7 @@ function loadDB(){
 }
 /* השלמת שדות חדשים לרשומות ישנות שנשמרו לפני העדכון */
 function normStudent(s){
+  if(s.campus==null) s.campus=""; // קמפוס גנים (סעיף 1)
   s.docs = Object.assign({ nispach:false, idCopy:false, takanon:false }, s.docs||{});
   s.docFiles = s.docFiles||{};
   s.programs = Object.assign({ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, s.programs||{});
@@ -309,6 +310,18 @@ function ganName(id){ const g=ganById(id); return g? (g.ganName || g.teacherName
 function staffName(m){ if(!m) return ""; return [m.lastName,m.firstName].filter(Boolean).join(" ") || m.name || ""; }
 function studentsOfYear(y=DB.activeYear){ return DB.students.filter(s=>s.year===y); }
 function digits(s){ return String(s||"").replace(/\D/g,""); }
+/* תיקון טלפון בייבוא: מספר נייד שאיבד את ה-0 המוביל (מתחיל ב-5) — מוסיפים 0 (סעיף 4) */
+function fixPhone(v){ v=String(v||"").trim(); if(!v) return ""; const d=v.replace(/\D/g,""); if(d && d[0]==='5' && d.length===9) return "0"+d; return v; }
+/* מפתח כתובת לזיהוי אחים/אחיות (רחוב+בניין+עיר) — סעיף 2 */
+function addrKey(o){ return [o.street,o.building,o.city].map(x=>String(x||"").trim().toLowerCase()).join("|"); }
+function nameKey(v){ return String(v||"").trim().toLowerCase(); }
+/* איתור אחים/אחיות: אותו שם משפחה + אותה כתובת, בשנה הפעילה (סעיף 2) */
+function findSiblings(ref){
+  const ln=nameKey(ref.lastName), ak=addrKey(ref);
+  if(!ln || !ak.replace(/\|/g,"")) return { list:[], missing:!ln||!ak.replace(/\|/g,"") };
+  const list=studentsOfYear().filter(o=> o.id!==ref.id && nameKey(o.lastName)===ln && addrKey(o)===ak);
+  return { list, missing:false };
+}
 function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // ברירת מחדל: חינוך רגיל
 function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
 
@@ -378,6 +391,7 @@ function eduScope(list){ return activeEdu ? list.filter(x=>eduLabel(x)===activeE
 function makeStudent(){ return {
   id:uid(), year:DB.activeYear, tz:"", firstName:"", lastName:"", dob:"",
   motherName:"", fatherName:"", phone:"", mobile:"", street:"", building:"", city:"",
+  campus:"", // קמפוס גנים (סעיף 1)
   ganId:"", age:"", period:"א", education:"רגיל",
   registeredByUs:true, absorbedMunicipality:false, finished:false,
   docs:{ nispach:false, idCopy:false, takanon:false },
@@ -588,12 +602,13 @@ function renderInstallBox(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gan:"", age:[], city:"", period:"", edu:"", muni:"", status:"active" }; // age = ריבוי גלאים (סעיף 6)
+let stuFilter = { q:"", gan:"", age:[], city:"", campus:"", period:"", edu:"", muni:"", status:"active" }; // age = ריבוי גלאים (סעיף 6)
 let stuSort = { key:"name", dir:1 }; // מיון לפי עמודה (סעיף 10)
 
 function viewStudents(root){
   const gans = eduScope(DB.gans.slice()).sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
   const cities = [...new Set(studentsOfYear().map(s=>s.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const campuses = [...new Set(studentsOfYear().map(s=>s.campus).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
   const scopeNote = activeEdu ? ` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}` : "";
   root.innerHTML = `
   <div class="panel">
@@ -613,6 +628,7 @@ function viewStudents(root){
           ${CHILD_AGES.map(a=>`<button type="button" class="btn sm ${stuFilter.age.includes(a)?'':'ghost'}" data-age="${a}">${a}</button>`).join("")}
         </div></div>
       <div class="field"><label>עיר</label><select id="f-city"><option value="">הכל</option>${cities.map(c=>`<option ${stuFilter.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
+      ${campuses.length?`<div class="field"><label>קמפוס</label><select id="f-campus"><option value="">הכל</option>${campuses.map(c=>`<option ${stuFilter.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>`:""}
       <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
       <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
@@ -628,7 +644,7 @@ function viewStudents(root){
   $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#importStu").onclick = ()=> openImport();
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-status","status");
+  bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-status","status");
   // סינון גיל בריבוי בחירה — לחיצה מוסיפה/מסירה גיל (סעיף 6)
   const ageBox=$("#f-age"); if(ageBox) ageBox.querySelectorAll("[data-age]").forEach(btn=> btn.onclick=()=>{
     const a=btn.dataset.age, set=new Set(stuFilter.age); set.has(a)?set.delete(a):set.add(a); stuFilter.age=[...set];
@@ -647,6 +663,7 @@ function filteredStudents(){
     if(f.gan && s.ganId!==f.gan) return false;
     if(f.age && f.age.length && !f.age.includes(String(s.age))) return false;
     if(f.city && s.city!==f.city) return false;
+    if(f.campus && s.campus!==f.campus) return false;
     if(f.period && s.period!==f.period) return false;
     if(eduFilter && eduLabel(s)!==eduFilter) return false;
     if(f.muni==='yes' && !s.absorbedMunicipality) return false;
@@ -726,6 +743,7 @@ function openStudent(s){
   const isNew = !DB.students.some(x=>x.id===s.id);
   const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
   const folderSuggest = suggestFolder(s);
+  const campusList = [...new Set(DB.students.map(x=>x.campus).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he")); // קמפוסים קיימים (סעיף 1)
   modal(`
   <h3>${isNew?'תיק ילדה חדש':'תיק ילדה'} · שנת ${esc(s.year)}</h3>
   <fieldset><legend>פרטים אישיים</legend>
@@ -749,11 +767,18 @@ function openStudent(s){
   </fieldset>
   <fieldset><legend>שיבוץ ורישום</legend>
     <div class="grid g3">
+      <div><label>קמפוס גנים</label><input id="s-campus" list="campus-list" value="${esc(s.campus)}" placeholder="שם הקמפוס">
+        <datalist id="campus-list">${campusList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
       <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
       <div><label>גיל</label><select id="s-age"><option value="">—</option>${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="s-education">${EDU_TYPES.map(t=>`<option ${eduLabel(s)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
     </div>
+    <div class="row" style="margin-top:10px;gap:8px;align-items:center">
+      <button class="btn ghost sm" id="s-sibcheck" type="button">🔎 בדיקת אחים/אחיות בקמפוס</button>
+      <span class="hint">איתור לפי שם משפחה + כתובת זהים בשנה זו — לשיבוץ באותו קמפוס.</span>
+    </div>
+    <div id="s-siblings" style="margin-top:8px"></div>
     <div class="checks" style="margin-top:10px">
       <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
       <label class="check"><input type="checkbox" id="s-absorbedMunicipality" ${s.absorbedMunicipality?'checked':''}> קלוט בעירייה</label>
@@ -926,7 +951,7 @@ function openStudent(s){
       firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"), dob:val("s-dob"),
       motherName:val("s-motherName"), fatherName:val("s-fatherName"),
       phone:val("s-phone"), mobile:val("s-mobile"),
-      street:val("s-street"), building:val("s-building"), city:val("s-city"),
+      street:val("s-street"), building:val("s-building"), city:val("s-city"), campus:val("s-campus"),
       ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
@@ -943,6 +968,25 @@ function openStudent(s){
     save(); closeModal(); route(); toast(isNew?"נוסף תיק ילדה":"התיק נשמר");
   };
   $("#cancelStu").onclick=closeModal;
+  /* בדיקת אחים/אחיות בקמפוס — לפי שם משפחה + כתובת (סעיף 2) */
+  const sib=$("#s-sibcheck"); if(sib) sib.onclick=()=>{
+    const v=id=>$("#"+id)?.value.trim()??"";
+    const ref={ id:s.id, lastName:v("s-lastName"), street:v("s-street"), building:v("s-building"), city:v("s-city") };
+    const out=$("#s-siblings"); if(!out) return;
+    const { list, missing } = findSiblings(ref);
+    if(missing){ out.innerHTML=`<div class="note">להזין שם משפחה וכתובת (רחוב / בניין / עיר) כדי לבדוק.</div>`; return; }
+    if(!list.length){ out.innerHTML=`<div class="note" style="background:var(--good-soft);color:var(--good);border-color:var(--good)">לא נמצאו אחים/אחיות באותה כתובת בשנה זו.</div>`; return; }
+    out.innerHTML=`<div class="note">נמצאו ${list.length} תיקים באותו שם משפחה וכתובת:</div>
+      <div class="table-wrap" style="margin-top:6px"><table><thead><tr><th>שם</th><th>קמפוס</th><th>גן</th><th>גיל</th><th>מועד</th></tr></thead><tbody>
+      ${list.map(o=>`<tr>
+        <td><b>${esc([o.lastName,o.firstName].filter(Boolean).join(" "))}</b></td>
+        <td>${o.campus?`<span class="pill ok">${esc(o.campus)}</span>`:'<span class="pill neutral">—</span>'}</td>
+        <td>${o.ganId?esc(ganName(o.ganId)):'—'}</td>
+        <td>${esc(o.age)||'—'}</td>
+        <td><span class="pill neutral">${esc(o.period)}</span></td></tr>`).join("")}
+      </tbody></table></div>
+      ${list.some(o=>o.campus)?`<div class="hint">אפשר לשבץ באותו קמפוס — לחצ/י על שדה "קמפוס גנים" ובחר/י מהרשימה.</div>`:''}`;
+  };
   if(!isNew) $("#delStu").onclick=()=>{ if(confirm("למחוק את תיק הילדה לצמיתות?")){ DB.students=DB.students.filter(x=>x.id!==s.id); save(); closeModal(); route(); toast("התיק נמחק"); } };
 }
 function suggestFolder(s){
@@ -966,6 +1010,7 @@ const IMPORT_HEADER_MAP = {
   "רחוב":"street","כתובת":"street",
   "בניין":"building","מספרבית":"building","בית":"building","מסבית":"building","מספרבניין":"building",
   "עיר":"city","יישוב":"city","ישוב":"city",
+  "קמפוס":"campus","קמפוסגנים":"campus",
   "גן":"gan","שםהגן":"gan","גננת":"gan","שםגננת":"gan","שיבוץ":"gan","גןמשובצת":"gan",
   "גיל":"age",
   "מועד":"period","מועדרישום":"period",
@@ -1028,23 +1073,24 @@ function buildImportRows(rows, opts){
     const st=makeStudent();
     st.lastName=g("lastName"); st.firstName=g("firstName"); st.tz=digits(g("tz"));
     st.dob=normDateVal(g("dob")); st.motherName=g("motherName"); st.fatherName=g("fatherName");
-    st.phone=g("phone"); st.mobile=g("mobile");
-    st.street=g("street"); st.building=g("building"); st.city=g("city");
+    st.phone=fixPhone(g("phone")); st.mobile=fixPhone(g("mobile")); // תיקון 0 מוביל בנייד (סעיף 4)
+    st.street=g("street"); st.building=g("building"); st.city=g("city"); st.campus=g("campus");
     st.age=g("age").replace(/[^\d]/g,""); st.period=normPeriodVal(g("period")); st.education=normEduVal(g("education"));
     st.notes=g("notes");
     const ganText=g("gan"); st.ganId=matchGanText(ganText);
     st.absorbedMunicipality = idx.absorbed!=null ? truthyCell(g("absorbed")) : !!opts.absorbed;
     st.registeredByUs        = idx.regByUs!=null ? truthyCell(g("regByUs"))  : !!opts.reg;
     if(!st.firstName && !st.lastName && !st.tz) continue; // שורה ריקה
-    const dup = st.tz && (existing.has(st.tz) || seen.has(st.tz));
+    const fileDup = st.tz && seen.has(st.tz);   // ת"ז כפולה בתוך הקובץ עצמו (סעיף 5)
+    const dup     = st.tz && existing.has(st.tz); // ת"ז שכבר קיימת במערכת
     if(st.tz) seen.add(st.tz);
-    list.push({ st, ganText, ganMatched:!!st.ganId, dup });
+    list.push({ st, ganText, ganMatched:!!st.ganId, dup, fileDup });
   }
   return { list, mapped };
 }
 function importTemplateCSV(){
-  const headers=["שם משפחה","שם פרטי",'ת"ז',"תאריך לידה","שם האם","שם האב","טלפון","נייד","רחוב","בניין","עיר","גן","גיל","מועד","חינוך","קלוט בעירייה","הערות"];
-  const example=["ישראלי","שרה","123456789","2021-09-01","רבקה","יעקב","03-1234567","050-1234567","הרב קוק","12","ירושלים","הגננת מרים","3","א","רגיל","כן",""];
+  const headers=["שם משפחה","שם פרטי",'ת"ז',"תאריך לידה","שם האם","שם האב","טלפון","נייד","רחוב","בניין","עיר","קמפוס","גן","גיל","מועד","חינוך","קלוט בעירייה","הערות"];
+  const example=["ישראלי","שרה","123456789","2021-09-01","רבקה","יעקב","03-1234567","050-1234567","הרב קוק","12","ירושלים","קמפוס מרכז","הגננת מרים","3","א","רגיל","כן",""];
   const csv=[headers.join(","), example.map(csvCell).join(",")].join("\r\n");
   downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `תבנית-ייבוא-תלמידות.csv`);
 }
@@ -1052,7 +1098,7 @@ function openImport(){
   const state={ list:[], mapped:[] };
   modal(`
   <h3>ייבוא מרוכז של תלמידות · שנת ${esc(DB.activeYear)}</h3>
-  <div class="note">מעלים קובץ CSV (או מדביקים ישירות מאקסל) והמערכת פותחת תיק נפרד לכל שורה, לפי הכותרות. הכותרות המזוהות: שם משפחה, שם פרטי, ת"ז, תאריך לידה, שם האם, שם האב, טלפון, נייד, רחוב, בניין, עיר, גן, גיל, מועד, חינוך, קלוט בעירייה, הערות. עמודות שלא זוהו — יידלגו.</div>
+  <div class="note">מעלים קובץ CSV (או מדביקים ישירות מאקסל) והמערכת פותחת תיק נפרד לכל שורה, לפי הכותרות. הכותרות המזוהות: שם משפחה, שם פרטי, ת"ז, תאריך לידה, שם האם, שם האב, טלפון, נייד, רחוב, בניין, עיר, קמפוס, גן, גיל, מועד, חינוך, קלוט בעירייה, הערות. עמודות שלא זוהו — יידלגו. נייד שמתחיל ב-5 (ללא 0 מוביל) יתוקן אוטומטית, וכפילויות ת"ז בתוך הקובץ יושמטו.</div>
   <fieldset style="margin-top:12px"><legend>קובץ / הדבקה</legend>
     <div class="row" style="margin-bottom:8px">
       <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="imp-file" accept=".csv,.txt" hidden></label>
@@ -1091,28 +1137,30 @@ function openImport(){
     state.list=built.list; state.mapped=built.mapped;
     if(!built.mapped.length){ out.innerHTML=`<div class="note">לא זוהתה אף עמודה מוכרת בשורת הכותרות. הורד/י את התבנית לדוגמה של הכותרות.</div>`; $("#imp-do").disabled=true; return; }
     const skipdup=opts().skipdup;
-    const newCnt=state.list.filter(x=>!(skipdup&&x.dup)).length;
-    const dupCnt=state.list.filter(x=>x.dup).length;
+    const newCnt=state.list.filter(x=>!x.fileDup && !(skipdup&&x.dup)).length;
+    const dupCnt=state.list.filter(x=>x.dup && !x.fileDup).length;
+    const fileDupCnt=state.list.filter(x=>x.fileDup).length;
     const ganMiss=state.list.filter(x=>x.ganText && !x.ganMatched);
     const show=state.list.slice(0,25);
     out.innerHTML=`
       <div class="stats" style="margin-bottom:10px">
         <div class="stat hero"><div class="k">ייווצרו תיקים</div><div class="v">${newCnt}</div></div>
         <div class="stat"><div class="k">כפולים (ת"ז קיים)</div><div class="v">${dupCnt}</div></div>
-        <div class="stat"><div class="k">שורות בקובץ</div><div class="v">${state.list.length}</div></div>
+        <div class="stat"><div class="k">כפולים בקובץ</div><div class="v">${fileDupCnt}</div></div>
         <div class="stat"><div class="k">גן לא זוהה</div><div class="v">${ganMiss.length}</div></div>
       </div>
+      ${fileDupCnt?`<div class="note" style="margin-bottom:8px">${fileDupCnt} שורות עם ת"ז כפולה בתוך הקובץ — יובאו פעם אחת בלבד (הכפילויות מושמטות).</div>`:""}
       <div class="hint" style="margin-bottom:8px">עמודות שזוהו: ${state.mapped.map(esc).join(", ")}.</div>
       ${ganMiss.length?`<div class="note" style="margin-bottom:8px">גנים מהקובץ שלא הותאמו לגן קיים (התיק ייפתח ללא שיבוץ): ${[...new Set(ganMiss.map(x=>x.ganText))].slice(0,12).map(esc).join(", ")}</div>`:""}
       <div class="table-wrap"><table><thead><tr>
         <th>שם משפחה</th><th>שם פרטי</th><th>ת"ז</th><th>טלפון</th><th>עיר</th><th>גן</th><th>גיל</th><th>מועד</th><th>חינוך</th><th>קלוט</th><th>סטטוס</th></tr></thead><tbody>
-        ${show.map(x=>`<tr style="${x.dup&&skipdup?'opacity:.5':''}">
+        ${show.map(x=>`<tr style="${(x.fileDup||(x.dup&&skipdup))?'opacity:.5':''}">
           <td>${esc(x.st.lastName)||'—'}</td><td>${esc(x.st.firstName)||'—'}</td><td>${esc(x.st.tz)||'—'}</td>
           <td>${esc(x.st.mobile||x.st.phone)||'—'}</td><td>${esc(x.st.city)||'—'}</td>
           <td>${x.st.ganId?esc(ganName(x.st.ganId)):(x.ganText?('<span class="pill warn">'+esc(x.ganText)+' ⚠</span>'):'—')}</td>
           <td>${esc(x.st.age)||'—'}</td><td><span class="pill neutral">${esc(x.st.period)}</span></td><td>${eduBadge(x.st)}</td>
           <td>${x.st.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
-          <td>${x.dup?'<span class="pill warn">כפול</span>':'<span class="pill ok">חדש</span>'}</td></tr>`).join("")}
+          <td>${x.fileDup?'<span class="pill warn">כפול בקובץ</span>':(x.dup?'<span class="pill warn">כפול</span>':'<span class="pill ok">חדש</span>')}</td></tr>`).join("")}
       </tbody></table></div>
       <div class="hint">${state.list.length>25?`מוצגות 25 מתוך ${state.list.length} שורות. `:''}לחצ/י "ייבא תלמידות" לפתיחת התיקים.</div>`;
     $("#imp-do").disabled = newCnt===0;
@@ -1120,7 +1168,7 @@ function openImport(){
 
   $("#imp-do").onclick=()=>{
     const skipdup=opts().skipdup;
-    const toAdd=state.list.filter(x=>!(skipdup&&x.dup)).map(x=>x.st);
+    const toAdd=state.list.filter(x=>!x.fileDup && !(skipdup&&x.dup)).map(x=>x.st); // כפילויות בקובץ מושמטות תמיד (סעיף 5)
     if(!toAdd.length){ toast("אין תלמידות חדשות לייבוא"); return; }
     toAdd.forEach(st=>DB.students.push(st));
     save(); closeModal(); route(); toast(`יובאו ${toAdd.length} תלמידות לשנת ${DB.activeYear}`);
@@ -1433,16 +1481,42 @@ function renderProjection(host){
 /* ============================================================
    טאב עירייה — התאמה לפי ת"ז
    ============================================================ */
+const MUNI_HEADER_MAP = {
+  "תז":"tz","תעודתזהות":"tz","מספרזהות":"tz","זהות":"tz","מסזהות":"tz",
+  "שםהאב":"fatherName","אב":"fatherName","אבא":"fatherName","שםאב":"fatherName","שםהאבא":"fatherName","שםאבא":"fatherName",
+  "שםהאם":"motherName","אם":"motherName","אמא":"motherName","שםאם":"motherName","שםהאמא":"motherName","שםאמא":"motherName"
+};
+/* פענוח קלט העירייה: אם יש כותרת "ת"ז" — קוראים כטבלה (כולל שם אב/אם); אחרת — רשימת ת"ז חופשית */
+function parseMuniInput(text){
+  const rows=parseTable(text);
+  const parents=new Map(); // tz -> {father,mother}
+  let structured=false, tzList=[];
+  if(rows.length){
+    const header=rows[0].map(normHeader); const hi={};
+    header.forEach((h,i)=>{ const k=MUNI_HEADER_MAP[h]; if(k && hi[k]==null) hi[k]=i; });
+    if(hi.tz!=null){
+      structured=true;
+      for(let r=1;r<rows.length;r++){ const c=rows[r];
+        const tz=digits(c[hi.tz]||""); if(!tz) continue; tzList.push(tz);
+        const fa=hi.fatherName!=null?String(c[hi.fatherName]??"").trim():"";
+        const mo=hi.motherName!=null?String(c[hi.motherName]??"").trim():"";
+        if(fa||mo){ const cur=parents.get(tz)||{}; if(fa&&!cur.father)cur.father=fa; if(mo&&!cur.mother)cur.mother=mo; parents.set(tz,cur); }
+      }
+    }
+  }
+  if(!structured) tzList=(String(text||"").match(/\d{5,}/g)||[]);
+  return { nums:[...new Set(tzList)], parents, structured };
+}
 function viewMunicipality(root){
   const stored = DB.municipality[DB.activeYear]||[];
   root.innerHTML=`
   <div class="panel">
     <h2>רשימת העירייה · שנת ${esc(DB.activeYear)}</h2>
-    <div class="sub">הדבק/י או העלה/י את רשימת תעודות הזהות שקיבלת מהעירייה. המערכת תבצע התאמה (VLOOKUP) לפי ת"ז ותסמן כל תלמידה כ"קלוט בעירייה".</div>
+    <div class="sub">הדבק/י או העלה/י את רשימת תעודות הזהות שקיבלת מהעירייה. המערכת תבצע התאמה (VLOOKUP) לפי ת"ז ותסמן כל תלמידה כ"קלוט בעירייה". אם הקובץ כולל כותרות עם עמודות "שם אב" / "שם אם" — המערכת תשלים אותן לתיקים שבהם הן חסרות.</div>
     <div class="grid g2">
       <div>
-        <label>הדבקת ת"ז (שורה לכל אחת, או מופרד בפסיקים)</label>
-        <textarea id="muni-text" rows="8" placeholder="123456789&#10;987654321&#10;…">${stored.join("\n")}</textarea>
+        <label>הדבקת ת"ז (שורה לכל אחת) — או טבלה עם כותרות: ת"ז, שם אב, שם אם</label>
+        <textarea id="muni-text" rows="8" placeholder="123456789&#10;987654321&#10;…&#10;— או —&#10;ת&quot;ז,שם אב,שם אם&#10;123456789,יעקב,רבקה">${stored.join("\n")}</textarea>
         <div class="row" style="margin-top:8px">
           <button class="btn" id="muni-run">🔗 בצע התאמה וסמן</button>
           <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="muni-file" accept=".csv,.txt" hidden></label>
@@ -1451,14 +1525,22 @@ function viewMunicipality(root){
       <div id="muni-result"><div class="hint">התוצאה תופיע כאן לאחר ההתאמה.</div></div>
     </div>
   </div>`;
-  $("#muni-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ const nums=(r.result.match(/\d{5,}/g)||[]); $("#muni-text").value=[...new Set(nums)].join("\n"); toast(nums.length+" מספרים נטענו מהקובץ"); }; r.readAsText(f,"utf-8"); };
+  $("#muni-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ $("#muni-text").value=r.result; toast('הקובץ נטען — לחצ/י "בצע התאמה"'); }; r.readAsText(f,"utf-8"); };
   $("#muni-run").onclick=()=>{
-    const nums=[...new Set(($("#muni-text").value.match(/\d{5,}/g)||[]))];
+    const { nums, parents, structured } = parseMuniInput($("#muni-text").value);
     DB.municipality[DB.activeYear]=nums;
     const set=new Set(nums);
-    let matched=0, already=0;
+    let matched=0, already=0, filled=0;
     const rows=studentsOfYear();
-    rows.forEach(s=>{ if(s.tz && set.has(digits(s.tz))){ if(!s.absorbedMunicipality)matched++; else already++; s.absorbedMunicipality=true; } });
+    rows.forEach(s=>{ const tz=digits(s.tz); if(!tz || !set.has(tz)) return;
+      if(!s.absorbedMunicipality)matched++; else already++; s.absorbedMunicipality=true;
+      const pm=parents.get(tz);
+      if(pm){ let did=false;
+        if(pm.father && !String(s.fatherName||"").trim()){ s.fatherName=pm.father; did=true; }
+        if(pm.mother && !String(s.motherName||"").trim()){ s.motherName=pm.mother; did=true; }
+        if(did) filled++;
+      }
+    });
     save();
     const inSystem=new Set(rows.map(s=>digits(s.tz)).filter(Boolean));
     const notFound=nums.filter(n=>!inSystem.has(n));
@@ -1466,6 +1548,7 @@ function viewMunicipality(root){
       <div class="stats">
         <div class="stat hero"><div class="k">סומנו כקלוטות עכשיו</div><div class="v">${matched}</div></div>
         <div class="stat"><div class="k">כבר היו מסומנות</div><div class="v">${already}</div></div>
+        ${structured?`<div class="stat"><div class="k">הושלמו שמות הורים</div><div class="v">${filled}</div></div>`:''}
         <div class="stat"><div class="k">ברשימת העירייה</div><div class="v">${nums.length}</div></div>
         <div class="stat"><div class="k">בעירייה ולא במערכת</div><div class="v">${notFound.length}</div></div>
       </div>
@@ -1821,6 +1904,7 @@ const EXPORT_FIELDS = [
   ["street","רחוב",s=>s.street],
   ["building","בניין",s=>s.building],
   ["city","עיר",s=>s.city],
+  ["campus","קמפוס",s=>s.campus],
   ["gan","גן",s=>ganName(s.ganId)],
   ["age","גיל",s=>s.age],
   ["period","מועד",s=>s.period],
