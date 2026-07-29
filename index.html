@@ -834,13 +834,8 @@ function openStudent(s){
     </div>
   </fieldset>
   <fieldset><legend>שונות</legend>
-    <div class="checks">
-      <label class="check"><input type="checkbox" id="sp-divorced" ${s.special.divorced?'checked':''}> הורים גרושים</label>
-      <label class="check"><input type="checkbox" id="sp-outOfCity" ${s.special.outOfCity?'checked':''}> ילדת חוץ (מחוץ לעיר)</label>
-      <label class="check"><input type="checkbox" id="sp-retention" ${s.special.retention?'checked':''}> ילדת השארות</label>
-      <label class="check"><input type="checkbox" id="sp-other" ${s.special.other?'checked':''}> אחר</label>
-    </div>
-    <div id="sp-extra" class="checks" style="margin-top:8px"></div>
+    <div class="hint" style="margin-bottom:8px">בסימון "גרושים" / "ילדת חוץ" / "השארות" / "אחר" נפתחות מיד מתחת האפשרויות הנוספות — כולל צירוף מסמך 📎 (נשמר בדרייב עם שם: סוג המסמך · שם הילדה · ת"ז).</div>
+    <div id="special-blocks" style="display:flex;flex-direction:column;gap:8px"></div>
   </fieldset>
   <fieldset><legend>תיקיית דרייב</legend>
     <div class="grid g2">
@@ -860,59 +855,79 @@ function openStudent(s){
     ${!isNew?'<button class="btn danger" id="delStu" style="margin-inline-start:auto">מחיקת תיק</button>':''}
   </div>`);
 
-  function renderExtra(){
-    const div=$("#sp-extra"); const parts=[];
-    if($("#sp-divorced").checked){
-      parts.push(`<label class="check"><input type="checkbox" id="sp-approvalFather" ${s.special.approvalFather?'checked':''}> אישור מיוחד מהאב</label>`);
-      parts.push(`<label class="check"><input type="checkbox" id="sp-approvalMother" ${s.special.approvalMother?'checked':''}> אישור מיוחד מהאם</label>`);
-    }
-    if($("#sp-outOfCity").checked){
-      parts.push(`<label class="check"><input type="checkbox" id="sp-paymentArrangement" ${s.special.paymentArrangement?'checked':''}> הסדר תשלום מול הרשות</label>`);
-    }
-    if($("#sp-retention").checked){
-      parts.push(`<label class="check"><input type="checkbox" id="sp-retentionDoc" ${s.special.retentionDoc?'checked':''}> מסמך השארות קיים</label>`);
-    }
-    if($("#sp-other").checked){
-      parts.push(`<div style="grid-column:1/-1"><label>פירוט "אחר"</label><input id="sp-otherText" value="${esc(s.special.otherText||"")}" placeholder="פרט/י…"></div>`);
-    }
-    div.innerHTML = parts.join("");
-  }
-  ["sp-divorced","sp-outOfCity","sp-retention","sp-other"].forEach(id=> $("#"+id).onchange=renderExtra);
-  renderExtra();
-
-  /* מסמכים — סימון + צירוף קובץ פיזי לתיקיית הדרייב (סעיפים 11–12) */
+  /* צירוף קבצים פיזיים לתיקיית הדרייב, עם שם אוטומטי: סוג · שם הילדה · ת"ז (סעיפים 11–12) */
   function docFileBaseName(label){
     const nm=[s.lastName,s.firstName].filter(Boolean).join(" ")||"ללא שם";
     return `${label} · ${nm}${s.tz?(" · "+s.tz):""}`;
   }
-  function renderDocRows(){
-    const host=$("#doc-rows"); if(!host) return;
-    host.innerHTML = STUDENT_DOCS.map(([k,lbl])=>{
-      const f=(s.docFiles||{})[k];
-      const attached = f? `<a class="btn ghost sm" href="${esc(f.link||'#')}" target="_blank" title="פתח קובץ">📄 ${esc(f.name||'קובץ')}</a>` : "";
-      const attachBtn = DRIVE_READY
-        ? `<label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:4px" title="צרף קובץ">📎<input type="file" class="doc-file" data-k="${k}" hidden></label>`
-        : "";
-      return `<div class="doc-row">
-        <label class="lbl"><input type="checkbox" class="d-chk" data-k="${k}" ${(s.docs&&s.docs[k])?'checked':''}> ${esc(lbl)}</label>
-        ${attached}${attachBtn}
-      </div>`;
-    }).join("");
-    host.querySelectorAll(".d-chk").forEach(cb=> cb.onchange=()=>{ s.docs[cb.dataset.k]=cb.checked; });
+  const SPECIAL_DOC_KEYS=["approvalFather","approvalMother","paymentArrangement","retentionDoc","other"];
+  async function uploadDocFile(file, key, label){
+    persistCurrent(); await driveEnsureChildFolder(s);
+    const res=await driveUploadNamed(file, s.driveFolderId, docFileBaseName(label));
+    s.docFiles=s.docFiles||{}; s.docFiles[key]={ id:res.fileId||res.id||"", name:res.name||file.name, link:res.link||res.webViewLink||"" };
+    if(["nispach","idCopy","takanon"].includes(key)) s.docs[key]=true;
+    if(SPECIAL_DOC_KEYS.includes(key)) s.special[key]=true;
+  }
+  function docAttachHtml(key,label){
+    const f=(s.docFiles||{})[key];
+    const attached = f? `<a class="btn ghost sm" href="${esc(f.link||'#')}" target="_blank" title="פתח קובץ">📄 ${esc(f.name||'קובץ')}</a>` : "";
+    const btn = DRIVE_READY? `<label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:4px" title="צרף קובץ">📎<input type="file" class="doc-file" data-k="${esc(key)}" data-label="${esc(label)}" hidden></label>` : "";
+    return attached+btn;
+  }
+  function wireDocFiles(host, after){
     host.querySelectorAll(".doc-file").forEach(inp=> inp.onchange=async ()=>{
       const file=inp.files[0]; if(!file) return;
-      const k=inp.dataset.k, lbl=(STUDENT_DOCS.find(d=>d[0]===k)||[,k])[1];
       try{
-        toast("מעלה מסמך…"); persistCurrent(); await driveEnsureChildFolder(s);
-        const res=await driveUploadNamed(file, s.driveFolderId, docFileBaseName(lbl));
-        s.docFiles=s.docFiles||{}; s.docFiles[k]={ id:res.fileId||res.id||"", name:res.name||file.name, link:res.link||res.webViewLink||"" };
-        s.docs[k]=true; renderDocRows(); persistCurrent(); save();
+        toast("מעלה מסמך…");
+        await uploadDocFile(file, inp.dataset.k, inp.dataset.label||inp.dataset.k);
+        if(after) after();      // רינדור מחדש כדי שה-DOM ישקף את הסימון/הקישור החדשים
+        persistCurrent(); save(); // ואז שמירה (collect קורא מה-DOM המעודכן)
         toast("המסמך צורף ✓");
       }catch(e){ console.error(e); toast(driveErrHe(e)); }
       inp.value="";
     });
   }
+  function renderDocRows(){
+    const host=$("#doc-rows"); if(!host) return;
+    host.innerHTML = STUDENT_DOCS.map(([k,lbl])=>`
+      <div class="doc-row">
+        <label class="lbl"><input type="checkbox" class="d-chk" data-k="${k}" ${(s.docs&&s.docs[k])?'checked':''}> ${esc(lbl)}</label>
+        ${docAttachHtml(k,lbl)}
+      </div>`).join("");
+    host.querySelectorAll(".d-chk").forEach(cb=> cb.onchange=()=>{ s.docs[cb.dataset.k]=cb.checked; });
+    wireDocFiles(host, renderDocRows);
+  }
   renderDocRows();
+
+  /* שונות — כל אפשרות משנית נפתחת מיד מתחת לסימון שלה, עם צירוף מסמך (סעיפי התיקון) */
+  function syncSpecial(){
+    const set=(id,key)=>{ const el=$("#"+id); if(el) s.special[key]=el.checked; };
+    set("sp-divorced","divorced"); set("sp-outOfCity","outOfCity"); set("sp-retention","retention"); set("sp-other","other");
+    set("sp-approvalFather","approvalFather"); set("sp-approvalMother","approvalMother");
+    set("sp-paymentArrangement","paymentArrangement"); set("sp-retentionDoc","retentionDoc");
+    const ot=$("#sp-otherText"); if(ot) s.special.otherText=ot.value;
+  }
+  function renderSpecialBlocks(){
+    const host=$("#special-blocks"); if(!host) return;
+    const sp=s.special;
+    const parent=(id,key,label)=>`<div class="doc-row"><label class="lbl"><input type="checkbox" id="${id}" ${sp[key]?'checked':''}> ${esc(label)}</label></div>`;
+    const sub=(id,key,label,fileKey)=>`<div class="doc-row" style="margin-inline-start:20px;background:var(--surface)"><label class="lbl"><input type="checkbox" id="${id}" ${sp[key]?'checked':''}> ${esc(label)}</label>${docAttachHtml(fileKey,label)}</div>`;
+    let h="";
+    h+=parent("sp-divorced","divorced","הורים גרושים");
+    if(sp.divorced){ h+=sub("sp-approvalFather","approvalFather","אישור מיוחד מהאב","approvalFather"); h+=sub("sp-approvalMother","approvalMother","אישור מיוחד מהאם","approvalMother"); }
+    h+=parent("sp-outOfCity","outOfCity","ילדת חוץ (מחוץ לעיר)");
+    if(sp.outOfCity){ h+=sub("sp-paymentArrangement","paymentArrangement","הסדר תשלום מול הרשות","paymentArrangement"); }
+    h+=parent("sp-retention","retention","ילדת השארות");
+    if(sp.retention){ h+=sub("sp-retentionDoc","retentionDoc","מסמך השארות","retentionDoc"); }
+    h+=`<div class="doc-row"><label class="lbl"><input type="checkbox" id="sp-other" ${sp.other?'checked':''}> אחר</label>${sp.other?docAttachHtml("other","אחר"):""}</div>`;
+    if(sp.other){ h+=`<div style="margin-inline-start:20px"><label>פירוט "אחר"</label><input id="sp-otherText" value="${esc(sp.otherText||"")}" placeholder="פרט/י…"></div>`; }
+    host.innerHTML=h;
+    ["sp-divorced","sp-outOfCity","sp-retention","sp-other"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=()=>{ syncSpecial(); renderSpecialBlocks(); }; });
+    ["sp-approvalFather","sp-approvalMother","sp-paymentArrangement","sp-retentionDoc"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=syncSpecial; });
+    const ot=$("#sp-otherText"); if(ot) ot.oninput=()=>{ s.special.otherText=ot.value; };
+    wireDocFiles(host, renderSpecialBlocks);
+  }
+  renderSpecialBlocks();
 
   const refreshSuggest=()=>{ const tmp=collect(); $("#s-folderSuggest").value=suggestFolder(tmp); };
   ["s-firstName","s-lastName","s-tz"].forEach(id=> $("#"+id).oninput=refreshSuggest);
@@ -971,6 +986,7 @@ function openStudent(s){
     const g=id=>$("#"+id), val=id=>g(id)?.value.trim()??"", chk=id=>!!g(id)?.checked;
     const docs={}; STUDENT_DOCS.forEach(([k])=>{ const cb=document.querySelector(`.d-chk[data-k="${k}"]`); docs[k]= cb? cb.checked : !!(s.docs&&s.docs[k]); });
     const programs={}; PROGRAMS.forEach(([k])=>{ programs[k]=chk("pg-"+k); });
+    syncSpecial(); // מעדכן את s.special מהסימונים המוצגים כרגע (חלקם מוסתרים לפי ההורה)
     return Object.assign({}, s, {
       firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"), dob:val("s-dob"),
       motherName:val("s-motherName"), fatherName:val("s-fatherName"),
@@ -980,10 +996,7 @@ function openStudent(s){
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
       docs, docFiles:s.docFiles||{}, programs,
-      special:{ divorced:chk("sp-divorced"), approvalFather:chk("sp-approvalFather"), approvalMother:chk("sp-approvalMother"),
-                outOfCity:chk("sp-outOfCity"), paymentArrangement:chk("sp-paymentArrangement"),
-                retention:chk("sp-retention"), retentionDoc:chk("sp-retentionDoc"),
-                other:chk("sp-other"), otherText:val("sp-otherText") }
+      special: JSON.parse(JSON.stringify(s.special))
     });
   }
 
@@ -1380,7 +1393,8 @@ function viewReports(root){
   const list = eduScope(studentsOfYear().filter(s=>!s.finished));
   const total = list.length;
   const activeGans = eduScope(DB.gans.filter(g=>g.active));
-  const target = DB.settings.gansTarget || activeGans.length || 1;
+  // ביעד גנים משתמשים רק בתצוגה הכללית; כשמסננים לחינוך מסוים — מחלקים במספר הגנים של אותו חינוך
+  const target = activeEdu ? (activeGans.length||1) : (DB.settings.gansTarget || activeGans.length || 1);
   const avg = total / (target||1);
   const absorbed = list.filter(s=>s.absorbedMunicipality).length;
 
@@ -1393,8 +1407,8 @@ function viewReports(root){
 
   root.innerHTML = `
   <div class="panel">
-    <h2>סיכום שנת ${esc(DB.activeYear)}</h2>
-    <div class="sub">מתעדכן אוטומטית עם כל רישום.</div>
+    <h2>סיכום שנת ${esc(DB.activeYear)}${activeEdu?` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}`:''}</h2>
+    <div class="sub">מתעדכן אוטומטית עם כל רישום.${activeEdu?' המספרים והממוצע מסוננים לחינוך שנבחר בלבד.':''}</div>
     <div class="stats">
       <div class="stat hero"><div class="k">סה"כ תלמידות רשומות</div><div class="v">${total}</div></div>
       <div class="stat"><div class="k">ממוצע לגן</div><div class="v">${avg.toFixed(1)}<small> / ${target} גנים</small></div></div>
