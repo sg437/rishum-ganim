@@ -202,8 +202,11 @@ const DRIVE_READY = !APPS_SCRIPT_URL.includes("YOUR_");
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
-const STAFF_ROLES = ["גננת","סייעת","סייעת ב'","סייעת רפואית","סייעת צמודה","גננת משלימה","סייעת משלימה","גננת ממלאת מקום","סייעת ממלאת מקום"]; // תפקידי צוות (סעיף 2)
-const CHILD_AGES = ["2","3","4","5","6"]; // גיל ילדה בודדת (סעיף 6)
+const DEFAULT_STAFF_ROLES = ["גננת","סייעת","סייעת ב'","סייעת רפואית","סייעת צמודה","גננת משלימה","סייעת משלימה","גננת ממלאת מקום","סייעת ממלאת מקום"]; // תפקידי צוות (סעיף 2)
+const DEFAULT_CHILD_AGES = ["2","3","4","5","6"]; // גיל ילדה בודדת (סעיף 6)
+/* רשימות הניתנות לעריכה בהגדרות (מגובות ב-DB.settings); מסונכרנות ב-syncSettingsLists() */
+let STAFF_ROLES = DEFAULT_STAFF_ROLES.slice();
+let CHILD_AGES = DEFAULT_CHILD_AGES.slice();
 const GAN_AGES = ["3","4","5","3/4","4/5"]; // גיל הגן — כולל גנים דו-גלאיים 3/4, 4/5 (סעיף 6)
 const WEEK_DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי"]; // ימי שיבוץ למשלימה (סעיף 7)
 /* תפקידי שיבוץ + שדות נוספים לכל תפקיד (סעיף 7):
@@ -492,7 +495,26 @@ function renderEduPick(){
   box.querySelectorAll("[data-edu]").forEach(b=> b.onclick=()=>{ activeEdu=b.dataset.edu; route(); });
 }
 
+/* סנכרון רשימות ניתנות-לעריכה מ-DB.settings (גילי ילדים ותפקידי צוות) */
+function cleanList(arr){ return Array.isArray(arr) ? [...new Set(arr.map(x=>String(x).trim()).filter(Boolean))] : null; }
+function syncSettingsLists(){
+  const a=cleanList(DB.settings&&DB.settings.childAges);  CHILD_AGES  = (a&&a.length)? a : DEFAULT_CHILD_AGES.slice();
+  const r=cleanList(DB.settings&&DB.settings.staffRoles); STAFF_ROLES = (r&&r.length)? r : DEFAULT_STAFF_ROLES.slice();
+}
+/* עורך רשימה כללי בהגדרות: שורה לכל פריט (עריכה בשדה + מחיקה); onSave מקבל מערך חדש */
+function renderSettingsList(host, items, onSave, dis){
+  if(!host) return;
+  host.innerHTML = items.length
+    ? items.map((v,i)=>`<div class="row" style="gap:6px;margin-bottom:6px;align-items:center;max-width:340px">
+        <input class="sle-item" data-i="${i}" value="${esc(v)}" ${dis}>
+        ${dis?'':`<button class="btn ghost sm sle-del" data-i="${i}" title="מחיקה">🗑️</button>`}</div>`).join("")
+    : `<div class="hint">הרשימה ריקה — ברירת המחדל תשמש.</div>`;
+  if(dis) return;
+  host.querySelectorAll(".sle-item").forEach(inp=>{ inp.onchange=()=>{ const i=+inp.dataset.i, v=inp.value.trim(); const next=items.slice(); if(v) next[i]=v; else next.splice(i,1); onSave(next); }; });
+  host.querySelectorAll(".sle-del").forEach(b=>{ b.onclick=()=>{ const i=+b.dataset.i; const next=items.slice(); next.splice(i,1); onSave(next); }; });
+}
 function route(){
+  syncSettingsLists();
   applyBranding();
   renderTabs(); renderYearSelect(); renderEduPick();
   const lb=$("#lockBtn"); if(lb) lb.style.display=currentUser?"grid":"none";
@@ -892,7 +914,7 @@ function openStudent(s){
       <div><label>קמפוס גנים</label><input id="s-campus" list="campus-list" value="${esc(s.campus)}" placeholder="שם הקמפוס">
         <datalist id="campus-list">${campusList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
       <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
-      <div><label>גיל</label><select id="s-age"><option value="">—</option>${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
+      <div><label>גיל</label><select id="s-age"><option value="">—</option>${(s.age && !CHILD_AGES.map(String).includes(String(s.age)))?`<option selected>${esc(s.age)}</option>`:''}${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="s-education">${EDU_TYPES.map(t=>`<option ${eduLabel(s)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
     </div>
@@ -1970,7 +1992,7 @@ function openStaff(m){
       <div><label>שם פרטי</label><input id="st-firstName" value="${esc(m.firstName)}"></div>
       <div><label>מספר זהות (ת"ז)</label><input id="st-tz" value="${esc(m.tz)}" inputmode="numeric"></div>
       <div><label>מייל</label><input id="st-email" value="${esc(m.email)}" type="email" inputmode="email"></div>
-      <div><label>תפקיד</label><select id="st-role">${STAFF_ROLES.map(r=>`<option ${m.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
+      <div><label>תפקיד</label><select id="st-role">${(m.role && !STAFF_ROLES.includes(m.role))?`<option selected>${esc(m.role)}</option>`:''}${STAFF_ROLES.map(r=>`<option ${m.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
       <div><label>טלפון</label><input id="st-phone" value="${esc(m.phone)}" inputmode="tel"></div>
       <div><label>נייד</label><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
@@ -2522,8 +2544,30 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
+    <h2>גילי הילדים (רשימת תלמידים)</h2>
+    <div class="sub">הגילים שמופיעים לבחירה בתיק תלמידה ובסינון רשימת התלמידים. אפשר להוסיף, לערוך (שינוי הטקסט בשדה ויציאה) או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
+    <div id="ages-box"></div>
+    ${admin?`<div class="row" style="margin-top:10px">
+      <div class="field" style="min-width:140px"><label>הוספת גיל</label><input id="new-age" placeholder="למשל 7"></div>
+      <button class="btn" id="addAge" style="align-self:end">הוסף</button>
+      <button class="btn ghost" id="resetAges" style="align-self:end">איפוס לברירת מחדל</button>
+    </div>`:""}
+  </div>
+
+  <div class="panel">
+    <h2>תפקידי צוות</h2>
+    <div class="sub">התפקידים שמופיעים לבחירה בכרטיס איש/אשת צוות, בסינון הצוות ובייבוא. אפשר להוסיף, לערוך או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
+    <div id="roles-box"></div>
+    ${admin?`<div class="row" style="margin-top:10px">
+      <div class="field grow"><label>הוספת תפקיד</label><input id="new-role" placeholder="למשל: מטפלת"></div>
+      <button class="btn" id="addRole" style="align-self:end">הוסף</button>
+      <button class="btn ghost" id="resetRoles" style="align-self:end">איפוס לברירת מחדל</button>
+    </div>`:""}
+  </div>
+
+  <div class="panel">
     <h2>מנהלי מערכת</h2>
-    <div class="sub">רק כתובות אימייל שברשימה זו יכולות לשנות את הגדרות המערכת (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים). אם הרשימה ריקה — כל משתמש מחובר יכול (עד שמוסיפים מנהל ראשון).</div>
+    <div class="sub">רק כתובות אימייל שברשימה זו יכולות לשנות את הגדרות המערכת (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, גילי ילדים ותפקידי צוות). אם הרשימה ריקה — כל משתמש מחובר יכול (עד שמוסיפים מנהל ראשון).</div>
     <div id="admins-box"></div>
     ${admin?`<div class="row" style="margin-top:10px">
       <div class="field grow"><label>הוספת מנהל (אימייל)</label><input id="new-admin" type="email" inputmode="email" placeholder="name@example.com"></div>
@@ -2555,6 +2599,18 @@ function viewSettings(root){
   renderAuthBox();
   renderDriveBox();
   renderInstallBox();
+
+  // גילי ילדים ותפקידי צוות (עריכה למנהל בלבד)
+  const saveAges  = next => { DB.settings.childAges  = cleanList(next)||[]; save(); route(); toast("נשמר"); };
+  const saveRoles = next => { DB.settings.staffRoles = cleanList(next)||[]; save(); route(); toast("נשמר"); };
+  renderSettingsList($("#ages-box"),  CHILD_AGES.slice(),  saveAges,  dis);
+  renderSettingsList($("#roles-box"), STAFF_ROLES.slice(), saveRoles, dis);
+  if(admin){
+    $("#addAge").onclick=()=>{ const v=$("#new-age").value.trim(); if(!v)return; if(CHILD_AGES.includes(v)){toast("כבר קיים");return;} saveAges(CHILD_AGES.concat(v)); };
+    $("#resetAges").onclick=()=>{ delete DB.settings.childAges; save(); route(); toast("אופס לברירת מחדל"); };
+    $("#addRole").onclick=()=>{ const v=$("#new-role").value.trim(); if(!v)return; if(STAFF_ROLES.includes(v)){toast("כבר קיים");return;} saveRoles(STAFF_ROLES.concat(v)); };
+    $("#resetRoles").onclick=()=>{ delete DB.settings.staffRoles; save(); route(); toast("אופס לברירת מחדל"); };
+  }
 
   // מיתוג (כותרת + לוגו)
   if(admin){
