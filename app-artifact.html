@@ -435,7 +435,8 @@ const TABS = [
 let active = "students";
 
 function renderTabs(){
-  const counts = { students: studentsOfYear().filter(s=>!s.finished).length, gans: DB.gans.filter(g=>g.active).length };
+  // המונים מכבדים את בורר החינוך (הכל / רגיל / מיוחד)
+  const counts = { students: eduScope(studentsOfYear().filter(s=>!s.finished)).length, gans: eduScope(DB.gans.filter(g=>g.active)).length };
   $("#tabs").innerHTML = TABS.map(t=>{
     const c = counts[t.id]!=null ? `<span class="count">${counts[t.id]}</span>` : "";
     return `<button data-tab="${t.id}" class="${t.id===active?'active':''}">${t.label}${c}</button>`;
@@ -636,7 +637,7 @@ function viewStudents(root){
   root.innerHTML = `
   <div class="panel">
     <div class="section-title">
-      <div><h2>תיקי התלמידות · שנת ${esc(DB.activeYear)}${esc(scopeNote)}</h2>
+      <div><h2>תיקי התלמידות · שנת ${esc(DB.activeYear)}${esc(scopeNote)} <span id="ganCapBadge"></span></h2>
         <div class="sub">תיק לכל ילדה עם כל הפרטים, המסמכים והשונות. סימון "סיימה גן" מעביר אותה ל"שסיימו" (אינה נמחקת — ניתן לצפות בה דרך סינון הסטטוס). לחיצה על כותרת עמודה ממיינת.</div></div>
       <div class="row" style="gap:8px">
         <button class="btn ghost" id="importStu">⬆️ ייבוא מקובץ</button>
@@ -728,8 +729,19 @@ function programBadges(s){
   return b.join(" ");
 }
 
+/* משבצת קטנה ליד הכותרת: רשומות/קיבולת של הגן שנבחר בסינון — צבע כמו בטאב הגנים
+   (אדום כשהרשומות עוברות את הקיבולת, ירוק אחרת). מקל על שיבוץ בלי לקפוץ לטאב הגנים. */
+function renderGanCapBadge(){
+  const el=$("#ganCapBadge"); if(!el) return;
+  const gid=stuFilter.gan, g=gid && DB.gans.find(x=>x.id===gid);
+  if(!g){ el.innerHTML=""; return; }
+  const reg=studentsOfYear().filter(s=>s.ganId===gid && !s.finished).length;
+  const cls=(g.capacity && reg>+g.capacity) ? 'no' : 'ok';
+  el.innerHTML=`<span class="pill ${cls}" title="רשומות בגן הנבחר מול הקיבולת">רשומות ${reg}${g.capacity?(' / '+esc(g.capacity)):''}</span>`;
+}
 function renderStuTable(){
   renderTabs();
+  renderGanCapBadge();
   const list = filteredStudents();
   const host = $("#stuTable");
   const statusLbl = { active:"פעילות", finished:"שסיימו / יצאו", all:"כל הסטטוסים" }[stuFilter.status]||"";
