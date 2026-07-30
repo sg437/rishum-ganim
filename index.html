@@ -275,6 +275,7 @@ function safeYearId(y){ return "students_"+String(y).replace(/[^0-9A-Za-z֐-׿]/
 
 /* שמירה לענן — דחייה קצרה לאיגוד שינויים, ושמירה על שינויים מקומיים שטרם נכתבו */
 let _saveTimer=null, savePending=false, cloudDocs=new Map();
+let serverConfirmed=false; // האם התקבל סנאפשוט מהשרת (לא ממטמון) — תנאי בטיחות לפני כתיבה
 /* חיווי סטטוס סנכרון בכותרת — מבוסס על metadata של Firestore (hasPendingWrites/fromCache),
    כדי לדעת אם הנתונים באמת עלו לשרת (ונראים לשאר המשתמשים) או תקועים מקומית. */
 function setSyncStatus(state){
@@ -330,6 +331,9 @@ async function runPush(){
 }
 async function pushAll(){
   if(!db) return;
+  // בטיחות: אל תדרוס נתוני שרת עם DB ריק שטרם אושר מול השרת (דפדפן ללא חיבור שלא הספיק לטעון)
+  const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
+  if(localEmpty && !serverConfirmed) return;
   // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
   const meta={ activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, settings:DB.settings, assignments:DB.assignments };
   const gans=DB.gans.slice(), management=DB.management.slice(), staff=DB.staff.slice();
@@ -597,6 +601,7 @@ function startDataSync(){
   cloudDocs=new Map();
   dataUnsub = onSnapshot(collection(db,"app"), { includeMetadataChanges:true }, snap=>{
     const md=snap.metadata; // עדכון חיווי הסנכרון לפי מצב הכתיבות מול השרת
+    if(!md.fromCache) serverConfirmed=true; // אושר מגע עם השרת — מותר לכתוב
     setSyncStatus(md.hasPendingWrites ? "pending" : (md.fromCache ? "offline" : "synced"));
     const changes = snap.docChanges();
     if(!changes.length && cloudDocs.size) return; // שינוי מטא-דאטה בלבד (סטטוס) על נתונים שכבר נטענו — אין צורך לבנות מחדש
