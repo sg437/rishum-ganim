@@ -1171,6 +1171,17 @@ function parseTable(text){
   if(cur!==""||row.length){ row.push(cur); rows.push(row); }
   return rows.filter(r=>r.some(c=>String(c).trim()!==""));
 }
+/* פירוק שם למילים (מתעלם מפיסוק/מרכאות/מקפים) */
+function nameTokens(s){ return String(s||"").replace(/["'.,\-–־׳״]/g," ").split(/\s+/).map(w=>w.trim()).filter(Boolean); }
+/* השוואת שמות ללא תלות בסדר המילים: "מצגר רחל" == "רחל מצגר".
+   דורש לפחות שתי מילים והתאמה מלאה של קבוצת המילים (למניעת התאמות שגויות). */
+function sameNameUnordered(a,b){
+  const ta=nameTokens(a), tb=nameTokens(b);
+  if(ta.length<2 || tb.length!==ta.length) return false;
+  const sa=ta.slice().sort((x,y)=>x.localeCompare(y,"he"));
+  const sb=tb.slice().sort((x,y)=>x.localeCompare(y,"he"));
+  return sa.every((w,i)=>w===sb[i]);
+}
 /* התאמת שם/סמל גן מהקובץ לגן קיים במערכת */
 function matchGanText(text){
   const t=String(text||"").trim(); if(!t) return "";
@@ -1178,7 +1189,8 @@ function matchGanText(text){
   const g = DB.gans.find(g=>nz(g.teacherName)===t)
         || DB.gans.find(g=>nz(g.ganSymbol)===t)
         || DB.gans.find(g=>nz(g.internalSymbol)===t)
-        || DB.gans.find(g=>nz(g.teacherName) && (t.includes(nz(g.teacherName)) || nz(g.teacherName).includes(t)));
+        || DB.gans.find(g=>nz(g.teacherName) && (t.includes(nz(g.teacherName)) || nz(g.teacherName).includes(t)))
+        || DB.gans.find(g=>nz(g.teacherName) && sameNameUnordered(g.teacherName, t)); // שם גננת בסדר מילים הפוך
   return g? g.id : "";
 }
 /* בניית רשומות מהטבלה שנקראה */
