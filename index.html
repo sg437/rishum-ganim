@@ -576,7 +576,9 @@ function startDataSync(){
     });
     if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
     rebuildDB(cloudDocs);
-    if(!cloudDocs.has("meta")) save(); // איתחול ראשוני חד-פעמי (יצירת מסמך meta)
+    // איתחול meta רק כשהשרת אישר שהוא באמת ריק (לא ממטמון אופליין) —
+    // כדי שדפדפן שאינו מצליח להגיע ל-Firestore לא ידחוף DB ריק וידרוס נתונים קיימים.
+    if(!cloudDocs.has("meta") && !md.fromCache) save();
     if($("#overlay").classList.contains("show")){ pendingRender=true; }
     else route();
   }, err=>{ console.error(err); setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
