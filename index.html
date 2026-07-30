@@ -347,10 +347,16 @@ async function pushAll(){
   for(const id of [...knownStudentDocs]){ if(!wantIds.has(id)){ try{ await deleteDoc(doc(db,"app",id)); }catch(e){} knownStudentDocs.delete(id); } }
 }
 /* בנייה מחדש של DB מתוך מסמכי הענן */
+/* בחירת השנה היא העדפה מקומית לכל דפדפן (לא מסונכרנת) — כדי שכל משתמש יוכל לצפות
+   בשנה שהוא רוצה בלי לכתוב לענן ובלי שהשרת ידרוס את בחירתו. */
+function getYearPref(){ try{ return localStorage.getItem("rg-year")||""; }catch(_){ return ""; } }
+function setYearPref(y){ try{ localStorage.setItem("rg-year", y); }catch(_){} }
 function rebuildDB(docsMap){
   const meta=docsMap.get("meta")||{};
   DB.years = (meta.years&&meta.years.length)? meta.years : DEFAULT_YEARS.slice();
-  DB.activeYear = meta.activeYear && DB.years.includes(meta.activeYear) ? meta.activeYear : DB.years[0];
+  const pref=getYearPref();
+  DB.activeYear = (pref && DB.years.includes(pref)) ? pref
+                : (meta.activeYear && DB.years.includes(meta.activeYear) ? meta.activeYear : DB.years[0]);
   DB.municipality = meta.municipality||{};
   DB.historical = meta.historical||{};
   DB.settings = meta.settings||{ gansTarget:29, admins:[] };
@@ -629,8 +635,10 @@ function boot(){
     auth=getAuth(app);
     // experimentalAutoDetectLongPolling: מעבר אוטומטי ל-long-polling כשרשת/פרוקסי חוסמים את
     // חיבור ה-streaming של Firestore — מאפשר סנכרון גם ברשתות ארגוניות שבהן התוכנה נטענת אך הנתונים לא הסתנכרנו.
-    try{ db=initializeFirestore(app,{ localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }), experimentalAutoDetectLongPolling:true }); }
-    catch(e){ db=initializeFirestore(app,{ experimentalAutoDetectLongPolling:true }); }
+    // experimentalForceLongPolling: מכריח long-polling (בקשות HTTPS רגילות) לקריאה *ולכתיבה* —
+    // עוקף רשתות/פרוקסי שחוסמים את חיבור ה-streaming של Firestore (מצב שבו קריאה עוברת אך כתיבה נתקעת).
+    try{ db=initializeFirestore(app,{ localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }), experimentalForceLongPolling:true }); }
+    catch(e){ db=initializeFirestore(app,{ experimentalForceLongPolling:true }); }
   }catch(e){ console.error(e); renderSetupNeeded(String(e.message||e)); return; }
   onAuthStateChanged(auth, user=>{
     currentUser=user;
@@ -2835,7 +2843,7 @@ function viewSettings(root){
   yb.querySelectorAll("[data-dely]").forEach(b=>b.onclick=()=>{ const y=b.dataset.dely;
     if(studentsOfYear(y).length && !confirm(`בשנת ${y} יש תלמידות. למחוק את השנה ואת התלמידות שבה?`)) return;
     DB.years=DB.years.filter(x=>x!==y); DB.students=DB.students.filter(s=>s.year!==y);
-    if(DB.activeYear===y)DB.activeYear=DB.years[0]; save(); route(); });
+    if(DB.activeYear===y){ DB.activeYear=DB.years[0]; setYearPref(DB.activeYear); } save(); route(); });
   if(admin) $("#addYear").onclick=()=>{ const y=$("#new-year").value.trim(); if(!y)return; if(DB.years.includes(y)){toast("שנה קיימת");return;} DB.years.push(y); save(); route(); toast("נוספה שנה"); };
 
   if(admin) $("#doPromote").onclick=async ()=>{
@@ -2966,7 +2974,7 @@ $("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeMod
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ navToTab(b.dataset.tab); } });
-$("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; save(); route(); });
+$("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; setYearPref(DB.activeYear); route(); }); // העדפה מקומית — ללא כתיבה לענן
 
 /* theme */
 (function(){ const KEY="rg-theme"; const saved=localStorage.getItem(KEY); if(saved)document.documentElement.dataset.theme=saved;
