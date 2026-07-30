@@ -299,8 +299,17 @@ let _offlineTimer=null, _offlineDismissed=false;
 function hideOfflineBanner(){ const b=$("#offlineBanner"); if(b) b.style.display="none"; }
 function showOfflineBanner(){
   const b=$("#offlineBanner"); if(!b) return;
-  b.innerHTML=`<div style="background:var(--bad-soft);color:var(--bad);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-weight:600">
-    <span style="flex:1;min-width:220px">⚠️ <b>אין חיבור לענן.</b> מה שהזנת שמור במכשיר זה בלבד וטרם סונכרן — משתמשים אחרים לא יראו אותו עד שהחיבור יחזור (הנתונים לא ייאבדו). נסה/י: רשת אחרת (חבילת גלישה במקום Wi-Fi ארגוני) · דפדפן אחר וללא חוסמי פרסומות/VPN · רענון הדף.</span>
+  b.innerHTML=`<div style="background:var(--bad-soft);color:var(--bad);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;font-weight:600">
+    <div style="flex:1;min-width:240px">
+      ⚠️ <b>אין כרגע חיבור לענן.</b> המידע שהזנת שמור ובטוח — הוא פשוט עדיין לא מתעדכן אצל אחרים. נסה/י את השלבים לפי הסדר, ואחרי כל שלב הסתכל/י על הכיתוב למעלה — אם הפך ל<b>"נשמר בענן"</b> הכול תקין:
+      <ol style="margin:6px 0 0;padding-inline-start:20px;font-weight:500;line-height:1.7">
+        <li>לחצ/י על הכפתור <b>"רענן"</b> כאן למטה.</li>
+        <li>אם את/ה על <b>Wi-Fi</b> — כבה/י אותו ועבור/עברי לאינטרנט של הטלפון (גלישה סלולרית); ואם את/ה כבר על סלולרי — נסה/י Wi-Fi.</li>
+        <li>סגור/י לגמרי את הדף (או האפליקציה) ופתח/י מחדש את הקישור.</li>
+        <li>נסה/י לפתוח את אותו קישור ב<b>דפדפן אחר</b> (למשל Chrome).</li>
+      </ol>
+      <div style="margin-top:6px;font-weight:500">עדיין תקוע אחרי הכול? עדכן/י את המנהל — ונטפל בזה יחד.</div>
+    </div>
     <span style="display:flex;gap:6px">
       <button class="btn sm" id="ob-reload" type="button">🔄 רענן</button>
       <button class="btn ghost sm" id="ob-dismiss" type="button">הבנתי</button>
