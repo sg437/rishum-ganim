@@ -168,6 +168,7 @@ body.locked nav.tabs,body.locked .year-pick,body.locked #themeBtn,body.locked #l
   <nav class="tabs" id="tabs"></nav>
 </header>
 
+<div id="offlineBanner" style="display:none"></div>
 <main id="view"></main>
 
 <!-- modal host -->
@@ -278,7 +279,7 @@ let _saveTimer=null, savePending=false, cloudDocs=new Map();
    כדי לדעת אם הנתונים באמת עלו לשרת (ונראים לשאר המשתמשים) או תקועים מקומית. */
 function setSyncStatus(state){
   const el=$("#syncStatus"); if(!el) return;
-  if(!currentUser){ el.style.display="none"; return; }
+  if(!currentUser){ el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; hideOfflineBanner(); return; }
   const map={
     pending:["⏳ מסנכרן…","var(--warn)","יש שינויים שממתינים להעלאה לשרת — השאר/י את החלון פתוח עד שהחיווי יתחלף ל\"נשמר בענן\""],
     synced :["✓ נשמר בענן","var(--good)","כל הנתונים נשמרו בשרת ומשותפים לכל המשתמשים המחוברים"],
@@ -287,6 +288,26 @@ function setSyncStatus(state){
   };
   const [txt,color,title]=map[state]||map.synced;
   el.style.display="inline-flex"; el.textContent=txt; el.style.color=color; el.title=title;
+  // באנר מנחה כשמצב "לא מחובר לענן" נמשך (מעל ~8 שניות)
+  if(state==="offline"){
+    if(!_offlineTimer && !_offlineDismissed) _offlineTimer=setTimeout(showOfflineBanner, 8000);
+  } else {
+    clearTimeout(_offlineTimer); _offlineTimer=null; _offlineDismissed=false; hideOfflineBanner();
+  }
+}
+let _offlineTimer=null, _offlineDismissed=false;
+function hideOfflineBanner(){ const b=$("#offlineBanner"); if(b) b.style.display="none"; }
+function showOfflineBanner(){
+  const b=$("#offlineBanner"); if(!b) return;
+  b.innerHTML=`<div style="background:var(--bad-soft);color:var(--bad);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-weight:600">
+    <span style="flex:1;min-width:220px">⚠️ <b>אין חיבור לענן.</b> מה שהזנת שמור במכשיר זה בלבד וטרם סונכרן — משתמשים אחרים לא יראו אותו עד שהחיבור יחזור (הנתונים לא ייאבדו). נסה/י: רשת אחרת (חבילת גלישה במקום Wi-Fi ארגוני) · דפדפן אחר וללא חוסמי פרסומות/VPN · רענון הדף.</span>
+    <span style="display:flex;gap:6px">
+      <button class="btn sm" id="ob-reload" type="button">🔄 רענן</button>
+      <button class="btn ghost sm" id="ob-dismiss" type="button">הבנתי</button>
+    </span></div>`;
+  b.style.display="block";
+  const r=$("#ob-reload"); if(r) r.onclick=()=>location.reload();
+  const d=$("#ob-dismiss"); if(d) d.onclick=()=>{ _offlineDismissed=true; hideOfflineBanner(); };
 }
 function save(){ if(!db) return; setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250); }
 async function runPush(){
@@ -583,7 +604,7 @@ function startDataSync(){
     else route();
   }, err=>{ console.error(err); setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
 }
-function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; }
+function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; hideOfflineBanner(); }
 
 function boot(){
   try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
