@@ -1262,6 +1262,33 @@ function fixImportedDobs(){
     <div class="foot"><button class="btn" id="fd-ok">סגור</button></div>`);
   $("#fd-ok").onclick=closeModal;
 }
+/* זיהוי סימונים מתוך טקסט ההערות: "תושב/ת חוץ" → מחוץ לעיר · "השארות" → השארות */
+function flagsFromNotes(notes){
+  const n=String(notes||"").replace(/[\/\\]/g," ");
+  return {
+    outOfCity: /חוץ/.test(n) && /(תושב|ילד|מחוץ)/.test(n),
+    retention: /השאר/.test(n)
+  };
+}
+/* החלה רטרואקטיבית על תלמידות קיימות — עדכון הסימונים לפי ההערות (בלי לייבא מחדש) */
+function applyNoteFlags(){
+  let oc=0, rt=0;
+  DB.students.forEach(s=>{
+    s.special = s.special || {};
+    const fl=flagsFromNotes(s.notes);
+    if(fl.outOfCity && !s.special.outOfCity){ s.special.outOfCity=true; oc++; }
+    if(fl.retention && !s.special.retention){ s.special.retention=true; rt++; }
+  });
+  if(oc||rt) save();
+  modal(`<h3>עדכון סימונים מההערות</h3>
+    <div class="note">
+      סומנו <b>${oc}</b> תלמידות כ"מחוץ לעיר" (תושב/ת חוץ).<br>
+      סומנו <b>${rt}</b> תלמידות כ"השארות".<br>
+      ${(oc||rt)?'הסימונים עודכנו ונשמרו.':'לא נמצאו הערות חדשות לסימון.'}
+    </div>
+    <div class="foot"><button class="btn" id="nf-ok">סגור</button></div>`);
+  $("#nf-ok").onclick=closeModal;
+}
 /* פענוח CSV/הדבקה — תומך בפסיקים או טאבים, מרכאות, ותאים רב-שורתיים */
 function parseTable(text){
   text=String(text||"").replace(/^﻿/,"");
@@ -1322,6 +1349,7 @@ function buildImportRows(rows, opts){
     st.street=g("street"); st.building=g("building"); st.city=g("city"); st.campus=g("campus");
     st.age=g("age").replace(/[^\d]/g,""); st.period=normPeriodVal(g("period")); st.education=normEduVal(g("education"));
     st.notes=g("notes");
+    const fl=flagsFromNotes(st.notes); if(fl.outOfCity) st.special.outOfCity=true; if(fl.retention) st.special.retention=true; // זיהוי "תושב/ת חוץ" / "השארות" מההערות
     const ganText=g("gan"); st.ganId=matchGanText(ganText);
     st.absorbedMunicipality = idx.absorbed!=null ? truthyCell(g("absorbed")) : !!opts.absorbed;
     st.registeredByUs        = idx.regByUs!=null ? truthyCell(g("regByUs"))  : !!opts.reg;
@@ -1398,14 +1426,16 @@ function openImport(){
     <button class="btn" id="imp-do" type="button" disabled>⬆️ ייבא תלמידות</button>
     <button class="btn ghost" id="imp-undo" type="button">↩️ בטל ייבוא אחרון</button>
     <button class="btn ghost" id="imp-fixdob" type="button">🩹 תיקון תאריכי לידה</button>
+    <button class="btn ghost" id="imp-noteflags" type="button">🏷️ סימון תושב-חוץ/השארות מההערות</button>
     <button class="btn ghost" id="imp-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
   </div>
-  <div class="hint" style="margin-top:6px">תאריכי הלידה לא נקלטו? לחצ/י "תיקון תאריכי לידה" — המערכת תנרמל מחדש את התאריכים הקיימים (כולל פורמט אקסל) בלי צורך לייבא מחדש.</div>
+  <div class="hint" style="margin-top:6px">בייבוא, הערה שכוללת "תושב/ת חוץ" תסמן אוטומטית "מחוץ לעיר", והערה שכוללת "השארות" תסמן "השארות". לעדכון תלמידות שכבר יובאו — לחצ/י "סימון תושב-חוץ/השארות מההערות".</div>
   <div id="imp-out" style="margin-top:14px"></div>`);
 
   $("#imp-template").onclick=importTemplateCSV;
   $("#imp-undo").onclick=undoLastImport;
   $("#imp-fixdob").onclick=fixImportedDobs;
+  $("#imp-noteflags").onclick=applyNoteFlags;
   $("#imp-cancel").onclick=closeModal;
   $("#imp-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
     readFileSmart(f, txt=>{ $("#imp-text").value=txt; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }); };
