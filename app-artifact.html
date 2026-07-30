@@ -452,6 +452,8 @@ function renderEduPick(){
   box.querySelectorAll("[data-edu]").forEach(b=> b.onclick=()=>{ activeEdu=b.dataset.edu; route(); });
 }
 
+/* רשימת ערכים ייחודיים ממוינת בעברית — להשלמה אוטומטית (datalist) */
+function uniqSortHe(arr){ return [...new Set((arr||[]).map(x=>String(x||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he")); }
 /* סנכרון רשימות ניתנות-לעריכה מ-DB.settings (גילי ילדים ותפקידי צוות) */
 function cleanList(arr){ return Array.isArray(arr) ? [...new Set(arr.map(x=>String(x).trim()).filter(Boolean))] : null; }
 function syncSettingsLists(){
@@ -626,7 +628,15 @@ function renderInstallBox(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gan:"", age:[], city:"", campus:"", period:"", edu:"", muni:"", status:"active" }; // age = ריבוי גלאים (סעיף 6)
+let stuFilter = { q:"", gan:"", age:[], city:"", campus:"", period:"", edu:"", muni:"", flag:"", status:"active" }; // age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
+/* מאפייני סינון מיוחדים לתלמידה — לסינון + סיכום מותנה (סעיף השארות/צהרון/קייטנות) */
+const STU_FLAGS = {
+  retention:    { label:"השארות",        test:s=>!!(s.special && s.special.retention) },
+  tzaharon:     { label:"צהרון",          test:s=>!!(s.programs && s.programs.tzaharon) },
+  campHanukkah: { label:"קייטנת חנוכה",   test:s=>!!(s.programs && s.programs.campHanukkah) },
+  campNisan:    { label:"קייטנת ניסן",    test:s=>!!(s.programs && s.programs.campNisan) },
+  campEndYear:  { label:"קייטנת סוף שנה", test:s=>!!(s.programs && s.programs.campEndYear) }
+};
 let stuSort = { key:"name", dir:1 }; // מיון לפי עמודה (סעיף 10)
 
 function viewStudents(root){
@@ -657,6 +667,7 @@ function viewStudents(root){
       <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
       <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
+      <div class="field"><label>מאפיין</label><select id="f-flag"><option value="">הכל</option>${Object.entries(STU_FLAGS).map(([k,d])=>`<option value="${k}" ${stuFilter.flag===k?'selected':''}>${esc(d.label)}</option>`).join("")}</select></div>
       <div class="field"><label>סטטוס</label><select id="f-status">
         <option value="active" ${stuFilter.status==='active'?'selected':''}>פעילות</option>
         <option value="finished" ${stuFilter.status==='finished'?'selected':''}>שסיימו / יצאו</option>
@@ -669,7 +680,7 @@ function viewStudents(root){
   $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#importStu").onclick = ()=> openImport();
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-status","status");
+  bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-status","status");
   // סינון גיל בריבוי בחירה — לחיצה מוסיפה/מסירה גיל (סעיף 6)
   const ageBox=$("#f-age"); if(ageBox) ageBox.querySelectorAll("[data-age]").forEach(btn=> btn.onclick=()=>{
     const a=btn.dataset.age, set=new Set(stuFilter.age); set.has(a)?set.delete(a):set.add(a); stuFilter.age=[...set];
@@ -700,6 +711,7 @@ function filteredStudents(){
   let list=studentsScopeBase();
   if(f.muni==='yes') list=list.filter(s=>s.absorbedMunicipality);
   if(f.muni==='no')  list=list.filter(s=>!s.absorbedMunicipality);
+  if(f.flag && STU_FLAGS[f.flag]) list=list.filter(STU_FLAGS[f.flag].test);
   return sortStudents(list);
 }
 function sortStudents(list){
@@ -744,23 +756,18 @@ function renderStuSummary(){
   const total=base.length;
   const absorbed=base.filter(s=>s.absorbedMunicipality).length;
   const notAbsorbed=total-absorbed;
-  const retention=base.filter(s=>s.special && s.special.retention).length;
-  const tzaharon=base.filter(s=>s.programs && s.programs.tzaharon).length;
-  const cH=base.filter(s=>s.programs && s.programs.campHanukkah).length;
-  const cN=base.filter(s=>s.programs && s.programs.campNisan).length;
-  const cE=base.filter(s=>s.programs && s.programs.campEndYear).length;
-  const camps=base.filter(s=>s.programs && (s.programs.campHanukkah||s.programs.campNisan||s.programs.campEndYear)).length;
   const g=stuFilter.gan && DB.gans.find(x=>x.id===stuFilter.gan);
   const capTxt = g && g.capacity ? ` <small>/ ${esc(g.capacity)}</small>` : "";
   const regColor = (g && g.capacity) ? (total>+g.capacity?'var(--bad)':'var(--good)') : "";
   const tile=(k,v,color,title)=>`<div class="stat"${title?` title="${esc(title)}"`:''}><div class="k">${k}</div><div class="v"${color?` style="color:${color}"`:''}>${v}</div></div>`;
+  // משבצת מותנית: רק כשמסננים לפי מאפיין (השארות/צהרון/קייטנה) מוצג הסיכום שלו
+  const fd=stuFilter.flag && STU_FLAGS[stuFilter.flag];
+  const flagTile = fd ? tile(fd.label, base.filter(fd.test).length, 'var(--accent-strong)') : "";
   el.innerHTML=`<div class="stats">
     ${tile("רשומות"+(g?" בגן":""), total+capTxt, regColor)}
     ${tile("קלוט בעירייה", absorbed, absorbed===total&&total?'var(--good)':'')}
     ${tile("לא קלוט", notAbsorbed, notAbsorbed>0?'var(--bad)':'var(--good)')}
-    ${tile("השארות", retention)}
-    ${tile("צהרון", tzaharon)}
-    ${tile("קייטנות", camps, "", `חנוכה ${cH} · ניסן ${cN} · סוף שנה ${cE}`)}
+    ${flagTile}
   </div>`;
 }
 function renderStuTable(){
@@ -803,6 +810,8 @@ function openStudent(s){
   const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
   const folderSuggest = suggestFolder(s);
   const campusList = [...new Set(DB.students.map(x=>x.campus).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he")); // קמפוסים קיימים (סעיף 1)
+  const streetList = uniqSortHe([...DB.students.map(x=>x.street), ...DB.gans.map(g=>g.street)]); // רחובות קיימים — השלמה אוטומטית
+  const cityList   = uniqSortHe(DB.students.map(x=>x.city)); // ערים קיימות
   modal(`
   <h3>${isNew?'תיק ילדה חדש':'תיק ילדה'} · שנת ${esc(s.year)}</h3>
   <fieldset><legend>פרטים אישיים</legend>
@@ -819,9 +828,9 @@ function openStudent(s){
   </fieldset>
   <fieldset><legend>כתובת</legend>
     <div class="grid g3">
-      <div><label>רחוב</label><input id="s-street" value="${esc(s.street)}"></div>
+      <div><label>רחוב</label><input id="s-street" list="s-street-list" value="${esc(s.street)}"><datalist id="s-street-list">${streetList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
       <div><label>מספר בניין</label><input id="s-building" value="${esc(s.building)}"></div>
-      <div><label>עיר</label><input id="s-city" value="${esc(s.city)}"></div>
+      <div><label>עיר</label><input id="s-city" list="s-city-list" value="${esc(s.city)}"><datalist id="s-city-list">${cityList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
     </div>
   </fieldset>
   <fieldset><legend>שיבוץ ורישום</legend>
@@ -1328,15 +1337,27 @@ function openImport(){
    טאב גנים
    ============================================================ */
 let ganFilter = { q:"", zone:"", status:"" };
+let ganSort = { key:"name", dir:1 }; // מיון רשימת הגנים לפי עמודה
+const GAN_SORT_VAL = {
+  name:g=>ganName(g.id), internalSymbol:g=>g.internalSymbol, ganSymbol:g=>g.ganSymbol,
+  age:g=>g.age, teacherName:g=>g.teacherName,
+  address:g=>[g.address,g.building].filter(Boolean).join(" "), zone:g=>g.zone,
+  capacity:g=>+g.capacity||0, reg:g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length
+};
+function sortGans(list){
+  const k=ganSort.key, d=ganSort.dir, v=GAN_SORT_VAL[k]||GAN_SORT_VAL.name;
+  const numeric = k==='capacity' || k==='reg';
+  return list.sort((a,b)=> numeric ? ((+v(a)||0)-(+v(b)||0))*d : String(v(a)||"").localeCompare(String(v(b)||""),"he")*d );
+}
 function gansScoped(){
-  return eduScope(DB.gans.slice()).filter(g=>{
+  return sortGans(eduScope(DB.gans.slice()).filter(g=>{
     const q=ganFilter.q.trim().toLowerCase();
     if(q){ const hay=(g.ganName+" "+g.teacherName+" "+g.ganSymbol+" "+g.internalSymbol+" "+g.address+" "+g.zone).toLowerCase(); if(!hay.includes(q)) return false; }
     if(ganFilter.zone && g.zone!==ganFilter.zone) return false;
     if(ganFilter.status==='active' && !g.active) return false;
     if(ganFilter.status==='off' && g.active) return false;
     return true;
-  }).sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+  }));
 }
 function viewGans(root){
   const zones=[...new Set(DB.gans.map(g=>g.zone).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
@@ -1370,9 +1391,14 @@ function renderGanTable(){
   const list = gansScoped();
   const host=$("#ganTable");
   if(!list.length){ host.innerHTML=`<div class="empty">אין גנים התואמים לסינון. לחצ/י "הוספת גן".</div>`; return; }
+  const arr=k=> ganSort.key===k ? `<span class="arr">${ganSort.dir>0?'▲':'▼'}</span>` : "";
+  const th=(k,lbl)=> k ? `<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>` : `<th>${lbl}</th>`;
+  const shownActive = list.filter(g=>g.active).length;
+  const totalActive = eduScope(DB.gans.filter(g=>g.active)).length;
+  const eduNote = activeEdu ? ` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})` : "";
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
-    <th>שם הגן</th><th>סמל פנימי</th><th>סמל גן</th><th>גיל</th><th>חינוך</th><th>גננת</th><th>כתובת</th><th>מספר</th><th>אזור</th>
-    <th>טל' גן</th><th>קיבולת</th><th>רשומות</th><th>סטטוס</th><th></th></tr></thead><tbody>
+    ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${th("age","גיל")}${th("","חינוך")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("zone","אזור")}
+    ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("","סטטוס")}<th></th></tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
       return `<tr>
@@ -1392,11 +1418,15 @@ function renderGanTable(){
         <td class="actions"><button class="btn ghost sm" data-editg="${g.id}">עריכה</button></td></tr>`;
     }).join("")}
   </tbody></table></div>
-  <div class="hint">${DB.gans.filter(g=>g.active).length} גנים פעילים מתוך ${DB.gans.length}.</div>`;
+  <div class="hint">מוצגים ${shownActive} מתוך ${totalActive} גנים פעילים${eduNote}.</div>`;
   host.querySelectorAll("[data-editg]").forEach(b=> b.onclick=()=>{ const g=DB.gans.find(x=>x.id===b.dataset.editg); openGan(JSON.parse(JSON.stringify(g))); });
+  host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(ganSort.key===k) ganSort.dir*=-1; else { ganSort.key=k; ganSort.dir=1; } renderGanTable(); });
 }
 function openGan(g){
   const isNew=!DB.gans.some(x=>x.id===g.id);
+  const gStreetList = uniqSortHe([...DB.gans.map(x=>x.street), ...DB.students.map(s=>s.street)]);
+  const gAddrList   = uniqSortHe(DB.gans.map(x=>x.address));
+  const gZoneList   = uniqSortHe(DB.gans.map(x=>x.zone));
   modal(`
   <h3>${isNew?'גן חדש':'עריכת גן'}</h3>
   <fieldset><legend>זיהוי הגן</legend>
@@ -1412,10 +1442,10 @@ function openGan(g){
   </fieldset>
   <fieldset><legend>כתובת ואזור</legend>
     <div class="grid g4">
-      <div><label>כתובת הגן</label><input id="g-address" value="${esc(g.address)}"></div>
+      <div><label>כתובת הגן</label><input id="g-address" list="g-addr-list" value="${esc(g.address)}"><datalist id="g-addr-list">${gAddrList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
       <div><label>מספר</label><input id="g-building" value="${esc(g.building)}" inputmode="numeric"></div>
-      <div><label>רחוב</label><input id="g-street" value="${esc(g.street)}"></div>
-      <div><label>אזור בעיר</label><input id="g-zone" value="${esc(g.zone)}" placeholder="לסינון לפי אזורים"></div>
+      <div><label>רחוב</label><input id="g-street" list="g-street-list" value="${esc(g.street)}"><datalist id="g-street-list">${gStreetList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
+      <div><label>אזור בעיר</label><input id="g-zone" list="g-zone-list" value="${esc(g.zone)}" placeholder="לסינון לפי אזורים"><datalist id="g-zone-list">${gZoneList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
     </div>
   </fieldset>
   <fieldset><legend>טלפון</legend>
@@ -1708,8 +1738,9 @@ function viewReports(root){
 }
 
 function renderZonePick(host, list){
-  const zones=[...new Set(DB.gans.filter(g=>g.active&&g.zone).map(g=>g.zone))].sort((a,b)=>a.localeCompare(b,"he"));
-  if(!zones.length){ host.innerHTML=`<div class="note">כדי להשתמש באזורים — מלא/י שדה "אזור בעיר" בכרטיס הגן.</div>`; return; }
+  const scopedGans = eduScope(DB.gans).filter(g=>g.active); // מכבד את בורר החינוך הראשי
+  const zones=[...new Set(scopedGans.filter(g=>g.zone).map(g=>g.zone))].sort((a,b)=>a.localeCompare(b,"he"));
+  if(!zones.length){ host.innerHTML=`<div class="note">כדי להשתמש באזורים — מלא/י שדה "אזור בעיר" בכרטיס הגן${activeEdu?' של החינוך שנבחר':''}.</div>`; return; }
   host.innerHTML=`<div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
     ${zones.map(z=>`<label class="check"><input type="checkbox" class="zone-cb" value="${esc(z)}"> ${esc(z)}</label>`).join("")}
   </div><div id="zoneResult" style="margin-top:12px"></div>`;
@@ -1717,7 +1748,7 @@ function renderZonePick(host, list){
     const sel=[...host.querySelectorAll(".zone-cb:checked")].map(c=>c.value);
     const res=$("#zoneResult");
     if(!sel.length){ res.innerHTML=`<div class="hint">בחר/י אזור אחד או יותר.</div>`; return; }
-    const gansIn=DB.gans.filter(g=>g.active&&sel.includes(g.zone));
+    const gansIn=scopedGans.filter(g=>sel.includes(g.zone));
     const ids=new Set(gansIn.map(g=>g.id));
     const n=list.filter(s=>ids.has(s.ganId)).length;
     res.innerHTML=`<div class="stats"><div class="stat hero"><div class="k">תלמידות באזורים שנבחרו (${sel.map(esc).join(", ")})</div><div class="v">${n}<small> · ${gansIn.length} גנים</small></div></div></div>`;
@@ -2063,14 +2094,26 @@ function viewAssign(root){
   if(!gans.length) return;
   /* טבלת בחירה מצומצמת: שם הגן · סמל · כתובת · שיבוץ (סעיף 5) */
   const pick=$("#asgPick");
-  pick.innerHTML=`<div class="table-wrap"><table><thead><tr>
-    <th>שם הגן</th><th>סמל</th><th>כתובת</th><th>מצב שיבוץ</th><th></th></tr></thead><tbody>
+  const isProg = asgContext!=='activity';                 // הקשר תוכנית (צהרון/קייטנה) ולא פעילות הגן
+  const tzMin = +DB.settings.tzaharonMin || 0;            // מינימום לפתיחת צהרון (הגדרות)
+  const regLabel = asgContext==='activity' ? 'רשומות בגן' : `רשומים ל${ctxLabel(asgContext)}`;
+  const progCount = g => studentsOfYear().filter(s=>!s.finished && s.ganId===g.id && s.programs && s.programs[asgContext]).length;
+  const ganReg    = g => studentsOfYear().filter(s=>!s.finished && s.ganId===g.id).length;
+  const regBadgeFor = g => {
+    if(asgContext==='tzaharon'){ const c=progCount(g); const cls=(tzMin && c<tzMin)?'no':'ok'; return `<span class="pill ${cls}" title="רשומים לצהרון${tzMin?` · מינימום לפתיחה ${tzMin}`:''}">${c}${tzMin?(' / '+tzMin):''}</span>`; }
+    if(isProg){ return `<span class="pill neutral">${progCount(g)}</span>`; }
+    const c=ganReg(g); const cls=(g.capacity && c>+g.capacity)?'no':'ok'; return `<span class="pill ${cls}">${c}${g.capacity?(' / '+esc(g.capacity)):''}</span>`;
+  };
+  pick.innerHTML=`${asgContext==='tzaharon'?`<div class="hint" style="margin-bottom:8px">מינימום לפתיחת צהרון: <b>${tzMin||'לא הוגדר'}</b> (נקבע בהגדרות). אדום = מתחת למינימום, ירוק = ניתן לפתוח.</div>`:''}
+    <div class="table-wrap"><table><thead><tr>
+    <th>שם הגן</th><th>סמל</th><th>כתובת</th><th>${esc(regLabel)}</th><th>מצב שיבוץ</th><th></th></tr></thead><tbody>
     ${gans.map(g=>{
       const filled=Object.keys(ganAsg(g.id)).length;
       return `<tr>
         <td><b>${esc(ganName(g.id))}</b></td>
         <td>${esc(g.ganSymbol||g.internalSymbol)||'—'}</td>
         <td>${esc([g.address,g.building].filter(Boolean).join(" "))||'—'}</td>
+        <td>${regBadgeFor(g)}</td>
         <td>${filled?`<span class="pill ok">${filled} משובצים</span>`:'<span class="pill neutral">ריק</span>'}</td>
         <td class="actions"><button class="btn sm" data-asg="${g.id}">✍️ שיבוץ</button></td></tr>`;
     }).join("")}
@@ -2459,6 +2502,15 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
+    <h2>מינימום לפתיחת צהרון</h2>
+    <div class="sub">מספר התלמידות המינימלי בקבוצה כדי לפתוח צהרון. בלשונית "שיבוץ" → "צהרונים" כל גן שמתחת למספר הזה יסומן באדום, ומעליו בירוק.</div>
+    <div class="row">
+      <div class="field" style="min-width:150px"><label>מינימום לצהרון</label><input id="tzmin" inputmode="numeric" value="${esc(DB.settings.tzaharonMin||"")}" placeholder="למשל 15" ${dis}></div>
+      <button class="btn" id="saveTzMin" style="align-self:end" ${dis}>שמור</button>
+    </div>
+  </div>
+
+  <div class="panel">
     <h2>גילי הילדים (רשימת תלמידים)</h2>
     <div class="sub">הגילים שמופיעים לבחירה בתיק תלמידה ובסינון רשימת התלמידים. אפשר להוסיף, לערוך (שינוי הטקסט בשדה ויציאה) או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
     <div id="ages-box"></div>
@@ -2650,6 +2702,7 @@ function viewSettings(root){
   drawHist();
 
   if(admin) $("#saveGT").onclick=()=>{ const v=+$("#gt").value; if(v>0){DB.settings.gansTarget=v;save();toast("נשמר");} };
+  if(admin) $("#saveTzMin").onclick=()=>{ const raw=$("#tzmin").value.trim(); const v=+raw; if(!raw){ delete DB.settings.tzaharonMin; save(); toast("נוקה"); } else if(v>=0){ DB.settings.tzaharonMin=v; save(); toast("נשמר"); } };
 
   $("#exportAll").onclick=()=>{ downloadBlob(new Blob([JSON.stringify(DB,null,2)],{type:"application/json"}), `גיבוי-רישום-${new Date().toISOString().slice(0,10)}.json`); };
   $("#importAll").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
