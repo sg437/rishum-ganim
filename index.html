@@ -536,6 +536,7 @@ function startDataSync(){
 function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); }
 
 function boot(){
+  try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
   const lb=$("#lockBtn"); if(lb){ lb.textContent="⎋"; lb.title="יציאה מהמערכת"; lb.onclick=doSignOut; lb.style.display="none"; }
   if(!CONFIG_READY){ renderSetupNeeded(); return; }
   try{
@@ -872,7 +873,7 @@ function openStudent(s){
       <div><label>שם פרטי</label><input id="s-firstName" value="${esc(s.firstName)}"></div>
       <div><label>שם משפחה</label><input id="s-lastName" value="${esc(s.lastName)}"></div>
       <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"></div>
-      <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(s.dob)}"></div>
+      <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
       <div><label>טלפון</label><input id="s-phone" value="${esc(s.phone)}" inputmode="tel"></div>
@@ -1069,7 +1070,9 @@ function openStudent(s){
     const programs={}; PROGRAMS.forEach(([k])=>{ programs[k]=chk("pg-"+k); });
     syncSpecial(); // מעדכן את s.special מהסימונים המוצגים כרגע (חלקם מוסתרים לפי ההורה)
     return Object.assign({}, s, {
-      firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"), dob:val("s-dob"),
+      firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"),
+      dob: val("s-dob") || (isISODate(normDateVal(s.dob))?"":String(s.dob||"")), // אל תאבד ערך גולמי שלא זוהה כתאריך
+
       motherName:val("s-motherName"), fatherName:val("s-fatherName"),
       phone:val("s-phone"), mobile:val("s-mobile"),
       street:val("s-street"), building:val("s-building"), city:val("s-city"), campus:val("s-campus"),
@@ -1145,12 +1148,45 @@ function truthyCell(v){ return /^(כן|yes|true|1|✓|v|קלוט|נרשמה|כ)$
 function normEduVal(v){ const t=String(v??"").replace(/\s/g,""); if(!t) return "רגיל"; return /(מיוחד|חינוךמיוחד|ח"?מ|חמ|special)/i.test(t)?'ח"מ':"רגיל"; }
 function normPeriodVal(v){ const t=String(v??"").trim(); return PERIODS.includes(t)?t:"א"; }
 function normDateVal(v){
-  const t=String(v??"").trim(); if(!t) return "";
-  let m=t.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+  let t=String(v??"").trim(); if(!t) return "";
+  t=t.replace(/[T ]\d{1,2}:\d{2}(:\d{2})?.*$/,"").trim(); // הסרת חלק שעה (למשל "01/09/2021 00:00")
+  // מספר סידורי של אקסל (ימים מ-1899-12-30) — מתקבל כשתא התאריך היה מעוצב כמספר
+  if(/^\d{4,6}(\.\d+)?$/.test(t)){
+    const serial=parseInt(t,10);
+    if(serial>=3653 && serial<=60000){ // ~1910..2064 — טווח סביר לתאריך לידה
+      const d=new Date(Math.round((serial-25569)*86400000)); // 25569 = ימים בין 1899-12-30 ל-1970-01-01
+      if(!isNaN(d)) return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`;
+    }
+  }
+  let m=t.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/); // dd/mm/yyyy (פורמט ישראלי)
   if(m){ let d=m[1],mo=m[2],y=m[3]; if(y.length===2)y="20"+y; return `${y.padStart(4,"0")}-${mo.padStart(2,"0")}-${d.padStart(2,"0")}`; }
-  m=t.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/);
+  m=t.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/); // yyyy-mm-dd
   if(m){ return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`; }
   return t;
+}
+/* בדיקת תקינות פורמט ISO של תאריך (YYYY-MM-DD) — לשימוש בטופס ובתיקון */
+function isISODate(s){ return /^\d{4}-\d{2}-\d{2}$/.test(String(s||"")); }
+/* תיקון תאריכי לידה שיובאו — נרמול מחדש של הערכים הקיימים בכל התלמידות,
+   ללא צורך לייבא מחדש (כל עוד הערך הגולמי נשמר בשדה). */
+function fixImportedDobs(){
+  let changed=0, stillBad=0, empty=0, ok=0;
+  DB.students.forEach(s=>{
+    const before=String(s.dob||"");
+    if(!before){ empty++; return; }
+    const after=normDateVal(before);
+    if(after!==before) s.dob=after;
+    if(isISODate(s.dob)){ ok++; if(after!==before) changed++; } else stillBad++;
+  });
+  if(changed) save();
+  modal(`<h3>תיקון תאריכי לידה</h3>
+    <div class="note">
+      תוקנו <b>${changed}</b> תאריכים לפורמט תקין.<br>
+      סה"כ ${ok} תלמידות עם תאריך לידה תקין.<br>
+      ${stillBad?`<b>${stillBad}</b> ערכים לא זוהו כתאריך — פתחי את התיק והזיני מהלוח (הערך המקורי מוצג שם).<br>`:''}
+      ${empty?`<b>${empty}</b> תלמידות ללא תאריך כלל בקובץ — יש להזין ידנית (אין צורך לייבא הכול מחדש).`:'אין תלמידות ללא תאריך.'}
+    </div>
+    <div class="foot"><button class="btn" id="fd-ok">סגור</button></div>`);
+  $("#fd-ok").onclick=closeModal;
 }
 /* פענוח CSV/הדבקה — תומך בפסיקים או טאבים, מרכאות, ותאים רב-שורתיים */
 function parseTable(text){
@@ -1287,12 +1323,15 @@ function openImport(){
     <button class="btn ghost" id="imp-preview" type="button">🔎 תצוגה מקדימה</button>
     <button class="btn" id="imp-do" type="button" disabled>⬆️ ייבא תלמידות</button>
     <button class="btn ghost" id="imp-undo" type="button">↩️ בטל ייבוא אחרון</button>
+    <button class="btn ghost" id="imp-fixdob" type="button">🩹 תיקון תאריכי לידה</button>
     <button class="btn ghost" id="imp-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
   </div>
+  <div class="hint" style="margin-top:6px">תאריכי הלידה לא נקלטו? לחצ/י "תיקון תאריכי לידה" — המערכת תנרמל מחדש את התאריכים הקיימים (כולל פורמט אקסל) בלי צורך לייבא מחדש.</div>
   <div id="imp-out" style="margin-top:14px"></div>`);
 
   $("#imp-template").onclick=importTemplateCSV;
   $("#imp-undo").onclick=undoLastImport;
+  $("#imp-fixdob").onclick=fixImportedDobs;
   $("#imp-cancel").onclick=closeModal;
   $("#imp-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
     readFileSmart(f, txt=>{ $("#imp-text").value=txt; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }); };
@@ -2647,12 +2686,30 @@ function viewSettings(root){
 /* ============================================================
    מודל / כללי
    ============================================================ */
-function modal(html){ $("#modal").innerHTML=html; $("#overlay").classList.add("show"); document.body.style.overflow="hidden"; }
-function closeModal(){ $("#overlay").classList.remove("show"); document.body.style.overflow=""; if(pendingRender){ pendingRender=false; route(); } }
+/* ניהול כפתור "חזור" בנייד (PWA): חזור סוגר חלון פתוח או חוזר ללשונית הקודמת,
+   במקום לצאת מהאפליקציה. מבוסס על History API. */
+let modalHistoryOpen=false; // האם נדחף מצב היסטוריה עבור חלון פתוח
+let inPopstate=false;       // האם אנו כרגע בתוך טיפול ב-popstate (למניעת לולאה)
+function modal(html){
+  $("#modal").innerHTML=html; $("#overlay").classList.add("show"); document.body.style.overflow="hidden";
+  if(!modalHistoryOpen){ modalHistoryOpen=true; try{ history.pushState({rgModal:true},""); }catch(_){} }
+}
+function closeModal(){
+  $("#overlay").classList.remove("show"); document.body.style.overflow="";
+  if(modalHistoryOpen){ modalHistoryOpen=false; if(!inPopstate){ try{ history.back(); }catch(_){} } } // אזן את מחסנית ההיסטוריה שנדחפה בפתיחה
+  if(pendingRender){ pendingRender=false; route(); }
+}
+function navToTab(tab){ if(tab===active) return; active=tab; try{ history.pushState({rgTab:tab},""); }catch(_){} route(); window.scrollTo(0,0); }
+window.addEventListener("popstate", e=>{
+  inPopstate=true;
+  if($("#overlay").classList.contains("show")){ closeModal(); } // חזור סוגר חלון פתוח ולא יוצא
+  else { const st=e.state; if(st && st.rgTab && st.rgTab!==active){ active=st.rgTab; route(); window.scrollTo(0,0); } }
+  inPopstate=false;
+});
 $("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeModal(); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
-$("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ active=b.dataset.tab; route(); window.scrollTo(0,0); } });
+$("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ navToTab(b.dataset.tab); } });
 $("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; save(); route(); });
 
 /* theme */
