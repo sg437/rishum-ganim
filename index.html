@@ -622,8 +622,10 @@ function boot(){
   try{
     app=initializeApp(firebaseConfig);
     auth=getAuth(app);
-    try{ db=initializeFirestore(app,{ localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
-    catch(e){ db=initializeFirestore(app,{}); }
+    // experimentalAutoDetectLongPolling: מעבר אוטומטי ל-long-polling כשרשת/פרוקסי חוסמים את
+    // חיבור ה-streaming של Firestore — מאפשר סנכרון גם ברשתות ארגוניות שבהן התוכנה נטענת אך הנתונים לא הסתנכרנו.
+    try{ db=initializeFirestore(app,{ localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }), experimentalAutoDetectLongPolling:true }); }
+    catch(e){ db=initializeFirestore(app,{ experimentalAutoDetectLongPolling:true }); }
   }catch(e){ console.error(e); renderSetupNeeded(String(e.message||e)); return; }
   onAuthStateChanged(auth, user=>{
     currentUser=user;
