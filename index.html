@@ -161,6 +161,7 @@ body.locked nav.tabs,body.locked .year-pick,body.locked #themeBtn,body.locked #l
     <div class="top-spacer"></div>
     <div class="edu-pick" id="eduPick"></div>
     <div class="year-pick">שנה: <select id="yearSelect"></select></div>
+    <span id="syncStatus" style="display:none;font-size:.78rem;font-weight:800;white-space:nowrap;align-self:center"></span>
     <button class="icon-btn" id="lockBtn" title="נעילה" style="display:none">🔒</button>
     <button class="icon-btn" id="themeBtn" title="מצב תצוגה">🌓</button>
   </div>
@@ -273,10 +274,24 @@ function safeYearId(y){ return "students_"+String(y).replace(/[^0-9A-Za-z֐-׿]/
 
 /* שמירה לענן — דחייה קצרה לאיגוד שינויים, ושמירה על שינויים מקומיים שטרם נכתבו */
 let _saveTimer=null, savePending=false, cloudDocs=new Map();
-function save(){ if(!db) return; savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250); }
+/* חיווי סטטוס סנכרון בכותרת — מבוסס על metadata של Firestore (hasPendingWrites/fromCache),
+   כדי לדעת אם הנתונים באמת עלו לשרת (ונראים לשאר המשתמשים) או תקועים מקומית. */
+function setSyncStatus(state){
+  const el=$("#syncStatus"); if(!el) return;
+  if(!currentUser){ el.style.display="none"; return; }
+  const map={
+    pending:["⏳ מסנכרן…","var(--warn)","יש שינויים שממתינים להעלאה לשרת — השאר/י את החלון פתוח עד שהחיווי יתחלף ל\"נשמר בענן\""],
+    synced :["✓ נשמר בענן","var(--good)","כל הנתונים נשמרו בשרת ומשותפים לכל המשתמשים המחוברים"],
+    offline:["⚠️ לא מחובר לענן","var(--bad)","אין חיבור לשרת — הנתונים שמורים מקומית בלבד ולא נראים למשתמשים אחרים עד שהחיבור יחזור"],
+    error  :["⚠️ שגיאת סנכרון","var(--bad)","שגיאת סנכרון — בדוק/י חיבור אינטרנט והרשאות"]
+  };
+  const [txt,color,title]=map[state]||map.synced;
+  el.style.display="inline-flex"; el.textContent=txt; el.style.color=color; el.title=title;
+}
+function save(){ if(!db) return; setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250); }
 async function runPush(){
   try{ await pushAll(); }
-  catch(e){ console.error(e); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
+  catch(e){ console.error(e); setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
   finally{
     savePending=false;
     rebuildDB(cloudDocs); // הצג את המצב המעודכן (כולל שינויים מרחוק שהגיעו בזמן השמירה)
@@ -550,8 +565,12 @@ function startDataSync(){
   if(dataUnsub) return;
   document.body.classList.remove("locked");
   cloudDocs=new Map();
-  dataUnsub = onSnapshot(collection(db,"app"), snap=>{
-    snap.docChanges().forEach(ch=>{
+  dataUnsub = onSnapshot(collection(db,"app"), { includeMetadataChanges:true }, snap=>{
+    const md=snap.metadata; // עדכון חיווי הסנכרון לפי מצב הכתיבות מול השרת
+    setSyncStatus(md.hasPendingWrites ? "pending" : (md.fromCache ? "offline" : "synced"));
+    const changes = snap.docChanges();
+    if(!changes.length && cloudDocs.size) return; // שינוי מטא-דאטה בלבד (סטטוס) על נתונים שכבר נטענו — אין צורך לבנות מחדש
+    changes.forEach(ch=>{
       if(ch.type==="removed"){ cloudDocs.delete(ch.doc.id); knownStudentDocs.delete(ch.doc.id); }
       else { cloudDocs.set(ch.doc.id, ch.doc.data()); if(ch.doc.id.startsWith("students_")) knownStudentDocs.add(ch.doc.id); }
     });
@@ -560,9 +579,9 @@ function startDataSync(){
     if(!cloudDocs.has("meta")) save(); // איתחול ראשוני חד-פעמי (יצירת מסמך meta)
     if($("#overlay").classList.contains("show")){ pendingRender=true; }
     else route();
-  }, err=>{ console.error(err); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
+  }, err=>{ console.error(err); setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
 }
-function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); }
+function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; }
 
 function boot(){
   try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
