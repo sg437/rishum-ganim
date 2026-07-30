@@ -1814,9 +1814,10 @@ function openStaff(m){
   if(!isNew)$("#delSt").onclick=()=>{ if(confirm("למחוק?")){ DB.staff=DB.staff.filter(x=>x.id!==m.id); save(); closeModal(); route(); } };
 }
 function openStaffImport(){
+  const state={ list:[], mapped:[] };
   modal(`
     <h3>ייבוא אנשי צוות מקובץ</h3>
-    <div class="note">מדביקים/מעלים קובץ עם כותרות. עמודות מזוהות: שם משפחה, שם פרטי (או "שם" מלא), ת"ז, מייל, תפקיד, טלפון, נייד, עיר, הערות. תפקיד שאינו מזוהה יסומן כ"סייעת".</div>
+    <div class="note">מדביקים/מעלים קובץ עם כותרות. עמודות מזוהות: שם משפחה, שם פרטי (או "שם" מלא), ת"ז, מייל, תפקיד, טלפון, נייד, עיר, הערות. תפקיד שאינו מזוהה יסומן כ"סייעת". הקובץ נקרא עם זיהוי מפריד וקידוד אוטומטי (כמו בייבוא התלמידות).</div>
     <fieldset style="margin-top:10px"><legend>קובץ / הדבקה</legend>
       <div class="row" style="margin-bottom:8px">
         <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="sti-file" accept=".csv,.txt" hidden></label>
@@ -1824,8 +1825,14 @@ function openStaffImport(){
       </div>
       <textarea id="sti-text" rows="6" placeholder="שם משפחה,שם פרטי,ת&quot;ז,מייל,תפקיד,טלפון,נייד,עיר&#10;כהן,מרים,123456789,mk@mail.com,גננת,02-1234567,050-1234567,ירושלים"></textarea>
     </fieldset>
-    <div class="foot">
-      <button class="btn" id="sti-do" type="button">⬆️ ייבא</button>
+    <fieldset><legend>הגדרות</legend>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="sti-skipdup" checked> דלג על ת"ז שכבר קיים במאגר הצוות</label>
+      </div>
+    </fieldset>
+    <div class="row">
+      <button class="btn ghost" id="sti-preview" type="button">🔎 תצוגה מקדימה</button>
+      <button class="btn" id="sti-do" type="button" disabled>⬆️ ייבא</button>
       <button class="btn ghost" id="sti-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
     </div>
     <div id="sti-out" style="margin-top:10px"></div>`);
@@ -1843,22 +1850,61 @@ function openStaffImport(){
     return t.includes("גננת")?"גננת":(t.includes("רפואי")?"סייעת רפואית":(t.includes("צמוד")?"סייעת צמודה":(/ב'?$/.test(t)&&t.includes("סייעת")?"סייעת ב'":"סייעת"))); };
   $("#sti-cancel").onclick=closeModal;
   $("#sti-template").onclick=()=>{ const csv=['שם משפחה,שם פרטי,ת"ז,מייל,תפקיד,טלפון,נייד,עיר,הערות',"כהן,מרים,123456789,mk@mail.com,גננת,02-1234567,050-1234567,ירושלים,"].join("\r\n"); downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}),"תבנית-צוות.csv"); };
-  $("#sti-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; readFileSmart(f, txt=>{ $("#sti-text").value=txt; toast("הקובץ נטען"); }); };
-  $("#sti-do").onclick=()=>{
-    const rows=parseTable($("#sti-text").value);
-    if(rows.length<2){ $("#sti-out").innerHTML=`<div class="empty">לא זוהו שורות נתונים.</div>`; return; }
+  $("#sti-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; readFileSmart(f, txt=>{ $("#sti-text").value=txt; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }); };
+  const skipdup=()=>$("#sti-skipdup").checked;
+  const buildStaffRows=(rows)=>{
     const header=rows[0].map(normHeader); const idx={}; header.forEach((h,i)=>{ const k=map[h]; if(k&&idx[k]==null)idx[k]=i; });
-    if(idx.name==null && idx.lastName==null && idx.firstName==null){ $("#sti-out").innerHTML=`<div class="note">לא זוהתה עמודת "שם" / "שם משפחה".</div>`; return; }
-    let added=0;
+    const mapped=Object.keys(idx);
+    const existing=new Set(DB.staff.map(s=>digits(s.tz)).filter(Boolean));
+    const seen=new Set(); const list=[];
     for(let r=1;r<rows.length;r++){ const c=rows[r]; const g=k=>idx[k]!=null?String(c[idx[k]]??"").trim():"";
       let lastName=g("lastName"), firstName=g("firstName"); const full=g("name");
       if(!lastName && !firstName && full){ const p=full.split(/\s+/); lastName=p.shift()||""; firstName=p.join(" "); }
       if(!lastName && !firstName) continue;
       const m=makeStaff(); m.lastName=lastName; m.firstName=firstName; m.name=[lastName,firstName].filter(Boolean).join(" ");
-      m.tz=digits(g("tz")); m.email=g("email"); m.role=normRole(g("role")); m.phone=g("phone"); m.mobile=g("mobile"); m.city=g("city"); m.notes=g("notes");
-      DB.staff.push(m); added++;
+      m.tz=digits(g("tz")); m.email=g("email"); m.role=normRole(g("role")); m.phone=g("phone"); m.mobile=fixPhone(g("mobile")); m.city=g("city"); m.notes=g("notes");
+      const fileDup = m.tz && seen.has(m.tz);
+      const dup = m.tz && existing.has(m.tz);
+      if(m.tz) seen.add(m.tz);
+      list.push({ st:m, dup, fileDup });
     }
-    save(); closeModal(); route(); toast(`יובאו ${added} אנשי צוות`);
+    return { list, mapped };
+  };
+  $("#sti-preview").onclick=()=>{
+    const rows=parseTable($("#sti-text").value); const out=$("#sti-out");
+    if(rows.length<2){ out.innerHTML=`<div class="empty">לא זוהו שורות נתונים. ודא/י ששורה ראשונה היא כותרות ואחריה שורה לכל איש/אשת צוות.</div>`; $("#sti-do").disabled=true; return; }
+    const built=buildStaffRows(rows); state.list=built.list; state.mapped=built.mapped;
+    if(!(built.mapped.includes("name")||built.mapped.includes("lastName")||built.mapped.includes("firstName"))){ out.innerHTML=`<div class="note">לא זוהתה עמודת "שם" / "שם משפחה". הורד/י את התבנית לדוגמה של הכותרות.</div>`; $("#sti-do").disabled=true; return; }
+    const skip=skipdup();
+    const newCnt=state.list.filter(x=>!x.fileDup && !(skip&&x.dup)).length;
+    const dupCnt=state.list.filter(x=>x.dup && !x.fileDup).length;
+    const fileDupCnt=state.list.filter(x=>x.fileDup).length;
+    const show=state.list.slice(0,25);
+    out.innerHTML=`
+      <div class="stats" style="margin-bottom:10px">
+        <div class="stat hero"><div class="k">ייווצרו אנשי צוות</div><div class="v">${newCnt}</div></div>
+        <div class="stat"><div class="k">כפולים (ת"ז קיים)</div><div class="v">${dupCnt}</div></div>
+        <div class="stat"><div class="k">כפולים בקובץ</div><div class="v">${fileDupCnt}</div></div>
+      </div>
+      ${fileDupCnt?`<div class="note" style="margin-bottom:8px">${fileDupCnt} שורות עם ת"ז כפולה בתוך הקובץ — יובאו פעם אחת בלבד.</div>`:""}
+      <div class="hint" style="margin-bottom:8px">עמודות שזוהו: ${state.mapped.map(esc).join(", ")}.</div>
+      <div class="table-wrap"><table><thead><tr>
+        <th>שם משפחה</th><th>שם פרטי</th><th>ת"ז</th><th>תפקיד</th><th>טלפון</th><th>נייד</th><th>מייל</th><th>עיר</th><th>סטטוס</th></tr></thead><tbody>
+        ${show.map(x=>`<tr style="${(x.fileDup||(x.dup&&skip))?'opacity:.5':''}">
+          <td>${esc(x.st.lastName)||'—'}</td><td>${esc(x.st.firstName)||'—'}</td><td>${esc(x.st.tz)||'—'}</td>
+          <td><span class="pill neutral">${esc(x.st.role)||'—'}</span></td><td>${esc(x.st.phone)||'—'}</td><td>${esc(x.st.mobile)||'—'}</td>
+          <td>${esc(x.st.email)||'—'}</td><td>${esc(x.st.city)||'—'}</td>
+          <td>${x.fileDup?'<span class="pill warn">כפול בקובץ</span>':(x.dup?'<span class="pill warn">כפול</span>':'<span class="pill ok">חדש</span>')}</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="hint">${state.list.length>25?`מוצגים 25 מתוך ${state.list.length} שורות. `:''}לחצ/י "ייבא" להוספה.</div>`;
+    $("#sti-do").disabled = newCnt===0;
+  };
+  $("#sti-do").onclick=()=>{
+    const skip=skipdup();
+    const toAdd=state.list.filter(x=>!x.fileDup && !(skip&&x.dup)).map(x=>x.st);
+    if(!toAdd.length){ toast("אין אנשי צוות חדשים לייבוא"); return; }
+    toAdd.forEach(m=>DB.staff.push(m));
+    save(); closeModal(); route(); toast(`יובאו ${toAdd.length} אנשי צוות`);
   };
 }
 
