@@ -1355,6 +1355,7 @@ function viewGans(root){
     <div class="section-title">
       <div><h2>רשימת הגנים${esc(scopeNote)}</h2><div class="sub">כל פרטי הגן, קיבולת, ומסמכים. גן שאינו פעיל אינו נספר במניין הגנים.</div></div>
       <div class="row" style="gap:8px">
+        <button class="btn ghost" id="impGan">⬆️ ייבוא מקובץ</button>
         <button class="btn ghost" id="exportGans">📤 ייצוא / הדפסה</button>
         <button class="btn" id="addGan">➕ הוספת גן</button>
       </div>
@@ -1367,6 +1368,7 @@ function viewGans(root){
     <div id="ganTable"></div>
   </div>`;
   $("#addGan").onclick=()=>{ const g=makeGan(); if(activeEdu) g.education=activeEdu; openGan(g); };
+  $("#impGan").onclick=openGanImport;
   $("#exportGans").onclick=openGanExport;
   const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ ganFilter[key]=e.value; renderGanTable(); }; };
   bind("#fg-q","q"); bind("#fg-zone","zone"); bind("#fg-status","status");
@@ -1454,6 +1456,131 @@ function openGan(g){
   };
   $("#cancelGan").onclick=closeModal;
   if(!isNew) $("#delGan").onclick=()=>{ if(confirm("למחוק את הגן?")){ DB.gans=DB.gans.filter(x=>x.id!==g.id); save(); closeModal(); route(); toast("הגן נמחק"); } };
+}
+
+/* ====== ייבוא מרוכז של גנים ======
+   קורא CSV/הדבקה עם אותה תשתית קריאה חסינת מפריד+קידוד של ייבוא התלמידות
+   (readFileSmart + parseTable), כך שקבצי אקסל בעברית (מפריד ; / קידוד Windows-1255)
+   נקראים כראוי ולא נופלים על "לא זוהתה אף עמודה". */
+const GAN_HEADER_MAP = {
+  "שםהגן":"ganName","גן":"ganName","שם":"ganName","שםגן":"ganName",
+  "סמלפנימי":"internalSymbol","פנימי":"internalSymbol","סמלמוסד":"internalSymbol",
+  "סמלהגן":"ganSymbol","סמלגן":"ganSymbol","סמל":"ganSymbol","סמלמשרד":"ganSymbol",
+  "שםהגננת":"teacherName","גננת":"teacherName","שםגננת":"teacherName","מורה":"teacherName",
+  "גיל":"age","קבוצתגיל":"age",
+  "חינוך":"education","סוגחינוך":"education",
+  "כתובת":"address","כתובתהגן":"address",
+  "רחוב":"street",
+  "מספר":"building","בניין":"building","מספרבית":"building","בית":"building","מספרבניין":"building",
+  "אזור":"zone","אזורבעיר":"zone","איזור":"zone",
+  "טלפון":"phoneGan","טלפוןבגן":"phoneGan","טלגן":"phoneGan","טלפוןגן":"phoneGan","טל":"phoneGan",
+  "טלפוןבית":"phoneHome","טלבית":"phoneHome",
+  "ניידגננת":"teacherMobile","פלאפוןגננת":"teacherMobile","סלולריגננת":"teacherMobile",
+  "שםסייעת":"assistantName","סייעת":"assistantName",
+  "ניידסייעת":"assistantMobile","פלאפוןסייעת":"assistantMobile",
+  "קיבולת":"capacity","מקומות":"capacity","מספרמקומות":"capacity","תקן":"capacity",
+  "פעיל":"active","סטטוס":"active",
+  "מסמכים":"docsNote","הערות":"docsNote","הערה":"docsNote"
+};
+function ganExists(gn){
+  return DB.gans.some(x=>
+    (gn.ganSymbol && String(x.ganSymbol||"").trim()===gn.ganSymbol) ||
+    (gn.internalSymbol && String(x.internalSymbol||"").trim()===gn.internalSymbol) ||
+    (gn.ganName && String(x.ganName||"").trim()===gn.ganName));
+}
+function buildGanImportRows(rows){
+  if(!rows.length) return { list:[], mapped:[] };
+  const header=rows[0].map(normHeader);
+  const idx={}; header.forEach((h,i)=>{ const k=GAN_HEADER_MAP[h]; if(k && idx[k]==null) idx[k]=i; });
+  const mapped=Object.keys(idx);
+  const seen=new Set(); const list=[];
+  for(let r=1;r<rows.length;r++){
+    const cells=rows[r]; const g=key=> idx[key]!=null ? String(cells[idx[key]]??"").trim() : "";
+    const gn=makeGan();
+    gn.ganName=g("ganName"); gn.internalSymbol=g("internalSymbol"); gn.ganSymbol=g("ganSymbol");
+    gn.teacherName=g("teacherName");
+    const a=g("age").replace(/\s/g,""); gn.age=GAN_AGES.includes(a)?a:a.replace(/[^\d/]/g,"");
+    if(idx.education!=null) gn.education=normEduVal(g("education")); else if(activeEdu) gn.education=activeEdu;
+    gn.address=g("address"); gn.street=g("street"); gn.building=g("building"); gn.zone=g("zone");
+    gn.phoneGan=g("phoneGan"); gn.phoneHome=g("phoneHome"); gn.teacherMobile=fixPhone(g("teacherMobile"));
+    gn.assistantName=g("assistantName"); gn.assistantMobile=fixPhone(g("assistantMobile"));
+    gn.capacity=g("capacity").replace(/[^\d]/g,""); gn.docsNote=g("docsNote");
+    if(idx.active!=null){ const av=g("active").trim(); gn.active=!/^(לא|כבוי|לאפעיל|0|false|no|off|inactive)$/i.test(av); }
+    if(!gn.ganName && !gn.teacherName && !gn.ganSymbol && !gn.internalSymbol) continue; // שורה ריקה
+    const key=(gn.ganSymbol||"")+"|"+(gn.internalSymbol||"")+"|"+(gn.ganName||gn.teacherName||"");
+    const fileDup = seen.has(key); seen.add(key);
+    list.push({ gan:gn, dup:ganExists(gn), fileDup });
+  }
+  return { list, mapped };
+}
+function ganTemplateCSV(){
+  const headers=["שם הגן","סמל פנימי","סמל הגן","שם הגננת","גיל","חינוך","כתובת","מספר","אזור","טלפון בגן","נייד גננת","שם סייעת","נייד סייעת","קיבולת","פעיל"];
+  const example=["גן הדקל","1234","567890","מרים כהן","3","רגיל","הרב קוק","12","מרכז","02-1234567","050-1234567","שרה לוי","052-7654321","35","כן"];
+  const csv=[headers.map(csvCell).join(","), example.map(csvCell).join(",")].join("\r\n");
+  downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `תבנית-ייבוא-גנים.csv`);
+}
+function openGanImport(){
+  const state={ list:[], mapped:[] };
+  modal(`
+  <h3>ייבוא מרוכז של גנים</h3>
+  <div class="note">מעלים קובץ CSV (או מדביקים ישירות מאקסל) והמערכת מוסיפה גן לכל שורה, לפי הכותרות. הכותרות המזוהות: שם הגן, סמל פנימי, סמל הגן, שם הגננת, גיל, חינוך, כתובת, מספר, אזור, טלפון בגן, נייד גננת, שם סייעת, נייד סייעת, קיבולת, פעיל. עמודות שלא זוהו — יידלגו. הקובץ נקרא עם זיהוי מפריד אוטומטי (, / ; / טאב) וזיהוי קידוד (UTF-8 או Windows-1255) — בדיוק כמו בייבוא התלמידות, כך שקבצי אקסל בעברית נקראים כראוי.</div>
+  <fieldset style="margin-top:12px"><legend>קובץ / הדבקה</legend>
+    <div class="row" style="margin-bottom:8px">
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="gimp-file" accept=".csv,.txt" hidden></label>
+      <button class="btn ghost sm" id="gimp-template" type="button">⬇️ הורדת תבנית</button>
+    </div>
+    <label>או הדבקה ישירה (שורת כותרות ואז שורה לכל גן)</label>
+    <textarea id="gimp-text" rows="6" placeholder='שם הגן,סמל הגן,שם הגננת,גיל,חינוך,אזור,קיבולת&#10;גן הדקל,567890,מרים כהן,3,רגיל,מרכז,35'></textarea>
+  </fieldset>
+  <fieldset><legend>הגדרות</legend>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="gimp-skipdup" checked> דלג על גן שכבר קיים (לפי סמל / סמל פנימי / שם הגן)</label>
+    </div>
+  </fieldset>
+  <div class="row">
+    <button class="btn ghost" id="gimp-preview" type="button">🔎 תצוגה מקדימה</button>
+    <button class="btn" id="gimp-do" type="button" disabled>⬆️ ייבא גנים</button>
+    <button class="btn ghost" id="gimp-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
+  </div>
+  <div id="gimp-out" style="margin-top:14px"></div>`);
+  $("#gimp-template").onclick=ganTemplateCSV;
+  $("#gimp-cancel").onclick=closeModal;
+  $("#gimp-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
+    readFileSmart(f, txt=>{ $("#gimp-text").value=txt; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }); };
+  const skipdup=()=>$("#gimp-skipdup").checked;
+  $("#gimp-preview").onclick=()=>{
+    const rows=parseTable($("#gimp-text").value); const out=$("#gimp-out");
+    if(rows.length<2){ out.innerHTML=`<div class="empty">לא זוהו שורות נתונים. ודא/י ששורה ראשונה היא כותרות ואחריה שורה לכל גן.</div>`; $("#gimp-do").disabled=true; return; }
+    const built=buildGanImportRows(rows); state.list=built.list; state.mapped=built.mapped;
+    if(!built.mapped.length){ out.innerHTML=`<div class="note">לא זוהתה אף עמודה מוכרת בשורת הכותרות. הורד/י את התבנית לדוגמה של הכותרות.</div>`; $("#gimp-do").disabled=true; return; }
+    const newCnt=state.list.filter(x=>!x.fileDup && !(skipdup()&&x.dup)).length;
+    const dupCnt=state.list.filter(x=>x.dup && !x.fileDup).length;
+    const fileDupCnt=state.list.filter(x=>x.fileDup).length;
+    const show=state.list.slice(0,25);
+    out.innerHTML=`
+      <div class="stats" style="margin-bottom:10px">
+        <div class="stat hero"><div class="k">ייווצרו גנים</div><div class="v">${newCnt}</div></div>
+        <div class="stat"><div class="k">כפולים (קיים)</div><div class="v">${dupCnt}</div></div>
+        <div class="stat"><div class="k">כפולים בקובץ</div><div class="v">${fileDupCnt}</div></div>
+      </div>
+      <div class="hint" style="margin-bottom:8px">עמודות שזוהו: ${state.mapped.map(esc).join(", ")}.</div>
+      <div class="table-wrap"><table><thead><tr>
+        <th>שם הגן</th><th>סמל פנימי</th><th>סמל הגן</th><th>גננת</th><th>גיל</th><th>חינוך</th><th>אזור</th><th>קיבולת</th><th>סטטוס</th></tr></thead><tbody>
+        ${show.map(x=>`<tr style="${(x.fileDup||(x.dup&&skipdup()))?'opacity:.5':''}">
+          <td>${esc(x.gan.ganName)||'—'}</td><td>${esc(x.gan.internalSymbol)||'—'}</td><td>${esc(x.gan.ganSymbol)||'—'}</td>
+          <td>${esc(x.gan.teacherName)||'—'}</td><td>${esc(x.gan.age)||'—'}</td><td>${eduBadge(x.gan)}</td>
+          <td>${esc(x.gan.zone)||'—'}</td><td>${esc(x.gan.capacity)||'—'}</td>
+          <td>${x.fileDup?'<span class="pill warn">כפול בקובץ</span>':(x.dup?'<span class="pill warn">כפול</span>':'<span class="pill ok">חדש</span>')}</td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="hint">${state.list.length>25?`מוצגים 25 מתוך ${state.list.length} שורות. `:''}לחצ/י "ייבא גנים" להוספה.</div>`;
+    $("#gimp-do").disabled = newCnt===0;
+  };
+  $("#gimp-do").onclick=()=>{
+    const toAdd=state.list.filter(x=>!x.fileDup && !(skipdup()&&x.dup)).map(x=>x.gan);
+    if(!toAdd.length){ toast("אין גנים חדשים לייבוא"); return; }
+    toAdd.forEach(gn=>DB.gans.push(gn));
+    save(); closeModal(); route(); toast(`יובאו ${toAdd.length} גנים`);
+  };
 }
 
 /* ייצוא/הדפסה של רשימת הגנים לפי בחירה (סעיף 6) */
@@ -2184,7 +2311,7 @@ function viewManagement(root){
     </div>
     <div id="mTable"></div>
   </div>`;
-  $("#addM").onclick=()=>openMgmt({id:uid(),dept:"",name:"",role:"",phone:""});
+  $("#addM").onclick=()=>openMgmt({id:uid(),dept:"",name:"",role:"",phone:"",mobile:"",email:""});
   renderMgmt();
 }
 function renderMgmt(){
@@ -2193,9 +2320,11 @@ function renderMgmt(){
   const byDept={}; DB.management.forEach(m=>{(byDept[m.dept||"כללי"]=byDept[m.dept||"כללי"]||[]).push(m);});
   host.innerHTML=Object.keys(byDept).sort((a,b)=>a.localeCompare(b,"he")).map(d=>`
     <h3 style="margin:14px 0 8px;color:var(--accent-strong)">${esc(d)}</h3>
-    <div class="table-wrap"><table><thead><tr><th>שם</th><th>תפקיד</th><th>טלפון</th><th></th></tr></thead><tbody>
+    <div class="table-wrap"><table><thead><tr><th>שם</th><th>תפקיד</th><th>טלפון</th><th>פלאפון</th><th>מייל</th><th></th></tr></thead><tbody>
       ${byDept[d].map(m=>`<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.role)||'—'}</td>
         <td>${m.phone?`<a href="tel:${esc(m.phone)}">${esc(m.phone)}</a>`:'—'}</td>
+        <td>${m.mobile?`<a href="tel:${esc(m.mobile)}">${esc(m.mobile)}</a>`:'—'}</td>
+        <td>${m.email?`<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>`:'—'}</td>
         <td class="actions"><button class="btn ghost sm" data-em="${m.id}">עריכה</button></td></tr>`).join("")}
     </tbody></table></div>`).join("");
   host.querySelectorAll("[data-em]").forEach(b=>b.onclick=()=>openMgmt(JSON.parse(JSON.stringify(DB.management.find(x=>x.id===b.dataset.em)))));
@@ -2208,11 +2337,13 @@ function openMgmt(m){
       <div><label>שם</label><input id="m-name" value="${esc(m.name)}"></div>
       <div><label>תפקיד</label><input id="m-role" value="${esc(m.role)}"></div>
       <div><label>טלפון</label><input id="m-phone" value="${esc(m.phone)}" inputmode="tel"></div>
+      <div><label>פלאפון</label><input id="m-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
+      <div><label>מייל</label><input id="m-email" value="${esc(m.email)}" type="email" inputmode="email"></div>
     </div>
     <div class="foot"><button class="btn" id="saveM">💾 שמירה</button><button class="btn ghost" id="cancelM">ביטול</button>
       ${!isNew?'<button class="btn danger" id="delM" style="margin-inline-start:auto">מחיקה</button>':''}</div>`);
   $("#saveM").onclick=()=>{ const val=id=>$("#"+id).value.trim();
-    const data={id:m.id,dept:val("m-dept"),name:val("m-name"),role:val("m-role"),phone:val("m-phone")};
+    const data={id:m.id,dept:val("m-dept"),name:val("m-name"),role:val("m-role"),phone:val("m-phone"),mobile:val("m-mobile"),email:val("m-email")};
     if(!data.name){ toast("יש להזין שם"); return; }
     const i=DB.management.findIndex(x=>x.id===m.id); if(i>=0)DB.management[i]=data; else DB.management.push(data);
     save(); closeModal(); route(); toast("נשמר"); };
