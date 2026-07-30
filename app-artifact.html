@@ -1045,6 +1045,9 @@ function normDateVal(v){
 }
 /* בדיקת תקינות פורמט ISO של תאריך (YYYY-MM-DD) — לשימוש בטופס ובתיקון */
 function isISODate(s){ return /^\d{4}-\d{2}-\d{2}$/.test(String(s||"")); }
+/* עיצוב תאריך לתצוגה/ייצוא: מנרמל (כולל מספר סידורי של אקסל) ומציג כ-DD/MM/YYYY.
+   ריק נשאר ריק; ערך שלא זוהה כתאריך מוחזר כפי שהוא. */
+function fmtDate(v){ const iso=normDateVal(v); const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); return m?`${m[3]}/${m[2]}/${m[1]}`:String(v??""); }
 /* תיקון תאריכי לידה שיובאו — נרמול מחדש של הערכים הקיימים בכל התלמידות,
    ללא צורך לייבא מחדש (כל עוד הערך הגולמי נשמר בשדה). */
 function fixImportedDobs(){
@@ -2157,7 +2160,7 @@ const EXPORT_FIELDS = [
   ["lastName","שם משפחה",s=>s.lastName],
   ["firstName","שם פרטי",s=>s.firstName],
   ["tz",'ת"ז',s=>s.tz],
-  ["dob","תאריך לידה",s=>s.dob],
+  ["dob","תאריך לידה",s=>fmtDate(s.dob)],
   ["motherName","שם האם",s=>s.motherName],
   ["fatherName","שם האב",s=>s.fatherName],
   ["phone","טלפון",s=>s.phone],
