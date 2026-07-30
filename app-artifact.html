@@ -2081,6 +2081,7 @@ function viewAssign(root){
     <div class="row" id="asgCtx" style="gap:6px;flex-wrap:wrap;margin-bottom:6px">
       ${ASSIGN_CONTEXTS.map(c=>`<button class="btn ${c.id===asgContext?'':'ghost'} sm" data-ctx="${c.id}">${esc(c.label)}</button>`).join("")}
     </div>
+    <div id="asgSummary" style="margin-bottom:10px"></div>
     ${!gans.length?`<div class="empty">אין גנים ${activeEdu?'בסינון זה':''}. הוסף/י גנים בטאב "גנים".</div>`:`
       <details class="asg-picker" open style="margin-bottom:14px">
         <summary style="cursor:pointer;font-weight:700;color:var(--accent-strong);padding:6px 0">בחירת גן לשיבוץ ▾</summary>
@@ -2099,6 +2100,21 @@ function viewAssign(root){
   const regLabel = asgContext==='activity' ? 'רשומות בגן' : `רשומים ל${ctxLabel(asgContext)}`;
   const progCount = g => studentsOfYear().filter(s=>!s.finished && s.ganId===g.id && s.programs && s.programs[asgContext]).length;
   const ganReg    = g => studentsOfYear().filter(s=>!s.finished && s.ganId===g.id).length;
+  /* סיכום צהרונים בראש המסך — כמה ניתן לפתוח (עומדים במינימום) */
+  const asgSum=$("#asgSummary");
+  if(asgSum){
+    if(asgContext==='tzaharon'){
+      const withReg = gans.filter(g=>progCount(g)>0);
+      const openable = withReg.filter(g=> tzMin ? progCount(g)>=tzMin : true).length;
+      const below    = tzMin ? withReg.filter(g=>progCount(g)<tzMin).length : 0;
+      const totalReg = gans.reduce((n,g)=>n+progCount(g),0);
+      asgSum.innerHTML=`<div class="stats">
+        <div class="stat hero"><div class="k">צהרונים שניתן לפתוח${tzMin?` (${tzMin}+ תלמידות)`:''}</div><div class="v" style="color:var(--good)">${openable}</div></div>
+        <div class="stat"><div class="k">גנים מתחת למינימום</div><div class="v" style="color:${below?'var(--bad)':'var(--good)'}">${below}</div></div>
+        <div class="stat"><div class="k">סה"כ רשומות לצהרון</div><div class="v">${totalReg}</div></div>
+      </div>${!tzMin?`<div class="hint" style="margin-top:6px">לחישוב מדויק — הגדר/י "מינימום לפתיחת צהרון" בהגדרות.</div>`:''}`;
+    } else asgSum.innerHTML="";
+  }
   const regBadgeFor = g => {
     if(asgContext==='tzaharon'){ const c=progCount(g); const cls=(tzMin && c<tzMin)?'no':'ok'; return `<span class="pill ${cls}" title="רשומים לצהרון${tzMin?` · מינימום לפתיחה ${tzMin}`:''}">${c}${tzMin?(' / '+tzMin):''}</span>`; }
     if(isProg){ return `<span class="pill neutral">${progCount(g)}</span>`; }
