@@ -1096,6 +1096,39 @@ function importTemplateCSV(){
   const csv=[headers.map(csvCell).join(","), example.map(csvCell).join(",")].join("\r\n");
   downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `תבנית-ייבוא-תלמידות.csv`);
 }
+/* זיהוי קבוצת הייבוא האחרונה — תלמידות השנה הפעילה שנוצרו בסמיכות זמן ליצירה האחרונה
+   (בייבוא מרוכז כל השורות מקבלות createdAt כמעט זהה, ולכן אפשר לזהות ולבטל את הייבוא) */
+function lastImportBatch(){
+  const ys=studentsOfYear().filter(s=>s.createdAt && !isNaN(Date.parse(s.createdAt)));
+  if(!ys.length) return [];
+  const maxT=Math.max(...ys.map(s=>Date.parse(s.createdAt)));
+  const WINDOW=5*60*1000; // חלון של 5 דקות אחורה מהיצירה האחרונה
+  return ys.filter(s=> maxT-Date.parse(s.createdAt) <= WINDOW)
+           .sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt));
+}
+/* ביטול הייבוא האחרון — הצגת התלמידות שייווצרו לאחרונה ומחיקתן לאחר אישור */
+function undoLastImport(){
+  const batch=lastImportBatch();
+  if(!batch.length){ toast("לא נמצאו תלמידות שנוצרו לאחרונה בשנה זו"); return; }
+  const when=new Date(Math.max(...batch.map(s=>Date.parse(s.createdAt)))).toLocaleString("he-IL");
+  modal(`
+    <h3>ביטול ייבוא אחרון · שנת ${esc(DB.activeYear)}</h3>
+    <div class="note">יימחקו ${batch.length} תלמידות שנוצרו סביב ${esc(when)}. הפעולה אינה הפיכה — ודא/י שאלו אכן התלמידות שיובאו בטעות. (הזיהוי מבוסס על מועד היצירה; אם הוספת תלמידות ידנית באותו זמן, בדקי את הרשימה למטה.)</div>
+    <div class="table-wrap" style="margin-top:10px;max-height:340px;overflow:auto"><table><thead><tr>
+      <th>#</th><th>שם משפחה</th><th>שם פרטי</th><th>ת"ז</th><th>עיר</th><th>גן</th></tr></thead><tbody>
+      ${batch.map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.lastName)||'—'}</td><td>${esc(s.firstName)||'—'}</td><td>${esc(s.tz)||'—'}</td><td>${esc(s.city)||'—'}</td><td>${s.ganId?esc(ganName(s.ganId)):'—'}</td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn danger" id="uli-do" type="button">🗑️ מחק ${batch.length} תלמידות לצמיתות</button>
+      <button class="btn ghost" id="uli-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
+    </div>`);
+  $("#uli-cancel").onclick=closeModal;
+  $("#uli-do").onclick=()=>{
+    const ids=new Set(batch.map(s=>s.id));
+    DB.students=DB.students.filter(s=>!ids.has(s.id));
+    save(); closeModal(); route(); toast(`נמחקו ${batch.length} תלמידות`);
+  };
+}
 function openImport(){
   const state={ list:[], mapped:[] };
   modal(`
@@ -1120,11 +1153,13 @@ function openImport(){
   <div class="row">
     <button class="btn ghost" id="imp-preview" type="button">🔎 תצוגה מקדימה</button>
     <button class="btn" id="imp-do" type="button" disabled>⬆️ ייבא תלמידות</button>
+    <button class="btn ghost" id="imp-undo" type="button">↩️ בטל ייבוא אחרון</button>
     <button class="btn ghost" id="imp-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
   </div>
   <div id="imp-out" style="margin-top:14px"></div>`);
 
   $("#imp-template").onclick=importTemplateCSV;
+  $("#imp-undo").onclick=undoLastImport;
   $("#imp-cancel").onclick=closeModal;
   $("#imp-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
     readFileSmart(f, txt=>{ $("#imp-text").value=txt; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }); };
