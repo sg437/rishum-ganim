@@ -270,6 +270,12 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 let app=null, auth=null, db=null, currentUser=null;
 let DB = blankDB();
 let dataUnsub=null;
+let restMode=false; // מצב חלופי: קריאה+כתיבה דרך Firestore REST (כשחיבור ה-SDK חסום ברשת אך HTTPS רגיל עובר)
+function enterRestMode(){
+  if(restMode) return;
+  restMode=true;
+  if(dataUnsub){ try{ dataUnsub(); }catch(_){}; dataUnsub=null; } // עצירת מאזין ה-SDK שאינו מצליח להתחבר
+}
 const knownStudentDocs = new Set(); // מזהי מסמכי students_<שנה> הקיימים בענן
 function safeYearId(y){ return "students_"+String(y).replace(/[^0-9A-Za-z֐-׿]/g,"_"); }
 
@@ -360,10 +366,42 @@ async function loadViaRest(){
     if(!map.has("meta") && !map.size){ if(out) out.innerHTML=`<b style="color:var(--bad)">לא נמצאו נתונים במאגר.</b>`; return; }
     cloudDocs=map; serverConfirmed=true;
     knownStudentDocs.clear(); [...map.keys()].forEach(id=>{ if(id.startsWith("students_")) knownStudentDocs.add(id); });
-    rebuildDB(cloudDocs);
-    hideOfflineBanner(); _offlineDismissed=true; route();
-    toast("הנתונים נטענו (מצב חלופי — צפייה)");
+    enterRestMode(); rebuildDB(cloudDocs);
+    hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced"); route();
+    toast("הנתונים נטענו (מצב חלופי) — אפשר גם לערוך");
   }catch(e){ console.error(e); if(out) out.innerHTML=`<b style="color:var(--bad)">הטעינה נכשלה:</b> ${esc(String(e&&e.message||e))}`; }
+}
+/* קידוד לערכי Firestore REST (הפוך מ-decFsVal) — לכתיבה במצב חלופי */
+function encFsVal(v){
+  if(v===null||v===undefined) return {nullValue:null};
+  const t=typeof v;
+  if(t==="string") return {stringValue:v};
+  if(t==="boolean") return {booleanValue:v};
+  if(t==="number") return Number.isInteger(v) ? {integerValue:String(v)} : {doubleValue:v};
+  if(Array.isArray(v)) return {arrayValue:{values:v.map(encFsVal)}};
+  if(t==="object") return {mapValue:{fields:encFsFields(v)}};
+  return {stringValue:String(v)};
+}
+function encFsFields(obj){ const f={}; for(const k in obj){ if(obj[k]!==undefined) f[k]=encFsVal(obj[k]); } return f; }
+/* כתיבת כל הנתונים דרך Firestore REST (PATCH=setDoc מלא, DELETE למסמכי שנה שהוסרו) */
+async function pushAllRest(){
+  const token=await currentUser.getIdToken();
+  const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
+  const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
+  const put=async(id,obj)=>{ const r=await fetch(base+encodeURIComponent(id),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(obj)}) }); if(!r.ok) throw new Error("write "+id+" ("+r.status+")"); };
+  const meta={ activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, settings:DB.settings, assignments:DB.assignments };
+  await put("meta", meta);
+  await put("gans", { gans:DB.gans.slice() });
+  await put("management", { management:DB.management.slice() });
+  await put("staff", { staff:DB.staff.slice() });
+  const byYear={}; DB.students.forEach(s=>{ (byYear[s.year]=byYear[s.year]||[]).push(s); });
+  const wantIds=new Set();
+  for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await put(id,{ year:y, students:byYear[y] }); }
+  for(const id of [...knownStudentDocs]){ if(!wantIds.has(id)){ try{ await fetch(base+encodeURIComponent(id),{ method:"DELETE", headers:hdr }); }catch(e){} knownStudentDocs.delete(id); } }
+  // עדכון עותק הענן המקומי כדי שרענון פנימי לא ישחזר מצב ישן
+  const nm=new Map(); nm.set("meta",meta); nm.set("gans",{gans:DB.gans.slice()}); nm.set("management",{management:DB.management.slice()}); nm.set("staff",{staff:DB.staff.slice()});
+  for(const y of Object.keys(byYear)) nm.set(safeYearId(y),{year:y,students:byYear[y]});
+  cloudDocs=nm;
 }
 /* בדיקת חיבור לשרת Firestore — מבחינה בין חסימת רשת לבין בעיה אחרת (הרשאות/התחברות).
    שימוש ב-no-cors: מספיק לדעת אם הבקשה בכלל מגיעה לדומיין (resolve=נגיש, reject=חסום). */
@@ -398,11 +436,11 @@ async function testCloudConnection(){
 }
 function save(){ if(!db) return; setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250); }
 async function runPush(){
-  try{ await pushAll(); }
+  try{ await pushAll(); if(restMode) setSyncStatus("synced"); }
   catch(e){ console.error(e); setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
   finally{
     savePending=false;
-    rebuildDB(cloudDocs); // הצג את המצב המעודכן (כולל שינויים מרחוק שהגיעו בזמן השמירה)
+    if(!restMode) rebuildDB(cloudDocs); // ב-SDK: הצג את המצב המעודכן; ב-REST: ה-DB בזיכרון כבר מעודכן
     if($("#overlay").classList.contains("show")) pendingRender=true; else route();
   }
 }
@@ -411,6 +449,7 @@ async function pushAll(){
   // בטיחות: אל תדרוס נתוני שרת עם DB ריק שטרם אושר מול השרת (דפדפן ללא חיבור שלא הספיק לטעון)
   const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
   if(localEmpty && !serverConfirmed) return;
+  if(restMode){ await pushAllRest(); return; } // מצב חלופי: כתיבה דרך REST
   // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
   const meta={ activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, settings:DB.settings, assignments:DB.assignments };
   const gans=DB.gans.slice(), management=DB.management.slice(), staff=DB.staff.slice();
@@ -701,8 +740,10 @@ function startDataSync(){
     if($("#overlay").classList.contains("show")){ pendingRender=true; }
     else route();
   }, err=>{ console.error(err); lastSyncError=(err&&(err.code||err.message))||"unknown"; setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
+  // מעבר אוטומטי למצב חלופי (REST) אם חיבור ה-SDK לא הצליח למשוך נתונים תוך ~12 שניות
+  setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
 }
-function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; hideOfflineBanner(); }
+function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; hideOfflineBanner(); }
 
 function boot(){
   try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
