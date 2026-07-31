@@ -335,6 +335,10 @@ async function testCloudConnection(){
   const G=t=>`<b style="color:var(--good)">${t}</b>`, R=t=>`<b style="color:var(--bad)">${t}</b>`;
   let msg = email ? `מחובר/ת כ: <b dir="ltr">${esc(email)}</b>.<br>` : `${R("לא מחובר/ת לחשבון")} — יש להתחבר עם אימייל וסיסמה.<br>`;
   msg += reachable ? `רשת: ${G("יש גישה לשרת")} (הרשת לא חוסמת).<br>` : `רשת: ${R("אין גישה לשרת")} — עבור/עברי לרשת אחרת (חבילת גלישה) או דפדפן אחר.<br>`;
+  // נתונים שהתקבלו בפועל מהשרת — הקובע אם זו בעיית חיבור או בעיית בחירת שנה/סינון
+  const totalStu=DB.students.length, totalGan=DB.gans.length;
+  msg += `נתונים מהשרת: ${serverConfirmed? G("התקבלו ✓") : R("טרם התקבלו ✗")} · נטענו <b>${totalStu}</b> תלמידות ו-<b>${totalGan}</b> גנים.<br>`;
+  msg += `שנה נבחרת: <b>${esc(DB.activeYear)}</b> · בשנה זו: <b>${studentsOfYear().length}</b> תלמידות.<br>`;
   const e=lastSyncError.toLowerCase();
   if(lastSyncError){
     const he = e.includes("permission") ? "אין הרשאה לחשבון הזה לגשת לנתונים — יש לעדכן את הרשאות השרת (Firestore rules) / להוסיף את המשתמש/ת"
@@ -342,8 +346,12 @@ async function testCloudConnection(){
             : (e.includes("unavailable")||e.includes("network")) ? "השרת לא זמין כרגע (רשת) — נסה/י שוב"
             : lastSyncError;
     msg += `שגיאת שרת אחרונה: ${R(esc(he))}.`;
-  } else if(reachable && email){
-    msg += `${G("לא נרשמה שגיאת שרת")} — אם עדיין אין נתונים, ודא/י שנבחרה השנה הנכונה למעלה, ורענן/י.`;
+  } else if(totalStu>0){
+    msg += `${G("הנתונים נטענו!")} אם המסך ריק — בחר/י למעלה את השנה שבה יש תלמידות, ונקה/י סינונים.`;
+  } else if(serverConfirmed){
+    msg += `${R("השרת החזיר מאגר ריק")} — כלומר הנתונים שהוזנו לא נמצאים בשרת שהחשבון הזה מחובר אליו.`;
+  } else {
+    msg += `${R("טרם התקבלו נתונים מהשרת")} — החיבור אינו מסתיים; נסה/י דפדפן/רשת אחרים או רענון.`;
   }
   out.innerHTML=msg;
 }
