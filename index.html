@@ -276,6 +276,7 @@ function safeYearId(y){ return "students_"+String(y).replace(/[^0-9A-Za-z֐-׿]/
 /* שמירה לענן — דחייה קצרה לאיגוד שינויים, ושמירה על שינויים מקומיים שטרם נכתבו */
 let _saveTimer=null, savePending=false, cloudDocs=new Map();
 let serverConfirmed=false; // האם התקבל סנאפשוט מהשרת (לא ממטמון) — תנאי בטיחות לפני כתיבה
+let lastSyncError="";      // קוד/הודעת השגיאה האחרונה מ-Firestore (לאבחון הרשאות/אימות)
 /* חיווי סטטוס סנכרון בכותרת — מבוסס על metadata של Firestore (hasPendingWrites/fromCache),
    כדי לדעת אם הנתונים באמת עלו לשרת (ונראים לשאר המשתמשים) או תקועים מקומית. */
 function setSyncStatus(state){
@@ -327,13 +328,24 @@ function showOfflineBanner(){
    שימוש ב-no-cors: מספיק לדעת אם הבקשה בכלל מגיעה לדומיין (resolve=נגיש, reject=חסום). */
 async function testCloudConnection(){
   const out=$("#ob-result"); if(out) out.innerHTML="בודק/ת חיבור… ⏳";
-  const url="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app?pageSize=1";
-  try{
-    await fetch(url,{ mode:"no-cors", cache:"no-store" });
-    if(out) out.innerHTML=`<b style="color:var(--good)">✓ יש גישה לשרת הענן מהמכשיר הזה.</b> כלומר הרשת לא חוסמת — הבעיה כנראה בהתחברות/הרשאות. נסה/י להתנתק ולהתחבר מחדש, ואם לא עוזר — עדכן/י את המנהל.`;
-  }catch(e){
-    if(out) out.innerHTML=`<b style="color:var(--bad)">✗ אין גישה לשרת הענן מהמכשיר הזה.</b> הרשת או הדפדפן חוסמים את <span dir="ltr">firestore.googleapis.com</span>. זו הסיבה שהנתונים לא מופיעים — יש לעבור לרשת אחרת (חבילת גלישה של הטלפון) או דפדפן אחר.`;
+  const email=(currentUser && currentUser.email) || "";
+  let reachable=false;
+  try{ await fetch("https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app?pageSize=1",{ mode:"no-cors", cache:"no-store" }); reachable=true; }catch(e){}
+  if(!out) return;
+  const G=t=>`<b style="color:var(--good)">${t}</b>`, R=t=>`<b style="color:var(--bad)">${t}</b>`;
+  let msg = email ? `מחובר/ת כ: <b dir="ltr">${esc(email)}</b>.<br>` : `${R("לא מחובר/ת לחשבון")} — יש להתחבר עם אימייל וסיסמה.<br>`;
+  msg += reachable ? `רשת: ${G("יש גישה לשרת")} (הרשת לא חוסמת).<br>` : `רשת: ${R("אין גישה לשרת")} — עבור/עברי לרשת אחרת (חבילת גלישה) או דפדפן אחר.<br>`;
+  const e=lastSyncError.toLowerCase();
+  if(lastSyncError){
+    const he = e.includes("permission") ? "אין הרשאה לחשבון הזה לגשת לנתונים — יש לעדכן את הרשאות השרת (Firestore rules) / להוסיף את המשתמש/ת"
+            : e.includes("unauth") ? "החשבון לא מאומת — יש להתנתק ולהתחבר מחדש"
+            : (e.includes("unavailable")||e.includes("network")) ? "השרת לא זמין כרגע (רשת) — נסה/י שוב"
+            : lastSyncError;
+    msg += `שגיאת שרת אחרונה: ${R(esc(he))}.`;
+  } else if(reachable && email){
+    msg += `${G("לא נרשמה שגיאת שרת")} — אם עדיין אין נתונים, ודא/י שנבחרה השנה הנכונה למעלה, ורענן/י.`;
   }
+  out.innerHTML=msg;
 }
 function save(){ if(!db) return; setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250); }
 async function runPush(){
@@ -623,6 +635,7 @@ function startDataSync(){
   cloudDocs=new Map();
   dataUnsub = onSnapshot(collection(db,"app"), { includeMetadataChanges:true }, snap=>{
     const md=snap.metadata; // עדכון חיווי הסנכרון לפי מצב הכתיבות מול השרת
+    lastSyncError=""; // התקבל סנאפשוט — הקריאה עובדת
     if(!md.fromCache) serverConfirmed=true; // אושר מגע עם השרת — מותר לכתוב
     setSyncStatus(md.hasPendingWrites ? "pending" : (md.fromCache ? "offline" : "synced"));
     const changes = snap.docChanges();
@@ -638,7 +651,7 @@ function startDataSync(){
     if(!cloudDocs.has("meta") && !md.fromCache) save();
     if($("#overlay").classList.contains("show")){ pendingRender=true; }
     else route();
-  }, err=>{ console.error(err); setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
+  }, err=>{ console.error(err); lastSyncError=(err&&(err.code||err.message))||"unknown"; setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
 }
 function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; hideOfflineBanner(); }
 
