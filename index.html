@@ -315,14 +315,55 @@ function showOfflineBanner(){
       <div style="margin-top:6px;font-weight:500">עדיין תקוע אחרי הכול? עדכן/י את המנהל (עם צילום מסך של הבדיקה) — ונטפל בזה יחד.</div>
     </div>
     <span style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn sm" id="ob-restload" type="button">📥 טען נתונים (מצב חלופי)</button>
       <button class="btn sm" id="ob-test" type="button">🔌 בדיקת חיבור</button>
       <button class="btn sm" id="ob-reload" type="button">🔄 רענן</button>
       <button class="btn ghost sm" id="ob-dismiss" type="button">הבנתי</button>
     </span></div>`;
   b.style.display="block";
+  const lr=$("#ob-restload"); if(lr) lr.onclick=loadViaRest;
   const t=$("#ob-test"); if(t) t.onclick=testCloudConnection;
   const r=$("#ob-reload"); if(r) r.onclick=()=>location.reload();
   const d=$("#ob-dismiss"); if(d) d.onclick=()=>{ _offlineDismissed=true; hideOfflineBanner(); };
+}
+/* מסלול חלופי לטעינת נתונים דרך Firestore REST (בקשת HTTPS פשוטה) — עוקף מצב שבו
+   חיבור ה-streaming של ה-SDK לא מצליח למשוך נתונים אף שהרשת מאפשרת בקשות רגילות. */
+function decFsVal(v){
+  if(v==null) return null;
+  if('stringValue' in v) return v.stringValue;
+  if('integerValue' in v) return +v.integerValue;
+  if('doubleValue' in v) return v.doubleValue;
+  if('booleanValue' in v) return v.booleanValue;
+  if('nullValue' in v) return null;
+  if('timestampValue' in v) return v.timestampValue;
+  if('arrayValue' in v) return (v.arrayValue.values||[]).map(decFsVal);
+  if('mapValue' in v) return decFsFields((v.mapValue||{}).fields||{});
+  return null;
+}
+function decFsFields(fields){ const o={}; for(const k in fields) o[k]=decFsVal(fields[k]); return o; }
+async function loadViaRest(){
+  const out=$("#ob-result");
+  if(!currentUser){ if(out) out.innerHTML=`<b style="color:var(--bad)">יש להתחבר קודם.</b>`; return; }
+  if(out) out.innerHTML="טוען נתונים במצב חלופי… ⏳";
+  try{
+    const token=await currentUser.getIdToken();
+    const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app";
+    const map=new Map(); let pageToken="";
+    do{
+      const url=base+"?pageSize=300"+(pageToken?("&pageToken="+encodeURIComponent(pageToken)):"");
+      const res=await fetch(url,{ headers:{ Authorization:"Bearer "+token } });
+      if(!res.ok){ if(out) out.innerHTML=`<b style="color:var(--bad)">שגיאת טעינה (${res.status}).</b> ${res.status===403?'אין הרשאה לחשבון הזה.':'נסה/י שוב.'}`; return; }
+      const json=await res.json();
+      (json.documents||[]).forEach(dnode=>{ const id=dnode.name.split("/").pop(); map.set(id, decFsFields(dnode.fields||{})); });
+      pageToken=json.nextPageToken||"";
+    } while(pageToken);
+    if(!map.has("meta") && !map.size){ if(out) out.innerHTML=`<b style="color:var(--bad)">לא נמצאו נתונים במאגר.</b>`; return; }
+    cloudDocs=map; serverConfirmed=true;
+    knownStudentDocs.clear(); [...map.keys()].forEach(id=>{ if(id.startsWith("students_")) knownStudentDocs.add(id); });
+    rebuildDB(cloudDocs);
+    hideOfflineBanner(); _offlineDismissed=true; route();
+    toast("הנתונים נטענו (מצב חלופי — צפייה)");
+  }catch(e){ console.error(e); if(out) out.innerHTML=`<b style="color:var(--bad)">הטעינה נכשלה:</b> ${esc(String(e&&e.message||e))}`; }
 }
 /* בדיקת חיבור לשרת Firestore — מבחינה בין חסימת רשת לבין בעיה אחרת (הרשאות/התחברות).
    שימוש ב-no-cors: מספיק לדעת אם הבקשה בכלל מגיעה לדומיין (resolve=נגיש, reject=חסום). */
