@@ -412,7 +412,7 @@ function makeStudent(){ return {
 };}
 function makeStaff(){ return {
   id:uid(), lastName:"", firstName:"", name:"", tz:"", email:"", // ת"ז, מייל, שם משפחה/פרטי בנפרד (סעיף 1)
-  role:"סייעת", phone:"", mobile:"", city:"", notes:"",
+  role:"סייעת", education:"רגיל", phone:"", mobile:"", city:"", notes:"",
   createdAt:new Date().toISOString()
 };}
 function makeGan(){ return {
@@ -1905,7 +1905,7 @@ let staffFilter = { q:"", role:"" };
 let staffSort = { key:"lastName", dir:1 };
 function staffFiltered(){
   const q=staffFilter.q.trim().toLowerCase();
-  const list=DB.staff.filter(m=>{
+  const list=eduScope(DB.staff).filter(m=>{ // מכבד את בורר החינוך הראשי (רגיל/מיוחד)
     if(staffFilter.role && m.role!==staffFilter.role) return false;
     if(q){ const hay=(staffName(m)+" "+m.tz+" "+m.email+" "+m.role+" "+m.phone+" "+m.mobile+" "+m.city).toLowerCase(); if(!hay.includes(q)) return false; }
     return true;
@@ -1949,12 +1949,13 @@ function renderStaffTable(){
   const arr=k=> staffSort.key===k?`<span class="arr">${staffSort.dir>0?'▲':'▼'}</span>`:"";
   const th=(k,l)=>`<th class="sortable" data-sort="${k}">${l}${arr(k)}</th>`;
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
-    ${th("lastName","שם משפחה")}${th("firstName","שם פרטי")}${th("tz",'ת"ז')}${th("role","תפקיד")}${th("phone","טלפון")}${th("mobile","נייד")}${th("email","מייל")}${th("city","עיר")}<th></th></tr></thead><tbody>
+    ${th("lastName","שם משפחה")}${th("firstName","שם פרטי")}${th("tz",'ת"ז')}${th("role","תפקיד")}${th("education","חינוך")}${th("phone","טלפון")}${th("mobile","נייד")}${th("email","מייל")}${th("city","עיר")}<th></th></tr></thead><tbody>
     ${list.map(m=>`<tr>
       <td><b>${esc(m.lastName)||'—'}</b></td>
       <td>${esc(m.firstName)||'—'}</td>
       <td>${esc(m.tz)||'—'}</td>
       <td><span class="pill neutral">${esc(m.role)||'—'}</span></td>
+      <td>${eduBadge(m)}</td>
       <td>${m.phone?`<a href="tel:${esc(m.phone)}">${esc(m.phone)}</a>`:'—'}</td>
       <td>${m.mobile?`<a href="tel:${esc(m.mobile)}">${esc(m.mobile)}</a>`:'—'}</td>
       <td>${m.email?`<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>`:'—'}</td>
@@ -1973,6 +1974,7 @@ function openStaff(m){
       <div><label>מספר זהות (ת"ז)</label><input id="st-tz" value="${esc(m.tz)}" inputmode="numeric"></div>
       <div><label>מייל</label><input id="st-email" value="${esc(m.email)}" type="email" inputmode="email"></div>
       <div><label>תפקיד</label><select id="st-role">${(m.role && !STAFF_ROLES.includes(m.role))?`<option selected>${esc(m.role)}</option>`:''}${STAFF_ROLES.map(r=>`<option ${m.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
+      <div><label>חינוך</label><select id="st-education">${EDU_TYPES.map(t=>`<option ${eduLabel(m)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>טלפון</label><input id="st-phone" value="${esc(m.phone)}" inputmode="tel"></div>
       <div><label>נייד</label><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
@@ -1983,7 +1985,7 @@ function openStaff(m){
   $("#saveSt").onclick=()=>{ const val=id=>$("#"+id).value.trim();
     const lastName=val("st-lastName"), firstName=val("st-firstName");
     const data=Object.assign({},m,{lastName,firstName,name:[lastName,firstName].filter(Boolean).join(" "),
-      tz:digits(val("st-tz")),email:val("st-email"),role:val("st-role"),phone:val("st-phone"),mobile:val("st-mobile"),city:val("st-city"),notes:val("st-notes")});
+      tz:digits(val("st-tz")),email:val("st-email"),role:val("st-role"),education:val("st-education"),phone:val("st-phone"),mobile:val("st-mobile"),city:val("st-city"),notes:val("st-notes")});
     if(!data.lastName && !data.firstName){ toast("יש להזין שם משפחה או שם פרטי"); return; }
     const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0)DB.staff[i]=data; else DB.staff.push(data);
     save(); closeModal(); route(); toast("נשמר"); };
@@ -2017,7 +2019,7 @@ function openStaffImport(){
     "שםמשפחה":"lastName","משפחה":"lastName","שםפרטי":"firstName","פרטי":"firstName",
     "תז":"tz","מספרזהות":"tz","זהות":"tz","מייל":"email","אימייל":"email","דואל":"email","דוארלקטרוני":"email","email":"email",
     "תפקיד":"role","טלפון":"phone","טל":"phone","נייד":"mobile","סלולרי":"mobile","פלאפון":"mobile","טלפוןנייד":"mobile",
-    "עיר":"city","יישוב":"city","ישוב":"city","הערות":"notes","הערה":"notes" };
+    "עיר":"city","יישוב":"city","ישוב":"city","הערות":"notes","הערה":"notes","חינוך":"education","סוגחינוך":"education" };
   const normRole=v=>{ const t=String(v||"").replace(/\s/g,""); const hit=STAFF_ROLES.find(r=>r.replace(/\s/g,"")===t); if(hit) return hit;
     const has=(...w)=>w.every(x=>t.includes(x));
     if(has("גננת","משלימה")) return "גננת משלימה";
@@ -2039,7 +2041,7 @@ function openStaffImport(){
       if(!lastName && !firstName && full){ const p=full.split(/\s+/); lastName=p.shift()||""; firstName=p.join(" "); }
       if(!lastName && !firstName) continue;
       const m=makeStaff(); m.lastName=lastName; m.firstName=firstName; m.name=[lastName,firstName].filter(Boolean).join(" ");
-      m.tz=digits(g("tz")); m.email=g("email"); m.role=normRole(g("role")); m.phone=g("phone"); m.mobile=fixPhone(g("mobile")); m.city=g("city"); m.notes=g("notes");
+      m.tz=digits(g("tz")); m.email=g("email"); m.role=normRole(g("role")); m.education=normEduVal(g("education")); m.phone=g("phone"); m.mobile=fixPhone(g("mobile")); m.city=g("city"); m.notes=g("notes");
       const fileDup = m.tz && seen.has(m.tz);
       const dup = m.tz && existing.has(m.tz);
       if(m.tz) seen.add(m.tz);
