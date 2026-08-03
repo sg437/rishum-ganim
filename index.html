@@ -605,6 +605,31 @@ function isAdmin(){
   return admins.map(x=>String(x).toLowerCase()).includes(em);
 }
 
+/* ---------- ניהול משתמשים דרך גשר ה-Apps Script ----------
+   מאפשר למנהל ליצור/למחוק/לאפס-סיסמה/לרשום משתמשי התחברות מתוך ההגדרות.
+   הוספת משתמש עובדת דרך מפתח ה-Web (בלי הגדרות נוספות); רשימה/מחיקה/איפוס
+   דורשים הגדרת Service Account בגשר (ראה SETUP.md). ממיר שגיאות להודעות בעברית. */
+async function adminUsersCall(op, payload){
+  if(!DRIVE_READY) throw new Error("bridge-unavailable");
+  const action = { create:"userCreate", list:"userList", "delete":"userDelete", setPassword:"userSetPassword" }[op];
+  if(!action) throw new Error("bad-op");
+  return await driveCall(action, payload||{});
+}
+function adminUsersErrHe(err){
+  const raw=(err&&err.message)||String(err||"");
+  if(/EMAIL_EXISTS|already.*exists/i.test(raw)) return "כתובת האימייל כבר קיימת במערכת.";
+  if(/INVALID_EMAIL|no-email/i.test(raw)) return "כתובת אימייל לא תקינה.";
+  if(/WEAK_PASSWORD|weak-password/i.test(raw)) return "הסיסמה חייבת להיות באורך 6 תווים לפחות.";
+  if(/not-admin/i.test(raw)) return "רק מנהל מערכת יכול לנהל משתמשים.";
+  if(/admin-check-failed/i.test(raw)) return "לא ניתן לאמת הרשאת מנהל כרגע — נסה/י שוב.";
+  if(/no-sa|service-account/i.test(raw)) return "רשימה/מחיקה/איפוס סיסמה דורשים הגדרת Service Account בגשר (ראה SETUP.md). הוספת משתמש עובדת בכל מקרה.";
+  if(/OPERATION_NOT_ALLOWED/i.test(raw)) return "התחברות אימייל/סיסמה אינה מופעלת בפרויקט Firebase.";
+  if(/unauthorized|token/i.test(raw)) return "יש להתחבר מחדש למערכת.";
+  if(/bridge-unavailable|drive-not-configured/i.test(raw)) return "גשר השרת (Apps Script) עדיין לא מוגדר — ראה SETUP.md.";
+  if(/network/i.test(raw)) return "אין חיבור לשרת. נסה/י שוב.";
+  return raw || "שגיאה בניהול המשתמשים.";
+}
+
 /* ---------- סינון "תיקיית" חינוך רגיל / מיוחד (סעיף 8) ---------- */
 let activeEdu = ""; // "" = הכל, "רגיל", 'ח"מ'
 function eduScope(list){ return activeEdu ? list.filter(x=>eduLabel(x)===activeEdu) : list; }
@@ -815,7 +840,7 @@ function renderAuthBox(){
       <button class="btn ghost" id="au-reset" type="button">שליחת מייל לאיפוס סיסמה</button>
       <button class="btn danger" id="au-signout" type="button" style="margin-inline-start:auto">יציאה מהמערכת</button>
     </div>
-    <div class="hint">ניהול משתמשים (הוספה/הסרה/שינוי סיסמה) נעשה בקונסולת Firebase → Authentication. כל משתמש שיתווסף שם יוכל להתחבר כאן.</div>`;
+    <div class="hint">${isAdmin()?'הוספת משתמשים, איפוס סיסמה ומחיקה — בקטע "ניהול משתמשים" למטה (למנהלי מערכת). לחלופין אפשר תמיד לנהל משתמשים בקונסולת Firebase → Authentication.':'ניהול משתמשים (הוספה/הסרה/שינוי סיסמה) נעשה על-ידי מנהל מערכת, או בקונסולת Firebase → Authentication.'}</div>`;
   $("#au-signout").onclick=doSignOut;
   $("#au-reset").onclick=async ()=>{ if(!currentUser||!currentUser.email){ toast("אין אימייל"); return; }
     try{ await sendPasswordResetEmail(auth,currentUser.email); toast("נשלח מייל לאיפוס סיסמה"); }catch(e){ toast("שגיאה בשליחה"); } };
@@ -2904,6 +2929,19 @@ function viewSettings(root){
     <div id="auth-box"></div>
   </div>
 
+  ${admin?`<div class="panel">
+    <h2>ניהול משתמשים</h2>
+    <div class="sub">הוספת משתמשים חדשים שיוכלו להתחבר למערכת (אימייל + סיסמה), איפוס סיסמה ומחיקה — למנהלי מערכת בלבד. פועל דרך גשר ה-Apps Script: <b>הוספת משתמש עובדת מיד</b>; רשימת המשתמשים, מחיקה ואיפוס סיסמה דורשים הגדרה חד-פעמית נוספת בגשר (ראה <b>SETUP.md</b> — "ניהול משתמשים"). תמיד אפשר גם לנהל בקונסולת Firebase → Authentication.</div>
+    <div class="row" style="margin-top:10px">
+      <div class="field" style="min-width:220px"><label>אימייל של המשתמש החדש</label><input id="nu-email" type="email" inputmode="email" autocomplete="off" placeholder="name@example.com"></div>
+      <div class="field" style="min-width:170px"><label>סיסמה ראשונית (6 תווים+)</label><input id="nu-pass" type="text" autocomplete="new-password" placeholder="לפחות 6 תווים"></div>
+      <button class="btn" id="nu-create" style="align-self:end">➕ צור משתמש</button>
+    </div>
+    <div id="nu-msg" class="note" style="display:none;margin-top:10px"></div>
+    <div class="row" style="margin-top:14px"><button class="btn ghost" id="nu-refresh">🔄 רענן רשימת משתמשים</button></div>
+    <div id="users-box" style="margin-top:10px"></div>
+  </div>`:""}
+
   <div class="panel">
     <h2>חיבור Google Drive</h2>
     <div class="sub">חיבור (פר-מכשיר) המאפשר יצירת תיקייה אוטומטית לכל ילדה והעלאת מסמכים ישירות מהתיק אל הדרייב.</div>
@@ -2922,6 +2960,70 @@ function viewSettings(root){
   renderAuthBox();
   renderDriveBox();
   renderInstallBox();
+
+  // ניהול משתמשים (למנהל בלבד) — דרך Cloud Function adminUsers
+  if(admin){
+    const usersBox=$("#users-box");
+    const nuMsg=$("#nu-msg");
+    const showNuMsg=(text, ok)=>{ if(!nuMsg)return; nuMsg.style.display="block"; nuMsg.textContent=text;
+      nuMsg.style.background = ok? "var(--good-soft)":"var(--bad-soft)";
+      nuMsg.style.color = ok? "var(--good)":"var(--bad)";
+      nuMsg.style.borderColor = ok? "var(--good)":"var(--bad)"; };
+    const fmtWhen=v=>{ if(!v)return "—"; const d=new Date(v); return isNaN(d)? "—" : d.toLocaleDateString("he-IL"); };
+    const meEmail=(currentUser&&currentUser.email||"").toLowerCase();
+    const renderUsers=list=>{
+      if(!list || !list.length){ usersBox.innerHTML=`<div class="hint">אין משתמשים להצגה.</div>`; return; }
+      usersBox.innerHTML=`<div class="table-wrap"><table style="min-width:520px"><thead><tr>
+        <th>אימייל</th><th>נוצר</th><th>כניסה אחרונה</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
+        list.map(u=>`<tr>
+          <td dir="ltr" style="text-align:right">${esc(u.email||"—")}${(u.email||"").toLowerCase()===meEmail?' <span class="pill neutral">זה אני</span>':''}</td>
+          <td>${fmtWhen(u.created)}</td>
+          <td>${fmtWhen(u.lastSignIn)}</td>
+          <td style="text-align:end;white-space:nowrap">
+            <button class="btn ghost sm" data-pw="${esc(u.uid)}" data-em="${esc(u.email||"")}">🔑 סיסמה</button>
+            <button class="btn danger sm" data-del="${esc(u.uid)}" data-em="${esc(u.email||"")}" ${(u.email||"").toLowerCase()===meEmail?"disabled title=\"אי אפשר למחוק את עצמך\"":""}>🗑️ מחיקה</button>
+          </td></tr>`).join("")}</tbody></table></div>`;
+      usersBox.querySelectorAll("[data-del]").forEach(b=>b.onclick=async ()=>{
+        const uid=b.dataset.del, em=b.dataset.em;
+        if(!confirm(`למחוק את המשתמש ${em}? הפעולה בלתי הפיכה והוא לא יוכל יותר להתחבר.`)) return;
+        b.disabled=true;
+        try{ await adminUsersCall("delete",{uid}); toast("המשתמש נמחק"); loadUsers(); }
+        catch(e){ b.disabled=false; showNuMsg(adminUsersErrHe(e), false); }
+      });
+      usersBox.querySelectorAll("[data-pw]").forEach(b=>b.onclick=async ()=>{
+        const uid=b.dataset.pw, em=b.dataset.em;
+        const p=prompt(`סיסמה חדשה עבור ${em} (6 תווים לפחות):`);
+        if(p===null) return;
+        if(String(p).length<6){ showNuMsg("הסיסמה חייבת להיות באורך 6 תווים לפחות.", false); return; }
+        try{ await adminUsersCall("setPassword",{uid, password:p}); showNuMsg(`הסיסמה של ${em} עודכנה.`, true); }
+        catch(e){ showNuMsg(adminUsersErrHe(e), false); }
+      });
+    };
+    const loadUsers=async ()=>{
+      usersBox.innerHTML=`<div class="hint">טוען רשימת משתמשים…</div>`;
+      try{ const res=await adminUsersCall("list");
+        if(res && res.saConfigured===false){
+          usersBox.innerHTML=`<div class="hint">רשימת המשתמשים, מחיקה ואיפוס סיסמה יופיעו כאן לאחר הגדרת <b>Service Account</b> בגשר (ראה SETUP.md — "ניהול משתמשים"), או תמיד בקונסולת Firebase → Authentication. <b>הוספת משתמש חדש עובדת כאן כרגיל.</b></div>`;
+          return;
+        }
+        renderUsers((res&&res.users)||[]);
+      }
+      catch(e){ usersBox.innerHTML=`<div class="hint" style="color:var(--bad)">${esc(adminUsersErrHe(e))}</div>`; }
+    };
+    $("#nu-create").onclick=async ()=>{
+      const email=($("#nu-email").value||"").trim(), password=$("#nu-pass").value||"";
+      if(!email){ showNuMsg("יש להזין אימייל.", false); return; }
+      if(password.length<6){ showNuMsg("הסיסמה חייבת להיות באורך 6 תווים לפחות.", false); return; }
+      const btn=$("#nu-create"); btn.disabled=true;
+      try{ await adminUsersCall("create",{email, password});
+        showNuMsg(`נוצר משתמש ${email}. אפשר למסור לו את האימייל והסיסמה להתחברות.`, true);
+        $("#nu-email").value=""; $("#nu-pass").value=""; loadUsers();
+      }catch(e){ showNuMsg(adminUsersErrHe(e), false); }
+      finally{ btn.disabled=false; }
+    };
+    $("#nu-refresh").onclick=loadUsers;
+    loadUsers(); // טעינה ראשונית (תציג הודעה ידידותית אם הפונקציה עדיין לא פרוסה)
+  }
 
   // גילי ילדים ותפקידי צוות (עריכה למנהל בלבד)
   const saveAges  = next => { DB.settings.childAges  = cleanList(next)||[]; save(); route(); toast("נשמר"); };

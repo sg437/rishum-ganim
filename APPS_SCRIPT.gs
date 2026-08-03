@@ -20,8 +20,14 @@
 // מגיעה ממשתמש שמחובר לתוכנה. אינו סוד.
 var FIREBASE_API_KEY = 'AIzaSyBRIWtqtPXxd-W0WR3nB-iGn0Qn9ml-Q8I';
 
+// מזהה פרויקט Firebase (זהה ל-projectId ב-index.html). משמש לניהול משתמשים ולבדיקת מנהל.
+var FIREBASE_PROJECT_ID = 'rishum-ganim-fad40';
+
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
+
+// פעולות ניהול משתמשים — דורשות שהקורא יהיה מנהל מערכת (settings.admins ב-Firestore).
+var USER_ACTIONS = { userCreate:true, userList:true, userDelete:true, userSetPassword:true };
 
 function doPost(e){
   var out = ContentService.createTextOutput();
@@ -31,15 +37,24 @@ function doPost(e){
     // לעיתים משמיט את גוף ה-POST החוצה-מקור, והנתונים בשאילתה שורדים הפניות.
     var req = JSON.parse((e && e.parameter && e.parameter.data) || (e && e.postData && e.postData.contents) || '{}');
     if(!verifyToken_(req.idToken)) return json_(out, {ok:false, error:'unauthorized'});
+    // פעולות ניהול משתמשים פתוחות למנהלי מערכת בלבד.
+    if(USER_ACTIONS[req.action]){
+      var gate = adminGate_(req.idToken);
+      if(!gate.ok) return json_(out, {ok:false, error:gate.error || 'not-admin'});
+    }
     switch(req.action){
-      case 'ping':        return json_(out, ping_());
-      case 'childFolder': return json_(out, childFolder_(req.year, req.name));
-      case 'list':        return json_(out, list_(req.folderId));
-      case 'upload':      return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
-      case 'copy':        return json_(out, copy_(req.fileId, req.folderId, req.name));
-      case 'download':    return json_(out, download_(req.fileId));
-      case 'share':       return json_(out, share_(req.email, req.role));
-      default:            return json_(out, {ok:false, error:'unknown-action'});
+      case 'ping':           return json_(out, ping_());
+      case 'childFolder':    return json_(out, childFolder_(req.year, req.name));
+      case 'list':           return json_(out, list_(req.folderId));
+      case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
+      case 'copy':           return json_(out, copy_(req.fileId, req.folderId, req.name));
+      case 'download':       return json_(out, download_(req.fileId));
+      case 'share':          return json_(out, share_(req.email, req.role));
+      case 'userCreate':     return json_(out, userCreate_(req.email, req.password));
+      case 'userList':       return json_(out, userList_());
+      case 'userDelete':     return json_(out, userDelete_(req.uid));
+      case 'userSetPassword':return json_(out, userSetPassword_(req.uid, req.password));
+      default:               return json_(out, {ok:false, error:'unknown-action'});
     }
   }catch(err){
     return json_(out, {ok:false, error:String(err)});
@@ -114,4 +129,143 @@ function share_(email, role){
   var r = root_();
   if(role === 'writer') r.addEditor(email); else r.addViewer(email);
   return { ok:true };
+}
+
+/* ==================================================================
+   ניהול משתמשים (Firebase Authentication) — ראה SETUP.md
+   ------------------------------------------------------------------
+   - יצירת משתמש: דרך מפתח ה-Web (accounts:signUp) — בלי הגדרות נוספות.
+   - רשימה / מחיקה / איפוס סיסמה: דורשים Service Account המוגדר ב-Script
+     Properties (SA_CLIENT_EMAIL, SA_PRIVATE_KEY) — פעולות אדמין ב-Identity
+     Toolkit. שירותים אלה חינמיים (אינם דורשים תוכנית Blaze).
+   ================================================================== */
+
+/* אימות שהקורא הוא מנהל מערכת: קורא את app/meta מ-Firestore עם הטוקן של
+   הקורא עצמו (הרשאת קריאה בסיסית), ובודק את רשימת settings.admins. רשימה
+   ריקה = מצב אתחול (כל משתמש מחובר רשאי) — תואם ל-isAdmin() באפליקציה. */
+function adminGate_(idToken){
+  var email = tokenEmail_(idToken);
+  if(!email) return { ok:false, error:'unauthorized' };
+  try{
+    var url = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID +
+              '/databases/(default)/documents/app/meta';
+    var resp = UrlFetchApp.fetch(url, { headers:{ Authorization:'Bearer ' + idToken }, muteHttpExceptions:true });
+    if(resp.getResponseCode() !== 200) return { ok:false, error:'admin-check-failed' };
+    var admins = [];
+    try{
+      var vals = JSON.parse(resp.getContentText()).fields.settings.mapValue.fields.admins.arrayValue.values || [];
+      admins = vals.map(function(v){ return String(v.stringValue || '').toLowerCase(); }).filter(String);
+    }catch(e){ admins = []; }
+    if(!admins.length) return { ok:true };            // מצב אתחול
+    if(admins.indexOf(email) >= 0) return { ok:true };
+    return { ok:false, error:'not-admin' };
+  }catch(err){ return { ok:false, error:'admin-check-failed' }; }
+}
+
+/* מחזיר את האימייל (lower-case) של בעל הטוקן, או null אם אינו תקף. */
+function tokenEmail_(idToken){
+  if(!idToken) return null;
+  try{
+    var resp = UrlFetchApp.fetch(
+      'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_API_KEY,
+      { method:'post', contentType:'application/json',
+        payload: JSON.stringify({ idToken: idToken }), muteHttpExceptions:true });
+    if(resp.getResponseCode() !== 200) return null;
+    var d = JSON.parse(resp.getContentText());
+    return (d.users && d.users[0] && String(d.users[0].email || '').toLowerCase()) || null;
+  }catch(err){ return null; }
+}
+
+/* יצירת משתמש חדש — דרך מפתח ה-Web (signUp). אינו דורש Service Account. */
+function userCreate_(email, password){
+  email = String(email || '').trim();
+  password = String(password || '');
+  if(!email) return { ok:false, error:'no-email' };
+  if(password.length < 6) return { ok:false, error:'weak-password' };
+  var resp = UrlFetchApp.fetch(
+    'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + FIREBASE_API_KEY,
+    { method:'post', contentType:'application/json',
+      payload: JSON.stringify({ email:email, password:password, returnSecureToken:true }),
+      muteHttpExceptions:true });
+  var d = JSON.parse(resp.getContentText());
+  if(resp.getResponseCode() !== 200) return { ok:false, error:(d.error && d.error.message) || 'signup-failed' };
+  return { ok:true, uid:d.localId, email:email };
+}
+
+/* רשימת כל המשתמשים — דורש Service Account. אם אינו מוגדר: saConfigured=false. */
+function userList_(){
+  var token = saToken_();
+  if(!token) return { ok:true, saConfigured:false, users:[] };
+  var url = 'https://identitytoolkit.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID + '/accounts:query';
+  var resp = UrlFetchApp.fetch(url, { method:'post', contentType:'application/json',
+    headers:{ Authorization:'Bearer ' + token }, payload: JSON.stringify({}), muteHttpExceptions:true });
+  var d = JSON.parse(resp.getContentText());
+  if(resp.getResponseCode() !== 200) return { ok:false, error:(d.error && d.error.message) || 'query-failed' };
+  var arr = d.userInfo || d.users || [];
+  var users = arr.map(function(u){
+    return { uid:u.localId, email:u.email || '',
+             created: u.createdAt ? Number(u.createdAt) : 0,
+             lastSignIn: u.lastLoginAt ? Number(u.lastLoginAt) : 0 };
+  });
+  return { ok:true, saConfigured:true, users:users };
+}
+
+/* מחיקת משתמש — דורש Service Account. */
+function userDelete_(uid){
+  uid = String(uid || '');
+  if(!uid) return { ok:false, error:'no-uid' };
+  var token = saToken_();
+  if(!token) return { ok:false, error:'no-sa' };
+  var url = 'https://identitytoolkit.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID + '/accounts:delete';
+  var resp = UrlFetchApp.fetch(url, { method:'post', contentType:'application/json',
+    headers:{ Authorization:'Bearer ' + token }, payload: JSON.stringify({ localId:uid }), muteHttpExceptions:true });
+  var d = JSON.parse(resp.getContentText());
+  if(resp.getResponseCode() !== 200) return { ok:false, error:(d.error && d.error.message) || 'delete-failed' };
+  return { ok:true };
+}
+
+/* קביעת סיסמה חדשה למשתמש קיים — דורש Service Account. */
+function userSetPassword_(uid, password){
+  uid = String(uid || '');
+  password = String(password || '');
+  if(!uid) return { ok:false, error:'no-uid' };
+  if(password.length < 6) return { ok:false, error:'weak-password' };
+  var token = saToken_();
+  if(!token) return { ok:false, error:'no-sa' };
+  var url = 'https://identitytoolkit.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID + '/accounts:update';
+  var resp = UrlFetchApp.fetch(url, { method:'post', contentType:'application/json',
+    headers:{ Authorization:'Bearer ' + token },
+    payload: JSON.stringify({ localId:uid, password:password }), muteHttpExceptions:true });
+  var d = JSON.parse(resp.getContentText());
+  if(resp.getResponseCode() !== 200) return { ok:false, error:(d.error && d.error.message) || 'update-failed' };
+  return { ok:true };
+}
+
+/* מנפיק OAuth access token עבור Service Account (חתימת JWT → החלפה בטוקן).
+   מחזיר null אם ה-Service Account אינו מוגדר ב-Script Properties. */
+function saToken_(){
+  var props = PropertiesService.getScriptProperties();
+  var clientEmail = props.getProperty('SA_CLIENT_EMAIL');
+  var privateKey  = props.getProperty('SA_PRIVATE_KEY');
+  if(!clientEmail || !privateKey) return null;
+  privateKey = privateKey.replace(/\\n/g, '\n'); // אם הודבק עם \n מילוליים
+  var now = Math.floor(Date.now() / 1000);
+  var header = Utilities.base64EncodeWebSafe(JSON.stringify({ alg:'RS256', typ:'JWT' })).replace(/=+$/, '');
+  var claim = Utilities.base64EncodeWebSafe(JSON.stringify({
+    iss: clientEmail,
+    scope: 'https://www.googleapis.com/auth/identitytoolkit',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now, exp: now + 3600
+  })).replace(/=+$/, '');
+  var signature = Utilities.base64EncodeWebSafe(
+    Utilities.computeRsaSha256Signature(header + '.' + claim, privateKey)).replace(/=+$/, '');
+  var jwt = header + '.' + claim + '.' + signature;
+  var resp = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
+    method:'post',
+    payload:{ grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt },
+    muteHttpExceptions:true });
+  try{
+    var d = JSON.parse(resp.getContentText());
+    return d.access_token || null;
+  }catch(e){ return null; }
 }
