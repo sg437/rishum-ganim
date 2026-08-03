@@ -908,6 +908,8 @@ async function driveUploadNamed(file, folderId, baseName){
   return await driveCall("upload", { folderId, name, mimeType:file.type||"application/octet-stream", dataB64 });
 }
 async function driveShare(email, role){ return await driveCall("share", { email, role:role||"reader" }); }
+async function driveShareList(){ return await driveCall("shareList", {}); }
+async function driveShareRemove(email){ return await driveCall("shareRemove", { email }); }
 /* העתקת קובץ קיים לתיקייה אחרת (למשל צילום ת"ז לתיקיית השנה החדשה) — סעיף 5 */
 async function driveCopyFile(fileId, folderId, name){ return await driveCall("copy", { fileId, folderId, name }); }
 function b64ToBlobDownload(name, mimeType, b64){
@@ -942,9 +944,43 @@ function renderDriveBox(){
         <button class="btn ghost" id="drive-share-btn" type="button" style="align-self:end">שיתוף</button>
       </div>
       <div class="hint">שיתוף כזה מאפשר לאותו אדם לפתוח את הקישורים ישירות ב-Google Drive עם חשבון ה-Google שלו. (בתוך התוכנה ממילא כולם רואים, מעלים ומורידים.)</div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="row" style="align-items:center;gap:8px">
+        <b>מי משותף עם תיקיית האב</b>
+        <button class="btn ghost sm" id="drive-shares-refresh" type="button">🔄 רענן</button>
+      </div>
+      <div id="drive-shares" style="margin-top:8px"></div>
     </div>`;
   $("#drive-ping").onclick=async ()=>{ try{ await drivePing(); toast("החיבור לגשר תקין ✓"); renderDriveBox(); }catch(e){ toast(driveErrHe(e)); } };
-  const sb=$("#drive-share-btn"); if(sb) sb.onclick=async ()=>{ const em=$("#drive-share-email").value.trim(); if(!em){ toast("הזן/י אימייל"); return; } try{ await driveShare(em, $("#drive-share-role").value); toast("שותף עם "+em); $("#drive-share-email").value=""; }catch(e){ toast(driveErrHe(e)); } };
+  const loadShares=async ()=>{
+    const host=$("#drive-shares"); if(!host) return;
+    host.innerHTML=`<div class="hint">טוען רשימת שיתופים…</div>`;
+    try{
+      const res=await driveShareList(); const shares=(res&&res.shares)||[];
+      if(!shares.length){ host.innerHTML=`<div class="hint">אין עדיין שיתופים ישירים ל-Drive. (בתוך התוכנה כל המשתמשים רואים ומעלים ממילא.)</div>`; return; }
+      const roleHe=r=>({owner:"בעלים",writer:"עריכה",reader:"צפייה"}[r]||r);
+      const rolePill=r=>r==="owner"?"ok":r==="writer"?"warn":"neutral";
+      host.innerHTML=`<div class="table-wrap"><table style="min-width:480px"><thead><tr>
+        <th>שם</th><th>אימייל</th><th>הרשאה</th><th style="text-align:end"></th></tr></thead><tbody>${
+        shares.map(s=>`<tr>
+          <td>${s.name?esc(s.name):'<span style="color:var(--muted)">—</span>'}</td>
+          <td dir="ltr" style="text-align:right">${esc(s.email)}</td>
+          <td><span class="pill ${rolePill(s.role)}">${roleHe(s.role)}</span></td>
+          <td style="text-align:end;white-space:nowrap">${s.role==="owner"?'<span class="hint">—</span>':`<button class="btn danger sm" data-unshare="${esc(s.email)}">הסר גישה</button>`}</td>
+        </tr>`).join("")}</tbody></table></div>`;
+      host.querySelectorAll("[data-unshare]").forEach(b=>b.onclick=async ()=>{
+        const em=b.dataset.unshare;
+        if(!confirm(`להסיר את הגישה הישירה ל-Drive מ-${em}? (המשתמש עדיין יוכל לעבוד בתוך התוכנה — זו רק גישה ישירה ל-Google Drive.)`)) return;
+        b.disabled=true;
+        try{ await driveShareRemove(em); toast("הגישה הוסרה"); loadShares(); }
+        catch(e){ b.disabled=false; toast(driveErrHe(e)); }
+      });
+    }catch(e){ host.innerHTML=`<div class="hint" style="color:var(--bad)">${esc(driveErrHe(e))}</div>`; }
+  };
+  const sb=$("#drive-share-btn"); if(sb) sb.onclick=async ()=>{ const em=$("#drive-share-email").value.trim(); if(!em){ toast("הזן/י אימייל"); return; } try{ await driveShare(em, $("#drive-share-role").value); toast("שותף עם "+em); $("#drive-share-email").value=""; loadShares(); }catch(e){ toast(driveErrHe(e)); } };
+  $("#drive-shares-refresh").onclick=loadShares;
+  loadShares();
 }
 function renderInstallBox(){
   const box=$("#install-box"); if(!box) return;
