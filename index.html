@@ -434,7 +434,14 @@ async function testCloudConnection(){
   }
   out.innerHTML=msg;
 }
-function save(){ if(!db) return; setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250); }
+function save(){ if(!db) return; recordUserActivity(); setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250); }
+/* רישום פעילות: חותמת-זמן אחרונה שבה המשתמש המחובר שינה נתונים (לפי אימייל).
+   נשמר בתוך settings ומסונכרן, ומוצג בעמודת "עריכה אחרונה" בניהול המשתמשים. */
+function recordUserActivity(){
+  const em=(currentUser&&currentUser.email||"").toLowerCase(); if(!em) return;
+  DB.settings=DB.settings||{}; DB.settings.userActivity=DB.settings.userActivity||{};
+  DB.settings.userActivity[em]=Date.now();
+}
 async function runPush(){
   try{ await pushAll(); if(restMode) setSyncStatus("synced"); }
   catch(e){ console.error(e); setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
@@ -611,7 +618,7 @@ function isAdmin(){
    דורשים הגדרת Service Account בגשר (ראה SETUP.md). ממיר שגיאות להודעות בעברית. */
 async function adminUsersCall(op, payload){
   if(!DRIVE_READY) throw new Error("bridge-unavailable");
-  const action = { create:"userCreate", list:"userList", "delete":"userDelete", setPassword:"userSetPassword" }[op];
+  const action = { create:"userCreate", list:"userList", "delete":"userDelete", setPassword:"userSetPassword", setName:"userSetName" }[op];
   if(!action) throw new Error("bad-op");
   return await driveCall(action, payload||{});
 }
@@ -2933,8 +2940,9 @@ function viewSettings(root){
     <h2>ניהול משתמשים</h2>
     <div class="sub">הוספת משתמשים חדשים שיוכלו להתחבר למערכת (אימייל + סיסמה), איפוס סיסמה ומחיקה — למנהלי מערכת בלבד. פועל דרך גשר ה-Apps Script: <b>הוספת משתמש עובדת מיד</b>; רשימת המשתמשים, מחיקה ואיפוס סיסמה דורשים הגדרה חד-פעמית נוספת בגשר (ראה <b>SETUP.md</b> — "ניהול משתמשים"). תמיד אפשר גם לנהל בקונסולת Firebase → Authentication.</div>
     <div class="row" style="margin-top:10px">
-      <div class="field" style="min-width:220px"><label>אימייל של המשתמש החדש</label><input id="nu-email" type="email" inputmode="email" autocomplete="off" placeholder="name@example.com"></div>
-      <div class="field" style="min-width:170px"><label>סיסמה ראשונית (6 תווים+)</label><input id="nu-pass" type="text" autocomplete="new-password" placeholder="לפחות 6 תווים"></div>
+      <div class="field" style="min-width:150px"><label>שם (לא חובה)</label><input id="nu-name" autocomplete="off" placeholder="שם מלא"></div>
+      <div class="field" style="min-width:200px"><label>אימייל של המשתמש החדש</label><input id="nu-email" type="email" inputmode="email" autocomplete="off" placeholder="name@example.com"></div>
+      <div class="field" style="min-width:150px"><label>סיסמה ראשונית (6 תווים+)</label><input id="nu-pass" type="text" autocomplete="new-password" placeholder="לפחות 6 תווים"></div>
       <button class="btn" id="nu-create" style="align-self:end">➕ צור משתמש</button>
     </div>
     <div id="nu-msg" class="note" style="display:none;margin-top:10px"></div>
@@ -2971,18 +2979,29 @@ function viewSettings(root){
       nuMsg.style.borderColor = ok? "var(--good)":"var(--bad)"; };
     const fmtWhen=v=>{ if(!v)return "—"; const d=new Date(v); return isNaN(d)? "—" : d.toLocaleDateString("he-IL"); };
     const meEmail=(currentUser&&currentUser.email||"").toLowerCase();
+    const activity=(DB.settings&&DB.settings.userActivity)||{};
     const renderUsers=list=>{
       if(!list || !list.length){ usersBox.innerHTML=`<div class="hint">אין משתמשים להצגה.</div>`; return; }
-      usersBox.innerHTML=`<div class="table-wrap"><table style="min-width:520px"><thead><tr>
-        <th>אימייל</th><th>נוצר</th><th>כניסה אחרונה</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
+      usersBox.innerHTML=`<div class="table-wrap"><table style="min-width:660px"><thead><tr>
+        <th>שם</th><th>אימייל</th><th>נוצר</th><th>עריכה אחרונה בנתונים</th><th>כניסה אחרונה</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
         list.map(u=>`<tr>
+          <td>${u.name?esc(u.name):'<span style="color:var(--muted)">—</span>'}</td>
           <td dir="ltr" style="text-align:right">${esc(u.email||"—")}${(u.email||"").toLowerCase()===meEmail?' <span class="pill neutral">זה אני</span>':''}</td>
           <td>${fmtWhen(u.created)}</td>
+          <td>${fmtWhen(activity[(u.email||"").toLowerCase()])}</td>
           <td>${fmtWhen(u.lastSignIn)}</td>
           <td style="text-align:end;white-space:nowrap">
+            <button class="btn ghost sm" data-nm="${esc(u.uid)}" data-em="${esc(u.email||"")}" data-cur="${esc(u.name||"")}">✏️ שם</button>
             <button class="btn ghost sm" data-pw="${esc(u.uid)}" data-em="${esc(u.email||"")}">🔑 סיסמה</button>
             <button class="btn danger sm" data-del="${esc(u.uid)}" data-em="${esc(u.email||"")}" ${(u.email||"").toLowerCase()===meEmail?"disabled title=\"אי אפשר למחוק את עצמך\"":""}>🗑️ מחיקה</button>
           </td></tr>`).join("")}</tbody></table></div>`;
+      usersBox.querySelectorAll("[data-nm]").forEach(b=>b.onclick=async ()=>{
+        const uid=b.dataset.nm, em=b.dataset.em, cur=b.dataset.cur||"";
+        const nm=prompt(`שם עבור ${em}:`, cur);
+        if(nm===null) return;
+        try{ await adminUsersCall("setName",{uid, name:String(nm).trim()}); showNuMsg(`השם של ${em} עודכן.`, true); loadUsers(); }
+        catch(e){ showNuMsg(adminUsersErrHe(e), false); }
+      });
       usersBox.querySelectorAll("[data-del]").forEach(b=>b.onclick=async ()=>{
         const uid=b.dataset.del, em=b.dataset.em;
         if(!confirm(`למחוק את המשתמש ${em}? הפעולה בלתי הפיכה והוא לא יוכל יותר להתחבר.`)) return;
@@ -3011,13 +3030,13 @@ function viewSettings(root){
       catch(e){ usersBox.innerHTML=`<div class="hint" style="color:var(--bad)">${esc(adminUsersErrHe(e))}</div>`; }
     };
     $("#nu-create").onclick=async ()=>{
-      const email=($("#nu-email").value||"").trim(), password=$("#nu-pass").value||"";
+      const name=($("#nu-name").value||"").trim(), email=($("#nu-email").value||"").trim(), password=$("#nu-pass").value||"";
       if(!email){ showNuMsg("יש להזין אימייל.", false); return; }
       if(password.length<6){ showNuMsg("הסיסמה חייבת להיות באורך 6 תווים לפחות.", false); return; }
       const btn=$("#nu-create"); btn.disabled=true;
-      try{ await adminUsersCall("create",{email, password});
-        showNuMsg(`נוצר משתמש ${email}. אפשר למסור לו את האימייל והסיסמה להתחברות.`, true);
-        $("#nu-email").value=""; $("#nu-pass").value=""; loadUsers();
+      try{ await adminUsersCall("create",{email, password, name});
+        showNuMsg(`נוצר משתמש ${email}${name?` (${name})`:""}. אפשר למסור לו את האימייל והסיסמה להתחברות.`, true);
+        $("#nu-name").value=""; $("#nu-email").value=""; $("#nu-pass").value=""; loadUsers();
       }catch(e){ showNuMsg(adminUsersErrHe(e), false); }
       finally{ btn.disabled=false; }
     };

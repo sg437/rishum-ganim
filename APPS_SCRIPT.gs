@@ -27,7 +27,7 @@ var FIREBASE_PROJECT_ID = 'rishum-ganim-fad40';
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
 
 // פעולות ניהול משתמשים — דורשות שהקורא יהיה מנהל מערכת (settings.admins ב-Firestore).
-var USER_ACTIONS = { userCreate:true, userList:true, userDelete:true, userSetPassword:true };
+var USER_ACTIONS = { userCreate:true, userList:true, userDelete:true, userSetPassword:true, userSetName:true };
 
 function doPost(e){
   var out = ContentService.createTextOutput();
@@ -50,10 +50,11 @@ function doPost(e){
       case 'copy':           return json_(out, copy_(req.fileId, req.folderId, req.name));
       case 'download':       return json_(out, download_(req.fileId));
       case 'share':          return json_(out, share_(req.email, req.role));
-      case 'userCreate':     return json_(out, userCreate_(req.email, req.password));
+      case 'userCreate':     return json_(out, userCreate_(req.email, req.password, req.name));
       case 'userList':       return json_(out, userList_());
       case 'userDelete':     return json_(out, userDelete_(req.uid));
       case 'userSetPassword':return json_(out, userSetPassword_(req.uid, req.password));
+      case 'userSetName':    return json_(out, userSetName_(req.uid, req.name));
       default:               return json_(out, {ok:false, error:'unknown-action'});
     }
   }catch(err){
@@ -176,10 +177,12 @@ function tokenEmail_(idToken){
   }catch(err){ return null; }
 }
 
-/* יצירת משתמש חדש — דרך מפתח ה-Web (signUp). אינו דורש Service Account. */
-function userCreate_(email, password){
+/* יצירת משתמש חדש — דרך מפתח ה-Web (signUp). אינו דורש Service Account.
+   אם סופק שם ו-Service Account מוגדר — נקבע גם displayName. */
+function userCreate_(email, password, name){
   email = String(email || '').trim();
   password = String(password || '');
+  name = String(name || '').trim();
   if(!email) return { ok:false, error:'no-email' };
   if(password.length < 6) return { ok:false, error:'weak-password' };
   var resp = UrlFetchApp.fetch(
@@ -189,6 +192,7 @@ function userCreate_(email, password){
       muteHttpExceptions:true });
   var d = JSON.parse(resp.getContentText());
   if(resp.getResponseCode() !== 200) return { ok:false, error:(d.error && d.error.message) || 'signup-failed' };
+  if(name){ var token = saToken_(); if(token) accountsUpdate_(token, { localId:d.localId, displayName:name }); }
   return { ok:true, uid:d.localId, email:email };
 }
 
@@ -203,7 +207,7 @@ function userList_(){
   if(resp.getResponseCode() !== 200) return { ok:false, error:(d.error && d.error.message) || 'query-failed' };
   var arr = d.userInfo || d.users || [];
   var users = arr.map(function(u){
-    return { uid:u.localId, email:u.email || '',
+    return { uid:u.localId, email:u.email || '', name:u.displayName || '',
              created: u.createdAt ? Number(u.createdAt) : 0,
              lastSignIn: u.lastLoginAt ? Number(u.lastLoginAt) : 0 };
   });
@@ -232,11 +236,29 @@ function userSetPassword_(uid, password){
   if(password.length < 6) return { ok:false, error:'weak-password' };
   var token = saToken_();
   if(!token) return { ok:false, error:'no-sa' };
+  return accountsUpdate_(token, { localId:uid, password:password });
+}
+
+/* קביעת/עדכון השם (displayName) של משתמש קיים — דורש Service Account.
+   שם ריק מוחק את השם הקיים. */
+function userSetName_(uid, name){
+  uid = String(uid || '');
+  name = String(name || '').trim();
+  if(!uid) return { ok:false, error:'no-uid' };
+  var token = saToken_();
+  if(!token) return { ok:false, error:'no-sa' };
+  var body = { localId:uid };
+  if(name) body.displayName = name; else body.deleteAttribute = ['DISPLAY_NAME'];
+  return accountsUpdate_(token, body);
+}
+
+/* קריאת עדכון (accounts:update) עם טוקן אדמין — משמשת לסיסמה ולשם. */
+function accountsUpdate_(token, body){
   var url = 'https://identitytoolkit.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID + '/accounts:update';
   var resp = UrlFetchApp.fetch(url, { method:'post', contentType:'application/json',
     headers:{ Authorization:'Bearer ' + token },
-    payload: JSON.stringify({ localId:uid, password:password }), muteHttpExceptions:true });
-  var d = JSON.parse(resp.getContentText());
+    payload: JSON.stringify(body), muteHttpExceptions:true });
+  var d; try{ d = JSON.parse(resp.getContentText()); }catch(e){ d = {}; }
   if(resp.getResponseCode() !== 200) return { ok:false, error:(d.error && d.error.message) || 'update-failed' };
   return { ok:true };
 }
