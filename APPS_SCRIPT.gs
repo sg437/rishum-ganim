@@ -50,6 +50,8 @@ function doPost(e){
       case 'copy':           return json_(out, copy_(req.fileId, req.folderId, req.name));
       case 'download':       return json_(out, download_(req.fileId));
       case 'share':          return json_(out, share_(req.email, req.role));
+      case 'shareList':      return json_(out, shareList_());
+      case 'shareRemove':    return json_(out, shareRemove_(req.email));
       case 'userCreate':     return json_(out, userCreate_(req.email, req.password, req.name));
       case 'userList':       return json_(out, userList_());
       case 'userDelete':     return json_(out, userDelete_(req.uid));
@@ -129,6 +131,37 @@ function download_(fileId){
 function share_(email, role){
   var r = root_();
   if(role === 'writer') r.addEditor(email); else r.addViewer(email);
+  return { ok:true };
+}
+/* מי משותף עם תיקיית האב — בעלים/עורכים/צופים (שם, אימייל, הרשאה). */
+function shareList_(){
+  var r = root_();
+  var map = {}; // email(lower) -> {name, email, role, rank}
+  function add(u, role, rank){
+    if(!u) return;
+    var em; try{ em = u.getEmail(); }catch(e){ em = ''; }
+    if(!em) return;
+    var key = em.toLowerCase();
+    if(!map[key] || rank > map[key].rank){
+      var nm = ''; try{ nm = u.getName() || ''; }catch(e){}
+      map[key] = { name:nm, email:em, role:role, rank:rank };
+    }
+  }
+  try{ add(r.getOwner(), 'owner', 3); }catch(e){}
+  try{ r.getEditors().forEach(function(u){ add(u, 'writer', 2); }); }catch(e){}
+  try{ r.getViewers().forEach(function(u){ add(u, 'reader', 1); }); }catch(e){}
+  var shares = [];
+  for(var k in map){ if(map.hasOwnProperty(k)){ shares.push({ name:map[k].name, email:map[k].email, role:map[k].role }); } }
+  shares.sort(function(a,b){ return (a.email < b.email) ? -1 : 1; });
+  return { ok:true, shares:shares };
+}
+/* הסרת גישה ישירה ל-Drive (עורך/צופה). לא ניתן להסיר בעלים. */
+function shareRemove_(email){
+  email = String(email || '').trim();
+  if(!email) return { ok:false, error:'no-email' };
+  var r = root_();
+  try{ r.removeEditor(email); }catch(e){}
+  try{ r.removeViewer(email); }catch(e){}
   return { ok:true };
 }
 
