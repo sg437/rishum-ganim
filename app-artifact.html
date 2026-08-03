@@ -882,9 +882,9 @@ function openStudent(s){
     <label class="check" style="margin-top:10px;background:var(--warn-soft);border-color:var(--warn)"><input type="checkbox" id="s-finished" ${s.finished?'checked':''}> ✔️ סיימה עם הגן (בסימון זה יוצאת מהרשימה)</label>
   </fieldset>
   <div class="foot">
-    <button class="btn" id="saveStu">💾 שמירה</button>
+    ${!isNew?'<button class="btn danger" id="delStu">מחיקת תיק</button>':''}
+    <button class="btn" id="saveStu" style="margin-inline-start:auto">💾 שמירה</button>
     <button class="btn ghost" id="cancelStu">ביטול</button>
-    ${!isNew?'<button class="btn danger" id="delStu" style="margin-inline-start:auto">מחיקת תיק</button>':''}
   </div>`);
 
   /* צירוף קבצים פיזיים לתיקיית הדרייב, עם שם אוטומטי: סוג · שם הילדה · ת"ז (סעיפים 11–12) */
@@ -1493,9 +1493,9 @@ function openGan(g){
     <label class="check" style="margin-top:10px"><input type="checkbox" id="g-active" ${g.active?'checked':''}> גן פעיל (נספר במניין הגנים)</label>
   </fieldset>
   <div class="foot">
-    <button class="btn" id="saveGan">💾 שמירה</button>
+    ${!isNew?'<button class="btn danger" id="delGan">מחיקה</button>':''}
+    <button class="btn" id="saveGan" style="margin-inline-start:auto">💾 שמירה</button>
     <button class="btn ghost" id="cancelGan">ביטול</button>
-    ${!isNew?'<button class="btn danger" id="delGan" style="margin-inline-start:auto">מחיקה</button>':''}
   </div>`);
   $("#saveGan").onclick=()=>{
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
@@ -1980,8 +1980,7 @@ function openStaff(m){
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
       <div><label>הערות</label><input id="st-notes" value="${esc(m.notes)}"></div>
     </div>
-    <div class="foot"><button class="btn" id="saveSt">💾 שמירה</button><button class="btn ghost" id="cancelSt">ביטול</button>
-      ${!isNew?'<button class="btn danger" id="delSt" style="margin-inline-start:auto">מחיקה</button>':''}</div>`);
+    <div class="foot">${!isNew?'<button class="btn danger" id="delSt">מחיקה</button>':''}<button class="btn" id="saveSt" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="cancelSt">ביטול</button></div>`);
   $("#saveSt").onclick=()=>{ const val=id=>$("#"+id).value.trim();
     const lastName=val("st-lastName"), firstName=val("st-firstName");
     const data=Object.assign({},m,{lastName,firstName,name:[lastName,firstName].filter(Boolean).join(" "),
@@ -2472,8 +2471,7 @@ function openMgmt(m){
       <div><label>פלאפון</label><input id="m-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
       <div><label>מייל</label><input id="m-email" value="${esc(m.email)}" type="email" inputmode="email"></div>
     </div>
-    <div class="foot"><button class="btn" id="saveM">💾 שמירה</button><button class="btn ghost" id="cancelM">ביטול</button>
-      ${!isNew?'<button class="btn danger" id="delM" style="margin-inline-start:auto">מחיקה</button>':''}</div>`);
+    <div class="foot">${!isNew?'<button class="btn danger" id="delM">מחיקה</button>':''}<button class="btn" id="saveM" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="cancelM">ביטול</button></div>`);
   $("#saveM").onclick=()=>{ const val=id=>$("#"+id).value.trim();
     const data={id:m.id,dept:val("m-dept"),name:val("m-name"),role:val("m-role"),phone:val("m-phone"),mobile:val("m-mobile"),email:val("m-email")};
     if(!data.name){ toast("יש להזין שם"); return; }
