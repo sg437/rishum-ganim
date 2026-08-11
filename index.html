@@ -694,10 +694,13 @@ function makeStudent(){ return {
   docs:{ nispach:false, idCopy:false, takanon:false },
   docFiles:{}, // { [docKey]: {id,name,link} } — קובץ פיזי שצורף לכל מסמך (סעיף 12)
   programs:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, // סעיף 9
+  programsPaid:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, // סעיף 5 — תשלום קייטנה
   special:{ divorced:false, approvalFather:false, approvalMother:false,
+            idFather:false, idMother:false, approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false, // סעיף 7 — מסמכי הורים גרושים
             outOfCity:false, paymentArrangement:false,
             retention:false, retentionDoc:false,
             other:false, otherText:"" }, // סעיף 3 — "אחר" עם טקסט חופשי
+  support:{ shiluv:false, salIshi:false, behavior:false, prepA:false }, // סעיף 15 — סיוע/העשרה
   driveFolder:"", driveFolderId:"", notes:"", createdAt:new Date().toISOString()
 };}
 function makeStaff(){ return {
@@ -1209,6 +1212,8 @@ function specialBadges(s){
   if(sp.outOfCity) b.push('<span class="pill warn">ילדת חוץ</span>');
   if(sp.retention) b.push('<span class="pill warn">השארות</span>');
   if(sp.other) b.push('<span class="pill warn">'+(sp.otherText?esc(sp.otherText):'אחר')+'</span>');
+  const sup=s.support||{}; // תגי סיוע (סעיף 15)
+  SUPPORT_TYPES.forEach(([k,lbl])=>{ if(sup[k]) b.push(`<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">${esc(lbl)}</span>`); });
   return b.join(" ");
 }
 function programBadges(s){
@@ -1253,7 +1258,7 @@ function renderStuTable(){
     ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
     <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
     ${list.map(s=>`<tr>
-      <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
+      <td><label class="check" style="display:inline-flex;gap:6px;align-items:center;margin:0" title="סימון 'סיימה/יצאה' — מסונכרן עם התיק (סעיף 8)"><input type="checkbox" class="stu-finish" data-id="${esc(s.id)}" ${s.finished?'checked':''}> <b>${esc(s.lastName)} ${esc(s.firstName)}</b></label></td>
       <td>${esc(s.tz)||'—'}</td>
       <td>${esc(ganName(s.ganId))}</td>
       <td>${esc(s.age)||'—'}</td>
@@ -1271,6 +1276,8 @@ function renderStuTable(){
   </tbody></table></div>
   <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}).</div>`;
   host.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=>{ const s=DB.students.find(x=>x.id===b.dataset.edit); openStudent(JSON.parse(JSON.stringify(s))); });
+  /* סימון "סיימה" ישירות מהרשימה — מעדכן את התיק אוטומטית (סעיף 8) */
+  host.querySelectorAll(".stu-finish").forEach(cb=> cb.onchange=()=>{ const st=DB.students.find(x=>x.id===cb.dataset.id); if(!st) return; st.finished=cb.checked; save(); renderStuTable(); toast(cb.checked?"סומן: סיימה":"בוטל הסימון"); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(stuSort.key===k) stuSort.dir*=-1; else { stuSort.key=k; stuSort.dir=1; } renderStuTable(); });
 }
 
@@ -1327,9 +1334,12 @@ function openStudent(s){
     <div class="doc-rows" id="doc-rows"></div>
   </fieldset>
   <fieldset><legend>תוכניות ומועדונים</legend>
-    <div class="checks">
-      ${PROGRAMS.map(([k,lbl])=>`<label class="check"><input type="checkbox" id="pg-${k}" ${(s.programs&&s.programs[k])?'checked':''}> ${esc(lbl)}</label>`).join("")}
-    </div>
+    <div class="hint" style="margin-bottom:8px">בקייטנות אפשר לסמן אם התשלום שולם (סעיף 5).</div>
+    <div id="pg-rows"></div>
+  </fieldset>
+  <fieldset><legend>סיוע והעשרה</legend>
+    <div class="hint" style="margin-bottom:8px">סימון סוג הסיוע שהילדה מקבלת — לפי הסימון יוצגו הילדות בשיבוץ העובדת המתאימה (שילוב / רפואית–סל אישי / מנתחת התנהגות / הכנה לכיתה א׳). אפשר לצרף מסמך לכל סוג — נשמר בדרייב עם שם הילדה וּת"ז (סעיף 15).</div>
+    <div class="doc-rows" id="support-rows"></div>
   </fieldset>
   <fieldset><legend>שונות</legend>
     <div class="hint" style="margin-bottom:8px">בסימון "גרושים" / "ילדת חוץ" / "השארות" / "אחר" נפתחות מיד מתחת האפשרויות הנוספות — כולל צירוף מסמך 📎 (נשמר בדרייב עם שם: סוג המסמך · שם הילדה · ת"ז).</div>
@@ -1358,13 +1368,15 @@ function openStudent(s){
     const nm=[s.lastName,s.firstName].filter(Boolean).join(" ")||"ללא שם";
     return `${label} · ${nm}${s.tz?(" · "+s.tz):""}`;
   }
-  const SPECIAL_DOC_KEYS=["approvalFather","approvalMother","paymentArrangement","retentionDoc","other"];
+  const SPECIAL_DOC_KEYS=["approvalFather","approvalMother","paymentArrangement","retentionDoc","other","idFather","idMother","approvalDoc"];
+  const SUPPORT_DOC_KEYS=SUPPORT_TYPES.map(t=>t[0]);
   async function uploadDocFile(file, key, label){
     persistCurrent(); await driveEnsureChildFolder(s);
     const res=await driveUploadNamed(file, s.driveFolderId, docFileBaseName(label));
     s.docFiles=s.docFiles||{}; s.docFiles[key]={ id:res.fileId||res.id||"", name:res.name||file.name, link:res.link||res.webViewLink||"" };
     if(["nispach","idCopy","takanon"].includes(key)) s.docs[key]=true;
-    if(SPECIAL_DOC_KEYS.includes(key)) s.special[key]=true;
+    if(SPECIAL_DOC_KEYS.includes(key)){ s.special=s.special||{}; s.special[key]=true; }
+    if(SUPPORT_DOC_KEYS.includes(key)){ s.support=s.support||{}; s.support[key]=true; }
   }
   function docAttachHtml(key,label){
     const f=(s.docFiles||{})[key];
@@ -1401,7 +1413,8 @@ function openStudent(s){
   function syncSpecial(){
     const set=(id,key)=>{ const el=$("#"+id); if(el) s.special[key]=el.checked; };
     set("sp-divorced","divorced"); set("sp-outOfCity","outOfCity"); set("sp-retention","retention"); set("sp-other","other");
-    set("sp-approvalFather","approvalFather"); set("sp-approvalMother","approvalMother");
+    set("sp-idFather","idFather"); set("sp-idMother","idMother"); set("sp-approvalDoc","approvalDoc");
+    set("sp-approvalFatherSig","approvalFatherSig"); set("sp-approvalMotherSig","approvalMotherSig");
     set("sp-paymentArrangement","paymentArrangement"); set("sp-retentionDoc","retentionDoc");
     const ot=$("#sp-otherText"); if(ot) s.special.otherText=ot.value;
   }
@@ -1412,7 +1425,18 @@ function openStudent(s){
     const sub=(id,key,label,fileKey)=>`<div class="doc-row" style="margin-inline-start:20px;background:var(--surface)"><label class="lbl"><input type="checkbox" id="${id}" ${sp[key]?'checked':''}> ${esc(label)}</label>${docAttachHtml(fileKey,label)}</div>`;
     let h="";
     h+=parent("sp-divorced","divorced","הורים גרושים");
-    if(sp.divorced){ h+=sub("sp-approvalFather","approvalFather","אישור מיוחד מהאב","approvalFather"); h+=sub("sp-approvalMother","approvalMother","אישור מיוחד מהאם","approvalMother"); }
+    if(sp.divorced){
+      h+=sub("sp-idFather","idFather",'צילום תעודת זהות האב',"idFather");
+      h+=sub("sp-idMother","idMother",'צילום תעודת זהות האם',"idMother");
+      /* מסמך אישור + שני ריבועי חתימה (אב/אם) — סעיף 7 */
+      h+=`<div class="doc-row" style="margin-inline-start:20px;background:var(--surface);flex-wrap:wrap">
+        <label class="lbl"><input type="checkbox" id="sp-approvalDoc" ${sp.approvalDoc?'checked':''}> מסמך אישור</label>
+        ${docAttachHtml("approvalDoc","מסמך אישור")}
+        <span style="flex-basis:100%;height:0"></span>
+        <label class="check" style="margin-inline-start:24px"><input type="checkbox" id="sp-approvalFatherSig" ${sp.approvalFatherSig?'checked':''}> ✍️ חתימת האב</label>
+        <label class="check"><input type="checkbox" id="sp-approvalMotherSig" ${sp.approvalMotherSig?'checked':''}> ✍️ חתימת האם</label>
+      </div>`;
+    }
     h+=parent("sp-outOfCity","outOfCity","ילדת חוץ (מחוץ לעיר)");
     if(sp.outOfCity){ h+=sub("sp-paymentArrangement","paymentArrangement","הסדר תשלום מול הרשות","paymentArrangement"); }
     h+=parent("sp-retention","retention","ילדת השארות");
@@ -1421,11 +1445,40 @@ function openStudent(s){
     if(sp.other){ h+=`<div style="margin-inline-start:20px"><label>פירוט "אחר"</label><input id="sp-otherText" value="${esc(sp.otherText||"")}" placeholder="פרט/י…"></div>`; }
     host.innerHTML=h;
     ["sp-divorced","sp-outOfCity","sp-retention","sp-other"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=()=>{ syncSpecial(); renderSpecialBlocks(); }; });
-    ["sp-approvalFather","sp-approvalMother","sp-paymentArrangement","sp-retentionDoc"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=syncSpecial; });
+    ["sp-idFather","sp-idMother","sp-approvalDoc","sp-approvalFatherSig","sp-approvalMotherSig","sp-paymentArrangement","sp-retentionDoc"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=syncSpecial; });
     const ot=$("#sp-otherText"); if(ot) ot.oninput=()=>{ s.special.otherText=ot.value; };
     wireDocFiles(host, renderSpecialBlocks);
   }
   renderSpecialBlocks();
+
+  /* תוכניות + תשלום קייטנה (סעיף 5) */
+  const CAMP_KEYS=["campHanukkah","campNisan","campEndYear"];
+  function renderPrograms(){
+    const host=$("#pg-rows"); if(!host) return;
+    host.innerHTML=PROGRAMS.map(([k,lbl])=>{
+      const on=!!(s.programs&&s.programs[k]); const isCamp=CAMP_KEYS.includes(k); const paid=!!(s.programsPaid&&s.programsPaid[k]);
+      return `<div class="doc-row" style="flex-wrap:wrap">
+        <label class="lbl"><input type="checkbox" class="pg-chk" data-k="${k}" ${on?'checked':''}> ${esc(lbl)}</label>
+        ${(isCamp&&on)?`<label class="check" style="margin-inline-start:16px;border-color:${paid?'var(--good)':'var(--warn)'}"><input type="checkbox" class="pg-paid" data-k="${k}" ${paid?'checked':''}> 💰 ${paid?'שולם':'טרם שולם'}</label>`:''}
+      </div>`;
+    }).join("");
+    host.querySelectorAll(".pg-chk").forEach(cb=> cb.onchange=()=>{ s.programs=s.programs||{}; s.programs[cb.dataset.k]=cb.checked; renderPrograms(); });
+    host.querySelectorAll(".pg-paid").forEach(cb=> cb.onchange=()=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid[cb.dataset.k]=cb.checked; renderPrograms(); });
+  }
+  renderPrograms();
+
+  /* סיוע/העשרה — סימון + צירוף מסמך (סעיף 15) */
+  function renderSupportRows(){
+    const host=$("#support-rows"); if(!host) return;
+    host.innerHTML=SUPPORT_TYPES.map(([k,lbl])=>`
+      <div class="doc-row">
+        <label class="lbl"><input type="checkbox" class="sup-chk" data-k="${k}" ${(s.support&&s.support[k])?'checked':''}> ${esc(lbl)}</label>
+        ${docAttachHtml(k,lbl)}
+      </div>`).join("");
+    host.querySelectorAll(".sup-chk").forEach(cb=> cb.onchange=()=>{ s.support=s.support||{}; s.support[cb.dataset.k]=cb.checked; });
+    wireDocFiles(host, renderSupportRows);
+  }
+  renderSupportRows();
 
   const refreshSuggest=()=>{ const tmp=collect(); $("#s-folderSuggest").value=suggestFolder(tmp); };
   ["s-firstName","s-lastName","s-tz"].forEach(id=> $("#"+id).oninput=refreshSuggest);
@@ -1483,7 +1536,10 @@ function openStudent(s){
   function collect(){
     const g=id=>$("#"+id), val=id=>g(id)?.value.trim()??"", chk=id=>!!g(id)?.checked;
     const docs={}; STUDENT_DOCS.forEach(([k])=>{ const cb=document.querySelector(`.d-chk[data-k="${k}"]`); docs[k]= cb? cb.checked : !!(s.docs&&s.docs[k]); });
-    const programs={}; PROGRAMS.forEach(([k])=>{ programs[k]=chk("pg-"+k); });
+    const programs={}, programsPaid={};
+    PROGRAMS.forEach(([k])=>{ const cb=document.querySelector(`.pg-chk[data-k="${k}"]`); programs[k]= cb? cb.checked : !!(s.programs&&s.programs[k]);
+      const pc=document.querySelector(`.pg-paid[data-k="${k}"]`); programsPaid[k]= pc? pc.checked : !!(s.programsPaid&&s.programsPaid[k]); });
+    const support={}; SUPPORT_TYPES.forEach(([k])=>{ const cb=document.querySelector(`.sup-chk[data-k="${k}"]`); support[k]= cb? cb.checked : !!(s.support&&s.support[k]); });
     syncSpecial(); // מעדכן את s.special מהסימונים המוצגים כרגע (חלקם מוסתרים לפי ההורה)
     return Object.assign({}, s, {
       firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"),
@@ -1495,7 +1551,8 @@ function openStudent(s){
       ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
-      docs, docFiles:s.docFiles||{}, programs,
+      docs, docFiles:s.docFiles||{}, programs, programsPaid,
+      support,
       special: JSON.parse(JSON.stringify(s.special))
     });
   }
