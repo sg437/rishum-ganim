@@ -2040,7 +2040,7 @@ function openGan(g){
       <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
       <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}"></div>
-      <div><label>קמפוס</label><select id="g-campus"><option value="">— ללא —</option>${(g.campus && !CAMPUSES.includes(g.campus))?`<option selected>${esc(g.campus)}</option>`:''}${CAMPUSES.map(c=>`<option ${g.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select>
+      <div><label>קמפוס</label><select id="g-campus"><option value="">— ללא —</option>${(g.campus && !CAMPUSES.includes(g.campus))?`<option selected>${esc(g.campus)}</option>`:''}${CAMPUSES.slice().sort((a,b)=>a.localeCompare(b,"he")).map(c=>`<option ${g.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select>
         <div class="hint">${CAMPUSES.length?'הקמפוס נקבע כאן — ואצל התלמידות בגן יתעדכן אוטומטית.':'להוספת קמפוסים: הגדרות → קמפוסים.'}</div></div>
     </div>
   </fieldset>
