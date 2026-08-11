@@ -209,6 +209,7 @@ const DEFAULT_CHILD_AGES = ["2","3","4","5","6"]; // גיל ילדה בודדת 
 /* רשימות הניתנות לעריכה בהגדרות (מגובות ב-DB.settings); מסונכרנות ב-syncSettingsLists() */
 let STAFF_ROLES = DEFAULT_STAFF_ROLES.slice();
 let CHILD_AGES = DEFAULT_CHILD_AGES.slice();
+let CAMPUSES = [];   // רשימת קמפוסים מוגדרת בהגדרות (מקור לבחירה בגנים)
 const GAN_AGES = ["3","4","5","3/4","4/5"]; // גיל הגן — כולל גנים דו-גלאיים 3/4, 4/5 (סעיף 6)
 const WEEK_DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי"]; // ימי שיבוץ למשלימה (סעיף 7)
 /* תפקידי שיבוץ + שדות נוספים לכל תפקיד (סעיף 7):
@@ -731,6 +732,7 @@ function makeGan(){ return {
   id:uid(), ganName:"", internalSymbol:"", ganSymbol:"", teacherName:"", age:"", education:"רגיל",
   address:"", building:"", street:"", zone:"", phoneGan:"", phoneHome:"",
   teacherMobile:"", assistantName:"", assistantMobile:"",
+  campus:"",   // קמפוס הגן — מקור האמת; אצל התלמידות נגזר מהגן
   capacity:"", active:true, docsNote:"", createdAt:new Date().toISOString()
 };}
 
@@ -775,7 +777,10 @@ function cleanList(arr){ return Array.isArray(arr) ? [...new Set(arr.map(x=>Stri
 function syncSettingsLists(){
   const a=cleanList(DB.settings&&DB.settings.childAges);  CHILD_AGES  = (a&&a.length)? a : DEFAULT_CHILD_AGES.slice();
   const r=cleanList(DB.settings&&DB.settings.staffRoles); STAFF_ROLES = (r&&r.length)? r : DEFAULT_STAFF_ROLES.slice();
+  CAMPUSES = cleanList(DB.settings&&DB.settings.campuses) || [];   // קמפוסים מוגדרים (ריק = אין)
 }
+/* הקמפוס של גן לפי מזהה — מקור האמת לקמפוס התלמידה */
+function ganCampus(ganId){ const g=ganById(ganId); return g? (g.campus||"") : ""; }
 /* עורך רשימה כללי בהגדרות: שורה לכל פריט (עריכה בשדה + מחיקה); onSave מקבל מערך חדש */
 function renderSettingsList(host, items, onSave, dis){
   if(!host) return;
@@ -1321,7 +1326,6 @@ function openStudent(s){
   const isNew = !DB.students.some(x=>x.id===s.id);
   const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
   const folderSuggest = suggestFolder(s);
-  const campusList = [...new Set(DB.students.map(x=>x.campus).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he")); // קמפוסים קיימים (סעיף 1)
   const streetList = uniqSortHe([...DB.students.map(x=>x.street), ...DB.gans.map(g=>g.street)]); // רחובות קיימים — השלמה אוטומטית
   const cityList   = uniqSortHe(DB.students.map(x=>x.city)); // ערים קיימות
   modal(`
@@ -1347,8 +1351,8 @@ function openStudent(s){
   </fieldset>
   <fieldset><legend>שיבוץ ורישום</legend>
     <div class="grid g3">
-      <div><label>קמפוס גנים</label><input id="s-campus" list="campus-list" value="${esc(s.campus)}" placeholder="שם הקמפוס">
-        <datalist id="campus-list">${campusList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
+      <div><label>קמפוס גנים</label><input id="s-campus" value="${esc(ganCampus(s.ganId)||s.campus||"")}" readonly placeholder="נקבע לפי הגן">
+        <div class="hint">נקבע אוטומטית לפי הקמפוס של הגן (בלשונית גנים).</div></div>
       <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
       <div><label>גיל</label><select id="s-age"><option value="">—</option>${(s.age && !CHILD_AGES.map(String).includes(String(s.age)))?`<option selected>${esc(s.age)}</option>`:''}${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
@@ -1517,6 +1521,8 @@ function openStudent(s){
 
   const refreshSuggest=()=>{ const tmp=collect(); $("#s-folderSuggest").value=suggestFolder(tmp); };
   ["s-firstName","s-lastName","s-tz"].forEach(id=> $("#"+id).oninput=refreshSuggest);
+  /* בעדכון הגן — הקמפוס מתעדכן אוטומטית לפי הגן (בלשונית גנים) */
+  const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; };
   $("#copyFolder").onclick=()=>{ navigator.clipboard?.writeText($("#s-folderSuggest").value).then(()=>toast("שם התיקייה הועתק"),()=>{}); };
 
   function persistCurrent(){ const data=collect(); const i=DB.students.findIndex(x=>x.id===s.id); if(i>=0) DB.students[i]=data; else DB.students.push(data); Object.assign(s,data); return data; }
@@ -1582,7 +1588,8 @@ function openStudent(s){
 
       motherName:val("s-motherName"), fatherName:val("s-fatherName"),
       phone:val("s-phone"), mobile:val("s-mobile"),
-      street:val("s-street"), building:val("s-building"), city:val("s-city"), campus:val("s-campus"),
+      street:val("s-street"), building:val("s-building"), city:val("s-city"),
+      campus: (ganCampus(val("s-ganId")) || val("s-campus")),   // קמפוס נגזר מהגן
       ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
@@ -1788,6 +1795,7 @@ function buildImportRows(rows, opts){
     st.notes=g("notes");
     const fl=flagsFromNotes(st.notes); if(fl.outOfCity) st.special.outOfCity=true; if(fl.retention) st.special.retention=true; // זיהוי "תושב/ת חוץ" / "השארות" מההערות
     const ganText=g("gan"); st.ganId=matchGanText(ganText);
+    if(st.ganId && ganCampus(st.ganId)) st.campus=ganCampus(st.ganId);   // קמפוס נגזר מהגן המשובץ
     st.absorbedMunicipality = idx.absorbed!=null ? truthyCell(g("absorbed")) : !!opts.absorbed;
     st.registeredByUs        = idx.regByUs!=null ? truthyCell(g("regByUs"))  : !!opts.reg;
     if(opts.tzaharon){ st.programs=st.programs||{}; st.programs.tzaharon=true; } // רישום אוטומטי לצהרון (סעיף 11)
@@ -2032,6 +2040,8 @@ function openGan(g){
       <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
       <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}"></div>
+      <div><label>קמפוס</label><select id="g-campus"><option value="">— ללא —</option>${(g.campus && !CAMPUSES.includes(g.campus))?`<option selected>${esc(g.campus)}</option>`:''}${CAMPUSES.map(c=>`<option ${g.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select>
+        <div class="hint">${CAMPUSES.length?'הקמפוס נקבע כאן — ואצל התלמידות בגן יתעדכן אוטומטית.':'להוספת קמפוסים: הגדרות → קמפוסים.'}</div></div>
     </div>
   </fieldset>
   <fieldset><legend>כתובת ואזור</legend>
@@ -2061,12 +2071,14 @@ function openGan(g){
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{
       ganName:val("g-ganName"),internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),education:val("g-education"),
-      teacherName:val("g-teacherName"),capacity:val("g-capacity"),
+      teacherName:val("g-teacherName"),capacity:val("g-capacity"),campus:val("g-campus"),
       address:val("g-address"),building:val("g-building"),street:val("g-street"),zone:val("g-zone"),
       phoneGan:val("g-phoneGan"),docsNote:val("g-docsNote"),active:chk("g-active")
     });
     if(!data.ganName && !data.teacherName && !data.ganSymbol && !data.internalSymbol){ toast("יש להזין שם הגן, גננת או סמל"); return; }
     const i=DB.gans.findIndex(x=>x.id===g.id); if(i>=0)DB.gans[i]=data; else DB.gans.push(data);
+    /* עדכון אוטומטי של הקמפוס אצל התלמידות בגן זה — הצלבה גן↔תלמידה */
+    DB.students.forEach(s=>{ if(s.ganId===data.id && s.campus!==data.campus) s.campus=data.campus; });
     save(); closeModal(); route(); toast(isNew?"נוסף גן":"הגן נשמר");
   };
   $("#cancelGan").onclick=closeModal;
@@ -2084,6 +2096,7 @@ const GAN_HEADER_MAP = {
   "שםהגננת":"teacherName","גננת":"teacherName","שםגננת":"teacherName","מורה":"teacherName",
   "גיל":"age","קבוצתגיל":"age",
   "חינוך":"education","סוגחינוך":"education",
+  "קמפוס":"campus","קמפוסגנים":"campus",
   "כתובת":"address","כתובתהגן":"address",
   "רחוב":"street",
   "מספר":"building","בניין":"building","מספרבית":"building","בית":"building","מספרבניין":"building",
@@ -2116,6 +2129,7 @@ function buildGanImportRows(rows){
     gn.teacherName=g("teacherName");
     const a=g("age").replace(/\s/g,""); gn.age=GAN_AGES.includes(a)?a:a.replace(/[^\d/]/g,"");
     if(idx.education!=null) gn.education=normEduVal(g("education")); else if(activeEdu) gn.education=activeEdu;
+    gn.campus=g("campus");
     gn.address=g("address"); gn.street=g("street"); gn.building=g("building"); gn.zone=g("zone");
     gn.phoneGan=g("phoneGan"); gn.phoneHome=g("phoneHome"); gn.teacherMobile=fixPhone(g("teacherMobile"));
     gn.assistantName=g("assistantName"); gn.assistantMobile=fixPhone(g("assistantMobile"));
@@ -3475,6 +3489,17 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
+    <h2>קמפוסים</h2>
+    <div class="sub">רשימת הקמפוסים לבחירה בכרטיס הגן. הקמפוס של כל תלמידה נקבע <b>אוטומטית לפי הגן שלה</b> — כך שלא יופיעו ערכים שלא הוגדרו. כאן מגדירים, עורכים או מוחקים קמפוסים.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
+    <div id="campus-box"></div>
+    ${admin?`<div class="row" style="margin-top:10px">
+      <div class="field grow"><label>הוספת קמפוס</label><input id="new-campus" placeholder="למשל: קמפוס מרכז"></div>
+      <button class="btn" id="addCampus" style="align-self:end">הוסף</button>
+      <button class="btn ghost" id="syncCampus" style="align-self:end" title="עדכון הקמפוס אצל כל התלמידות לפי הגן שלהן — מנקה ערכים ישנים">🔄 עדכן אצל התלמידות לפי הגן</button>
+    </div>`:""}
+  </div>
+
+  <div class="panel">
     <h2>מנהלי מערכת</h2>
     <div class="sub">רק כתובות אימייל שברשימה זו יכולות לשנות את הגדרות המערכת (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, גילי ילדים ותפקידי צוות). אם הרשימה ריקה — כל משתמש מחובר יכול (עד שמוסיפים מנהל ראשון).</div>
     <div id="admins-box"></div>
@@ -3601,13 +3626,17 @@ function viewSettings(root){
   // גילי ילדים ותפקידי צוות (עריכה למנהל בלבד)
   const saveAges  = next => { DB.settings.childAges  = cleanList(next)||[]; save(); route(); toast("נשמר"); };
   const saveRoles = next => { DB.settings.staffRoles = cleanList(next)||[]; save(); route(); toast("נשמר"); };
+  const saveCampuses = next => { DB.settings.campuses = cleanList(next)||[]; save(); route(); toast("נשמר"); };
   renderSettingsList($("#ages-box"),  CHILD_AGES.slice(),  saveAges,  dis);
   renderRolesEditor($("#roles-box"), dis);
+  renderSettingsList($("#campus-box"), CAMPUSES.slice(), saveCampuses, dis);
   if(admin){
     $("#addAge").onclick=()=>{ const v=$("#new-age").value.trim(); if(!v)return; if(CHILD_AGES.includes(v)){toast("כבר קיים");return;} saveAges(CHILD_AGES.concat(v)); };
     $("#resetAges").onclick=()=>{ delete DB.settings.childAges; save(); route(); toast("אופס לברירת מחדל"); };
     $("#addRole").onclick=()=>{ const v=$("#new-role").value.trim(); if(!v)return; if(STAFF_ROLES.includes(v)){toast("כבר קיים");return;} saveRoles(STAFF_ROLES.concat(v)); };
     $("#resetRoles").onclick=()=>{ delete DB.settings.staffRoles; save(); route(); toast("אופס לברירת מחדל"); };
+    $("#addCampus").onclick=()=>{ const v=$("#new-campus").value.trim(); if(!v)return; if(CAMPUSES.includes(v)){toast("כבר קיים");return;} saveCampuses(CAMPUSES.concat(v)); };
+    $("#syncCampus").onclick=()=>{ let n=0; DB.students.forEach(s=>{ if(!s.ganId) return; const c=ganCampus(s.ganId); if(s.campus!==c){ s.campus=c; n++; } }); if(n) save(); route(); toast(n?`עודכנו ${n} תלמידות`:"הכל כבר מעודכן לפי הגנים"); };
   }
 
   // מיתוג (כותרת + לוגו)
