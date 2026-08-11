@@ -121,6 +121,20 @@ td.actions{white-space:nowrap}
 .bar{height:9px;background:var(--surface-2);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
 .bar > i{display:block;height:100%;background:var(--accent);border-radius:999px}
 
+/* עוגות (pie / donut) + מקרא */
+.pie-block{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.pie-svg{flex:0 0 auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,.08))}
+.pie-legend{flex:1 1 200px;min-width:180px;display:flex;flex-direction:column;gap:2px}
+.pie-leg-row{display:flex;align-items:center;gap:9px;font-size:.9rem;padding:5px 2px;border-bottom:1px dashed var(--border)}
+.pie-leg-row:last-child{border-bottom:0}
+.pie-dot{width:13px;height:13px;border-radius:4px;flex:0 0 auto;box-shadow:0 0 0 1px rgba(0,0,0,.08) inset}
+.pie-leg-label{font-weight:700;color:var(--ink-soft);flex:1;overflow:hidden;text-overflow:ellipsis}
+.pie-leg-val{font-weight:800;white-space:nowrap}
+.pie-leg-val small{color:var(--muted);font-weight:700;margin-inline-start:4px}
+.pie-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.pie-card{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.pie-card h4{font-size:1rem;margin-bottom:10px;color:var(--accent-strong)}
+
 /* modal */
 .overlay{position:fixed;inset:0;background:rgba(6,18,22,.55);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:24px 14px;overflow:auto}
 .overlay.show{display:flex}
@@ -1708,9 +1722,44 @@ function printTable(title, headers, rows){
 }
 
 /* ============================================================
+   עוגות (donut) — כלי עזר לציור התפלגויות באחוזים ובצבעים
+   ============================================================ */
+const PIE_PALETTE = ['#4a9d5b','#e0a53a','#3f7cac','#c65d5d','#7b5ea7','#4bb1a6','#b0743e','#8a9b3e','#c977a6','#5a7a8c','#9c6f2c','#6a8f5b','#a15b12','#5b8def','#d08770','#69a297'];
+
+/* SVG donut. items:[{label,value,color}] — center מוצג במרכז */
+function donutSVG(items,{size=190,thickness=30,center=''}={}){
+  const total=items.reduce((s,d)=>s+(+d.value||0),0);
+  const r=(size-thickness)/2, cx=size/2, cy=size/2, C=2*Math.PI*r;
+  let acc=0;
+  const arcs = total<=0
+    ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${thickness}"/>`
+    : items.filter(d=>+d.value>0).map(d=>{
+        const len=(+d.value/total)*C;
+        const el=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="${thickness}" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"><title>${esc(d.label)}: ${d.value} (${(d.value/total*100).toFixed(1)}%)</title></circle>`;
+        acc+=len; return el;
+      }).join("");
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" style="max-width:100%;height:auto">
+    ${arcs}
+    <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${(size*0.24).toFixed(0)}" font-weight="800" fill="var(--ink)">${esc(center===''?String(total):center)}</text>
+    <text x="${cx}" y="${(cy+size*0.16).toFixed(0)}" text-anchor="middle" font-size="${(size*0.08).toFixed(0)}" fill="var(--muted)">סה"כ</text>
+  </svg>`;
+}
+/* בלוק עוגה + מקרא (legend) עם אחוזים */
+function pieBlock(rawItems,{size=190,thickness=30,center=''}={}){
+  const items=rawItems.map((d,i)=>({...d,color:d.color||PIE_PALETTE[i%PIE_PALETTE.length]}));
+  const total=items.reduce((s,d)=>s+(+d.value||0),0);
+  const legend=items.map(d=>{
+    const pct=total?(+d.value/total*100):0;
+    return `<div class="pie-leg-row"><span class="pie-dot" style="background:${d.color}"></span><span class="pie-leg-label">${esc(d.label)}</span><span class="pie-leg-val">${d.value}<small>· ${pct.toFixed(1)}%</small></span></div>`;
+  }).join("");
+  return `<div class="pie-block"><div class="pie-svg">${donutSVG(items,{size,thickness,center})}</div><div class="pie-legend">${legend||'<div class="hint">אין נתונים להצגה.</div>'}</div></div>`;
+}
+
+/* ============================================================
    טאב דוחות ואחוזים
    ============================================================ */
 function viewReports(root){
+  const admin=isAdmin();
   const list = eduScope(studentsOfYear().filter(s=>!s.finished));
   const total = list.length;
   const activeGans = eduScope(DB.gans.filter(g=>g.active));
@@ -1726,6 +1775,12 @@ function viewReports(root){
                  .sort((a,b)=>b.n-a.n);
   const maxGan = Math.max(1,...perGan.map(x=>x.n));
 
+  // פילוח לפי גיל הגן — מספר גנים, תלמידות וממוצע לכל גן (סעיף 3)
+  const ageMap=new Map();
+  activeGans.forEach(g=>{ const a=(g.age||'').trim()||'ללא גיל'; const o=ageMap.get(a)||{age:a,gans:0,n:0}; o.gans++; ageMap.set(a,o); });
+  list.forEach(s=>{ const g=ganById(s.ganId); if(!g) return; const a=(g.age||'').trim()||'ללא גיל'; const o=ageMap.get(a); if(o) o.n++; });
+  const byGanAge=[...ageMap.values()].sort((a,b)=>String(a.age).localeCompare(String(b.age),'he',{numeric:true}));
+
   root.innerHTML = `
   <div class="panel">
     <h2>סיכום שנת ${esc(DB.activeYear)}${activeEdu?` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}`:''}</h2>
@@ -1736,6 +1791,21 @@ function viewReports(root){
       <div class="stat"><div class="k">גנים פעילים</div><div class="v">${activeGans.length}</div></div>
       <div class="stat"><div class="k">קלוטות בעירייה</div><div class="v">${absorbed}<small> (${total?Math.round(absorbed/total*100):0}%)</small></div></div>
     </div>
+  </div>
+
+  <div class="panel">
+    <h2>פילוח לפי גיל הגן</h2>
+    <div class="sub">לכל גיל־גן: מספר הגנים, כמה תלמידות רשומות והממוצע לכל גן — מתעדכן אוטומטית.</div>
+    ${!byGanAge.length?'<div class="empty">אין גנים פעילים.</div>':`
+    <div class="pie-block" style="margin-bottom:14px">
+      <div class="pie-svg">${donutSVG(byGanAge.map((x,i)=>({label:`גיל ${x.age}`,value:x.n,color:PIE_PALETTE[i%PIE_PALETTE.length]})),{center:String(total)})}</div>
+      <div class="pie-legend">
+        ${byGanAge.map((x,i)=>{const pct=total?x.n/total*100:0;const avgA=x.gans?x.n/x.gans:0;return `<div class="pie-leg-row"><span class="pie-dot" style="background:${PIE_PALETTE[i%PIE_PALETTE.length]}"></span><span class="pie-leg-label">גיל ${esc(x.age)} · ${x.gans} גנים</span><span class="pie-leg-val">${x.n}<small>· ${pct.toFixed(1)}% · ממוצע ${avgA.toFixed(1)}/גן</small></span></div>`;}).join("")}
+      </div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>גיל הגן</th><th>גנים</th><th>תלמידות</th><th>ממוצע לגן</th><th>אחוז מכלל הרישום</th></tr></thead><tbody>
+      ${byGanAge.map(x=>`<tr><td><b>גיל ${esc(x.age)}</b></td><td>${x.gans}</td><td>${x.n}</td><td>${(x.gans?x.n/x.gans:0).toFixed(1)}</td><td>${total?(x.n/total*100).toFixed(1):0}%</td></tr>`).join("")}
+    </tbody></table></div>`}
   </div>
 
   <div class="panel">
@@ -1758,6 +1828,12 @@ function viewReports(root){
   </div>
 
   <div class="panel">
+    <h2>מחשבון אחוזים חופשי · לפי קמפוס, גיל ושנים</h2>
+    <div class="sub">בחר/י קמפוסים וגילי־גנים, וקבל/י את ההתפלגות באחוזים בכל גן — בעוגות צבעוניות, בהשוואה בין השנים שתבחר/י, כולל תחזית לפי מספר גנים אחר.</div>
+    <div id="freeCalc"></div>
+  </div>
+
+  <div class="panel">
     <h2>בחירה לפי אזורים</h2>
     <div class="sub">בחר/י אזורים/רחובות וקבל/י סיכום תלמידות עבורם.</div>
     <div id="zonePick"></div>
@@ -1767,10 +1843,135 @@ function viewReports(root){
     <h2>מחשבון תחזית באחוזים</h2>
     <div class="sub">משווה מועד א׳ של שנה קודמת לסופי שלה, ומחיל את היחס על מועד א׳ הנוכחי — הערכה לפתיחת השנה.</div>
     <div id="projection"></div>
+  </div>
+
+  <div class="panel">
+    <h2>יעד מספר גנים</h2>
+    <div class="sub">משמש לחישוב הממוצע לגן בסיכום שלמעלה. לדוגמה מתלבטים להוריד מ-29 ל-28.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
+    <div class="row">
+      <div class="field" style="min-width:150px"><label>מספר גנים ליעד</label><input id="gt" inputmode="numeric" value="${esc(DB.settings.gansTarget)}" ${admin?'':'disabled'}></div>
+      <button class="btn" id="saveGT" style="align-self:end" ${admin?'':'disabled'}>שמור</button>
+      <div class="hint" style="align-self:end">גנים פעילים כרגע במערכת: ${DB.gans.filter(g=>g.active).length}</div>
+    </div>
   </div>`;
 
+  renderFreeCalc($("#freeCalc"));
   renderZonePick($("#zonePick"), list);
   renderProjection($("#projection"));
+  if(admin) $("#saveGT").onclick=()=>{ const v=+$("#gt").value; if(v>0){DB.settings.gansTarget=v;save();toast("נשמר");viewReports(root);} };
+}
+
+/* מחשבון אחוזים חופשי — בחירת קמפוסים + גילי גנים + שנים, עם עוגות ותחזית (סעיף 2) */
+let freeCalc = { campuses:[], ganAges:[], years:null, forecast:'' };
+function renderFreeCalc(host){
+  const scopedGans = eduScope(DB.gans).filter(g=>g.active);
+  const campuses=[...new Set(scopedGans.map(g=>(g.campus||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'he'));
+  const ages=[...new Set(scopedGans.map(g=>(g.age||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'he',{numeric:true}));
+  if(freeCalc.years===null) freeCalc.years=[DB.activeYear];
+  // ניקוי בחירות שכבר לא קיימות
+  freeCalc.campuses=freeCalc.campuses.filter(c=>campuses.includes(c));
+  freeCalc.ganAges=freeCalc.ganAges.filter(a=>ages.includes(a));
+  freeCalc.years=freeCalc.years.filter(y=>DB.years.includes(y)); if(!freeCalc.years.length) freeCalc.years=[DB.activeYear];
+
+  host.innerHTML=`
+    <div class="grid" style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+      <fieldset><legend>קמפוסים</legend>
+        ${campuses.length?`<div class="checks" style="grid-template-columns:1fr">
+          ${campuses.map(c=>`<label class="check"><input type="checkbox" class="fc-campus" value="${esc(c)}" ${freeCalc.campuses.includes(c)?'checked':''}> ${esc(c)}</label>`).join("")}
+        </div><div class="hint">ריק = כל הקמפוסים.</div>`:'<div class="hint">לא הוגדרו קמפוסים בגנים. מלא/י "קמפוס גנים" בכרטיס הגן.</div>'}
+      </fieldset>
+      <fieldset><legend>גילי גנים</legend>
+        ${ages.length?`<div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(70px,1fr))">
+          ${ages.map(a=>`<label class="check"><input type="checkbox" class="fc-age" value="${esc(a)}" ${freeCalc.ganAges.includes(a)?'checked':''}> גיל ${esc(a)}</label>`).join("")}
+        </div><div class="hint">ריק = כל הגילים.</div>`:'<div class="hint">לא הוגדרו גילי גנים.</div>'}
+      </fieldset>
+      <fieldset><legend>שנים להשוואה</legend>
+        <div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr))">
+          ${DB.years.map(y=>`<label class="check"><input type="checkbox" class="fc-year" value="${esc(y)}" ${freeCalc.years.includes(y)?'checked':''}> ${esc(y)}</label>`).join("")}
+        </div><div class="hint">בחר/י שנה אחת או יותר להשוואה.</div>
+      </fieldset>
+      <fieldset><legend>תחזית לשנה חדשה</legend>
+        <div class="field"><label>מספר גנים לתחזית (למשל 8 במקום 9)</label>
+          <input id="fc-forecast" inputmode="numeric" placeholder="אופציונלי" value="${esc(freeCalc.forecast)}"></div>
+        <div class="hint">מחשב מחדש את הממוצע לגן לפי מספר הגנים שתבחר/י.</div>
+      </fieldset>
+    </div>
+    <div id="fc-out" style="margin-top:16px"></div>`;
+
+  const recalc=()=>{
+    freeCalc.campuses=[...host.querySelectorAll('.fc-campus:checked')].map(c=>c.value);
+    freeCalc.ganAges=[...host.querySelectorAll('.fc-age:checked')].map(c=>c.value);
+    freeCalc.years=[...host.querySelectorAll('.fc-year:checked')].map(c=>c.value);
+    freeCalc.forecast=$("#fc-forecast").value.trim();
+    if(!freeCalc.years.length) freeCalc.years=[DB.activeYear];
+    computeFreeCalc($("#fc-out"), scopedGans);
+  };
+  host.querySelectorAll('.fc-campus,.fc-age,.fc-year').forEach(el=>el.onchange=recalc);
+  $("#fc-forecast").oninput=recalc;
+  computeFreeCalc($("#fc-out"), scopedGans);
+}
+
+function computeFreeCalc(out, scopedGans){
+  const gans=scopedGans.filter(g=>
+    (!freeCalc.campuses.length || freeCalc.campuses.includes((g.campus||'').trim())) &&
+    (!freeCalc.ganAges.length   || freeCalc.ganAges.includes((g.age||'').trim())));
+  const ganIds=new Set(gans.map(g=>g.id));
+  const forecastN=+freeCalc.forecast>0?+freeCalc.forecast:0;
+
+  if(!gans.length){ out.innerHTML=`<div class="note">אין גנים התואמים לבחירה. שנה/י את הקמפוסים או גילי הגנים.</div>`; return; }
+
+  const chips=[
+    freeCalc.campuses.length?`קמפוסים: ${freeCalc.campuses.map(esc).join(", ")}`:'כל הקמפוסים',
+    freeCalc.ganAges.length?`גילים: ${freeCalc.ganAges.map(esc).join(", ")}`:'כל הגילים'
+  ].join(' · ');
+
+  // נתונים לכל שנה שנבחרה
+  const years=freeCalc.years.slice().sort((a,b)=>String(a).localeCompare(String(b),'he',{numeric:true}));
+  const perYear=years.map(y=>{
+    const stu=eduScope(studentsOfYear(y).filter(s=>!s.finished && ganIds.has(s.ganId)));
+    const perGan=gans.map(g=>({g,n:stu.filter(s=>s.ganId===g.id).length})).sort((a,b)=>b.n-a.n);
+    const byPeriod=PERIODS.map(p=>({p,n:stu.filter(s=>s.period===p).length}));
+    return {year:y, total:stu.length, perGan, byPeriod};
+  });
+
+  const yearCards=perYear.map(yd=>{
+    const avgActual=gans.length?yd.total/gans.length:0;
+    const avgForecast=forecastN?yd.total/forecastN:0;
+    return `<div class="pie-card">
+      <h4>שנת ${esc(yd.year)}</h4>
+      <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));margin-bottom:12px">
+        <div class="stat hero"><div class="k">סה"כ תלמידות</div><div class="v">${yd.total}</div></div>
+        <div class="stat"><div class="k">ממוצע לגן</div><div class="v">${avgActual.toFixed(1)}<small>/ ${gans.length} גנים</small></div></div>
+        ${forecastN?`<div class="stat"><div class="k">תחזית: ממוצע ל-${forecastN} גנים</div><div class="v">${avgForecast.toFixed(1)}</div></div>`:''}
+      </div>
+      ${pieBlock(yd.perGan.map(x=>({label:ganName(x.g.id),value:x.n})),{size:170,thickness:26,center:String(yd.total)})}
+      <div class="hint" style="margin-top:10px">מועדים: ${yd.byPeriod.map(p=>`${p.p}: <b>${p.n}</b>`).join(' · ')}</div>
+    </div>`;
+  }).join("");
+
+  // השוואה בין שנים (אם יותר משנה אחת)
+  let compare='';
+  if(perYear.length>1){
+    const comparePie=pieBlock(perYear.map(yd=>({label:`שנת ${yd.year}`,value:yd.total})),{size:180,thickness:28});
+    let growth='';
+    for(let i=1;i<perYear.length;i++){
+      const a=perYear[i-1], b=perYear[i];
+      const diff=b.total-a.total, pct=a.total?diff/a.total*100:0;
+      growth+=`<div class="pie-leg-row"><span class="pie-leg-label">${esc(a.year)} ← ${esc(b.year)}</span><span class="pie-leg-val">${diff>=0?'+':''}${diff}<small>· ${pct>=0?'+':''}${pct.toFixed(1)}%</small></span></div>`;
+    }
+    compare=`<div class="pie-card" style="margin-bottom:16px">
+      <h4>השוואה בין השנים · סה"כ תלמידות</h4>
+      ${comparePie}
+      <div class="pie-legend" style="margin-top:10px">${growth}</div>
+    </div>`;
+  }
+
+  out.innerHTML=`
+    <div class="note" style="background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent-strong);margin-bottom:14px">
+      ${esc(chips)} · <b>${gans.length}</b> גנים תואמים${forecastN?` · תחזית ל-<b>${forecastN}</b> גנים`:''}
+    </div>
+    ${compare}
+    <div class="pie-grid">${yearCards}</div>`;
 }
 
 function renderZonePick(host, list){
@@ -2600,16 +2801,6 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
-    <h2>יעד מספר גנים</h2>
-    <div class="sub">משמש לחישוב הממוצע לגן בדשבורד. לדוגמה מתלבטים להוריד מ-29 ל-28.</div>
-    <div class="row">
-      <div class="field" style="min-width:150px"><label>מספר גנים ליעד</label><input id="gt" inputmode="numeric" value="${esc(DB.settings.gansTarget)}" ${dis}></div>
-      <button class="btn" id="saveGT" style="align-self:end" ${dis}>שמור</button>
-      <div class="hint" style="align-self:end">גנים פעילים כרגע במערכת: ${DB.gans.filter(g=>g.active).length}</div>
-    </div>
-  </div>
-
-  <div class="panel">
     <h2>מינימום לפתיחת צהרון</h2>
     <div class="sub">מספר התלמידות המינימלי בקבוצה כדי לפתוח צהרון. בלשונית "שיבוץ" → "צהרונים" כל גן שמתחת למספר הזה יסומן באדום, ומעליו בירוק.</div>
     <div class="row">
@@ -2809,7 +3000,6 @@ function viewSettings(root){
   };
   drawHist();
 
-  if(admin) $("#saveGT").onclick=()=>{ const v=+$("#gt").value; if(v>0){DB.settings.gansTarget=v;save();toast("נשמר");} };
   if(admin) $("#saveTzMin").onclick=()=>{ const raw=$("#tzmin").value.trim(); const v=+raw; if(!raw){ delete DB.settings.tzaharonMin; save(); toast("נוקה"); } else if(v>=0){ DB.settings.tzaharonMin=v; save(); toast("נשמר"); } };
 
   $("#exportAll").onclick=()=>{ downloadBlob(new Blob([JSON.stringify(DB,null,2)],{type:"application/json"}), `גיבוי-רישום-${new Date().toISOString().slice(0,10)}.json`); };
