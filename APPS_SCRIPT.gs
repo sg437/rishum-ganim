@@ -44,7 +44,8 @@ function doPost(e){
     }
     switch(req.action){
       case 'ping':           return json_(out, ping_());
-      case 'childFolder':    return json_(out, childFolder_(req.year, req.name));
+      case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu));
+      case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
       case 'copy':           return json_(out, copy_(req.fileId, req.folderId, req.name));
@@ -95,10 +96,25 @@ function ping_(){
   var r = root_();
   return { ok:true, rootId:r.getId(), rootLink:r.getUrl() };
 }
-function childFolder_(year, name){
+/* שם תיקיית החינוך הראשית — חלוקה ל"חינוך רגיל" / "חינוך מיוחד" (סעיף 12) */
+function eduFolderName_(edu){
+  var e = String(edu || '').replace(/\s/g,'');
+  if(e.indexOf('מיוחד') >= 0 || e === 'ח"מ' || e === 'חמ') return 'חינוך מיוחד';
+  return 'חינוך רגיל';
+}
+function childFolder_(year, name, edu){
   var r = root_();
-  var y = sub_(r, String(year || 'ללא שנה'));
+  var e = sub_(r, eduFolderName_(edu));            // חלוקה ראשית לפי חינוך (סעיף 12)
+  var y = sub_(e, String(year || 'ללא שנה'));
   var c = sub_(y, String(name || 'ללא שם'));
+  return { ok:true, folderId:c.getId(), folderLink:c.getUrl(), rootLink:r.getUrl() };
+}
+/* תיקיית אנשי צוות — לפי חינוך, ובתוכה תיקייה לכל איש/אשת צוות (סעיפים 12, 17) */
+function staffFolder_(edu, name){
+  var r = root_();
+  var e = sub_(r, eduFolderName_(edu));
+  var s = sub_(e, 'אנשי צוות');
+  var c = sub_(s, String(name || 'ללא שם'));
   return { ok:true, folderId:c.getId(), folderLink:c.getUrl(), rootLink:r.getUrl() };
 }
 function list_(folderId){

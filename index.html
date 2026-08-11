@@ -706,6 +706,13 @@ function makeStudent(){ return {
 function makeStaff(){ return {
   id:uid(), lastName:"", firstName:"", name:"", tz:"", email:"", // ת"ז, מייל, שם משפחה/פרטי בנפרד (סעיף 1)
   role:"סייעת", education:"רגיל", phone:"", mobile:"", city:"", notes:"",
+  certificate:false,                 // תעודה (סעיף 17)
+  movements:[],                      // כניסה/יציאה באמצע שנה: {type:'entry'|'exit', date, detail} (סעיף 6)
+  notesList:[],                      // הערות מרובות (סעיף 10)
+  absences:[],                       // העדרויות: {date, reason} (סעיף 10)
+  lateness:[],                       // איחורים: {date, reason} (סעיף 10)
+  docFiles:{},                       // מסמכים מצורפים (תעודה וכו') — {key:{id,name,link}}
+  driveFolder:"", driveFolderId:"",  // תיקיית דרייב לאיש הצוות (סעיף 17)
   createdAt:new Date().toISOString()
 };}
 function makeGan(){ return {
@@ -964,8 +971,9 @@ async function driveCall(action, payload){
 }
 async function drivePing(){ const res=await driveCall("ping",{}); if(res.rootLink){ DB.settings.drive=DB.settings.drive||{}; DB.settings.drive.rootLink=res.rootLink; save(); } return res; }
 async function driveEnsureChildFolder(student){
+  if(student.driveFolderId) return student.driveFolderId; // תיקייה קיימת — לא ליצור מחדש (שומר על מבנה קודם)
   const nm=([student.lastName,student.firstName].filter(Boolean).join(" ")+(student.tz?(" · "+student.tz):"")) || ("ילדה "+student.id);
-  const res=await driveCall("childFolder", { year:String(student.year), name:nm });
+  const res=await driveCall("childFolder", { year:String(student.year), name:nm, edu:eduLabel(student) }); // חלוקה לפי חינוך (סעיף 12)
   student.driveFolderId=res.folderId; student.driveFolder=res.folderLink;
   const i=DB.students.findIndex(x=>x.id===student.id); if(i>=0){ DB.students[i].driveFolderId=res.folderId; DB.students[i].driveFolder=res.folderLink; }
   DB.settings.drive=DB.settings.drive||{}; if(res.rootLink) DB.settings.drive.rootLink=res.rootLink;
@@ -973,6 +981,16 @@ async function driveEnsureChildFolder(student){
   return res.folderId;
 }
 async function driveListFolder(folderId){ const res=await driveCall("list", { folderId }); return res.files||[]; }
+/* תיקיית דרייב לאיש/אשת צוות — מחולקת לפי חינוך רגיל/מיוחד (סעיפים 12, 17) */
+async function driveEnsureStaffFolder(m){
+  const nm=(staffName(m)+(m.tz?(" · "+m.tz):"")) || ("צוות "+m.id);
+  const res=await driveCall("staffFolder", { edu:eduLabel(m), name:nm });
+  m.driveFolderId=res.folderId; m.driveFolder=res.folderLink;
+  const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0){ DB.staff[i].driveFolderId=res.folderId; DB.staff[i].driveFolder=res.folderLink; }
+  DB.settings.drive=DB.settings.drive||{}; if(res.rootLink) DB.settings.drive.rootLink=res.rootLink;
+  save();
+  return res.folderId;
+}
 function fileToB64(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>{ const s=String(r.result); resolve(s.slice(s.indexOf(",")+1)); }; r.onerror=()=>reject(new Error("read")); r.readAsDataURL(file); }); }
 async function driveUploadFile(file, folderId){
   const dataB64=await fileToB64(file);
@@ -1755,6 +1773,7 @@ function buildImportRows(rows, opts){
     const ganText=g("gan"); st.ganId=matchGanText(ganText);
     st.absorbedMunicipality = idx.absorbed!=null ? truthyCell(g("absorbed")) : !!opts.absorbed;
     st.registeredByUs        = idx.regByUs!=null ? truthyCell(g("regByUs"))  : !!opts.reg;
+    if(opts.tzaharon){ st.programs=st.programs||{}; st.programs.tzaharon=true; } // רישום אוטומטי לצהרון (סעיף 11)
     if(!st.firstName && !st.lastName && !st.tz) continue; // שורה ריקה
     const fileDup = st.tz && seen.has(st.tz);   // ת"ז כפולה בתוך הקובץ עצמו (סעיף 5)
     const dup     = st.tz && existing.has(st.tz); // ת"ז שכבר קיימת במערכת
@@ -1819,6 +1838,7 @@ function openImport(){
     <div class="checks">
       <label class="check"><input type="checkbox" id="imp-absorbed" checked> סמן את כולם כ"קלוט בעירייה"</label>
       <label class="check"><input type="checkbox" id="imp-reg" checked> סמן את כולם כ"נרשמה על ידינו"</label>
+      <label class="check"><input type="checkbox" id="imp-tzaharon"> סמן את כולם כרשומות לצהרון (סעיף 11)</label>
       <label class="check"><input type="checkbox" id="imp-skipdup" checked> דלג על ת"ז שכבר קיימת בשנה זו</label>
     </div>
     <div class="hint">אם בקובץ יש עמודת "קלוט בעירייה" / "נרשמה על ידינו" — הערך שבקובץ גובר על ברירות המחדל.</div>
@@ -1842,7 +1862,7 @@ function openImport(){
   $("#imp-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
     readFileSmart(f, txt=>{ $("#imp-text").value=txt; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }); };
 
-  const opts=()=>({ absorbed:$("#imp-absorbed").checked, reg:$("#imp-reg").checked, skipdup:$("#imp-skipdup").checked });
+  const opts=()=>({ absorbed:$("#imp-absorbed").checked, reg:$("#imp-reg").checked, tzaharon:$("#imp-tzaharon").checked, skipdup:$("#imp-skipdup").checked });
 
   $("#imp-preview").onclick=()=>{
     const rows=parseTable($("#imp-text").value);
@@ -2490,7 +2510,15 @@ function renderStaffTable(){
 }
 function openStaff(m){
   const isNew=!DB.staff.some(x=>x.id===m.id);
-  modal(`<h3>${isNew?'איש/אשת צוות חדש':'עריכת איש/אשת צוות'}</h3>
+  /* מבנים חדשים — הבטחת קיום מערכים (סעיפים 6, 10, 17) */
+  m.movements=Array.isArray(m.movements)?m.movements:[];
+  m.absences=Array.isArray(m.absences)?m.absences:[];
+  m.lateness=Array.isArray(m.lateness)?m.lateness:[];
+  m.notesList=Array.isArray(m.notesList)?m.notesList:[];
+  m.docFiles=m.docFiles||{};
+  if(!m.notesList.length && m.notes) m.notesList=[m.notes]; // מיגרציה מהערה בודדת ישנה
+  modal(`<h3>${isNew?'איש/אשת צוות חדש':'תיק איש/אשת צוות'}</h3>
+    <fieldset><legend>פרטים אישיים</legend>
     <div class="grid g2">
       <div><label>שם משפחה</label><input id="st-lastName" value="${esc(m.lastName)}"></div>
       <div><label>שם פרטי</label><input id="st-firstName" value="${esc(m.firstName)}"></div>
@@ -2501,15 +2529,172 @@ function openStaff(m){
       <div><label>טלפון</label><input id="st-phone" value="${esc(m.phone)}" inputmode="tel"></div>
       <div><label>נייד</label><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
-      <div><label>הערות</label><input id="st-notes" value="${esc(m.notes)}"></div>
     </div>
+    </fieldset>
+    <fieldset><legend>תעודה</legend>
+      <div id="st-cert"></div>
+    </fieldset>
+    <fieldset><legend>כניסה / יציאה באמצע שנה (סעיף 6)</legend>
+      <div class="hint" style="margin-bottom:8px">לדוגמה: יצאה לחופשת לידה וחזרה. לכל שורה: כניסה/יציאה · תאריך · פירוט.</div>
+      <div id="st-moves"></div>
+      <button class="btn ghost sm" id="st-add-move" type="button" style="margin-top:6px">➕ הוספת שורה</button>
+    </fieldset>
+    <fieldset><legend>הערות</legend>
+      <div id="st-notes-list"></div>
+      <button class="btn ghost sm" id="st-add-note" type="button" style="margin-top:6px">➕ הוספת הערה</button>
+    </fieldset>
+    <fieldset><legend>העדרויות</legend>
+      <div id="st-absences"></div>
+      <button class="btn ghost sm" id="st-add-absence" type="button" style="margin-top:6px">➕ הוספת העדרות</button>
+    </fieldset>
+    <fieldset><legend>איחורים</legend>
+      <div id="st-lateness"></div>
+      <button class="btn ghost sm" id="st-add-late" type="button" style="margin-top:6px">➕ הוספת איחור</button>
+    </fieldset>
+    <fieldset><legend>תיק מלא — גנים, תפקידים וילדות (סעיף 22)</legend>
+      <div id="st-full"></div>
+    </fieldset>
+    ${DRIVE_READY?`<fieldset><legend>תיקיית דרייב</legend>
+      <div class="hint" style="margin-bottom:8px">תיקייה אישית בדרייב, מחולקת לפי חינוך רגיל/מיוחד (סעיף 17).</div>
+      <div id="st-drive"></div>
+    </fieldset>`:''}
     <div class="foot">${!isNew?'<button class="btn danger" id="delSt">מחיקה</button>':''}<button class="btn" id="saveSt" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="cancelSt">ביטול</button></div>`);
-  $("#saveSt").onclick=()=>{ const val=id=>$("#"+id).value.trim();
-    const lastName=val("st-lastName"), firstName=val("st-firstName");
-    const data=Object.assign({},m,{lastName,firstName,name:[lastName,firstName].filter(Boolean).join(" "),
-      tz:digits(val("st-tz")),email:val("st-email"),role:val("st-role"),education:val("st-education"),phone:val("st-phone"),mobile:val("st-mobile"),city:val("st-city"),notes:val("st-notes")});
-    if(!data.lastName && !data.firstName){ toast("יש להזין שם משפחה או שם פרטי"); return; }
-    const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0)DB.staff[i]=data; else DB.staff.push(data);
+
+  const val=id=>$("#"+id)?.value.trim()??"";
+  function readPersonal(){
+    m.lastName=val("st-lastName"); m.firstName=val("st-firstName"); m.name=[m.lastName,m.firstName].filter(Boolean).join(" ");
+    m.tz=digits(val("st-tz")); m.email=val("st-email"); m.role=val("st-role"); m.education=val("st-education");
+    m.phone=val("st-phone"); m.mobile=val("st-mobile"); m.city=val("st-city");
+  }
+  function persistStaff(){ readPersonal(); const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0) DB.staff[i]=Object.assign({},m); else DB.staff.push(Object.assign({},m)); save(); }
+
+  /* תעודה — סימון + צירוף מסמך (סעיף 17) */
+  function staffDocBase(label){ return `${label} · ${staffName(m)}${m.tz?(" · "+m.tz):""}`; }
+  async function uploadStaffDoc(file,key,label){
+    persistStaff(); await driveEnsureStaffFolder(m);
+    const res=await driveUploadNamed(file, m.driveFolderId, staffDocBase(label));
+    m.docFiles=m.docFiles||{}; m.docFiles[key]={id:res.fileId||res.id||"",name:res.name||file.name,link:res.link||res.webViewLink||""};
+    if(key==='certificate') m.certificate=true;
+    persistStaff();
+  }
+  function renderCert(){
+    const host=$("#st-cert"); if(!host) return;
+    const f=(m.docFiles||{}).certificate;
+    const attached=f?`<a class="btn ghost sm" href="${esc(f.link||'#')}" target="_blank">📄 ${esc(f.name||'קובץ')}</a>`:"";
+    const btn=DRIVE_READY?`<label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:4px">📎 צירוף<input type="file" id="st-cert-file" hidden></label>`:"";
+    host.innerHTML=`<div class="doc-row"><label class="lbl"><input type="checkbox" id="st-cert-chk" ${m.certificate?'checked':''}> יש תעודה</label> ${attached} ${btn}</div>`;
+    $("#st-cert-chk").onchange=e=>{ m.certificate=e.target.checked; };
+    const fi=$("#st-cert-file"); if(fi) fi.onchange=async ()=>{ const file=fi.files[0]; if(!file) return;
+      try{ toast("מעלה תעודה…"); await uploadStaffDoc(file,'certificate','תעודה'); renderCert(); toast("התעודה צורפה ✓"); }
+      catch(e){ console.error(e); toast(driveErrHe(e)); } fi.value=""; };
+  }
+  renderCert();
+
+  /* כניסה/יציאה (סעיף 6) */
+  function renderMovements(){
+    const host=$("#st-moves"); if(!host) return;
+    host.innerHTML=m.movements.length? m.movements.map((mv,i)=>`
+      <div class="row mv-row" data-i="${i}" style="gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">
+        <select class="mv-type" style="min-width:110px"><option value="entry" ${mv.type!=='exit'?'selected':''}>כניסה</option><option value="exit" ${mv.type==='exit'?'selected':''}>יציאה</option></select>
+        <input class="mv-date" type="date" value="${esc(mv.date||'')}">
+        <input class="mv-detail" placeholder="פירוט (למשל: חופשת לידה)" value="${esc(mv.detail||'')}" style="flex:1;min-width:160px">
+        <button class="btn ghost sm mv-del" type="button" title="מחיקה">🗑️</button>
+      </div>`).join("") : `<div class="hint">אין רישומי כניסה/יציאה.</div>`;
+    host.querySelectorAll(".mv-row").forEach(row=>{ const i=+row.dataset.i;
+      row.querySelector(".mv-type").onchange=e=>{ m.movements[i].type=e.target.value; };
+      row.querySelector(".mv-date").onchange=e=>{ m.movements[i].date=e.target.value; };
+      row.querySelector(".mv-detail").oninput=e=>{ m.movements[i].detail=e.target.value; };
+      row.querySelector(".mv-del").onclick=()=>{ m.movements.splice(i,1); renderMovements(); };
+    });
+  }
+  renderMovements();
+  $("#st-add-move").onclick=()=>{ m.movements.push({type:'entry',date:'',detail:''}); renderMovements(); };
+
+  /* הערות מרובות (סעיף 10) */
+  function renderNotesList(){
+    const host=$("#st-notes-list"); if(!host) return;
+    host.innerHTML=m.notesList.length? m.notesList.map((t,i)=>`
+      <div class="row nl-row" data-i="${i}" style="gap:6px;margin-bottom:6px;align-items:flex-start">
+        <textarea class="nl-text" rows="2" style="flex:1">${esc(t)}</textarea>
+        <button class="btn ghost sm nl-del" type="button" title="מחיקה">🗑️</button>
+      </div>`).join("") : `<div class="hint">אין הערות.</div>`;
+    host.querySelectorAll(".nl-row").forEach(row=>{ const i=+row.dataset.i;
+      row.querySelector(".nl-text").oninput=e=>{ m.notesList[i]=e.target.value; };
+      row.querySelector(".nl-del").onclick=()=>{ m.notesList.splice(i,1); renderNotesList(); };
+    });
+  }
+  renderNotesList();
+  $("#st-add-note").onclick=()=>{ m.notesList.push(""); renderNotesList(); };
+
+  /* העדרויות / איחורים — {תאריך, סיבה} (סעיף 10) */
+  function renderDR(hostId, arr){
+    const host=$("#"+hostId); if(!host) return;
+    host.innerHTML=arr.length? arr.map((x,i)=>`
+      <div class="row dr-row" data-i="${i}" style="gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">
+        <input class="dr-date" type="date" value="${esc(x.date||'')}">
+        <input class="dr-reason" placeholder="סיבה" value="${esc(x.reason||'')}" style="flex:1;min-width:160px">
+        <button class="btn ghost sm dr-del" type="button" title="מחיקה">🗑️</button>
+      </div>`).join("") : `<div class="hint">אין רישומים.</div>`;
+    host.querySelectorAll(".dr-row").forEach(row=>{ const i=+row.dataset.i;
+      row.querySelector(".dr-date").onchange=e=>{ arr[i].date=e.target.value; };
+      row.querySelector(".dr-reason").oninput=e=>{ arr[i].reason=e.target.value; };
+      row.querySelector(".dr-del").onclick=()=>{ arr.splice(i,1); renderDR(hostId,arr); };
+    });
+  }
+  renderDR("st-absences", m.absences);
+  renderDR("st-lateness", m.lateness);
+  $("#st-add-absence").onclick=()=>{ m.absences.push({date:'',reason:''}); renderDR("st-absences",m.absences); };
+  $("#st-add-late").onclick=()=>{ m.lateness.push({date:'',reason:''}); renderDR("st-lateness",m.lateness); };
+
+  /* תיק מלא — כל השיבוצים (סעיף 22) */
+  (function renderFull(){
+    const host=$("#st-full"); if(!host) return;
+    const rows=staffAssignmentsFull(m.id);
+    if(!rows.length){ host.innerHTML=`<div class="hint">עדיין אין שיבוצים לאיש/אשת צוות זה. לאחר שיבוץ בלשונית "שיבוץ" יופיע כאן פירוט הגנים, התפקידים והילדות.</div>`; return; }
+    rows.sort((a,b)=> (a.year+ctxLabel(a.ctx)+ganName(a.ganId)).localeCompare(b.year+ctxLabel(b.ctx)+ganName(b.ganId),"he"));
+    host.innerHTML=`<div class="table-wrap"><table><thead><tr><th>שנה</th><th>הקשר</th><th>גן</th><th>תפקיד</th><th>ימים/תקופה</th><th>ילדות משויכות</th></tr></thead><tbody>`+
+      rows.map(r=>{ const cur={days:r.days,durType:r.durType,durMonths:r.durMonths,students:r.students};
+        const extra=asgExtraText(r.role,cur); const kids=asgStudentsLabel(r.role,cur);
+        return `<tr><td>${esc(r.year)}</td><td>${esc(ctxLabel(r.ctx))}</td><td>${esc(ganName(r.ganId))}</td><td>${roleChip(r.role)}</td><td>${extra?esc(extra):'—'}</td><td>${kids?esc(kids):'—'}</td></tr>`;
+      }).join("")+`</tbody></table></div>`;
+  })();
+
+  /* דרייב אישי (סעיף 17) */
+  if(DRIVE_READY){
+    const host=$("#st-drive");
+    const render=()=>{
+      host.innerHTML=`<div class="row">
+        <button class="btn ghost" id="st-drive-open" type="button">${m.driveFolderId?'📂 פתח תיקייה בדרייב':'📁 צור תיקייה בדרייב'}</button>
+        <label class="btn ghost" style="display:${m.driveFolderId?'inline-flex':'none'};align-items:center;gap:6px">⬆️ העלאת מסמכים<input type="file" id="st-drive-file" hidden multiple></label>
+        <span id="st-drive-status" class="hint" style="align-self:center"></span>
+      </div>`;
+      const status=t=>{ const e=$("#st-drive-status"); if(e) e.textContent=t||""; };
+      $("#st-drive-open").onclick=async ()=>{
+        try{ if(m.driveFolderId){ window.open(m.driveFolder||("https://drive.google.com/drive/folders/"+m.driveFolderId),"_blank"); return; }
+          status("יוצר תיקייה…"); persistStaff(); await driveEnsureStaffFolder(m); status("נוצרה ✓"); toast("נוצרה תיקייה בדרייב"); render();
+        }catch(e){ console.error(e); status(""); toast(driveErrHe(e)); }
+      };
+      const up=$("#st-drive-file");
+      if(up) up.onchange=async ()=>{ const files=[...up.files]; if(!files.length) return;
+        try{ status("מעלה…"); persistStaff(); await driveEnsureStaffFolder(m);
+          const ident=staffName(m)+(m.tz?(" · "+m.tz):"");
+          for(const f of files){ const base=f.name.replace(fileExt(f.name),"")+(ident?(" · "+ident):""); await driveUploadNamed(f, m.driveFolderId, base); }
+          status("הועלו "+files.length+" ✓"); toast("המסמכים הועלו");
+        }catch(e){ console.error(e); status(""); toast(driveErrHe(e)); } up.value="";
+      };
+    };
+    render();
+  }
+
+  $("#saveSt").onclick=()=>{
+    readPersonal();
+    if(!m.lastName && !m.firstName){ toast("יש להזין שם משפחה או שם פרטי"); return; }
+    m.notesList=(m.notesList||[]).map(t=>String(t).trim()).filter(Boolean);
+    m.notes=m.notesList.join("\n"); // תאימות לאחור לייצוא
+    m.absences=(m.absences||[]).filter(x=>x.date||x.reason);
+    m.lateness=(m.lateness||[]).filter(x=>x.date||x.reason);
+    m.movements=(m.movements||[]).filter(x=>x.date||x.detail);
+    const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0)DB.staff[i]=Object.assign({},m); else DB.staff.push(Object.assign({},m));
     save(); closeModal(); route(); toast("נשמר"); };
   $("#cancelSt").onclick=closeModal;
   if(!isNew)$("#delSt").onclick=()=>{ if(confirm("למחוק?")){ DB.staff=DB.staff.filter(x=>x.id!==m.id); save(); closeModal(); route(); } };
@@ -2646,6 +2831,20 @@ function staffAsgIndex(ctx=asgContext, exceptGanId=null){
     });
   });
   return idx;
+}
+/* כל שיבוצי איש/אשת צוות בכל השנים/הקשרים — לתיק מלא (סעיף 22) */
+function staffAssignmentsFull(staffId){
+  const out=[]; const A=DB.assignments||{};
+  Object.keys(A).forEach(year=>{ const yc=A[year]||{};
+    Object.keys(yc).forEach(ctx=>{ const cg=yc[ctx]||{};
+      Object.keys(cg).forEach(ganId=>{ const entry=cg[ganId]||{};
+        Object.keys(entry).forEach(role=>{ const v=entry[role]; if(!v||v.staffId!==staffId) return;
+          out.push({ year, ctx, ganId, role, days:v.days||[], durType:v.durType, durMonths:v.durMonths, students:v.students||[] });
+        });
+      });
+    });
+  });
+  return out;
 }
 /* הימים התפוסים לעובד/ת בגנים אחרים (תפקידי "לפי ימים") → { יום: שם הגן } */
 function staffTakenDays(idx, staffId){
