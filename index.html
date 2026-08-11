@@ -644,7 +644,9 @@ function updatePwaIcons(){
   }catch(e){ console.error(e); }
 }
 let deferredInstallPrompt=null;
-window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstallPrompt=e; });
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstallPrompt=e;
+  if(document.getElementById('install-box')) renderInstallBox(); }); // עדכון חי של הכפתור אם מסך ההגדרות פתוח
+window.addEventListener('appinstalled', ()=>{ deferredInstallPrompt=null; toast("המערכת הותקנה כאפליקציה ✓"); if(document.getElementById('install-box')) renderInstallBox(); });
 if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
 
 /* ---------- הרשאות: רק מנהל משנה הגדרות מערכת (סעיף 15) ---------- */
@@ -1098,18 +1100,20 @@ function renderDriveBox(){
 function renderInstallBox(){
   const box=$("#install-box"); if(!box) return;
   const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true;
-  if(standalone){ box.innerHTML=`<div class="note">✅ המערכת פתוחה כרגע כאפליקציה מותקנת. אפשר להיכנס אליה ישירות מהאייקון במסך הבית.</div>`; return; }
+  if(standalone){ box.innerHTML=`<div class="note">✅ המערכת פתוחה כרגע כאפליקציה מותקנת. אפשר להיכנס אליה ישירות מהאייקון (בשולחן העבודה / מסך הבית).</div>`; return; }
+  const isDesktop = !/(Android|iPhone|iPad|iPod|Mobile)/i.test(navigator.userAgent||"");
   box.innerHTML=`
-    ${deferredInstallPrompt?`<div class="row" style="margin-bottom:8px"><button class="btn" id="do-install">📲 התקן כאפליקציה עכשיו</button></div>`:``}
+    ${deferredInstallPrompt?`<div class="row" style="margin-bottom:8px"><button class="btn" id="do-install">💻 התקן ${isDesktop?'על המחשב':'כאפליקציה'} עכשיו</button></div>`
+      :`<div class="note" style="margin-bottom:8px">💡 אם כפתור ההתקנה אינו מופיע כאן — אפשר תמיד להתקין ידנית לפי ההוראות למטה. ${isDesktop?'ב-Chrome/Edge חפש/י את אייקון ההתקנה <b>⊕</b> בקצה שורת הכתובת (ליד הכוכב).':''}</div>`}
     <div class="hint" style="line-height:1.9">
-      <b>באנדרואיד (Chrome):</b> ${deferredInstallPrompt?'לחצ/י על הכפתור למעלה, או פתח/י ':'פתח/י את '}תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה"</b> / "הוספה למסך הבית".<br>
-      <b>באייפון/אייפד (Safari):</b> לחצ/י על כפתור השיתוף <b>⬆️</b> (למטה) ← <b>"הוספה למסך הבית"</b>.<br>
-      <b>במחשב (Chrome/Edge):</b> אייקון ההתקנה ⊕ בשורת הכתובת, או תפריט ⋮ ← "התקנה".<br>
-      <span style="color:var(--accent-strong)">האייקון שיופיע במסך הבית יהיה הלוגו שהגדרת ב"מיתוג".</span> אם תשנה/י את הלוגו בעתיד — התקן/י מחדש כדי שהאייקון יתעדכן (מערכת ההפעלה שומרת את האייקון הקודם).
+      <b>💻 במחשב (Chrome / Edge):</b> לחצ/י על אייקון ההתקנה <b>⊕</b> בקצה שורת הכתובת (או תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה" / "Install"</b>). ייפתח חלון נפרד עם אייקון בשולחן העבודה — כניסה ישירה לתוכנה בלי דפדפן.<br>
+      <b>📱 באנדרואיד (Chrome):</b> ${deferredInstallPrompt?'לחצ/י על הכפתור למעלה, או פתח/י ':'פתח/י את '}תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה"</b> / "הוספה למסך הבית".<br>
+      <b>🍏 באייפון/אייפד (Safari):</b> לחצ/י על כפתור השיתוף <b>⬆️</b> (למטה) ← <b>"הוספה למסך הבית"</b>.<br>
+      <span style="color:var(--accent-strong)">האייקון שיופיע יהיה הלוגו שהגדרת ב"מיתוג".</span> אם תשנה/י את הלוגו בעתיד — התקן/י מחדש כדי שהאייקון יתעדכן (מערכת ההפעלה שומרת את האייקון הקודם).
     </div>`;
   const b=$("#do-install");
   if(b) b.onclick=async ()=>{
-    if(!deferredInstallPrompt){ toast("ההתקנה זמינה מתפריט הדפדפן"); return; }
+    if(!deferredInstallPrompt){ toast("ההתקנה זמינה מאייקון ⊕ בשורת הכתובת או מתפריט הדפדפן"); return; }
     deferredInstallPrompt.prompt();
     try{ await deferredInstallPrompt.userChoice; }catch(e){}
     deferredInstallPrompt=null; renderInstallBox();
@@ -3338,8 +3342,8 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
-    <h2>התקנה כאפליקציה בטלפון</h2>
-    <div class="sub">אפשר להתקין את המערכת כאפליקציה במסך הבית של הטלפון או המחשב — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג".</div>
+    <h2>התקנה כאפליקציה — טלפון או מחשב</h2>
+    <div class="sub">אפשר להתקין את המערכת כאפליקציה עצמאית — על המחשב (חלון נפרד עם אייקון בשולחן העבודה) או במסך הבית של הטלפון — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג". כניסה ישירה לתוכנה בלי לפתוח דפדפן.</div>
     <div id="install-box"></div>
   </div>
 
