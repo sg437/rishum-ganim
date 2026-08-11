@@ -717,6 +717,7 @@ function makeStudent(){ return {
 function makeStaff(){ return {
   id:uid(), lastName:"", firstName:"", name:"", tz:"", email:"", // ת"ז, מייל, שם משפחה/פרטי בנפרד (סעיף 1)
   role:"סייעת", education:"רגיל", phone:"", mobile:"", city:"", notes:"",
+  active:true,                       // פעיל/ה במערכת. false = עזב/ה (מוסתר/ת מהרשימה, לא נמחק)
   certificate:false,                 // תעודה (סעיף 17)
   movements:[],                      // כניסה/יציאה באמצע שנה: {type:'entry'|'exit', date, detail} (סעיף 6)
   notesList:[],                      // הערות מרובות (סעיף 10)
@@ -2460,11 +2461,14 @@ function viewMunicipality(root){
 /* ============================================================
    טאב צוות — מאגר אנשי צוות הגנים (סעיף 16), עם מיון וסינון (סעיף 13)
    ============================================================ */
-let staffFilter = { q:"", role:"" };
+let staffFilter = { q:"", role:"", status:"active" }; // status: active / left / all
+const staffIsActive = m => m.active!==false;              // רשומות ישנות ללא הדגל = פעילות
 let staffSort = { key:"lastName", dir:1 };
 function staffFiltered(){
   const q=staffFilter.q.trim().toLowerCase();
   const list=eduScope(DB.staff).filter(m=>{ // מכבד את בורר החינוך הראשי (רגיל/מיוחד)
+    if(staffFilter.status==='active' && !staffIsActive(m)) return false;   // הסתרת מי שעזב/ה
+    if(staffFilter.status==='left'   &&  staffIsActive(m)) return false;
     if(staffFilter.role && m.role!==staffFilter.role) return false;
     if(q){ const hay=(staffName(m)+" "+m.tz+" "+m.email+" "+m.role+" "+m.phone+" "+m.mobile+" "+m.city).toLowerCase(); if(!hay.includes(q)) return false; }
     return true;
@@ -2491,13 +2495,16 @@ function viewStaff(root){
     <div class="toolbar">
       <div class="field grow"><label>חיפוש (שם / טלפון / עיר)</label><input id="fs-q" value="${esc(staffFilter.q)}" placeholder="הקלד/י…"></div>
       <div class="field"><label>תפקיד</label><select id="fs-role"><option value="">הכל</option>${STAFF_ROLES.map(r=>`<option ${staffFilter.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
+      <div class="field"><label>סטטוס</label><select id="fs-status">
+        ${[["active","פעילים/ות"],["left","עזבו/יצאו"],["all","הכל"]].map(o=>`<option value="${o[0]}" ${staffFilter.status===o[0]?'selected':''}>${o[1]}</option>`).join("")}
+      </select></div>
     </div>
     <div id="staffTable"></div>
   </div>`;
   $("#addStaff").onclick=()=>openStaff(makeStaff());
   $("#impStaff").onclick=openStaffImport;
   const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ staffFilter[key]=e.value; renderStaffTable(); }; };
-  bind("#fs-q","q"); bind("#fs-role","role");
+  bind("#fs-q","q"); bind("#fs-role","role"); bind("#fs-status","status");
   renderStaffTable();
 }
 function renderStaffTable(){
@@ -2509,8 +2516,8 @@ function renderStaffTable(){
   const th=(k,l)=>`<th class="sortable" data-sort="${k}">${l}${arr(k)}</th>`;
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
     ${th("lastName","שם משפחה")}${th("firstName","שם פרטי")}${th("tz",'ת"ז')}${th("role","תפקיד")}${th("education","חינוך")}${th("phone","טלפון")}${th("mobile","נייד")}${th("email","מייל")}${th("city","עיר")}<th></th></tr></thead><tbody>
-    ${list.map(m=>`<tr>
-      <td><b>${esc(m.lastName)||'—'}</b></td>
+    ${list.map(m=>`<tr${staffIsActive(m)?'':' style="opacity:.6"'}>
+      <td><b>${esc(m.lastName)||'—'}</b>${staffIsActive(m)?'':' <span class="pill warn">עזב/ה</span>'}</td>
       <td>${esc(m.firstName)||'—'}</td>
       <td>${esc(m.tz)||'—'}</td>
       <td>${roleChip(m.role)}</td>
@@ -2546,6 +2553,7 @@ function openStaff(m){
       <div><label>נייד</label><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
     </div>
+    <label class="check" style="margin-top:10px;background:var(--warn-soft);border-color:var(--warn)"><input type="checkbox" id="st-left" ${m.active===false?'checked':''}> 🚪 עזב/ה — כבר לא במערכת (מוסתר/ת מהרשימה; הנתונים נשמרים)</label>
     </fieldset>
     <fieldset><legend>תעודה</legend>
       <div id="st-cert"></div>
@@ -2581,6 +2589,7 @@ function openStaff(m){
     m.lastName=val("st-lastName"); m.firstName=val("st-firstName"); m.name=[m.lastName,m.firstName].filter(Boolean).join(" ");
     m.tz=digits(val("st-tz")); m.email=val("st-email"); m.role=val("st-role"); m.education=val("st-education");
     m.phone=val("st-phone"); m.mobile=val("st-mobile"); m.city=val("st-city");
+    const lf=$("#st-left"); if(lf) m.active = !lf.checked;   // מסומן = עזב/ה
   }
   function persistStaff(){ readPersonal(); const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0) DB.staff[i]=Object.assign({},m); else DB.staff.push(Object.assign({},m)); save(); }
 
@@ -2669,7 +2678,7 @@ function openStaff(m){
     if(!rows.length){ host.innerHTML=`<div class="hint">עדיין אין שיבוצים לאיש/אשת צוות זה. לאחר שיבוץ בלשונית "שיבוץ" יופיע כאן פירוט הגנים, התפקידים והילדות.</div>`; return; }
     rows.sort((a,b)=> (a.year+ctxLabel(a.ctx)+ganName(a.ganId)).localeCompare(b.year+ctxLabel(b.ctx)+ganName(b.ganId),"he"));
     host.innerHTML=`<div class="table-wrap"><table><thead><tr><th>שנה</th><th>הקשר</th><th>גן</th><th>תפקיד</th><th>ימים/תקופה</th><th>ילדות משויכות</th></tr></thead><tbody>`+
-      rows.map(r=>{ const cur={days:r.days,durType:r.durType,durMonths:r.durMonths,students:r.students};
+      rows.map(r=>{ const cur={days:r.days,durType:r.durType,durMonths:r.durMonths,durFrom:r.durFrom,durTo:r.durTo,students:r.students};
         const extra=asgExtraText(r.role,cur); const kids=asgStudentsLabel(r.role,cur);
         return `<tr><td>${esc(r.year)}</td><td>${esc(ctxLabel(r.ctx))}</td><td>${esc(ganName(r.ganId))}</td><td>${roleChip(r.role)}</td><td>${extra?esc(extra):'—'}</td><td>${kids?esc(kids):'—'}</td></tr>`;
       }).join("")+`</tbody></table></div>`;
@@ -2859,7 +2868,7 @@ function staffAssignmentsFull(staffId){
     Object.keys(yc).forEach(ctx=>{ const cg=yc[ctx]||{};
       Object.keys(cg).forEach(ganId=>{ const entry=cg[ganId]||{};
         Object.keys(entry).forEach(role=>{ const v=entry[role]; if(!v||v.staffId!==staffId) return;
-          out.push({ year, ctx, ganId, role, days:v.days||[], durType:v.durType, durMonths:v.durMonths, students:v.students||[] });
+          out.push({ year, ctx, ganId, role, days:v.days||[], durType:v.durType, durMonths:v.durMonths, durFrom:v.durFrom, durTo:v.durTo, students:v.students||[] });
         });
       });
     });
@@ -2989,8 +2998,9 @@ function openGanAssign(ganId){
   /* בניית רשימת עובדות לבחירה (datalist) + פתרון שם חופשי → עובד/ת */
   const byNameHe=(x,y)=>staffName(x).localeCompare(staffName(y),"he");
   function staffDatalistHtml(role){
-    const here=DB.staff.filter(m=>m.role===role).sort(byNameHe);
-    const other=DB.staff.filter(m=>m.role!==role).sort(byNameHe);
+    const pool=DB.staff.filter(staffIsActive);   // מי שעזב/ה אינו מוצע לשיבוץ חדש
+    const here=pool.filter(m=>m.role===role).sort(byNameHe);
+    const other=pool.filter(m=>m.role!==role).sort(byNameHe);
     const mk=m=>`<option value="${esc(staffName(m))}">${m.role!==role?('['+esc(m.role||'ללא תפקיד')+'] '):''}${(m.mobile||m.phone)?esc(m.mobile||m.phone):''}</option>`;
     return here.map(mk).join("")+other.map(mk).join("");
   }
