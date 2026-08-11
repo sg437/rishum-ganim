@@ -228,6 +228,8 @@ const ASSIGN_ROLES = [
   {role:"גננת ממלאת מקום", extra:"duration"},
   {role:"סייעת ממלאת מקום", extra:"duration"}
 ];
+const ASSISTANT_B_ROLE = "סייעת ב'";   // תפקיד שנפתח רק כשהגן הגיע לסף בנות (סעיף חדש 2)
+const ASSISTANT_B_MIN  = 30;           // מספר בנות מינימלי בגן כדי לאפשר שיבוץ "סייעת ב'"
 /* הקשרי שיבוץ — פעילות הגן / צהרונים / קייטנות (סעיף 8) */
 const ASSIGN_CONTEXTS = [
   {id:"activity",     label:"פעילות הגן"},
@@ -2494,6 +2496,25 @@ function asgExtraText(role, cur){
   if(m.extra==="duration"){ if(cur.durType==="year") return "שנה"; if(cur.durType==="months") return cur.durMonths?`${cur.durMonths} חודשים`:"מספר חודשים"; }
   return "";
 }
+/* אינדקס שיבוצי צוות לשנה+הקשר הנוכחיים לפי מזהה עובד/ת — לצורך מניעת שיבוץ כפול (סעיף 1).
+   מדלג על הגן הנוכחי (exceptGanId) כדי לזהות רק שיבוצים בגנים אחרים. הכל לפי השנה הפעילה (סעיף 3). */
+function staffAsgIndex(ctx=asgContext, exceptGanId=null){
+  const idx={};
+  const y=DB.assignments[DB.activeYear]; const c=y&&y[ctx]; if(!c) return idx;
+  Object.keys(c).forEach(ganId=>{
+    if(ganId===exceptGanId) return;
+    const entry=c[ganId]||{};
+    Object.keys(entry).forEach(role=>{
+      const v=entry[role]; if(!v||!v.staffId) return;
+      (idx[v.staffId]||(idx[v.staffId]=[])).push({ ganId, role, days:(v.days||[]) });
+    });
+  });
+  return idx;
+}
+/* הימים התפוסים לעובד/ת בגנים אחרים (תפקידי "לפי ימים") → { יום: שם הגן } */
+function staffTakenDays(idx, staffId){
+  const map={}; (idx[staffId]||[]).forEach(a=>(a.days||[]).forEach(d=>{ if(!map[d]) map[d]=ganName(a.ganId); })); return map;
+}
 function viewAssign(root){
   const gans=eduScope(DB.gans.slice()).sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
   const scopeNote = activeEdu ? ` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}` : "";
@@ -2587,20 +2608,40 @@ function openGanAssign(ganId){
   const g=ganById(ganId); if(!g) return;
   const a=ganAsg(ganId);
   const reg=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
+  /* אינדקס שיבוצי צוות בגנים אחרים (אותה שנה + אותו הקשר) — למניעת שיבוץ כפול (סעיף 1) */
+  const idx=staffAsgIndex(asgContext, ganId);
+  /* "סייעת ב'" נפתחת רק כשהגן הגיע ל-30 בנות; אם כבר קיים שיבוץ כזה נשמור אותו לעריכה (סעיף 2) */
+  const bAssigned = !!(a[ASSISTANT_B_ROLE] && (a[ASSISTANT_B_ROLE].staffId||a[ASSISTANT_B_ROLE].name));
+  const bEligible = reg>=ASSISTANT_B_MIN;
+  const roles = ASSIGN_ROLES.filter(m=> m.role!==ASSISTANT_B_ROLE || bEligible || bAssigned);
+  /* בניית תיבות הימים לתפקיד "לפי ימים" — משבצת רק ימים פנויים לעובד/ת שנבחרה (סעיף 1) */
+  function daysBoxHtml(selectedStaffId, wantDays){
+    const taken = selectedStaffId ? staffTakenDays(idx, selectedStaffId) : {};
+    return WEEK_DAYS.map(d=>{
+      const isTaken = !!taken[d];
+      const checked = wantDays.includes(d) && !isTaken;
+      return `<label class="check" style="${isTaken?'opacity:.55':''}" ${isTaken?`title="כבר משובצת ב${esc(taken[d])} ביום ${esc(d)}"`:''}>`+
+        `<input type="checkbox" class="asg-day" value="${esc(d)}" ${checked?'checked':''} ${isTaken?'disabled':''}> ${esc(d)}${isTaken?' 🔒':''}</label>`;
+    }).join("");
+  }
   const fixed=[["סמל פנימי",g.internalSymbol],["סמל גן",g.ganSymbol],["גיל",g.age],["חינוך",eduLabel(g)],
     ["כתובת",[g.address,g.building].filter(Boolean).join(" ")],["אזור",g.zone],["טל' גן",g.phoneGan],["קיבולת",g.capacity],["רשומות",reg]];
+  const bHint = (!bEligible && !bAssigned)
+    ? `<div class="hint" style="margin-bottom:10px;color:var(--muted)">💡 שיבוץ "${esc(ASSISTANT_B_ROLE)}" ייפתח כשהגן יגיע ל-${ASSISTANT_B_MIN} בנות (כרגע ${reg}).</div>` : "";
   modal(`
     <h3>שיבוץ — ${esc(ganName(g.id))} <span style="color:var(--muted);font-weight:400">· ${esc(ctxLabel(asgContext))}</span></h3>
     <div class="hint" style="margin-bottom:10px">${fixed.filter(f=>f[1]!==""&&f[1]!=null).map(f=>`${esc(f[0])}: <b>${esc(f[1])}</b>`).join(" · ")}</div>
+    ${bHint}
     <div class="grid" style="gap:12px">
-      ${ASSIGN_ROLES.map(meta=>{
+      ${roles.map(meta=>{
         const role=meta.role, cur=a[role]||{}, days=cur.days||[];
+        const isDays = meta.extra==="days";
         const opts=DB.staff.filter(m=>m.role===role);
         let extraHtml="";
-        if(meta.extra==="days"){
+        if(isDays){
           extraHtml=`<div class="field" style="min-width:230px;flex:1"><label>ימים</label>
-            <div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:4px">
-              ${WEEK_DAYS.map(d=>`<label class="check"><input type="checkbox" class="asg-day" value="${esc(d)}" ${days.includes(d)?'checked':''}> ${esc(d)}</label>`).join("")}
+            <div class="checks asg-days-box" style="grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:4px">
+              ${daysBoxHtml(cur.staffId||"", days)}
             </div></div>`;
         } else if(meta.extra==="duration"){
           extraHtml=`<div class="field" style="min-width:150px"><label>תקופה</label>
@@ -2612,12 +2653,18 @@ function openGanAssign(ganId){
             <div class="field asg-months-wrap" style="min-width:110px;${cur.durType==='months'?'':'display:none'}"><label>מס' חודשים</label>
               <input class="asg-durmonths" inputmode="numeric" value="${esc(cur.durMonths||"")}"></div>`;
         }
-        return `<div class="panel" style="padding:10px;margin:0" data-role="${esc(role)}">
+        /* תפקיד רגיל (לא "לפי ימים"): עובד/ת המשובצת בגן אחר מושבתת ברשימה עם ציון היכן (סעיף 1) */
+        const optHtml=opts.map(m=>{
+          const elsewhere = !isDays && idx[m.id] && cur.staffId!==m.id;
+          const where = elsewhere ? ganName(idx[m.id][0].ganId) : "";
+          return `<option value="${m.id}" ${cur.staffId===m.id?'selected':''} ${elsewhere?'disabled':''}>${esc(staffName(m))}${m.mobile||m.phone?(' · '+esc(m.mobile||m.phone)):''}${elsewhere?` · כבר משובצת ב${esc(where)}`:''}</option>`;
+        }).join("");
+        return `<div class="panel" style="padding:10px;margin:0" data-role="${esc(role)}" data-days="${isDays?1:0}">
           <div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap">
             <div class="field" style="min-width:180px"><label>${esc(role)}</label>
               <select class="asg-staff">
                 <option value="">— בחר/י —</option>
-                ${opts.map(m=>`<option value="${m.id}" ${cur.staffId===m.id?'selected':''}>${esc(staffName(m))}${m.mobile||m.phone?(' · '+esc(m.mobile||m.phone)):''}</option>`).join("")}
+                ${optHtml}
               </select></div>
             <div class="field" style="min-width:150px"><label>שם</label><input class="asg-name" value="${esc(cur.name||"")}"></div>
             <div class="field" style="min-width:130px"><label>טלפון</label><input class="asg-phone" value="${esc(cur.phone||"")}" inputmode="tel"></div>
@@ -2632,13 +2679,24 @@ function openGanAssign(ganId){
     </div>`);
   $("#modal").querySelectorAll("[data-role]").forEach(box=>{
     const sel=box.querySelector(".asg-staff"), nm=box.querySelector(".asg-name"), ph=box.querySelector(".asg-phone");
-    sel.onchange=()=>{ const m=DB.staff.find(x=>x.id===sel.value); if(m){ nm.value=staffName(m); ph.value=m.mobile||m.phone||""; } };
+    sel.onchange=()=>{
+      const m=DB.staff.find(x=>x.id===sel.value); if(m){ nm.value=staffName(m); ph.value=m.mobile||m.phone||""; }
+      if(box.dataset.days==='1'){ const dbox=box.querySelector(".asg-days-box"); if(dbox){
+        const checked=[...dbox.querySelectorAll(".asg-day:checked")].map(x=>x.value);
+        dbox.innerHTML=daysBoxHtml(sel.value, checked);
+      } }
+    };
     const dt=box.querySelector(".asg-durtype");
     if(dt) dt.onchange=()=>{ const w=box.querySelector(".asg-months-wrap"); if(w) w.style.display = dt.value==='months'?'':'none'; };
   });
   $("#asg-cancel").onclick=closeModal;
   $("#asg-save").onclick=()=>{
-    const cmap=asgCtxMap(); const entry={};
+    const cmap=asgCtxMap();
+    const existing=cmap[ganId]||{};
+    const rendered=new Set([...$("#modal").querySelectorAll("[data-role]")].map(b=>b.dataset.role));
+    const entry={};
+    /* שמירת תפקידים שלא הוצגו במסך (למשל "סייעת ב'" שהוסתרה כשהגן מתחת ל-30) כדי לא לאבד נתונים */
+    Object.keys(existing).forEach(r=>{ if(!rendered.has(r)) entry[r]=existing[r]; });
     $("#modal").querySelectorAll("[data-role]").forEach(box=>{
       const role=box.dataset.role;
       const sel=box.querySelector(".asg-staff"), nm=box.querySelector(".asg-name"), ph=box.querySelector(".asg-phone");
