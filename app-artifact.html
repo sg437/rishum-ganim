@@ -2774,6 +2774,8 @@ function openMgmt(m){
    ============================================================ */
 const HIST_GAN_HEADER_MAP = {
   "גן":"gan","שםהגן":"gan","שםגן":"gan","גננת":"gan","שםהגננת":"gan",
+  "כתובת":"address","כתובתהגן":"address","רחוב":"address","כתובתגן":"address",
+  "קמפוס":"campus","קמפוסגנים":"campus","קמפוסהגן":"campus",
   "גיל":"age","גילהגן":"age",
   "מועדא":"a","א":"a","מועדא׳":"a",
   "מועדב":"b","ב":"b","מועדב׳":"b",
@@ -2792,6 +2794,8 @@ function parseHistGans(text){
   for(let r=1;r<rows.length;r++){ const c=rows[r];
     const gan=String(c[hi.gan]??"").trim(); if(!gan) continue;
     out.push({ gan,
+      address: hi.address!=null?String(c[hi.address]??"").trim():"",
+      campus: hi.campus!=null?String(c[hi.campus]??"").trim():"",
       age: hi.age!=null?String(c[hi.age]??"").trim():"",
       a: hi.a!=null?(+digits(c[hi.a])||0):0,
       b: hi.b!=null?(+digits(c[hi.b])||0):0,
@@ -2819,10 +2823,12 @@ function renderHistGans(host, admin){
       <div class="hint" style="align-self:center">סה"כ לשנה זו: <b>${totAll}</b> תלמידות · ${rows.length} גנים</div>
     </div>
     <div class="table-wrap"><table><thead><tr>
-      <th>גן</th><th>גיל</th><th>מועד א׳</th><th>מועד ב׳</th><th>מועד ג׳</th><th>סופי</th><th>סה"כ</th>${editable?'<th></th>':''}
+      <th>גן</th><th>כתובת</th><th>קמפוס</th><th>גיל</th><th>מועד א׳</th><th>מועד ב׳</th><th>מועד ג׳</th><th>סופי</th><th>סה"כ</th>${editable?'<th></th>':''}
     </tr></thead><tbody>
       ${rows.length? rows.map((r,idx)=>`<tr>
-        <td><input class="hg-c" data-i="${idx}" data-k="gan" value="${esc(r.gan)}" style="min-width:140px" ${ro}></td>
+        <td><input class="hg-c" data-i="${idx}" data-k="gan" value="${esc(r.gan)}" style="min-width:130px" ${ro}></td>
+        <td><input class="hg-c" data-i="${idx}" data-k="address" value="${esc(r.address||"")}" style="min-width:130px" ${ro}></td>
+        <td><input class="hg-c" data-i="${idx}" data-k="campus" value="${esc(r.campus||"")}" style="min-width:110px" ${ro}></td>
         <td><input class="hg-c" data-i="${idx}" data-k="age" value="${esc(r.age)}" style="width:60px" ${ro}></td>
         <td><input class="hg-c" data-i="${idx}" data-k="a" value="${esc(r.a||"")}" inputmode="numeric" style="width:70px" ${ro}></td>
         <td><input class="hg-c" data-i="${idx}" data-k="b" value="${esc(r.b||"")}" inputmode="numeric" style="width:70px" ${ro}></td>
@@ -2830,7 +2836,7 @@ function renderHistGans(host, admin){
         <td><input class="hg-c" data-i="${idx}" data-k="f" value="${esc(r.f||"")}" inputmode="numeric" style="width:70px" ${ro}></td>
         <td><b>${histGanTotal(r)||""}</b></td>
         ${editable?`<td class="actions"><button class="btn ghost sm" data-del="${idx}">🗑</button></td>`:''}
-      </tr>`).join("") : `<tr><td colspan="${editable?8:7}" class="empty" style="padding:18px">אין נתונים לשנה זו. ${editable?'הוסיפו שורה או ייבאו נתונים.':'פתחו לעריכה כדי להזין.'}</td></tr>`}
+      </tr>`).join("") : `<tr><td colspan="${editable?10:9}" class="empty" style="padding:18px">אין נתונים לשנה זו. ${editable?'הוסיפו שורה או ייבאו נתונים.':'פתחו לעריכה כדי להזין.'}</td></tr>`}
     </tbody></table></div>
     <div class="hint">עמודת "סה"כ" מחושבת אוטומטית (א׳+ב׳+ג׳+סופי).</div>
     ${editable?`
@@ -2839,8 +2845,8 @@ function renderHistGans(host, admin){
       <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 ייבוא CSV<input type="file" id="hg-file" accept=".csv,.txt" hidden></label>
     </div>
     <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;color:var(--accent-strong)">📋 ייבוא בהדבקה (מאקסל / טבלה)</summary>
-      <div class="hint" style="margin:8px 0">הדביקו טבלה עם כותרות. עמודות מזוהות: <b>גן</b> (חובה), גיל, מועד א׳, מועד ב׳, מועד ג׳, סופי. הייבוא מוסיף/מעדכן את השנה הנבחרת (${esc(y)}).</div>
-      <textarea id="hg-paste" rows="6" placeholder="גן,גיל,מועד א,מועד ב,מועד ג,סופי&#10;גן שושי אלישיב,5,12,4,2,1"></textarea>
+      <div class="hint" style="margin:8px 0">הדביקו טבלה עם כותרות. עמודות מזוהות: <b>גן</b> (חובה), כתובת, קמפוס, גיל, מועד א׳, מועד ב׳, מועד ג׳, סופי. הייבוא מוסיף/מעדכן את השנה הנבחרת (${esc(y)}).</div>
+      <textarea id="hg-paste" rows="6" placeholder="גן,כתובת,קמפוס,גיל,מועד א,מועד ב,מועד ג,סופי&#10;גן שושי אלישיב,רחוב הרב 5,ריטב&quot;א,5,12,4,2,1"></textarea>
       <div class="row" style="margin-top:8px">
         <button class="btn" id="hg-import">ייבוא לשנת ${esc(y)}</button>
         <button class="btn ghost" id="hg-import-replace">ייבוא והחלפת השנה</button>
@@ -2853,24 +2859,24 @@ function renderHistGans(host, admin){
 
   host.querySelectorAll("input.hg-c").forEach(inp=> inp.oninput=inp.onchange=()=>{
     const i=+inp.dataset.i, k=inp.dataset.k, row=DB.historicalGans[y][i]; if(!row) return;
-    if(k==='gan'||k==='age') row[k]=inp.value; else row[k]=+digits(inp.value)||0;
+    if(['gan','address','campus','age'].includes(k)) row[k]=inp.value; else row[k]=+digits(inp.value)||0;
     // עדכון תא סה"כ ללא רינדור מלא (שמירה על מיקוד)
-    const tcell=inp.closest("tr").querySelector("td:nth-child(7) b"); if(tcell) tcell.textContent=histGanTotal(row)||"";
+    const tcell=inp.closest("tr").querySelector("td:nth-child(9) b"); if(tcell) tcell.textContent=histGanTotal(row)||"";
     save();
   });
   host.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     DB.historicalGans[y].splice(+b.dataset.del,1); save(); renderHistGans(host,admin);
   });
-  $("#hg-add").onclick=()=>{ DB.historicalGans[y].push({gan:"",age:"",a:0,b:0,c:0,f:0}); save(); renderHistGans(host,admin); };
+  $("#hg-add").onclick=()=>{ DB.historicalGans[y].push({gan:"",address:"",campus:"",age:"",a:0,b:0,c:0,f:0}); save(); renderHistGans(host,admin); };
   const doImport=(replace)=>{
     const parsed=parseHistGans($("#hg-paste").value);
     if(!parsed.length){ toast('לא זוהתה טבלה תקינה (צריך כותרת "גן")'); return; }
     if(replace) DB.historicalGans[y]=parsed;
     else{
       const cur=DB.historicalGans[y]||[];
-      const key=r=>(r.gan.trim()+"|"+(r.age||"").trim()).toLowerCase();
+      const key=r=>(r.gan.trim()+"|"+(r.campus||"").trim()+"|"+(r.age||"").trim()).toLowerCase();
       const map=new Map(cur.map(r=>[key(r),r]));
-      parsed.forEach(r=>{ map.set(key(r), r); }); // מעדכן/מוסיף לפי גן+גיל
+      parsed.forEach(r=>{ map.set(key(r), r); }); // מעדכן/מוסיף לפי גן+קמפוס+גיל
       DB.historicalGans[y]=[...map.values()];
     }
     save(); renderHistGans(host,admin); toast(`יובאו ${parsed.length} גנים לשנת ${y}`);
