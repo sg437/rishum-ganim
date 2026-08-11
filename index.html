@@ -232,6 +232,15 @@ const ASSIGN_ROLES = [
   {role:"גננת ממלאת מקום", extra:"duration"},
   {role:"סייעת ממלאת מקום", extra:"duration"}
 ];
+/* שדה "נוסף" לכל תפקיד לפי שם (ימים/תקופה) — לשמירה על המטא-דאטה גם כשהסדר נקבע בהגדרות */
+const EXTRA_BY_ROLE = Object.fromEntries(ASSIGN_ROLES.map(m=>[m.role, m.extra||""]));
+/* תפקידי השיבוץ לפי הסדר שנקבע בהגדרות (STAFF_ROLES) — כך שסדר ההגדרות = סדר השיבוץ.
+   תפקידי שיבוץ מובנים שאינם ברשימת ההגדרות (למשל אחרי עדכון) מתווספים בסוף כדי שלא ייעלמו. */
+function assignRoles(){
+  const order=STAFF_ROLES.slice();
+  ASSIGN_ROLES.forEach(m=>{ if(!order.includes(m.role)) order.push(m.role); });
+  return order.map(role=>({ role, extra: EXTRA_BY_ROLE[role]||"" }));
+}
 const ASSISTANT_B_ROLE = "סייעת ב'";   // תפקיד שנפתח רק כשהגן הגיע לסף בנות (סעיף חדש 2)
 const ASSISTANT_B_MIN  = 30;           // מספר בנות מינימלי בגן כדי לאפשר שיבוץ "סייעת ב'"
 /* הקשרי שיבוץ — פעילות הגן / צהרונים / קייטנות (סעיף 8) */
@@ -644,7 +653,9 @@ function updatePwaIcons(){
   }catch(e){ console.error(e); }
 }
 let deferredInstallPrompt=null;
-window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstallPrompt=e; });
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstallPrompt=e;
+  if(document.getElementById('install-box')) renderInstallBox(); }); // עדכון חי של הכפתור אם מסך ההגדרות פתוח
+window.addEventListener('appinstalled', ()=>{ deferredInstallPrompt=null; toast("המערכת הותקנה כאפליקציה ✓"); if(document.getElementById('install-box')) renderInstallBox(); });
 if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
 
 /* ---------- הרשאות: רק מנהל משנה הגדרות מערכת (סעיף 15) ---------- */
@@ -776,37 +787,40 @@ function renderSettingsList(host, items, onSave, dis){
   host.querySelectorAll(".sle-item").forEach(inp=>{ inp.onchange=()=>{ const i=+inp.dataset.i, v=inp.value.trim(); const next=items.slice(); if(v) next[i]=v; else next.splice(i,1); onSave(next); }; });
   host.querySelectorAll(".sle-del").forEach(b=>{ b.onclick=()=>{ const i=+b.dataset.i; const next=items.slice(); next.splice(i,1); onSave(next); }; });
 }
-/* עורך תפקידי צוות: שם + שיוך חינוך (סעיף 4) + צבע לכל תפקיד (סעיף 9) */
+/* עורך תפקידי צוות: שם + שיוך חינוך + צבע + סידור ידני (מעלה/מטה). הסדר כאן = הסדר בשיבוץ. */
 function renderRolesEditor(host, dis){
   if(!host) return;
-  const roles=STAFF_ROLES.slice(), meta=roleMetaAll();
-  host.innerHTML = roles.length ? `
-    <div class="row" style="gap:8px;margin-bottom:4px;color:var(--muted);font-size:.8rem;max-width:520px">
-      <span style="flex:1;min-width:150px">תפקיד</span><span style="min-width:120px">שיוך חינוך</span><span style="width:44px;text-align:center">צבע</span><span style="width:28px"></span></div>` +
-    roles.map((r,i)=>{
-    const rm=meta[r]||{}; const edu=(rm.edu==="רגיל"||rm.edu==='ח"מ')?rm.edu:"both";
-    const col=/^#[0-9a-fA-F]{6}$/.test(rm.color||"")?rm.color:"#8a8f98";
-    return `<div class="row rle-row" data-role="${esc(r)}" style="gap:8px;margin-bottom:6px;align-items:center;flex-wrap:wrap;max-width:520px">
-      <input class="rle-name" style="min-width:150px;flex:1" value="${esc(r)}" ${dis}>
-      <select class="rle-edu" style="min-width:120px" ${dis}>${ROLE_EDU_OPTS.map(o=>`<option value="${esc(o[0])}" ${edu===o[0]?'selected':''}>${esc(o[1])}</option>`).join("")}</select>
-      <input class="rle-color" type="color" value="${col}" title="צבע התפקיד" ${dis} style="width:44px;height:32px;padding:2px">
-      ${dis?'':`<button class="btn ghost sm rle-del" title="מחיקה">🗑️</button>`}
-    </div>`;
-  }).join("") : `<div class="hint">הרשימה ריקה — ברירת המחדל תשמש.</div>`;
+  const meta=roleMetaAll();
+  const items=STAFF_ROLES.map(r=>{ const rm=meta[r]||{};
+    return { name:r, edu:(rm.edu==="רגיל"||rm.edu==='ח"מ')?rm.edu:"both", color:/^#[0-9a-fA-F]{6}$/.test(rm.color||"")?rm.color:"#8a8f98" }; });
+  host.innerHTML = items.length ? items.map((it,i)=>`
+      <div class="rle-row" style="border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:8px;max-width:520px">
+        <input class="rle-name" value="${esc(it.name)}" ${dis} style="width:100%;font-weight:600;margin-bottom:6px">
+        <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="hint">חינוך:</span>
+          <select class="rle-edu" ${dis}>${ROLE_EDU_OPTS.map(o=>`<option value="${esc(o[0])}" ${it.edu===o[0]?'selected':''}>${esc(o[1])}</option>`).join("")}</select>
+          <span class="hint" style="margin-inline-start:8px">צבע:</span>
+          <input class="rle-color" type="color" value="${it.color}" ${dis} style="width:40px;height:30px;padding:2px">
+          ${dis?'':`<span style="margin-inline-start:auto"></span>
+          <button class="btn ghost sm rle-up" type="button" title="הזזה למעלה" ${i===0?'disabled':''}>▲</button>
+          <button class="btn ghost sm rle-down" type="button" title="הזזה למטה" ${i===items.length-1?'disabled':''}>▼</button>
+          <button class="btn ghost sm rle-del" type="button" title="מחיקה">🗑️</button>`}
+        </div>
+      </div>`).join("") : `<div class="hint">הרשימה ריקה — ברירת המחדל תשמש.</div>`;
   if(dis) return;
-  const readAll=()=>{
-    const nextRoles=[], nextMeta={};
-    host.querySelectorAll(".rle-row").forEach(row=>{
-      const nm=row.querySelector(".rle-name").value.trim(); if(!nm) return;
-      nextRoles.push(nm);
-      nextMeta[nm]={ edu:row.querySelector(".rle-edu").value, color:row.querySelector(".rle-color").value };
-    });
-    DB.settings.staffRoles=[...new Set(nextRoles)];
-    DB.settings.roleMeta=nextMeta;
+  const read=()=>[...host.querySelectorAll(".rle-row")].map(row=>({
+    name:row.querySelector(".rle-name").value.trim(),
+    edu:row.querySelector(".rle-edu").value,
+    color:row.querySelector(".rle-color").value })).filter(x=>x.name);
+  const persist=next=>{
+    DB.settings.staffRoles=[...new Set(next.map(x=>x.name))];
+    const mm={}; next.forEach(x=>{ mm[x.name]={edu:x.edu,color:x.color}; }); DB.settings.roleMeta=mm;
     save(); route(); toast("נשמר");
   };
-  host.querySelectorAll(".rle-name,.rle-edu,.rle-color").forEach(el=> el.onchange=readAll);
-  host.querySelectorAll(".rle-del").forEach(b=> b.onclick=()=>{ b.closest(".rle-row").remove(); readAll(); });
+  host.querySelectorAll(".rle-name,.rle-edu,.rle-color").forEach(el=> el.onchange=()=>persist(read()));
+  host.querySelectorAll(".rle-del").forEach((b,i)=> b.onclick=()=>{ const n=read(); n.splice(i,1); persist(n); });
+  host.querySelectorAll(".rle-up").forEach((b,i)=> b.onclick=()=>{ const n=read(); if(i>0){ [n[i-1],n[i]]=[n[i],n[i-1]]; persist(n); } });
+  host.querySelectorAll(".rle-down").forEach((b,i)=> b.onclick=()=>{ const n=read(); if(i<n.length-1){ [n[i+1],n[i]]=[n[i],n[i+1]]; persist(n); } });
 }
 function route(){
   syncSettingsLists();
@@ -1098,18 +1112,20 @@ function renderDriveBox(){
 function renderInstallBox(){
   const box=$("#install-box"); if(!box) return;
   const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true;
-  if(standalone){ box.innerHTML=`<div class="note">✅ המערכת פתוחה כרגע כאפליקציה מותקנת. אפשר להיכנס אליה ישירות מהאייקון במסך הבית.</div>`; return; }
+  if(standalone){ box.innerHTML=`<div class="note">✅ המערכת פתוחה כרגע כאפליקציה מותקנת. אפשר להיכנס אליה ישירות מהאייקון (בשולחן העבודה / מסך הבית).</div>`; return; }
+  const isDesktop = !/(Android|iPhone|iPad|iPod|Mobile)/i.test(navigator.userAgent||"");
   box.innerHTML=`
-    ${deferredInstallPrompt?`<div class="row" style="margin-bottom:8px"><button class="btn" id="do-install">📲 התקן כאפליקציה עכשיו</button></div>`:``}
+    ${deferredInstallPrompt?`<div class="row" style="margin-bottom:8px"><button class="btn" id="do-install">💻 התקן ${isDesktop?'על המחשב':'כאפליקציה'} עכשיו</button></div>`
+      :`<div class="note" style="margin-bottom:8px">💡 אם כפתור ההתקנה אינו מופיע כאן — אפשר תמיד להתקין ידנית לפי ההוראות למטה. ${isDesktop?'ב-Chrome/Edge חפש/י את אייקון ההתקנה <b>⊕</b> בקצה שורת הכתובת (ליד הכוכב).':''}</div>`}
     <div class="hint" style="line-height:1.9">
-      <b>באנדרואיד (Chrome):</b> ${deferredInstallPrompt?'לחצ/י על הכפתור למעלה, או פתח/י ':'פתח/י את '}תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה"</b> / "הוספה למסך הבית".<br>
-      <b>באייפון/אייפד (Safari):</b> לחצ/י על כפתור השיתוף <b>⬆️</b> (למטה) ← <b>"הוספה למסך הבית"</b>.<br>
-      <b>במחשב (Chrome/Edge):</b> אייקון ההתקנה ⊕ בשורת הכתובת, או תפריט ⋮ ← "התקנה".<br>
-      <span style="color:var(--accent-strong)">האייקון שיופיע במסך הבית יהיה הלוגו שהגדרת ב"מיתוג".</span> אם תשנה/י את הלוגו בעתיד — התקן/י מחדש כדי שהאייקון יתעדכן (מערכת ההפעלה שומרת את האייקון הקודם).
+      <b>💻 במחשב (Chrome / Edge):</b> לחצ/י על אייקון ההתקנה <b>⊕</b> בקצה שורת הכתובת (או תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה" / "Install"</b>). ייפתח חלון נפרד עם אייקון בשולחן העבודה — כניסה ישירה לתוכנה בלי דפדפן.<br>
+      <b>📱 באנדרואיד (Chrome):</b> ${deferredInstallPrompt?'לחצ/י על הכפתור למעלה, או פתח/י ':'פתח/י את '}תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה"</b> / "הוספה למסך הבית".<br>
+      <b>🍏 באייפון/אייפד (Safari):</b> לחצ/י על כפתור השיתוף <b>⬆️</b> (למטה) ← <b>"הוספה למסך הבית"</b>.<br>
+      <span style="color:var(--accent-strong)">האייקון שיופיע יהיה הלוגו שהגדרת ב"מיתוג".</span> אם תשנה/י את הלוגו בעתיד — התקן/י מחדש כדי שהאייקון יתעדכן (מערכת ההפעלה שומרת את האייקון הקודם).
     </div>`;
   const b=$("#do-install");
   if(b) b.onclick=async ()=>{
-    if(!deferredInstallPrompt){ toast("ההתקנה זמינה מתפריט הדפדפן"); return; }
+    if(!deferredInstallPrompt){ toast("ההתקנה זמינה מאייקון ⊕ בשורת הכתובת או מתפריט הדפדפן"); return; }
     deferredInstallPrompt.prompt();
     try{ await deferredInstallPrompt.userChoice; }catch(e){}
     deferredInstallPrompt=null; renderInstallBox();
@@ -1276,7 +1292,7 @@ function renderStuTable(){
     ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
     <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
     ${list.map(s=>`<tr>
-      <td><label class="check" style="display:inline-flex;gap:6px;align-items:center;margin:0" title="סימון 'סיימה/יצאה' — מסונכרן עם התיק (סעיף 8)"><input type="checkbox" class="stu-finish" data-id="${esc(s.id)}" ${s.finished?'checked':''}> <b>${esc(s.lastName)} ${esc(s.firstName)}</b></label></td>
+      <td><label class="check" style="display:inline-flex;gap:6px;align-items:center;margin:0" title="סימון 'סיימה/יצאה' — מסונכרן עם התיק"><input type="checkbox" class="stu-finish" data-id="${esc(s.id)}" ${s.finished?'checked':''}> <b>${esc(s.lastName)} ${esc(s.firstName)}</b></label></td>
       <td>${esc(s.tz)||'—'}</td>
       <td>${esc(ganName(s.ganId))}</td>
       <td>${esc(s.age)||'—'}</td>
@@ -1352,11 +1368,11 @@ function openStudent(s){
     <div class="doc-rows" id="doc-rows"></div>
   </fieldset>
   <fieldset><legend>תוכניות ומועדונים</legend>
-    <div class="hint" style="margin-bottom:8px">בקייטנות אפשר לסמן אם התשלום שולם (סעיף 5).</div>
+    <div class="hint" style="margin-bottom:8px">בקייטנות אפשר לסמן אם התשלום שולם.</div>
     <div id="pg-rows"></div>
   </fieldset>
   <fieldset><legend>סיוע והעשרה</legend>
-    <div class="hint" style="margin-bottom:8px">סימון סוג הסיוע שהילדה מקבלת — לפי הסימון יוצגו הילדות בשיבוץ העובדת המתאימה (שילוב / רפואית–סל אישי / מנתחת התנהגות / הכנה לכיתה א׳). אפשר לצרף מסמך לכל סוג — נשמר בדרייב עם שם הילדה וּת"ז (סעיף 15).</div>
+    <div class="hint" style="margin-bottom:8px">סימון סוג הסיוע שהילדה מקבלת — לפי הסימון יוצגו הילדות בשיבוץ העובדת המתאימה (שילוב / רפואית–סל אישי / מנתחת התנהגות / הכנה לכיתה א׳). אפשר לצרף מסמך לכל סוג — נשמר בדרייב עם שם הילדה וּת"ז.</div>
     <div class="doc-rows" id="support-rows"></div>
   </fieldset>
   <fieldset><legend>שונות</legend>
@@ -1838,7 +1854,7 @@ function openImport(){
     <div class="checks">
       <label class="check"><input type="checkbox" id="imp-absorbed" checked> סמן את כולם כ"קלוט בעירייה"</label>
       <label class="check"><input type="checkbox" id="imp-reg" checked> סמן את כולם כ"נרשמה על ידינו"</label>
-      <label class="check"><input type="checkbox" id="imp-tzaharon"> סמן את כולם כרשומות לצהרון (סעיף 11)</label>
+      <label class="check"><input type="checkbox" id="imp-tzaharon"> סמן את כולם כרשומות לצהרון</label>
       <label class="check"><input type="checkbox" id="imp-skipdup" checked> דלג על ת"ז שכבר קיימת בשנה זו</label>
     </div>
     <div class="hint">אם בקובץ יש עמודת "קלוט בעירייה" / "נרשמה על ידינו" — הערך שבקובץ גובר על ברירות המחדל.</div>
@@ -2474,7 +2490,7 @@ function viewStaff(root){
     </div>
     <div class="toolbar">
       <div class="field grow"><label>חיפוש (שם / טלפון / עיר)</label><input id="fs-q" value="${esc(staffFilter.q)}" placeholder="הקלד/י…"></div>
-      <div class="field"><label>תפקיד</label><select id="fs-role"><option value="">הכל</option>${STAFF_ROLES.slice().sort((a,b)=>a.localeCompare(b,"he")).map(r=>`<option ${staffFilter.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
+      <div class="field"><label>תפקיד</label><select id="fs-role"><option value="">הכל</option>${STAFF_ROLES.map(r=>`<option ${staffFilter.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
     </div>
     <div id="staffTable"></div>
   </div>`;
@@ -2524,7 +2540,7 @@ function openStaff(m){
       <div><label>שם פרטי</label><input id="st-firstName" value="${esc(m.firstName)}"></div>
       <div><label>מספר זהות (ת"ז)</label><input id="st-tz" value="${esc(m.tz)}" inputmode="numeric"></div>
       <div><label>מייל</label><input id="st-email" value="${esc(m.email)}" type="email" inputmode="email"></div>
-      <div><label>תפקיד</label><select id="st-role">${(m.role && !STAFF_ROLES.includes(m.role))?`<option selected>${esc(m.role)}</option>`:''}${STAFF_ROLES.slice().sort((a,b)=>a.localeCompare(b,"he")).map(r=>`<option ${m.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
+      <div><label>תפקיד</label><select id="st-role">${(m.role && !STAFF_ROLES.includes(m.role))?`<option selected>${esc(m.role)}</option>`:''}${STAFF_ROLES.map(r=>`<option ${m.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="st-education">${EDU_TYPES.map(t=>`<option ${eduLabel(m)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>טלפון</label><input id="st-phone" value="${esc(m.phone)}" inputmode="tel"></div>
       <div><label>נייד</label><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
@@ -2534,7 +2550,7 @@ function openStaff(m){
     <fieldset><legend>תעודה</legend>
       <div id="st-cert"></div>
     </fieldset>
-    <fieldset><legend>כניסה / יציאה באמצע שנה (סעיף 6)</legend>
+    <fieldset><legend>כניסה / יציאה באמצע שנה</legend>
       <div class="hint" style="margin-bottom:8px">לדוגמה: יצאה לחופשת לידה וחזרה. לכל שורה: כניסה/יציאה · תאריך · פירוט.</div>
       <div id="st-moves"></div>
       <button class="btn ghost sm" id="st-add-move" type="button" style="margin-top:6px">➕ הוספת שורה</button>
@@ -2551,11 +2567,11 @@ function openStaff(m){
       <div id="st-lateness"></div>
       <button class="btn ghost sm" id="st-add-late" type="button" style="margin-top:6px">➕ הוספת איחור</button>
     </fieldset>
-    <fieldset><legend>תיק מלא — גנים, תפקידים וילדות (סעיף 22)</legend>
+    <fieldset><legend>תיק מלא — גנים, תפקידים וילדות</legend>
       <div id="st-full"></div>
     </fieldset>
     ${DRIVE_READY?`<fieldset><legend>תיקיית דרייב</legend>
-      <div class="hint" style="margin-bottom:8px">תיקייה אישית בדרייב, מחולקת לפי חינוך רגיל/מיוחד (סעיף 17).</div>
+      <div class="hint" style="margin-bottom:8px">תיקייה אישית בדרייב, מחולקת לפי חינוך רגיל/מיוחד.</div>
       <div id="st-drive"></div>
     </fieldset>`:''}
     <div class="foot">${!isNew?'<button class="btn danger" id="delSt">מחיקה</button>':''}<button class="btn" id="saveSt" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="cancelSt">ביטול</button></div>`);
@@ -2805,11 +2821,15 @@ function asgCtxMap(ctx=asgContext){ const y=asgYear(); return y[ctx] || (y[ctx]=
 function ganAsg(ganId, ctx=asgContext){ const y=DB.assignments[DB.activeYear]; const c=y&&y[ctx]; return (c&&c[ganId])||{}; } // קריאה בלבד
 function ctxLabel(id){ const c=ASSIGN_CONTEXTS.find(x=>x.id===id); return c?c.label:id; }
 function asgRoleMeta(role){ return ASSIGN_ROLES.find(r=>r.role===role); }
-function asgExtraLabel(role){ const m=asgRoleMeta(role); return m&&m.extra==="days"?"ימים":(m&&m.extra==="duration"?"תקופה":""); }
+function asgExtraLabel(role){ const ex=EXTRA_BY_ROLE[role]; return ex==="days"?"ימים":(ex==="duration"?"תקופה":""); }
 function asgExtraText(role, cur){
-  const m=asgRoleMeta(role); if(!m||!m.extra||!cur) return "";
-  if(m.extra==="days") return (cur.days||[]).join(", ");
-  if(m.extra==="duration"){ if(cur.durType==="year") return "שנה"; if(cur.durType==="months") return cur.durMonths?`${cur.durMonths} חודשים`:"מספר חודשים"; }
+  const ex=EXTRA_BY_ROLE[role]; if(!ex||!cur) return "";
+  if(ex==="days") return (cur.days||[]).join(", ");
+  if(ex==="duration"){
+    if(cur.durType==="year") return "שנה";
+    if(cur.durType==="dates") return (cur.durFrom||cur.durTo)?`${cur.durFrom?fmtDate(cur.durFrom):'—'} עד ${cur.durTo?fmtDate(cur.durTo):'—'}`:"טווח תאריכים";
+    if(cur.durType==="months") return cur.durMonths?`${cur.durMonths} חודשים`:"מספר חודשים"; // תאימות לאחור
+  }
   return "";
 }
 /* שמות הילדות המשויכות לעובד/ת בתפקיד סיוע (שילוב/רפואית/מנתחת/הכנה) — סעיפים 15, 21 */
@@ -2932,7 +2952,7 @@ function viewAssign(root){
     <th>שם הגן</th><th>סמל</th><th>גיל</th><th>חינוך</th><th>צוות משובץ</th><th></th></tr></thead><tbody>
     ${gans.map(g=>{
       const a=ganAsg(g.id);
-      const items=ASSIGN_ROLES.map(meta=>{ const cur=a[meta.role]; if(!cur||!(cur.name||cur.staffId)) return "";
+      const items=assignRoles().map(meta=>{ const cur=a[meta.role]; if(!cur||!(cur.name||cur.staffId)) return "";
         const extra=asgExtraText(meta.role,cur);
         const kids=asgStudentsLabel(meta.role, cur);
         return `<div style="margin:2px 0">${roleChip(meta.role)} <b>${esc(cur.name||"")}</b>${cur.phone?` · ${esc(cur.phone)}`:""}${extra?` · <span style="color:var(--muted)">${esc(asgExtraLabel(meta.role))}: ${esc(extra)}</span>`:""}${kids?`<div style="margin-inline-start:14px;color:var(--accent-strong);font-size:.85rem">👧 ${esc(kids)}</div>`:""}</div>`;
@@ -2963,9 +2983,19 @@ function openGanAssign(ganId){
   const mandatory = isMandatoryGan(g);
   const bAssigned = !!(a[ASSISTANT_B_ROLE] && (a[ASSISTANT_B_ROLE].staffId||a[ASSISTANT_B_ROLE].name));
   const bEligible = reg>=ASSISTANT_B_MIN && !mandatory;
-  const roles = ASSIGN_ROLES
+  const roles = assignRoles()   // לפי הסדר שנקבע בהגדרות
     .filter(m=> m.role!==ASSISTANT_B_ROLE || ((bEligible || bAssigned) && !mandatory))
-    .filter(m=> roleFitsEdu(m.role, ganEdu)); // רק תפקידים המשויכים לחינוך הגן (סעיף 4)
+    .filter(m=> roleFitsEdu(m.role, ganEdu)); // רק תפקידים המשויכים לחינוך הגן
+  /* בניית רשימת עובדות לבחירה (datalist) + פתרון שם חופשי → עובד/ת */
+  const byNameHe=(x,y)=>staffName(x).localeCompare(staffName(y),"he");
+  function staffDatalistHtml(role){
+    const here=DB.staff.filter(m=>m.role===role).sort(byNameHe);
+    const other=DB.staff.filter(m=>m.role!==role).sort(byNameHe);
+    const mk=m=>`<option value="${esc(staffName(m))}">${m.role!==role?('['+esc(m.role||'ללא תפקיד')+'] '):''}${(m.mobile||m.phone)?esc(m.mobile||m.phone):''}</option>`;
+    return here.map(mk).join("")+other.map(mk).join("");
+  }
+  function resolveStaff(role, text){ const t=String(text||"").trim(); if(!t) return null;
+    return DB.staff.find(m=>m.role===role && staffName(m)===t) || DB.staff.find(m=>staffName(m)===t) || null; }
   /* בניית תיבות הימים לתפקיד "לפי ימים" — משבצת רק ימים פנויים לעובד/ת שנבחרה (סעיף 1) */
   function daysBoxHtml(selectedStaffId, wantDays){
     const taken = selectedStaffId ? staffTakenDays(idx, selectedStaffId) : {};
@@ -2990,11 +3020,12 @@ function openGanAssign(ganId){
       ${roles.map(meta=>{
         const role=meta.role, cur=a[role]||{}, days=cur.days||[];
         const isDays = meta.extra==="days";
-        const supKey = supportKeyForRole(role);          // תפקיד סיוע → מפתח הסיוע (סעיפים 15, 21)
-        const multiGan = !!supKey;                        // עובדות סיוע יכולות להיות בכמה גנים (סעיף 21)
-        const byRole=(a,b)=>staffName(a).localeCompare(staffName(b),"he");
-        const opts=DB.staff.filter(m=>m.role===role).sort(byRole);          // עובדות בתפקיד זה (סעיף 1 — א"ב)
-        const others=DB.staff.filter(m=>m.role!==role).sort(byRole);        // עובדות מתפקידים אחרים (סעיף 20)
+        const supKey = supportKeyForRole(role);          // תפקיד סיוע → מפתח הסיוע
+        const multiGan = !!supKey;                        // עובדות סיוע יכולות להיות בכמה גנים
+        const dlId="dl-"+role.replace(/[^0-9A-Za-z֐-׿]/g,"_");
+        const curStaff = cur.staffId ? DB.staff.find(x=>x.id===cur.staffId) : null;
+        const display = curStaff ? staffName(curStaff) : (cur.name||"");
+        const datesOn = (cur.durType==='dates'||cur.durType==='months');
         let extraHtml="";
         if(isDays){
           extraHtml=`<div class="field" style="min-width:230px;flex:1"><label>ימים</label>
@@ -3006,12 +3037,14 @@ function openGanAssign(ganId){
               <select class="asg-durtype">
                 <option value="" ${!cur.durType?'selected':''}>—</option>
                 <option value="year" ${cur.durType==='year'?'selected':''}>שנה</option>
-                <option value="months" ${cur.durType==='months'?'selected':''}>מספר חודשים (חופשת לידה)</option>
+                <option value="dates" ${datesOn?'selected':''}>מתאריך עד תאריך</option>
               </select></div>
-            <div class="field asg-months-wrap" style="min-width:110px;${cur.durType==='months'?'':'display:none'}"><label>מס' חודשים</label>
-              <input class="asg-durmonths" inputmode="numeric" value="${esc(cur.durMonths||"")}"></div>`;
+            <div class="field asg-dates-wrap" style="min-width:150px;${datesOn?'':'display:none'}"><label>מתאריך</label>
+              <input type="date" class="asg-durfrom" value="${esc(cur.durFrom||'')}"></div>
+            <div class="field asg-dates-wrap" style="min-width:150px;${datesOn?'':'display:none'}"><label>עד תאריך</label>
+              <input type="date" class="asg-durto" value="${esc(cur.durTo||'')}"></div>`;
         }
-        /* תיבת בחירת ילדות משויכות לתפקידי סיוע — רק ילדות בגן זה המסומנות באותו סיוע (סעיפים 15, 21) */
+        /* תיבת בחירת ילדות משויכות לתפקידי סיוע — רק ילדות בגן זה המסומנות באותו סיוע */
         let kidsHtml="";
         if(supKey){
           const supLbl=(SUPPORT_TYPES.find(t=>t[0]===supKey)||[])[1]||"";
@@ -3020,27 +3053,15 @@ function openGanAssign(ganId){
           kidsHtml=`<div class="field" style="flex:1 1 100%;min-width:230px"><label>ילדות משויכות · ${esc(supLbl)}</label>
             ${kids.length? `<div class="checks asg-kids-box" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px">
               ${kids.map(s=>`<label class="check"><input type="checkbox" class="asg-kid" value="${esc(s.id)}" ${chosen.has(s.id)?'checked':''}> ${esc(s.lastName)} ${esc(s.firstName)}</label>`).join("")}
-            </div>` : `<div class="hint">אין בגן זה ילדות המסומנות "${esc(supLbl)}". יש לסמן זאת בתיק הילדה (סעיף שונות → סיוע/העשרה).</div>`}
+            </div>` : `<div class="hint">אין בגן זה ילדות המסומנות "${esc(supLbl)}". יש לסמן זאת בתיק הילדה (שונות → סיוע/העשרה).</div>`}
           </div>`;
         }
-        /* אפשרות רגילה: עובד/ת המשובצת בגן אחר מושבתת (אלא אם תפקיד סיוע — שמותר בכמה גנים, סעיף 21) */
-        const optOne=(m,other)=>{
-          const elsewhere = !isDays && !multiGan && idx[m.id] && cur.staffId!==m.id;
-          const where = elsewhere ? ganName(idx[m.id][0].ganId) : "";
-          return `<option value="${m.id}" ${cur.staffId===m.id?'selected':''} ${elsewhere?'disabled':''}>${esc(staffName(m))}${other?` · [${esc(m.role||'ללא תפקיד')}]`:''}${m.mobile||m.phone?(' · '+esc(m.mobile||m.phone)):''}${elsewhere?` · כבר משובצת ב${esc(where)}`:''}</option>`;
-        };
-        const optHtml=opts.map(m=>optOne(m,false)).join("");
-        const otherHtml=others.length?`<optgroup label="עובדות מתפקידים אחרים (סעיף 20)">${others.map(m=>optOne(m,true)).join("")}</optgroup>`:"";
-        return `<div class="panel" style="padding:10px;margin:0" data-role="${esc(role)}" data-days="${isDays?1:0}">
+        return `<div class="panel" style="padding:10px;margin:0" data-role="${esc(role)}" data-days="${isDays?1:0}" data-multi="${multiGan?1:0}">
           <div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap">
-            <div class="field" style="min-width:180px"><label>${roleChip(role)}</label>
-              <input class="asg-search" placeholder="🔎 הקלד/י שם…" style="margin-bottom:4px">
-              <select class="asg-staff">
-                <option value="">— בחר/י —</option>
-                ${optHtml}
-                ${otherHtml}
-              </select></div>
-            <div class="field" style="min-width:150px"><label>שם</label><input class="asg-name" value="${esc(cur.name||"")}"></div>
+            <div class="field" style="min-width:200px;flex:1"><label>${roleChip(role)}</label>
+              <input class="asg-combo" list="${dlId}" value="${esc(display)}" placeholder="הקלד/י שם או בחר/י מהרשימה ▾" autocomplete="off">
+              <datalist id="${dlId}">${staffDatalistHtml(role)}</datalist>
+              <input type="hidden" class="asg-staffid" value="${esc(cur.staffId||'')}"></div>
             <div class="field" style="min-width:130px"><label>טלפון</label><input class="asg-phone" value="${esc(cur.phone||"")}" inputmode="tel"></div>
             ${extraHtml}
             <button class="btn ghost sm asg-clear" type="button" title="הסרת השיבוץ בשורה זו">🗑️ הסר</button>
@@ -3054,24 +3075,30 @@ function openGanAssign(ganId){
       <button class="btn ghost" id="asg-cancel">ביטול</button>
     </div>`);
   $("#modal").querySelectorAll("[data-role]").forEach(box=>{
-    const sel=box.querySelector(".asg-staff"), nm=box.querySelector(".asg-name"), ph=box.querySelector(".asg-phone");
-    sel.onchange=()=>{
-      const m=DB.staff.find(x=>x.id===sel.value); if(m){ nm.value=staffName(m); ph.value=m.mobile||m.phone||""; }
-      if(box.dataset.days==='1'){ const dbox=box.querySelector(".asg-days-box"); if(dbox){
-        const checked=[...dbox.querySelectorAll(".asg-day:checked")].map(x=>x.value);
-        dbox.innerHTML=daysBoxHtml(sel.value, checked);
-      } }
+    const combo=box.querySelector(".asg-combo"), sid=box.querySelector(".asg-staffid"), ph=box.querySelector(".asg-phone");
+    let lastId=sid.value||"";
+    /* הקלדה/בחירה מהרשימה → זיהוי העובד/ת, מילוי טלפון, עדכון תיבת הימים, ואזהרה רכה על שיבוץ כפול */
+    const resolve=()=>{
+      const st=resolveStaff(box.dataset.role, combo.value);
+      if(st){
+        sid.value=st.id;
+        if(st.mobile||st.phone) ph.value=st.mobile||st.phone;
+        if(box.dataset.days==='1'){ const dbox=box.querySelector(".asg-days-box"); if(dbox){
+          const checked=[...dbox.querySelectorAll(".asg-day:checked")].map(x=>x.value);
+          dbox.innerHTML=daysBoxHtml(st.id, checked); } }
+        if(st.id!==lastId && box.dataset.multi!=='1' && box.dataset.days!=='1' && idx[st.id]){
+          toast("שים/י לב: "+staffName(st)+" כבר משובצת ב"+ganName(idx[st.id][0].ganId)); }
+        lastId=st.id;
+      } else { sid.value=""; lastId=""; }
     };
-    /* חיפוש/השלמה מהירה בשם — הקלדה מסננת את הרשימה (סעיף 13) */
-    const search=box.querySelector(".asg-search");
-    if(search) search.oninput=()=>{ const q=search.value.trim();
-      box.querySelectorAll(".asg-staff option").forEach(o=>{ if(o.value==="") return; o.hidden = !!q && !o.textContent.includes(q); }); };
-    /* הסרת שיבוץ בשורה (סעיף 18) */
+    combo.oninput=resolve; combo.onchange=resolve;
+    /* הסרת שיבוץ בשורה */
     const clr=box.querySelector(".asg-clear");
-    if(clr) clr.onclick=()=>{ sel.value=""; nm.value=""; ph.value="";
+    if(clr) clr.onclick=()=>{ combo.value=""; sid.value=""; ph.value=""; lastId="";
       box.querySelectorAll(".asg-kid:checked,.asg-day:checked").forEach(c=>c.checked=false); };
+    /* תקופה: הצגת שדות התאריכים כשנבחר "מתאריך עד תאריך" */
     const dt=box.querySelector(".asg-durtype");
-    if(dt) dt.onchange=()=>{ const w=box.querySelector(".asg-months-wrap"); if(w) w.style.display = dt.value==='months'?'':'none'; };
+    if(dt) dt.onchange=()=>{ box.querySelectorAll(".asg-dates-wrap").forEach(w=> w.style.display = dt.value==='dates'?'':'none'); };
   });
   $("#asg-cancel").onclick=closeModal;
   $("#asg-save").onclick=()=>{
@@ -3083,12 +3110,13 @@ function openGanAssign(ganId){
     Object.keys(existing).forEach(r=>{ if(!rendered.has(r)) entry[r]=existing[r]; });
     $("#modal").querySelectorAll("[data-role]").forEach(box=>{
       const role=box.dataset.role;
-      const sel=box.querySelector(".asg-staff"), nm=box.querySelector(".asg-name"), ph=box.querySelector(".asg-phone");
-      const val={ staffId:sel.value, name:nm.value.trim(), phone:ph.value.trim() };
+      const combo=box.querySelector(".asg-combo"), sid=box.querySelector(".asg-staffid"), ph=box.querySelector(".asg-phone");
+      const st=sid.value? DB.staff.find(x=>x.id===sid.value) : null;
+      const val={ staffId:sid.value||"", name:(st?staffName(st):combo.value.trim()), phone:ph.value.trim() };
       const days=[...box.querySelectorAll(".asg-day:checked")].map(x=>x.value); if(days.length) val.days=days;
       const kids=[...box.querySelectorAll(".asg-kid:checked")].map(x=>x.value); if(kids.length) val.students=kids;
       const dt=box.querySelector(".asg-durtype");
-      if(dt&&dt.value){ val.durType=dt.value; if(dt.value==='months'){ const mm=box.querySelector(".asg-durmonths"); if(mm) val.durMonths=mm.value.trim(); } }
+      if(dt&&dt.value){ val.durType=dt.value; if(dt.value==='dates'){ const df=box.querySelector(".asg-durfrom"), dto=box.querySelector(".asg-durto"); if(df&&df.value) val.durFrom=df.value; if(dto&&dto.value) val.durTo=dto.value; } }
       if(val.staffId||val.name||val.phone||val.days||val.durType||val.students) entry[role]=val;
     });
     if(Object.keys(entry).length) cmap[ganId]=entry; else delete cmap[ganId];
@@ -3116,12 +3144,12 @@ function openAsgExport(){
     const phones=$("#ax-phones").checked, fixed=$("#ax-fixed").checked;
     const gans=eduScope(DB.gans.slice()).sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
     const headers=["שם הגן"]; if(fixed) headers.push("סמל פנימי","סמל גן","גיל","חינוך","כתובת","אזור","טל' גן","קיבולת","רשומות","סטטוס");
-    ASSIGN_ROLES.forEach(meta=>{ headers.push(meta.role); if(phones) headers.push(meta.role+" — טלפון"); if(meta.extra) headers.push(meta.role+" — "+asgExtraLabel(meta.role)); });
+    assignRoles().forEach(meta=>{ headers.push(meta.role); if(phones) headers.push(meta.role+" — טלפון"); if(meta.extra) headers.push(meta.role+" — "+asgExtraLabel(meta.role)); });
     const rows=gans.map(g=>{
       const reg=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
       const a=ganAsg(g.id); const row=[ganName(g.id)];
       if(fixed) row.push(g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),[g.address,g.building].filter(Boolean).join(" "),g.zone,g.phoneGan,g.capacity,reg,g.active?"פעיל":"כבוי");
-      ASSIGN_ROLES.forEach(meta=>{ const c=a[meta.role]||{}; row.push(c.name||""); if(phones) row.push(c.phone||""); if(meta.extra) row.push(asgExtraText(meta.role,c)); });
+      assignRoles().forEach(meta=>{ const c=a[meta.role]||{}; row.push(c.name||""); if(phones) row.push(c.phone||""); if(meta.extra) row.push(asgExtraText(meta.role,c)); });
       return row;
     });
     return { headers, rows };
@@ -3338,8 +3366,8 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
-    <h2>התקנה כאפליקציה בטלפון</h2>
-    <div class="sub">אפשר להתקין את המערכת כאפליקציה במסך הבית של הטלפון או המחשב — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג".</div>
+    <h2>התקנה כאפליקציה — טלפון או מחשב</h2>
+    <div class="sub">אפשר להתקין את המערכת כאפליקציה עצמאית — על המחשב (חלון נפרד עם אייקון בשולחן העבודה) או במסך הבית של הטלפון — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג". כניסה ישירה לתוכנה בלי לפתוח דפדפן.</div>
     <div id="install-box"></div>
   </div>
 
@@ -3407,7 +3435,7 @@ function viewSettings(root){
 
   <div class="panel">
     <h2>תפקידי צוות</h2>
-    <div class="sub">התפקידים שמופיעים לבחירה בכרטיס איש/אשת צוות, בסינון הצוות ובייבוא. לכל תפקיד אפשר לקבוע <b>שיוך חינוך</b> (רגיל / מיוחד / שניהם) — ובשיבוץ יוצגו רק תפקידים המתאימים לחינוך הגן (סעיף 4) — וכן <b>צבע</b> ייחודי (סעיף 9). אפשר להוסיף, לערוך או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
+    <div class="sub">התפקידים שמופיעים לבחירה בכרטיס איש/אשת צוות, בסינון הצוות ובייבוא. לכל תפקיד אפשר לקבוע <b>שיוך חינוך</b> (רגיל / מיוחד / שניהם) — ובשיבוץ יוצגו רק תפקידים המתאימים לחינוך הגן — וכן <b>צבע</b> ייחודי. אפשר להוסיף, לערוך או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
     <div id="roles-box"></div>
     ${admin?`<div class="row" style="margin-top:10px">
       <div class="field grow"><label>הוספת תפקיד</label><input id="new-role" placeholder="למשל: מטפלת"></div>
