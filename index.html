@@ -1295,10 +1295,12 @@ function renderStuTable(){
   const arr=k=> stuSort.key===k ? `<span class="arr">${stuSort.dir>0?'▲':'▼'}</span>` : "";
   const th=(k,lbl)=>`<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>`;
   host.innerHTML = `<div class="table-wrap"><table><thead><tr>
+    <th style="text-align:center" title="סימון 'סיימה/יצאה' — מסונכרן עם התיק">סיימו</th>
     ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
     <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
     ${list.map(s=>`<tr>
-      <td><label class="check" style="display:inline-flex;gap:6px;align-items:center;margin:0" title="סימון 'סיימה/יצאה' — מסונכרן עם התיק"><input type="checkbox" class="stu-finish" data-id="${esc(s.id)}" ${s.finished?'checked':''}> <b>${esc(s.lastName)} ${esc(s.firstName)}</b></label></td>
+      <td style="text-align:center"><input type="checkbox" class="stu-finish" data-id="${esc(s.id)}" ${s.finished?'checked':''} title="סימון 'סיימה/יצאה' — מסונכרן עם התיק"></td>
+      <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
       <td>${esc(s.tz)||'—'}</td>
       <td>${esc(ganName(s.ganId))}</td>
       <td>${esc(s.age)||'—'}</td>
