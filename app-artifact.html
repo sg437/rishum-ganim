@@ -175,37 +175,39 @@ body.locked nav.tabs,body.locked .year-pick,body.locked #themeBtn,body.locked #l
     <div class="top-spacer"></div>
     <div class="edu-pick" id="eduPick"></div>
     <div class="year-pick">שנה: <select id="yearSelect"></select></div>
+    <span id="syncStatus" style="display:none;font-size:.78rem;font-weight:800;white-space:nowrap;align-self:center"></span>
     <button class="icon-btn" id="lockBtn" title="נעילה" style="display:none">🔒</button>
     <button class="icon-btn" id="themeBtn" title="מצב תצוגה">🌓</button>
   </div>
   <nav class="tabs" id="tabs"></nav>
 </header>
 
+<div id="offlineBanner" style="display:none"></div>
 <main id="view"></main>
 
 <!-- modal host -->
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
 /* ============================================================
-   מערכת רישום וקליטת תלמידות — גרסת דמו (מקומית)
-   הנתונים נשמרים במכשיר זה בלבד (localStorage) ואינם מסתנכרנים.
-   הגרסה המתארחת (index.html) כוללת התחברות וסנכרון ענן (Firebase).
+   מערכת רישום וקליטת תלמידות — גרסת דמו (עצמאית)
+   הנתונים נשמרים במכשיר זה בלבד (localStorage) ואינם מסתנכרנים, וללא התחברות.
+   הגרסה המלאה (ענן Firestore + התחברות) נמצאת ב-index.html.
    ============================================================ */
-
-
-/* ===== כתובת "גשר" ה-Drive (Google Apps Script). ראה SETUP.md — "גשר Drive". אינה סוד ===== */
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxC0ywjZFGGb1IOCRhscp5dO9FSv4rEX3_bWV2wEgY05dIq3_OHTqFwU7UveV27KXm1/exec";
-const DRIVE_READY = false; // גרסת דמו — חיבור דרייב מושבת
+const CONFIG_READY = true;                 // דמו — אין צורך בהגדרת ענן
+const APPS_SCRIPT_URL = "";                // דמו — גשר Drive מושבת
+const DRIVE_READY = false;                 // דמו — חיבור דרייב מושבת
+const LS_KEY = "rishum-ganim-demo";        // מפתח האחסון המקומי בדפדפן
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
-const DEFAULT_STAFF_ROLES = ["גננת","סייעת","סייעת ב'","סייעת רפואית","סייעת צמודה","גננת משלימה","סייעת משלימה","העשרה","גננת שילוב","סייעת תגבור","פרא רפואי","גננת ממלאת מקום","סייעת ממלאת מקום"]; // תפקידי צוות (סעיף 2)
+const DEFAULT_STAFF_ROLES = ["גננת","סייעת","סייעת ב'","סייעת רפואית","סייעת רפואית משלימה","סייעת רפואית ממלאת מקום","סייעת צמודה","גננת משלימה","סייעת משלימה","העשרה","גננת שילוב","מנתחת התנהגות",'הכנה לכיתה א׳',"סייעת תגבור","פרא רפואי","גננת ממלאת מקום","סייעת ממלאת מקום"]; // תפקידי צוות (סעיף 2)
 const DEFAULT_CHILD_AGES = ["2","3","4","5","6"]; // גיל ילדה בודדת (סעיף 6)
 /* רשימות הניתנות לעריכה בהגדרות (מגובות ב-DB.settings); מסונכרנות ב-syncSettingsLists() */
 let STAFF_ROLES = DEFAULT_STAFF_ROLES.slice();
 let CHILD_AGES = DEFAULT_CHILD_AGES.slice();
+let CAMPUSES = [];   // רשימת קמפוסים מוגדרת בהגדרות (מקור לבחירה בגנים)
 const GAN_AGES = ["3","4","5","3/4","4/5"]; // גיל הגן — כולל גנים דו-גלאיים 3/4, 4/5 (סעיף 6)
 const WEEK_DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי"]; // ימי שיבוץ למשלימה (סעיף 7)
 /* תפקידי שיבוץ + שדות נוספים לכל תפקיד (סעיף 7):
@@ -215,16 +217,29 @@ const ASSIGN_ROLES = [
   {role:"סייעת"},
   {role:"סייעת ב'"},
   {role:"סייעת רפואית"},
+  {role:"סייעת רפואית משלימה", extra:"days"},
+  {role:"סייעת רפואית ממלאת מקום", extra:"duration"},
   {role:"סייעת צמודה"},
   {role:"גננת משלימה", extra:"days"},
   {role:"סייעת משלימה", extra:"days"},
   {role:"העשרה", extra:"days"},
   {role:"גננת שילוב", extra:"days"},
+  {role:"מנתחת התנהגות", extra:"days"},
+  {role:'הכנה לכיתה א׳', extra:"days"},
   {role:"סייעת תגבור", extra:"days"},
   {role:"פרא רפואי", extra:"days"},
   {role:"גננת ממלאת מקום", extra:"duration"},
   {role:"סייעת ממלאת מקום", extra:"duration"}
 ];
+/* שדה "נוסף" לכל תפקיד לפי שם (ימים/תקופה) — לשמירה על המטא-דאטה גם כשהסדר נקבע בהגדרות */
+const EXTRA_BY_ROLE = Object.fromEntries(ASSIGN_ROLES.map(m=>[m.role, m.extra||""]));
+/* תפקידי השיבוץ לפי הסדר שנקבע בהגדרות (STAFF_ROLES) — כך שסדר ההגדרות = סדר השיבוץ.
+   תפקידי שיבוץ מובנים שאינם ברשימת ההגדרות (למשל אחרי עדכון) מתווספים בסוף כדי שלא ייעלמו. */
+function assignRoles(){
+  const order=STAFF_ROLES.slice();
+  ASSIGN_ROLES.forEach(m=>{ if(!order.includes(m.role)) order.push(m.role); });
+  return order.map(role=>({ role, extra: EXTRA_BY_ROLE[role]||"" }));
+}
 const ASSISTANT_B_ROLE = "סייעת ב'";   // תפקיד שנפתח רק כשהגן הגיע לסף בנות (סעיף חדש 2)
 const ASSISTANT_B_MIN  = 30;           // מספר בנות מינימלי בגן כדי לאפשר שיבוץ "סייעת ב'"
 /* הקשרי שיבוץ — פעילות הגן / צהרונים / קייטנות (סעיף 8) */
@@ -249,6 +264,43 @@ const STUDENT_DOCS = [
   ["takanon","תקנון"]
 ];
 
+/* סוגי סיוע/העשרה לילדה — מפתח, כותרת (סעיף 15) */
+const SUPPORT_TYPES = [
+  ["shiluv","שילוב"],
+  ["salIshi","סל אישי"],
+  ["behavior","מנתחת התנהגות"],
+  ["prepA",'הכנה לכיתה א׳']
+];
+/* תפקידי שיבוץ שמשייכים ילדות לעובד/ת (סעיפים 15, 21) → מפתח הסיוע התואם */
+const SUPPORT_ROLE_MAP = {
+  "גננת שילוב":"shiluv",
+  "סייעת רפואית":"salIshi",
+  "סייעת רפואית משלימה":"salIshi",
+  "סייעת רפואית ממלאת מקום":"salIshi",
+  "מנתחת התנהגות":"behavior",
+  "הכנה לכיתה א׳":"prepA",
+  "הכנה לכיתה א'":"prepA"
+};
+function supportKeyForRole(role){ return SUPPORT_ROLE_MAP[role] || (role && role.indexOf("שילוב")>=0 ? "shiluv" : ""); }
+
+/* ===== מטא-נתונים לתפקידי צוות: שיוך חינוך + צבע (סעיפים 4, 9) =====
+   נשמר ב-DB.settings.roleMeta = { [role]: { edu:"both"|"רגיל"|'ח"מ', color:"#rrggbb" } } */
+const ROLE_EDU_OPTS = [["both","רגיל + מיוחד"],["רגיל","חינוך רגיל"],['ח"מ',"חינוך מיוחד"]];
+function roleMetaAll(){ return (DB.settings && DB.settings.roleMeta) || {}; }
+function roleMeta(role){ return roleMetaAll()[role] || {}; }
+function roleEdu(role){ const e=roleMeta(role).edu; return (e==="רגיל"||e==='ח"מ')?e:"both"; }
+function roleColor(role){ const c=roleMeta(role).color; return (typeof c==="string" && /^#[0-9a-fA-F]{6}$/.test(c))?c:""; }
+/* האם התפקיד מתאים לגן בחינוך זה (both = מתאים לכולם) — סעיף 4 */
+function roleFitsEdu(role, edu){ const re=roleEdu(role); return re==="both" || re===edu; }
+function hexToRgba(hex, a){ hex=String(hex||"").replace('#',''); if(hex.length===3) hex=hex.split('').map(x=>x+x).join(''); const n=parseInt(hex||"0",16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
+/* תווית תפקיד צבעונית לפי הצבע שהוגדר בהגדרות (סעיף 9) */
+function roleChip(role){
+  if(!role) return '<span class="pill neutral">—</span>';
+  const c=roleColor(role);
+  if(!c) return `<span class="pill neutral">${esc(role)}</span>`;
+  return `<span class="pill" style="background:${hexToRgba(c,.16)};color:${c};border:1px solid ${hexToRgba(c,.45)}">${esc(role)}</span>`;
+}
+
 /* ---------- מודל נתונים ---------- */
 function blankDB(){
   return {
@@ -267,37 +319,29 @@ function blankDB(){
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
-let currentUser=null;                 // גרסת דמו — אין התחברות/משתמש
+let currentUser=null; // דמו — אין התחברות
 let DB = blankDB();
-
-/* שמירה וטעינה מקומית (localStorage) — גרסת דמו ללא ענן */
-const LS_KEY = "rishum-ganim-db-v1";
+/* ---------- שמירה מקומית (localStorage) — גרסת דמו ללא ענן ---------- */
 let _saveTimer=null;
-function save(){ clearTimeout(_saveTimer); _saveTimer=setTimeout(()=>{
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
-  catch(e){ toast("שגיאת שמירה — ייתכן שאחסון הדפדפן מלא"); }
-}, 120); }
-function loadDB(){
-  let raw=null; try{ raw=localStorage.getItem(LS_KEY); }catch(e){}
-  let data={}; if(raw){ try{ data=JSON.parse(raw)||{}; }catch(e){ data={}; } }
-  DB = Object.assign(blankDB(), data);
-  DB.years = (DB.years&&DB.years.length)? DB.years : DEFAULT_YEARS.slice();
-  if(!DB.activeYear || !DB.years.includes(DB.activeYear)) DB.activeYear = DB.years[0];
-  DB.municipality = DB.municipality||{};
-  DB.historical = DB.historical||{};
-  DB.historicalGans = DB.historicalGans||{};
-  DB.settings = DB.settings||{ gansTarget:29, admins:[] };
-  if(!Array.isArray(DB.settings.admins)) DB.settings.admins=[];
-  DB.gans = DB.gans||[]; DB.management = DB.management||[];
-  DB.assignments = DB.assignments||{};
-  migrateAssignments();
-  DB.staff = (DB.staff||[]).map(normStaff);
-  DB.students = (DB.students||[]).map(normStudent);
+function setSyncStatus(){}       // דמו — אין חיווי סנכרון
+function recordUserActivity(){}  // דמו — אין מעקב משתמשים
+function save(){
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(()=>{
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+    catch(e){ console.error(e); toast("שמירה מקומית נכשלה — ייתכן שאין מספיק מקום באחסון הדפדפן"); }
+  }, 200);
 }
+/* בחירת השנה היא העדפה מקומית לכל דפדפן (לא מסונכרנת) — כדי שכל משתמש יוכל לצפות
+   בשנה שהוא רוצה בלי לכתוב לענן ובלי שהשרת ידרוס את בחירתו. */
+function getYearPref(){ try{ return localStorage.getItem("rg-year")||""; }catch(_){ return ""; } }
+function setYearPref(y){ try{ localStorage.setItem("rg-year", y); }catch(_){} }
 /* השלמת שדות חדשים לרשומות ישנות שנשמרו לפני העדכון */
 function normStudent(s){
   if(s.campus==null) s.campus=""; // קמפוס גנים (סעיף 1)
   if(s.placed==null) s.placed=true; // רשומות קיימות נחשבות משובצות (הגירה חד-פעמית)
+  if(s.insurancePaid==null) s.insurancePaid=false; // תשלום ביטוח תלמידים
+  if(s.retentionNext==null) s.retentionNext=false; // השארות לשנה הבאה
   s.docs = Object.assign({ nispach:false, idCopy:false, takanon:false }, s.docs||{});
   s.docFiles = s.docFiles||{};
   s.programs = Object.assign({ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, s.programs||{});
@@ -350,6 +394,99 @@ function findSiblings(ref){
 }
 function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // ברירת מחדל: חינוך רגיל
 function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
+/* איתור כפילות ת"ז באותה שנה — כולל בין סוגי חינוך שונים (מניעת רישום כפול). מחזיר את הרשומה הקיימת או null */
+function tzClashInYear(tz, year, exceptId){
+  const d=digits(tz); if(!d) return null;
+  return DB.students.find(x=> x.id!==exceptId && x.year===year && digits(x.tz)===d) || null;
+}
+/* תיאור קצר של הרשומה הקיימת — שם · חינוך · גן */
+function clashDesc(c){
+  const eduTxt = eduLabel(c)==='ח"מ' ? 'חינוך מיוחד' : 'חינוך רגיל';
+  const nm=[c.lastName,c.firstName].filter(Boolean).join(" ")||'ללא שם';
+  return nm+' · '+eduTxt+(c.ganId?(' · '+ganName(c.ganId)):'');
+}
+
+/* ============================================================
+   מעבר שנה — לוגיקת קידום (סעיף מעבר שנה)
+   ============================================================ */
+/* גיל של גן — תומך בגנים דו-גלאיים "3/4" / "4/5": האם הגן מכיל את הגיל הנתון */
+function ganMatchesAge(gan, age){ return String(gan.age||"").split("/").map(x=>x.trim()).includes(String(age)); }
+/* הגן המתקדם באותו קמפוס לגיל הנתון — רק אם יש בדיוק גן פעיל אחד מתאים (אחרת null → ללא גן) */
+function nextGanInCampus(src, newAge){
+  const srcGan=ganById(src.ganId);
+  const campus=(src.campus || (srcGan&&srcGan.campus) || "");
+  const edu=eduLabel(src);
+  const cands=DB.gans.filter(g=> g.active!==false && (g.campus||"")===campus && eduLabel(g)===edu && ganMatchesAge(g,newAge));
+  return cands.length===1 ? cands[0] : null;
+}
+/* השנה שאחרי (לפי סדר DB.years — סדר כרונולוגי של הוספה) */
+function nextYearOf(y){ const i=DB.years.indexOf(y); return (i>=0 && i<DB.years.length-1) ? DB.years[i+1] : null; }
+
+/* בניית רשומת התלמידה לשנת היעד לפי כללי המעבר.
+   forceRetain=true → השארות: אותו גן, אותו גיל, בלי קידום.
+   מחזיר null אם הילדה מסיימת (גן חובה / גיל 5+) ואינה בהשארות. */
+function buildPromoted(src, toYear, forceRetain){
+  const retain = forceRetain || !!src.retentionNext;
+  const curAge = parseInt(src.age,10);
+  if(!retain){
+    // מסיימת: גיל 5+ (גן חובה) — לא עוברת
+    if(!isNaN(curAge) && curAge>=5) return null;
+  }
+  const n=JSON.parse(JSON.stringify(src));
+  n.id=uid(); n.year=toYear; n.createdAt=new Date().toISOString();
+  n.period="א"; n.finished=false;
+  n.placed=false;                 // לא מסומנת משובצת
+  n.absorbedMunicipality=false;   // לא קלוט בעירייה (יעודכן בהמשך בעדכון קבוצתי)
+  n.insurancePaid=false;          // ביטוח — מחדש כל שנה
+  n.retentionNext=false;          // דגל ההשארות לא ממשיך אוטומטית הלאה
+  // גן + גיל
+  if(retain){
+    n.ganId=src.ganId; n.age=src.age; n.campus=src.campus;
+  } else if(!isNaN(curAge)){
+    const newAge=curAge+1;
+    const ng=nextGanInCampus(src,newAge);
+    n.age=String(newAge);
+    n.ganId = ng? ng.id : "";               // ללא גן אם אין התאמה יחידה (החלטה: להשאיר ללא גן)
+    n.campus = ng? (ng.campus||"") : "";
+  } else {
+    n.ganId=""; n.campus="";                // אין גיל — עובר ללא גן
+  }
+  // מסמכים — רק צילום ת"ז (סימון + קובץ) עובר; נספח/תקנון מתאפסים
+  const idFile = (src.docFiles && src.docFiles.idCopy) ? JSON.parse(JSON.stringify(src.docFiles.idCopy)) : null;
+  n.docs={ nispach:false, idCopy: !!(src.docs&&src.docs.idCopy), takanon:false };
+  n.docFiles = idFile ? { idCopy:idFile } : {};
+  // תוכניות/מועדונים + תשלומי קייטנה — ריק
+  n.programs={ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false };
+  n.programsPaid={ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false };
+  // סיוע והעשרה — ריק
+  n.support={ shiluv:false, salIshi:false, behavior:false, prepA:false };
+  // שונות: גרושים/חוץ/אחר — הסימון עובר; מסמכים וחתימות מחדש; השארות (של השנה) לא עוברת
+  const sp=src.special||{};
+  n.special={
+    divorced: !!sp.divorced,
+    approvalFather:false, approvalMother:false, idFather:false, idMother:false,
+    approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false,
+    outOfCity: !!sp.outOfCity, paymentArrangement:false,
+    retention:false, retentionDoc:false,
+    other: !!sp.other, otherText: sp.other ? (sp.otherText||"") : ""
+  };
+  // דרייב — תיקייה חדשה לשנה החדשה (תיווצר עם הצורך)
+  n.driveFolder=""; n.driveFolderId="";
+  // הערות — נקי
+  n.notes="";
+  return n;
+}
+/* העברה מיידית של ילדה שסומנה "השארות לשנה הבאה" — לשנה הבאה, באותו גן, אם עוד לא קיימת שם.
+   מחזיר {ok, year, reason}. אינו שומר — הקורא אחראי ל-save(). */
+function ensureRetentionTransfer(src){
+  const toYear=nextYearOf(src.year);
+  if(!toYear) return { ok:false, reason:"אין שנה הבאה מוגדרת בהגדרות" };
+  if(tzClashInYear(src.tz, toYear, null)) return { ok:false, reason:"כבר קיימת בשנה הבאה" };
+  const n=buildPromoted(src, toYear, true);
+  if(!n) return { ok:false, reason:"לא נוצרה רשומה" };
+  DB.students.push(n);
+  return { ok:true, year:toYear };
+}
 
 /* ---------- מיתוג: כותרת ולוגו ניתנים לשינוי (סעיפים 1–2) ---------- */
 const DEFAULT_TITLE = "מערכת רישום וקליטת תלמידות";
@@ -403,11 +540,38 @@ function updatePwaIcons(){
   }catch(e){ console.error(e); }
 }
 let deferredInstallPrompt=null;
-window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstallPrompt=e; });
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstallPrompt=e;
+  if(document.getElementById('install-box')) renderInstallBox(); }); // עדכון חי של הכפתור אם מסך ההגדרות פתוח
+window.addEventListener('appinstalled', ()=>{ deferredInstallPrompt=null; toast("המערכת הותקנה כאפליקציה ✓"); if(document.getElementById('install-box')) renderInstallBox(); });
 if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
 
 /* ---------- הרשאות: רק מנהל משנה הגדרות מערכת (סעיף 15) ---------- */
-function isAdmin(){ return true; } // גרסת דמו — כל ההגדרות פתוחות
+function isAdmin(){ return true; } // דמו — כל ההגדרות פתוחות
+
+/* ---------- ניהול משתמשים דרך גשר ה-Apps Script ----------
+   מאפשר למנהל ליצור/למחוק/לאפס-סיסמה/לרשום משתמשי התחברות מתוך ההגדרות.
+   הוספת משתמש עובדת דרך מפתח ה-Web (בלי הגדרות נוספות); רשימה/מחיקה/איפוס
+   דורשים הגדרת Service Account בגשר (ראה SETUP.md). ממיר שגיאות להודעות בעברית. */
+async function adminUsersCall(op, payload){
+  if(!DRIVE_READY) throw new Error("bridge-unavailable");
+  const action = { create:"userCreate", list:"userList", "delete":"userDelete", setPassword:"userSetPassword", setName:"userSetName" }[op];
+  if(!action) throw new Error("bad-op");
+  return await driveCall(action, payload||{});
+}
+function adminUsersErrHe(err){
+  const raw=(err&&err.message)||String(err||"");
+  if(/EMAIL_EXISTS|already.*exists/i.test(raw)) return "כתובת האימייל כבר קיימת במערכת.";
+  if(/INVALID_EMAIL|no-email/i.test(raw)) return "כתובת אימייל לא תקינה.";
+  if(/WEAK_PASSWORD|weak-password/i.test(raw)) return "הסיסמה חייבת להיות באורך 6 תווים לפחות.";
+  if(/not-admin/i.test(raw)) return "רק מנהל מערכת יכול לנהל משתמשים.";
+  if(/admin-check-failed/i.test(raw)) return "לא ניתן לאמת הרשאת מנהל כרגע — נסה/י שוב.";
+  if(/no-sa|service-account/i.test(raw)) return "רשימה/מחיקה/איפוס סיסמה דורשים הגדרת Service Account בגשר (ראה SETUP.md). הוספת משתמש עובדת בכל מקרה.";
+  if(/OPERATION_NOT_ALLOWED/i.test(raw)) return "התחברות אימייל/סיסמה אינה מופעלת בפרויקט Firebase.";
+  if(/unauthorized|token/i.test(raw)) return "יש להתחבר מחדש למערכת.";
+  if(/bridge-unavailable|drive-not-configured/i.test(raw)) return "גשר השרת (Apps Script) עדיין לא מוגדר — ראה SETUP.md.";
+  if(/network/i.test(raw)) return "אין חיבור לשרת. נסה/י שוב.";
+  return raw || "שגיאה בניהול המשתמשים.";
+}
 
 /* ---------- סינון "תיקיית" חינוך רגיל / מיוחד (סעיף 8) ---------- */
 let activeEdu = ""; // "" = הכל, "רגיל", 'ח"מ'
@@ -421,24 +585,38 @@ function makeStudent(){ return {
   ganId:"", age:"", period:"א", education:"רגיל",
   registeredByUs:true, absorbedMunicipality:false, finished:false,
   placed:true, // שיבוץ סופי בגן (משובצת). ילדה רשומה לגן דרך ganId; placed=false = ממתינה לשיבוץ עד סיום הבירור
+  retentionNext:false, // השארות לשנה הבאה — סימון קדימה שמעביר אוטומטית לשנה הבאה (נפרד מ-special.retention של השנה הנוכחית)
   docs:{ nispach:false, idCopy:false, takanon:false },
   docFiles:{}, // { [docKey]: {id,name,link} } — קובץ פיזי שצורף לכל מסמך (סעיף 12)
   programs:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, // סעיף 9
+  programsPaid:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, // סעיף 5 — תשלום קייטנה
+  insurancePaid:false, // תשלום ביטוח תלמידים (שולם/לא שולם)
   special:{ divorced:false, approvalFather:false, approvalMother:false,
+            idFather:false, idMother:false, approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false, // סעיף 7 — מסמכי הורים גרושים
             outOfCity:false, paymentArrangement:false,
             retention:false, retentionDoc:false,
             other:false, otherText:"" }, // סעיף 3 — "אחר" עם טקסט חופשי
+  support:{ shiluv:false, salIshi:false, behavior:false, prepA:false }, // סעיף 15 — סיוע/העשרה
   driveFolder:"", driveFolderId:"", notes:"", createdAt:new Date().toISOString()
 };}
 function makeStaff(){ return {
   id:uid(), lastName:"", firstName:"", name:"", tz:"", email:"", // ת"ז, מייל, שם משפחה/פרטי בנפרד (סעיף 1)
   role:"סייעת", education:"רגיל", phone:"", mobile:"", city:"", notes:"",
+  active:true,                       // פעיל/ה במערכת. false = עזב/ה (מוסתר/ת מהרשימה, לא נמחק)
+  certificate:false,                 // תעודה (סעיף 17)
+  movements:[],                      // כניסה/יציאה באמצע שנה: {type:'entry'|'exit', date, detail} (סעיף 6)
+  notesList:[],                      // הערות מרובות (סעיף 10)
+  absences:[],                       // העדרויות: {date, reason} (סעיף 10)
+  lateness:[],                       // איחורים: {date, reason} (סעיף 10)
+  docFiles:{},                       // מסמכים מצורפים (תעודה וכו') — {key:{id,name,link}}
+  driveFolder:"", driveFolderId:"",  // תיקיית דרייב לאיש הצוות (סעיף 17)
   createdAt:new Date().toISOString()
 };}
 function makeGan(){ return {
   id:uid(), ganName:"", internalSymbol:"", ganSymbol:"", teacherName:"", age:"", education:"רגיל",
   address:"", building:"", street:"", zone:"", phoneGan:"", phoneHome:"",
   teacherMobile:"", assistantName:"", assistantMobile:"",
+  campus:"",   // קמפוס הגן — מקור האמת; אצל התלמידות נגזר מהגן
   capacity:"", active:true, docsNote:"", createdAt:new Date().toISOString()
 };}
 
@@ -483,7 +661,10 @@ function cleanList(arr){ return Array.isArray(arr) ? [...new Set(arr.map(x=>Stri
 function syncSettingsLists(){
   const a=cleanList(DB.settings&&DB.settings.childAges);  CHILD_AGES  = (a&&a.length)? a : DEFAULT_CHILD_AGES.slice();
   const r=cleanList(DB.settings&&DB.settings.staffRoles); STAFF_ROLES = (r&&r.length)? r : DEFAULT_STAFF_ROLES.slice();
+  CAMPUSES = cleanList(DB.settings&&DB.settings.campuses) || [];   // קמפוסים מוגדרים (ריק = אין)
 }
+/* הקמפוס של גן לפי מזהה — מקור האמת לקמפוס התלמידה */
+function ganCampus(ganId){ const g=ganById(ganId); return g? (g.campus||"") : ""; }
 /* עורך רשימה כללי בהגדרות: שורה לכל פריט (עריכה בשדה + מחיקה); onSave מקבל מערך חדש */
 function renderSettingsList(host, items, onSave, dis){
   if(!host) return;
@@ -495,6 +676,41 @@ function renderSettingsList(host, items, onSave, dis){
   if(dis) return;
   host.querySelectorAll(".sle-item").forEach(inp=>{ inp.onchange=()=>{ const i=+inp.dataset.i, v=inp.value.trim(); const next=items.slice(); if(v) next[i]=v; else next.splice(i,1); onSave(next); }; });
   host.querySelectorAll(".sle-del").forEach(b=>{ b.onclick=()=>{ const i=+b.dataset.i; const next=items.slice(); next.splice(i,1); onSave(next); }; });
+}
+/* עורך תפקידי צוות: שם + שיוך חינוך + צבע + סידור ידני (מעלה/מטה). הסדר כאן = הסדר בשיבוץ. */
+function renderRolesEditor(host, dis){
+  if(!host) return;
+  const meta=roleMetaAll();
+  const items=STAFF_ROLES.map(r=>{ const rm=meta[r]||{};
+    return { name:r, edu:(rm.edu==="רגיל"||rm.edu==='ח"מ')?rm.edu:"both", color:/^#[0-9a-fA-F]{6}$/.test(rm.color||"")?rm.color:"#8a8f98" }; });
+  host.innerHTML = items.length ? items.map((it,i)=>`
+      <div class="rle-row" style="border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:8px;max-width:520px">
+        <input class="rle-name" value="${esc(it.name)}" ${dis} style="width:100%;font-weight:600;margin-bottom:6px">
+        <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="hint">חינוך:</span>
+          <select class="rle-edu" ${dis}>${ROLE_EDU_OPTS.map(o=>`<option value="${esc(o[0])}" ${it.edu===o[0]?'selected':''}>${esc(o[1])}</option>`).join("")}</select>
+          <span class="hint" style="margin-inline-start:8px">צבע:</span>
+          <input class="rle-color" type="color" value="${it.color}" ${dis} style="width:40px;height:30px;padding:2px">
+          ${dis?'':`<span style="margin-inline-start:auto"></span>
+          <button class="btn ghost sm rle-up" type="button" title="הזזה למעלה" ${i===0?'disabled':''}>▲</button>
+          <button class="btn ghost sm rle-down" type="button" title="הזזה למטה" ${i===items.length-1?'disabled':''}>▼</button>
+          <button class="btn ghost sm rle-del" type="button" title="מחיקה">🗑️</button>`}
+        </div>
+      </div>`).join("") : `<div class="hint">הרשימה ריקה — ברירת המחדל תשמש.</div>`;
+  if(dis) return;
+  const read=()=>[...host.querySelectorAll(".rle-row")].map(row=>({
+    name:row.querySelector(".rle-name").value.trim(),
+    edu:row.querySelector(".rle-edu").value,
+    color:row.querySelector(".rle-color").value })).filter(x=>x.name);
+  const persist=next=>{
+    DB.settings.staffRoles=[...new Set(next.map(x=>x.name))];
+    const mm={}; next.forEach(x=>{ mm[x.name]={edu:x.edu,color:x.color}; }); DB.settings.roleMeta=mm;
+    save(); route(); toast("נשמר");
+  };
+  host.querySelectorAll(".rle-name,.rle-edu,.rle-color").forEach(el=> el.onchange=()=>persist(read()));
+  host.querySelectorAll(".rle-del").forEach((b,i)=> b.onclick=()=>{ const n=read(); n.splice(i,1); persist(n); });
+  host.querySelectorAll(".rle-up").forEach((b,i)=> b.onclick=()=>{ const n=read(); if(i>0){ [n[i-1],n[i]]=[n[i],n[i-1]]; persist(n); } });
+  host.querySelectorAll(".rle-down").forEach((b,i)=> b.onclick=()=>{ const n=read(); if(i<n.length-1){ [n[i+1],n[i]]=[n[i],n[i+1]]; persist(n); } });
 }
 function route(){
   syncSettingsLists();
@@ -510,29 +726,28 @@ function route(){
    התחברות (Firebase Auth) + סנכרון נתונים (Firestore)
    ============================================================ */
 let pendingRender=false;
-function firebaseErrHe(code){
-  const m={
-    "auth/invalid-email":"כתובת אימייל לא תקינה",
-    "auth/user-not-found":"משתמש לא נמצא",
-    "auth/wrong-password":"סיסמה שגויה",
-    "auth/invalid-credential":"אימייל או סיסמה שגויים",
-    "auth/missing-password":"יש להזין סיסמה",
-    "auth/too-many-requests":"יותר מדי ניסיונות — נסה/י שוב מאוחר יותר",
-    "auth/network-request-failed":"בעיית רשת — בדוק/י חיבור לאינטרנט"
-  };
-  return m[code]||("שגיאה בהתחברות ("+code+")");
-}
+/* ---------- אתחול הדמו (localStorage, ללא התחברות) ---------- */
 function boot(){
-  try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
-  const lb=$("#lockBtn"); if(lb) lb.style.display="none"; // גרסת דמו — אין כניסה/יציאה
-  loadDB();
+  try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){}
+  const lb=$("#lockBtn"); if(lb) lb.style.display="none";
+  const ss=$("#syncStatus"); if(ss) ss.style.display="none";
+  try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const d=JSON.parse(raw); if(d && typeof d==="object") DB=Object.assign(blankDB(), d); } }
+  catch(e){ console.error(e); }
+  DB.settings = DB.settings || { gansTarget:29, admins:[] };
+  if(!Array.isArray(DB.settings.admins)) DB.settings.admins=[];
+  DB.years = (DB.years && DB.years.length) ? DB.years : DEFAULT_YEARS.slice();
+  DB.assignments = DB.assignments || {}; migrateAssignments();
+  DB.staff = (DB.staff||[]).map(normStaff);
+  DB.students = (DB.students||[]).map(normStudent);
+  const pref=getYearPref();
+  if(pref && DB.years.includes(pref)) DB.activeYear=pref;
+  else if(!DB.years.includes(DB.activeYear)) DB.activeYear=DB.years[0];
+  document.body.classList.remove("locked");
   route();
 }
 function renderAuthBox(){
   const box=$("#auth-box"); if(!box) return;
-  box.innerHTML=`
-    <div class="note">🖥️ גרסת דמו — הנתונים נשמרים במכשיר זה בלבד (localStorage) ואינם מסתנכרנים בין מכשירים.</div>
-    <div class="hint">מומלץ לייצא גיבוי מדי פעם (הגדרות → גיבוי/שחזור). הגרסה המתארחת כוללת התחברות מאובטחת וסנכרון ענן בין כל המכשירים.</div>`;
+  box.innerHTML=`<div class="note">🖥️ גרסת דמו — הנתונים נשמרים במכשיר זה בלבד (localStorage) ואינם מסתנכרנים בין מכשירים, וללא התחברות. הגרסה המלאה (ענן + התחברות וניהול משתמשים) נמצאת ב-index.html.</div>`;
 }
 
 /* ============================================================
@@ -568,8 +783,9 @@ async function driveCall(action, payload){
 }
 async function drivePing(){ const res=await driveCall("ping",{}); if(res.rootLink){ DB.settings.drive=DB.settings.drive||{}; DB.settings.drive.rootLink=res.rootLink; save(); } return res; }
 async function driveEnsureChildFolder(student){
+  if(student.driveFolderId) return student.driveFolderId; // תיקייה קיימת — לא ליצור מחדש (שומר על מבנה קודם)
   const nm=([student.lastName,student.firstName].filter(Boolean).join(" ")+(student.tz?(" · "+student.tz):"")) || ("ילדה "+student.id);
-  const res=await driveCall("childFolder", { year:String(student.year), name:nm });
+  const res=await driveCall("childFolder", { year:String(student.year), name:nm, edu:eduLabel(student) }); // חלוקה לפי חינוך (סעיף 12)
   student.driveFolderId=res.folderId; student.driveFolder=res.folderLink;
   const i=DB.students.findIndex(x=>x.id===student.id); if(i>=0){ DB.students[i].driveFolderId=res.folderId; DB.students[i].driveFolder=res.folderLink; }
   DB.settings.drive=DB.settings.drive||{}; if(res.rootLink) DB.settings.drive.rootLink=res.rootLink;
@@ -577,6 +793,16 @@ async function driveEnsureChildFolder(student){
   return res.folderId;
 }
 async function driveListFolder(folderId){ const res=await driveCall("list", { folderId }); return res.files||[]; }
+/* תיקיית דרייב לאיש/אשת צוות — מחולקת לפי חינוך רגיל/מיוחד (סעיפים 12, 17) */
+async function driveEnsureStaffFolder(m){
+  const nm=(staffName(m)+(m.tz?(" · "+m.tz):"")) || ("צוות "+m.id);
+  const res=await driveCall("staffFolder", { edu:eduLabel(m), name:nm });
+  m.driveFolderId=res.folderId; m.driveFolder=res.folderLink;
+  const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0){ DB.staff[i].driveFolderId=res.folderId; DB.staff[i].driveFolder=res.folderLink; }
+  DB.settings.drive=DB.settings.drive||{}; if(res.rootLink) DB.settings.drive.rootLink=res.rootLink;
+  save();
+  return res.folderId;
+}
 function fileToB64(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>{ const s=String(r.result); resolve(s.slice(s.indexOf(",")+1)); }; r.onerror=()=>reject(new Error("read")); r.readAsDataURL(file); }); }
 async function driveUploadFile(file, folderId){
   const dataB64=await fileToB64(file);
@@ -590,6 +816,8 @@ async function driveUploadNamed(file, folderId, baseName){
   return await driveCall("upload", { folderId, name, mimeType:file.type||"application/octet-stream", dataB64 });
 }
 async function driveShare(email, role){ return await driveCall("share", { email, role:role||"reader" }); }
+async function driveShareList(){ return await driveCall("shareList", {}); }
+async function driveShareRemove(email){ return await driveCall("shareRemove", { email }); }
 /* העתקת קובץ קיים לתיקייה אחרת (למשל צילום ת"ז לתיקיית השנה החדשה) — סעיף 5 */
 async function driveCopyFile(fileId, folderId, name){ return await driveCall("copy", { fileId, folderId, name }); }
 function b64ToBlobDownload(name, mimeType, b64){
@@ -624,25 +852,78 @@ function renderDriveBox(){
         <button class="btn ghost" id="drive-share-btn" type="button" style="align-self:end">שיתוף</button>
       </div>
       <div class="hint">שיתוף כזה מאפשר לאותו אדם לפתוח את הקישורים ישירות ב-Google Drive עם חשבון ה-Google שלו. (בתוך התוכנה ממילא כולם רואים, מעלים ומורידים.)</div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="row" style="align-items:center;gap:8px">
+        <b>מי משותף עם תיקיית האב</b>
+        <button class="btn ghost sm" id="drive-shares-refresh" type="button">🔄 רענן</button>
+      </div>
+      <div id="drive-shares" style="margin-top:8px"></div>
     </div>`;
   $("#drive-ping").onclick=async ()=>{ try{ await drivePing(); toast("החיבור לגשר תקין ✓"); renderDriveBox(); }catch(e){ toast(driveErrHe(e)); } };
-  const sb=$("#drive-share-btn"); if(sb) sb.onclick=async ()=>{ const em=$("#drive-share-email").value.trim(); if(!em){ toast("הזן/י אימייל"); return; } try{ await driveShare(em, $("#drive-share-role").value); toast("שותף עם "+em); $("#drive-share-email").value=""; }catch(e){ toast(driveErrHe(e)); } };
+  let lastShares=[];
+  /* שם מותאם לכל שיתוף — תווית מקומית שנשמרת ב-settings (כשל-Google אין שם או שרוצים שם ידידותי) */
+  const shareNames=()=> (DB.settings&&DB.settings.driveShareNames)||{};
+  const renderShares=()=>{
+    const host=$("#drive-shares"); if(!host) return;
+    if(!lastShares.length){ host.innerHTML=`<div class="hint">אין עדיין שיתופים ישירים ל-Drive. (בתוך התוכנה כל המשתמשים רואים ומעלים ממילא.)</div>`; return; }
+    const roleHe=r=>({owner:"בעלים",writer:"עריכה",reader:"צפייה"}[r]||r);
+    const rolePill=r=>r==="owner"?"ok":r==="writer"?"warn":"neutral";
+    const names=shareNames();
+    host.innerHTML=`<div class="table-wrap"><table style="min-width:520px"><thead><tr>
+      <th>שם</th><th>אימייל</th><th>הרשאה</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
+      lastShares.map(s=>{ const nm=names[(s.email||"").toLowerCase()]||s.name||""; return `<tr>
+        <td>${nm?esc(nm):'<span style="color:var(--muted)">—</span>'}</td>
+        <td dir="ltr" style="text-align:right">${esc(s.email)}</td>
+        <td><span class="pill ${rolePill(s.role)}">${roleHe(s.role)}</span></td>
+        <td style="text-align:end;white-space:nowrap">
+          <button class="btn ghost sm" data-editname="${esc(s.email)}" data-cur="${esc(names[(s.email||"").toLowerCase()]||"")}">✏️ שם</button>
+          ${s.role==="owner"?'':`<button class="btn danger sm" data-unshare="${esc(s.email)}">הסר גישה</button>`}
+        </td></tr>`; }).join("")}</tbody></table></div>`;
+    host.querySelectorAll("[data-editname]").forEach(b=>b.onclick=()=>{
+      const em=b.dataset.editname, cur=b.dataset.cur||"";
+      const nm=prompt(`שם עבור ${em}:`, cur);
+      if(nm===null) return;
+      DB.settings=DB.settings||{}; DB.settings.driveShareNames=DB.settings.driveShareNames||{};
+      const key=(em||"").toLowerCase(); const v=String(nm).trim();
+      if(v) DB.settings.driveShareNames[key]=v; else delete DB.settings.driveShareNames[key];
+      save(); renderShares();
+    });
+    host.querySelectorAll("[data-unshare]").forEach(b=>b.onclick=async ()=>{
+      const em=b.dataset.unshare;
+      if(!confirm(`להסיר את הגישה הישירה ל-Drive מ-${em}? (המשתמש עדיין יוכל לעבוד בתוך התוכנה — זו רק גישה ישירה ל-Google Drive.)`)) return;
+      b.disabled=true;
+      try{ await driveShareRemove(em); toast("הגישה הוסרה"); loadShares(); }
+      catch(e){ b.disabled=false; toast(driveErrHe(e)); }
+    });
+  };
+  const loadShares=async ()=>{
+    const host=$("#drive-shares"); if(!host) return;
+    host.innerHTML=`<div class="hint">טוען רשימת שיתופים…</div>`;
+    try{ const res=await driveShareList(); lastShares=(res&&res.shares)||[]; renderShares(); }
+    catch(e){ host.innerHTML=`<div class="hint" style="color:var(--bad)">${esc(driveErrHe(e))}</div>`; }
+  };
+  const sb=$("#drive-share-btn"); if(sb) sb.onclick=async ()=>{ const em=$("#drive-share-email").value.trim(); if(!em){ toast("הזן/י אימייל"); return; } try{ await driveShare(em, $("#drive-share-role").value); toast("שותף עם "+em); $("#drive-share-email").value=""; loadShares(); }catch(e){ toast(driveErrHe(e)); } };
+  $("#drive-shares-refresh").onclick=loadShares;
+  loadShares();
 }
 function renderInstallBox(){
   const box=$("#install-box"); if(!box) return;
   const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true;
-  if(standalone){ box.innerHTML=`<div class="note">✅ המערכת פתוחה כרגע כאפליקציה מותקנת. אפשר להיכנס אליה ישירות מהאייקון במסך הבית.</div>`; return; }
+  if(standalone){ box.innerHTML=`<div class="note">✅ המערכת פתוחה כרגע כאפליקציה מותקנת. אפשר להיכנס אליה ישירות מהאייקון (בשולחן העבודה / מסך הבית).</div>`; return; }
+  const isDesktop = !/(Android|iPhone|iPad|iPod|Mobile)/i.test(navigator.userAgent||"");
   box.innerHTML=`
-    ${deferredInstallPrompt?`<div class="row" style="margin-bottom:8px"><button class="btn" id="do-install">📲 התקן כאפליקציה עכשיו</button></div>`:``}
+    ${deferredInstallPrompt?`<div class="row" style="margin-bottom:8px"><button class="btn" id="do-install">💻 התקן ${isDesktop?'על המחשב':'כאפליקציה'} עכשיו</button></div>`
+      :`<div class="note" style="margin-bottom:8px">💡 אם כפתור ההתקנה אינו מופיע כאן — אפשר תמיד להתקין ידנית לפי ההוראות למטה. ${isDesktop?'ב-Chrome/Edge חפש/י את אייקון ההתקנה <b>⊕</b> בקצה שורת הכתובת (ליד הכוכב).':''}</div>`}
     <div class="hint" style="line-height:1.9">
-      <b>באנדרואיד (Chrome):</b> ${deferredInstallPrompt?'לחצ/י על הכפתור למעלה, או פתח/י ':'פתח/י את '}תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה"</b> / "הוספה למסך הבית".<br>
-      <b>באייפון/אייפד (Safari):</b> לחצ/י על כפתור השיתוף <b>⬆️</b> (למטה) ← <b>"הוספה למסך הבית"</b>.<br>
-      <b>במחשב (Chrome/Edge):</b> אייקון ההתקנה ⊕ בשורת הכתובת, או תפריט ⋮ ← "התקנה".<br>
-      <span style="color:var(--accent-strong)">האייקון שיופיע במסך הבית יהיה הלוגו שהגדרת ב"מיתוג".</span> אם תשנה/י את הלוגו בעתיד — התקן/י מחדש כדי שהאייקון יתעדכן (מערכת ההפעלה שומרת את האייקון הקודם).
+      <b>💻 במחשב (Chrome / Edge):</b> לחצ/י על אייקון ההתקנה <b>⊕</b> בקצה שורת הכתובת (או תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה" / "Install"</b>). ייפתח חלון נפרד עם אייקון בשולחן העבודה — כניסה ישירה לתוכנה בלי דפדפן.<br>
+      <b>📱 באנדרואיד (Chrome):</b> ${deferredInstallPrompt?'לחצ/י על הכפתור למעלה, או פתח/י ':'פתח/י את '}תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה"</b> / "הוספה למסך הבית".<br>
+      <b>🍏 באייפון/אייפד (Safari):</b> לחצ/י על כפתור השיתוף <b>⬆️</b> (למטה) ← <b>"הוספה למסך הבית"</b>.<br>
+      <span style="color:var(--accent-strong)">האייקון שיופיע יהיה הלוגו שהגדרת ב"מיתוג".</span> אם תשנה/י את הלוגו בעתיד — התקן/י מחדש כדי שהאייקון יתעדכן (מערכת ההפעלה שומרת את האייקון הקודם).
     </div>`;
   const b=$("#do-install");
   if(b) b.onclick=async ()=>{
-    if(!deferredInstallPrompt){ toast("ההתקנה זמינה מתפריט הדפדפן"); return; }
+    if(!deferredInstallPrompt){ toast("ההתקנה זמינה מאייקון ⊕ בשורת הכתובת או מתפריט הדפדפן"); return; }
     deferredInstallPrompt.prompt();
     try{ await deferredInstallPrompt.userChoice; }catch(e){}
     deferredInstallPrompt=null; renderInstallBox();
@@ -659,9 +940,45 @@ const STU_FLAGS = {
   tzaharon:     { label:"צהרון",          test:s=>!!(s.programs && s.programs.tzaharon) },
   campHanukkah: { label:"קייטנת חנוכה",   test:s=>!!(s.programs && s.programs.campHanukkah) },
   campNisan:    { label:"קייטנת ניסן",    test:s=>!!(s.programs && s.programs.campNisan) },
-  campEndYear:  { label:"קייטנת סוף שנה", test:s=>!!(s.programs && s.programs.campEndYear) }
+  campEndYear:  { label:"קייטנת סוף שנה", test:s=>!!(s.programs && s.programs.campEndYear) },
+  insurancePaid:{ label:"ביטוח שולם",     test:s=>!!s.insurancePaid },
+  insuranceUnpaid:{ label:"ביטוח לא שולם", test:s=>!s.insurancePaid },
+  retentionNext:{ label:"השארות לשנה הבאה", test:s=>!!s.retentionNext }
 };
 let stuSort = { key:"name", dir:1 }; // מיון לפי עמודה (סעיף 10)
+
+/* ---------- עדכון קבוצתי (סימון מרובה + החלה על קבוצה) ---------- */
+let bulkMode=false;               // מצב בחירה מרובה פעיל
+const bulkSel=new Set();          // מזהי התלמידות המסומנות
+let bulkField="insurancePaid";    // השדה שנבחר לעדכון
+/* שדות הניתנים לעדכון קבוצתי — לכל שדה set(student, value:boolean) */
+const BULK_FIELDS = [
+  { key:"insurancePaid",      label:"תשלום ביטוח תלמידים",           set:(s,v)=>{ s.insurancePaid=v; } },
+  { key:"placed",             label:"משובצת (שיבוץ סופי)",            set:(s,v)=>{ s.placed=v; } },
+  { key:"absorbedMunicipality",label:"קלוט בעירייה",                 set:(s,v)=>{ s.absorbedMunicipality=v; } },
+  { key:"prog.tzaharon",      label:"רישום צהרון",                    set:(s,v)=>{ s.programs=s.programs||{}; s.programs.tzaharon=v; } },
+  { key:"prog.campHanukkah",  label:"רישום קייטנת חנוכה",             set:(s,v)=>{ s.programs=s.programs||{}; s.programs.campHanukkah=v; } },
+  { key:"prog.campNisan",     label:"רישום קייטנת ניסן",              set:(s,v)=>{ s.programs=s.programs||{}; s.programs.campNisan=v; } },
+  { key:"prog.campEndYear",   label:"רישום קייטנת סוף שנה",           set:(s,v)=>{ s.programs=s.programs||{}; s.programs.campEndYear=v; } },
+  { key:"paid.tzaharon",      label:"תשלום צהרון",                    set:(s,v)=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid.tzaharon=v; } },
+  { key:"paid.campHanukkah",  label:"תשלום קייטנת חנוכה",             set:(s,v)=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid.campHanukkah=v; } },
+  { key:"paid.campNisan",     label:"תשלום קייטנת ניסן",              set:(s,v)=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid.campNisan=v; } },
+  { key:"paid.campEndYear",   label:"תשלום קייטנת סוף שנה",           set:(s,v)=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid.campEndYear=v; } },
+  { key:"retentionNext",      label:"השארות לשנה הבאה (מעביר אוטומטית)", set:(s,v)=>{ s.retentionNext=v; }, retention:true }
+];
+/* החלת עדכון קבוצתי על התלמידות המסומנות */
+function applyBulk(fieldKey, val){
+  const f=BULK_FIELDS.find(x=>x.key===fieldKey); if(!f){ toast("בחר/י שדה"); return; }
+  const ids=[...bulkSel]; if(!ids.length){ toast("לא סומנו תלמידות"); return; }
+  let n=0, transferred=0, failed=0;
+  ids.forEach(id=>{ const s=DB.students.find(x=>x.id===id); if(!s) return;
+    const before = f.retention ? !!s.retentionNext : null;
+    f.set(s, val); n++;
+    if(f.retention && val && !before){ const r=ensureRetentionTransfer(s); r.ok?transferred++:failed++; }
+  });
+  save(); bulkSel.clear(); renderStuTable();
+  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}`);
+}
 
 function viewStudents(root){
   const gans = eduScope(DB.gans.slice()).sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
@@ -674,11 +991,14 @@ function viewStudents(root){
       <div><h2>תיקי התלמידות · שנת ${esc(DB.activeYear)}${esc(scopeNote)}</h2>
         <div class="sub">תיק לכל ילדה עם כל הפרטים, המסמכים והשונות. סימון "סיימה גן" מעביר אותה ל"שסיימו" (אינה נמחקת — ניתן לצפות בה דרך סינון הסטטוס). לחיצה על כותרת עמודה ממיינת.</div></div>
       <div class="row" style="gap:8px">
+        <button class="btn ghost" id="importUpdate">⬆️ ייבוא לעדכון (לפי ת"ז)</button>
+        <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
         <button class="btn ghost" id="importStu">⬆️ ייבוא מקובץ</button>
         <button class="btn" id="addStu">➕ הוספת ילדה</button>
       </div>
     </div>
     <div id="stuSummary" style="margin:2px 0 12px"></div>
+    <div id="bulkBar"></div>
     <div class="toolbar">
       <div class="field grow"><label>חיפוש (שם / ת"ז)</label><input id="f-q" value="${esc(stuFilter.q)}" placeholder="הקלד/י שם או ת&quot;ז…"></div>
       <div class="field"><label>גן</label><select id="f-gan"><option value="">הכל</option><option value="__none__" ${stuFilter.gan==='__none__'?'selected':''}>— ללא גן (הוצאו) —</option>${gans.map(g=>`<option value="${g.id}" ${stuFilter.gan===g.id?'selected':''}>${esc(ganName(g.id))}</option>`).join("")}</select></div>
@@ -704,6 +1024,8 @@ function viewStudents(root){
 
   $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#importStu").onclick = ()=> openImport();
+  $("#bulkToggle").onclick = ()=>{ bulkMode=!bulkMode; bulkSel.clear(); viewStudents(root); };
+  $("#importUpdate").onclick = ()=> openBulkImport();
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
   bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
   // סינון גיל בריבוי בחירה — לחיצה מוסיפה/מסירה גיל (סעיף 6)
@@ -767,6 +1089,8 @@ function specialBadges(s){
   if(sp.outOfCity) b.push('<span class="pill warn">ילדת חוץ</span>');
   if(sp.retention) b.push('<span class="pill warn">השארות</span>');
   if(sp.other) b.push('<span class="pill warn">'+(sp.otherText?esc(sp.otherText):'אחר')+'</span>');
+  const sup=s.support||{}; // תגי סיוע (סעיף 15)
+  SUPPORT_TYPES.forEach(([k,lbl])=>{ if(sup[k]) b.push(`<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">${esc(lbl)}</span>`); });
   return b.join(" ");
 }
 function programBadges(s){
@@ -802,19 +1126,41 @@ function renderStuSummary(){
     ${flagTile}
   </div>`;
 }
+function renderBulkBar(list){
+  const bar=$("#bulkBar"); if(!bar) return;
+  if(!bulkMode){ bar.innerHTML=""; return; }
+  bar.innerHTML=`<div class="panel" style="padding:12px;margin:4px 0 12px;background:var(--surface-2)">
+    <div class="row" style="gap:10px;align-items:end;flex-wrap:wrap">
+      <div class="field"><label>שדה לעדכון</label><select id="bulk-field">${BULK_FIELDS.map(f=>`<option value="${f.key}" ${bulkField===f.key?'selected':''}>${esc(f.label)}</option>`).join("")}</select></div>
+      <button class="btn" id="bulk-yes">✔️ סמן כן (${bulkSel.size})</button>
+      <button class="btn ghost" id="bulk-no">✖️ סמן לא (${bulkSel.size})</button>
+      <button class="btn ghost" id="bulk-selall">בחר/י הכל (${list.length})</button>
+      <button class="btn ghost" id="bulk-clear">נקה בחירה</button>
+    </div>
+    <div class="hint" style="margin-top:6px">סמן/י ילדות בעמודה השמאלית, בחר/י שדה וערך, ולחצ/י "סמן כן/לא". הבחירה חלה על השנה והסינון הנוכחיים.</div>
+  </div>`;
+  $("#bulk-field").onchange=e=>{ bulkField=e.target.value; };
+  $("#bulk-yes").onclick=()=> applyBulk($("#bulk-field").value, true);
+  $("#bulk-no").onclick =()=> applyBulk($("#bulk-field").value, false);
+  $("#bulk-clear").onclick=()=>{ bulkSel.clear(); renderStuTable(); };
+  $("#bulk-selall").onclick=()=>{ const all=list.every(s=>bulkSel.has(s.id)); if(all) list.forEach(s=>bulkSel.delete(s.id)); else list.forEach(s=>bulkSel.add(s.id)); renderStuTable(); };
+}
 function renderStuTable(){
   renderTabs();
   renderStuSummary();
   const list = filteredStudents();
+  renderBulkBar(list);
   const host = $("#stuTable");
   const statusLbl = { active:"פעילות", finished:"שסיימו / יצאו", all:"כל הסטטוסים" }[stuFilter.status]||"";
   if(!list.length){ host.innerHTML = `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`; return; }
   const arr=k=> stuSort.key===k ? `<span class="arr">${stuSort.dir>0?'▲':'▼'}</span>` : "";
   const th=(k,lbl)=>`<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>`;
   host.innerHTML = `<div class="table-wrap"><table><thead><tr>
+    ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
     ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}<th title="שיבוץ סופי בגן — לחיצה משנה בין 'משובצת' ל'ממתינה'">שיבוץ</th>${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
     <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
-    ${list.map(s=>`<tr>
+    ${list.map(s=>`<tr${bulkMode&&bulkSel.has(s.id)?' style="background:var(--good-soft)"':''}>
+      ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
       <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
       <td>${esc(s.tz)||'—'}</td>
       <td>${esc(ganName(s.ganId))}</td>
@@ -837,6 +1183,9 @@ function renderStuTable(){
   /* החלפת סטטוס שיבוץ בלחיצה אחת מהרשימה (משובצת ⇄ ממתינה) */
   host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(stuSort.key===k) stuSort.dir*=-1; else { stuSort.key=k; stuSort.dir=1; } renderStuTable(); });
+  /* עדכון קבוצתי — סימון שורות + בחירת הכל */
+  host.querySelectorAll(".bulk-cb").forEach(cb=> cb.onchange=()=>{ cb.checked?bulkSel.add(cb.dataset.id):bulkSel.delete(cb.dataset.id); renderStuTable(); });
+  const bAll=$("#bulk-all"); if(bAll) bAll.onchange=()=>{ if(bAll.checked) list.forEach(s=>bulkSel.add(s.id)); else list.forEach(s=>bulkSel.delete(s.id)); renderStuTable(); };
 }
 
 /* טופס תיק ילדה */
@@ -844,7 +1193,6 @@ function openStudent(s){
   const isNew = !DB.students.some(x=>x.id===s.id);
   const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
   const folderSuggest = suggestFolder(s);
-  const campusList = [...new Set(DB.students.map(x=>x.campus).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he")); // קמפוסים קיימים (סעיף 1)
   const streetList = uniqSortHe([...DB.students.map(x=>x.street), ...DB.gans.map(g=>g.street)]); // רחובות קיימים — השלמה אוטומטית
   const cityList   = uniqSortHe(DB.students.map(x=>x.city)); // ערים קיימות
   modal(`
@@ -853,7 +1201,7 @@ function openStudent(s){
     <div class="grid g3">
       <div><label>שם פרטי</label><input id="s-firstName" value="${esc(s.firstName)}"></div>
       <div><label>שם משפחה</label><input id="s-lastName" value="${esc(s.lastName)}"></div>
-      <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"></div>
+      <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"><div id="s-tz-warn" class="hint" style="color:var(--bad);font-weight:600"></div></div>
       <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
@@ -870,8 +1218,8 @@ function openStudent(s){
   </fieldset>
   <fieldset><legend>שיבוץ ורישום</legend>
     <div class="grid g3">
-      <div><label>קמפוס גנים</label><input id="s-campus" list="campus-list" value="${esc(s.campus)}" placeholder="שם הקמפוס">
-        <datalist id="campus-list">${campusList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
+      <div><label>קמפוס גנים</label><input id="s-campus" value="${esc(ganCampus(s.ganId)||s.campus||"")}" readonly placeholder="נקבע לפי הגן">
+        <div class="hint">נקבע אוטומטית לפי הקמפוס של הגן (בלשונית גנים).</div></div>
       <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
       <div><label>גיל</label><select id="s-age"><option value="">—</option>${(s.age && !CHILD_AGES.map(String).includes(String(s.age)))?`<option selected>${esc(s.age)}</option>`:''}${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
@@ -886,6 +1234,8 @@ function openStudent(s){
       <label class="check"><input type="checkbox" id="s-placed" ${s.placed!==false?'checked':''}> משובצת בגן (שיבוץ סופי)</label>
       <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
       <label class="check"><input type="checkbox" id="s-absorbedMunicipality" ${s.absorbedMunicipality?'checked':''}> קלוט בעירייה</label>
+      <label class="check"><input type="checkbox" id="s-insurancePaid" ${s.insurancePaid?'checked':''}> תשלום ביטוח תלמידים שולם</label>
+      <label class="check" title="סימון זה יעביר את הילדה אוטומטית לשנה הבאה (באותו גן, לא משובצת), עם שמירת השנה הנוכחית"><input type="checkbox" id="s-retentionNext" ${s.retentionNext?'checked':''}> השארות לשנה הבאה (מעביר אוטומטית)</label>
     </div>
   </fieldset>
   <fieldset><legend>מסמכים</legend>
@@ -893,9 +1243,12 @@ function openStudent(s){
     <div class="doc-rows" id="doc-rows"></div>
   </fieldset>
   <fieldset><legend>תוכניות ומועדונים</legend>
-    <div class="checks">
-      ${PROGRAMS.map(([k,lbl])=>`<label class="check"><input type="checkbox" id="pg-${k}" ${(s.programs&&s.programs[k])?'checked':''}> ${esc(lbl)}</label>`).join("")}
-    </div>
+    <div class="hint" style="margin-bottom:8px">בקייטנות אפשר לסמן אם התשלום שולם.</div>
+    <div id="pg-rows"></div>
+  </fieldset>
+  <fieldset><legend>סיוע והעשרה</legend>
+    <div class="hint" style="margin-bottom:8px">סימון סוג הסיוע שהילדה מקבלת — לפי הסימון יוצגו הילדות בשיבוץ העובדת המתאימה (שילוב / רפואית–סל אישי / מנתחת התנהגות / הכנה לכיתה א׳). אפשר לצרף מסמך לכל סוג — נשמר בדרייב עם שם הילדה וּת"ז.</div>
+    <div class="doc-rows" id="support-rows"></div>
   </fieldset>
   <fieldset><legend>שונות</legend>
     <div class="hint" style="margin-bottom:8px">בסימון "גרושים" / "ילדת חוץ" / "השארות" / "אחר" נפתחות מיד מתחת האפשרויות הנוספות — כולל צירוף מסמך 📎 (נשמר בדרייב עם שם: סוג המסמך · שם הילדה · ת"ז).</div>
@@ -924,13 +1277,15 @@ function openStudent(s){
     const nm=[s.lastName,s.firstName].filter(Boolean).join(" ")||"ללא שם";
     return `${label} · ${nm}${s.tz?(" · "+s.tz):""}`;
   }
-  const SPECIAL_DOC_KEYS=["approvalFather","approvalMother","paymentArrangement","retentionDoc","other"];
+  const SPECIAL_DOC_KEYS=["approvalFather","approvalMother","paymentArrangement","retentionDoc","other","idFather","idMother","approvalDoc"];
+  const SUPPORT_DOC_KEYS=SUPPORT_TYPES.map(t=>t[0]);
   async function uploadDocFile(file, key, label){
     persistCurrent(); await driveEnsureChildFolder(s);
     const res=await driveUploadNamed(file, s.driveFolderId, docFileBaseName(label));
     s.docFiles=s.docFiles||{}; s.docFiles[key]={ id:res.fileId||res.id||"", name:res.name||file.name, link:res.link||res.webViewLink||"" };
     if(["nispach","idCopy","takanon"].includes(key)) s.docs[key]=true;
-    if(SPECIAL_DOC_KEYS.includes(key)) s.special[key]=true;
+    if(SPECIAL_DOC_KEYS.includes(key)){ s.special=s.special||{}; s.special[key]=true; }
+    if(SUPPORT_DOC_KEYS.includes(key)){ s.support=s.support||{}; s.support[key]=true; }
   }
   function docAttachHtml(key,label){
     const f=(s.docFiles||{})[key];
@@ -967,7 +1322,8 @@ function openStudent(s){
   function syncSpecial(){
     const set=(id,key)=>{ const el=$("#"+id); if(el) s.special[key]=el.checked; };
     set("sp-divorced","divorced"); set("sp-outOfCity","outOfCity"); set("sp-retention","retention"); set("sp-other","other");
-    set("sp-approvalFather","approvalFather"); set("sp-approvalMother","approvalMother");
+    set("sp-idFather","idFather"); set("sp-idMother","idMother"); set("sp-approvalDoc","approvalDoc");
+    set("sp-approvalFatherSig","approvalFatherSig"); set("sp-approvalMotherSig","approvalMotherSig");
     set("sp-paymentArrangement","paymentArrangement"); set("sp-retentionDoc","retentionDoc");
     const ot=$("#sp-otherText"); if(ot) s.special.otherText=ot.value;
   }
@@ -978,7 +1334,18 @@ function openStudent(s){
     const sub=(id,key,label,fileKey)=>`<div class="doc-row" style="margin-inline-start:20px;background:var(--surface)"><label class="lbl"><input type="checkbox" id="${id}" ${sp[key]?'checked':''}> ${esc(label)}</label>${docAttachHtml(fileKey,label)}</div>`;
     let h="";
     h+=parent("sp-divorced","divorced","הורים גרושים");
-    if(sp.divorced){ h+=sub("sp-approvalFather","approvalFather","אישור מיוחד מהאב","approvalFather"); h+=sub("sp-approvalMother","approvalMother","אישור מיוחד מהאם","approvalMother"); }
+    if(sp.divorced){
+      h+=sub("sp-idFather","idFather",'צילום תעודת זהות האב',"idFather");
+      h+=sub("sp-idMother","idMother",'צילום תעודת זהות האם',"idMother");
+      /* מסמך אישור + שני ריבועי חתימה (אב/אם) — סעיף 7 */
+      h+=`<div class="doc-row" style="margin-inline-start:20px;background:var(--surface);flex-wrap:wrap">
+        <label class="lbl"><input type="checkbox" id="sp-approvalDoc" ${sp.approvalDoc?'checked':''}> מסמך אישור</label>
+        ${docAttachHtml("approvalDoc","מסמך אישור")}
+        <span style="flex-basis:100%;height:0"></span>
+        <label class="check" style="margin-inline-start:24px"><input type="checkbox" id="sp-approvalFatherSig" ${sp.approvalFatherSig?'checked':''}> ✍️ חתימת האב</label>
+        <label class="check"><input type="checkbox" id="sp-approvalMotherSig" ${sp.approvalMotherSig?'checked':''}> ✍️ חתימת האם</label>
+      </div>`;
+    }
     h+=parent("sp-outOfCity","outOfCity","ילדת חוץ (מחוץ לעיר)");
     if(sp.outOfCity){ h+=sub("sp-paymentArrangement","paymentArrangement","הסדר תשלום מול הרשות","paymentArrangement"); }
     h+=parent("sp-retention","retention","ילדת השארות");
@@ -987,14 +1354,51 @@ function openStudent(s){
     if(sp.other){ h+=`<div style="margin-inline-start:20px"><label>פירוט "אחר"</label><input id="sp-otherText" value="${esc(sp.otherText||"")}" placeholder="פרט/י…"></div>`; }
     host.innerHTML=h;
     ["sp-divorced","sp-outOfCity","sp-retention","sp-other"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=()=>{ syncSpecial(); renderSpecialBlocks(); }; });
-    ["sp-approvalFather","sp-approvalMother","sp-paymentArrangement","sp-retentionDoc"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=syncSpecial; });
+    ["sp-idFather","sp-idMother","sp-approvalDoc","sp-approvalFatherSig","sp-approvalMotherSig","sp-paymentArrangement","sp-retentionDoc"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=syncSpecial; });
     const ot=$("#sp-otherText"); if(ot) ot.oninput=()=>{ s.special.otherText=ot.value; };
     wireDocFiles(host, renderSpecialBlocks);
   }
   renderSpecialBlocks();
 
+  /* תוכניות + תשלום קייטנה (סעיף 5) */
+  const CAMP_KEYS=["campHanukkah","campNisan","campEndYear"];
+  function renderPrograms(){
+    const host=$("#pg-rows"); if(!host) return;
+    host.innerHTML=PROGRAMS.map(([k,lbl])=>{
+      const on=!!(s.programs&&s.programs[k]); const isCamp=CAMP_KEYS.includes(k); const paid=!!(s.programsPaid&&s.programsPaid[k]);
+      return `<div class="doc-row" style="flex-wrap:wrap">
+        <label class="lbl"><input type="checkbox" class="pg-chk" data-k="${k}" ${on?'checked':''}> ${esc(lbl)}</label>
+        ${(isCamp&&on)?`<label class="check" style="margin-inline-start:16px;border-color:${paid?'var(--good)':'var(--warn)'}"><input type="checkbox" class="pg-paid" data-k="${k}" ${paid?'checked':''}> 💰 ${paid?'שולם':'טרם שולם'}</label>`:''}
+      </div>`;
+    }).join("");
+    host.querySelectorAll(".pg-chk").forEach(cb=> cb.onchange=()=>{ s.programs=s.programs||{}; s.programs[cb.dataset.k]=cb.checked; renderPrograms(); });
+    host.querySelectorAll(".pg-paid").forEach(cb=> cb.onchange=()=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid[cb.dataset.k]=cb.checked; renderPrograms(); });
+  }
+  renderPrograms();
+
+  /* סיוע/העשרה — סימון + צירוף מסמך (סעיף 15) */
+  function renderSupportRows(){
+    const host=$("#support-rows"); if(!host) return;
+    host.innerHTML=SUPPORT_TYPES.map(([k,lbl])=>`
+      <div class="doc-row">
+        <label class="lbl"><input type="checkbox" class="sup-chk" data-k="${k}" ${(s.support&&s.support[k])?'checked':''}> ${esc(lbl)}</label>
+        ${docAttachHtml(k,lbl)}
+      </div>`).join("");
+    host.querySelectorAll(".sup-chk").forEach(cb=> cb.onchange=()=>{ s.support=s.support||{}; s.support[cb.dataset.k]=cb.checked; });
+    wireDocFiles(host, renderSupportRows);
+  }
+  renderSupportRows();
+
   const refreshSuggest=()=>{ const tmp=collect(); $("#s-folderSuggest").value=suggestFolder(tmp); };
   ["s-firstName","s-lastName","s-tz"].forEach(id=> $("#"+id).oninput=refreshSuggest);
+  /* בדיקה חיה של ת"ז — התראה מיידית אם הילדה כבר רשומה בשנה זו (גם בחינוך אחר) */
+  const tzWarn=()=>{ const el=$("#s-tz-warn"); if(!el) return;
+    const c=tzClashInYear($("#s-tz").value, s.year, s.id);
+    el.textContent = c ? ("⚠️ כבר רשומה בשנה זו: "+clashDesc(c)) : "";
+  };
+  $("#s-tz").addEventListener("input", tzWarn); tzWarn();
+  /* בעדכון הגן — הקמפוס מתעדכן אוטומטית לפי הגן (בלשונית גנים) */
+  const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; };
   $("#copyFolder").onclick=()=>{ navigator.clipboard?.writeText($("#s-folderSuggest").value).then(()=>toast("שם התיקייה הועתק"),()=>{}); };
 
   function persistCurrent(){ const data=collect(); const i=DB.students.findIndex(x=>x.id===s.id); if(i>=0) DB.students[i]=data; else DB.students.push(data); Object.assign(s,data); return data; }
@@ -1049,7 +1453,10 @@ function openStudent(s){
   function collect(){
     const g=id=>$("#"+id), val=id=>g(id)?.value.trim()??"", chk=id=>!!g(id)?.checked;
     const docs={}; STUDENT_DOCS.forEach(([k])=>{ const cb=document.querySelector(`.d-chk[data-k="${k}"]`); docs[k]= cb? cb.checked : !!(s.docs&&s.docs[k]); });
-    const programs={}; PROGRAMS.forEach(([k])=>{ programs[k]=chk("pg-"+k); });
+    const programs={}, programsPaid={};
+    PROGRAMS.forEach(([k])=>{ const cb=document.querySelector(`.pg-chk[data-k="${k}"]`); programs[k]= cb? cb.checked : !!(s.programs&&s.programs[k]);
+      const pc=document.querySelector(`.pg-paid[data-k="${k}"]`); programsPaid[k]= pc? pc.checked : !!(s.programsPaid&&s.programsPaid[k]); });
+    const support={}; SUPPORT_TYPES.forEach(([k])=>{ const cb=document.querySelector(`.sup-chk[data-k="${k}"]`); support[k]= cb? cb.checked : !!(s.support&&s.support[k]); });
     syncSpecial(); // מעדכן את s.special מהסימונים המוצגים כרגע (חלקם מוסתרים לפי ההורה)
     return Object.assign({}, s, {
       firstName:val("s-firstName"), lastName:val("s-lastName"), tz:val("s-tz"),
@@ -1057,12 +1464,14 @@ function openStudent(s){
 
       motherName:val("s-motherName"), fatherName:val("s-fatherName"),
       phone:val("s-phone"), mobile:val("s-mobile"),
-      street:val("s-street"), building:val("s-building"), city:val("s-city"), campus:val("s-campus"),
+      street:val("s-street"), building:val("s-building"), city:val("s-city"),
+      campus: (ganCampus(val("s-ganId")) || val("s-campus")),   // קמפוס נגזר מהגן
       ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
-      placed:chk("s-placed"),
+      placed:chk("s-placed"), insurancePaid:chk("s-insurancePaid"), retentionNext:chk("s-retentionNext"),
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
-      docs, docFiles:s.docFiles||{}, programs,
+      docs, docFiles:s.docFiles||{}, programs, programsPaid,
+      support,
       special: JSON.parse(JSON.stringify(s.special))
     });
   }
@@ -1070,9 +1479,20 @@ function openStudent(s){
   $("#saveStu").onclick=()=>{
     const data=collect();
     if(!data.firstName && !data.lastName){ toast("יש להזין לפחות שם"); return; }
+    /* חסימת רישום כפול — ת"ז שכבר קיימת באותה שנה (גם בחינוך אחר) */
+    const clash=tzClashInYear(data.tz, data.year, s.id);
+    if(clash){ const w=$("#s-tz-warn"); if(w) w.textContent="⚠️ כבר רשומה בשנה זו: "+clashDesc(clash);
+      toast('לא ניתן לרשום — הילדה כבר רשומה בשנה זו: '+clashDesc(clash)); return; }
     const i=DB.students.findIndex(x=>x.id===s.id);
+    const hadRetention = i>=0 ? !!DB.students[i].retentionNext : false;
     if(i>=0) DB.students[i]=data; else DB.students.push(data);
-    save(); closeModal(); route(); toast(isNew?"נוסף תיק ילדה":"התיק נשמר");
+    /* השארות לשנה הבאה — העברה מיידית לשנה הבאה כשהסימון נדלק */
+    let extra="";
+    if(data.retentionNext && !hadRetention){
+      const r=ensureRetentionTransfer(data);
+      extra = r.ok ? ` · הועברה להשארות בשנת ${r.year}` : ` · השארות לא הועברה (${r.reason})`;
+    }
+    save(); closeModal(); route(); toast((isNew?"נוסף תיק ילדה":"התיק נשמר")+extra);
   };
   $("#cancelStu").onclick=closeModal;
   /* בדיקת אחים/אחיות בקמפוס — לפי שם משפחה + כתובת (סעיף 2) */
@@ -1263,8 +1683,10 @@ function buildImportRows(rows, opts){
     st.notes=g("notes");
     const fl=flagsFromNotes(st.notes); if(fl.outOfCity) st.special.outOfCity=true; if(fl.retention) st.special.retention=true; // זיהוי "תושב/ת חוץ" / "השארות" מההערות
     const ganText=g("gan"); st.ganId=matchGanText(ganText);
+    if(st.ganId && ganCampus(st.ganId)) st.campus=ganCampus(st.ganId);   // קמפוס נגזר מהגן המשובץ
     st.absorbedMunicipality = idx.absorbed!=null ? truthyCell(g("absorbed")) : !!opts.absorbed;
     st.registeredByUs        = idx.regByUs!=null ? truthyCell(g("regByUs"))  : !!opts.reg;
+    if(opts.tzaharon){ st.programs=st.programs||{}; st.programs.tzaharon=true; } // רישום אוטומטי לצהרון (סעיף 11)
     if(!st.firstName && !st.lastName && !st.tz) continue; // שורה ריקה
     const fileDup = st.tz && seen.has(st.tz);   // ת"ז כפולה בתוך הקובץ עצמו (סעיף 5)
     const dup     = st.tz && existing.has(st.tz); // ת"ז שכבר קיימת במערכת
@@ -1312,6 +1734,42 @@ function undoLastImport(){
     save(); closeModal(); route(); toast(`נמחקו ${batch.length} תלמידות`);
   };
 }
+/* ייבוא לעדכון — הדבקת רשימת ת"ז ועדכון שדה אחד לכל ההתאמות בשנה הפעילה (בלי יצירת תלמידות) */
+function openBulkImport(){
+  modal(`
+  <h3>עדכון קבוצתי מרשימת ת"ז · שנת ${esc(DB.activeYear)}</h3>
+  <div class="note">מדביקים רשימת מספרי זהות (אחד בכל שורה, או מופרדים בפסיק/רווח), בוחרים שדה וערך — והמערכת מעדכנת את כל הילדות התואמות בשנה הפעילה (בכל סוגי החינוך). לא נוצרות תלמידות חדשות; ת"ז שלא נמצאה — תדווח.</div>
+  <fieldset style="margin-top:12px"><legend>שדה וערך</legend>
+    <div class="row" style="gap:10px;align-items:end;flex-wrap:wrap">
+      <div class="field"><label>שדה לעדכון</label><select id="bi-field">${BULK_FIELDS.map(f=>`<option value="${f.key}">${esc(f.label)}</option>`).join("")}</select></div>
+      <div class="field"><label>ערך</label><select id="bi-val"><option value="yes">כן</option><option value="no">לא</option></select></div>
+    </div>
+  </fieldset>
+  <fieldset><legend>רשימת ת"ז</legend>
+    <textarea id="bi-text" rows="8" placeholder="123456789&#10;987654321"></textarea>
+  </fieldset>
+  <div class="row">
+    <button class="btn" id="bi-do" type="button">⬆️ עדכן</button>
+    <button class="btn ghost" id="bi-cancel" type="button" style="margin-inline-start:auto">סגירה</button>
+  </div>
+  <div id="bi-out" style="margin-top:14px"></div>`);
+  $("#bi-cancel").onclick=closeModal;
+  $("#bi-do").onclick=()=>{
+    const fieldKey=$("#bi-field").value, val=$("#bi-val").value==="yes";
+    const f=BULK_FIELDS.find(x=>x.key===fieldKey); if(!f) return;
+    const tzs=[...new Set(($("#bi-text").value||"").split(/[^0-9]+/).map(x=>x.trim()).filter(Boolean))];
+    if(!tzs.length){ $("#bi-out").innerHTML='<b style="color:var(--bad)">לא הוזנו מספרי ת"ז.</b>'; return; }
+    const byTz={}; studentsOfYear().forEach(s=>{ const d=digits(s.tz); if(d) (byTz[d]=byTz[d]||[]).push(s); });
+    let updated=0, transferred=0, failed=0; const notFound=[];
+    tzs.forEach(tz=>{ const d=digits(tz), arr=byTz[d]; if(!arr||!arr.length){ notFound.push(tz); return; }
+      arr.forEach(s=>{ const before=f.retention?!!s.retentionNext:null; f.set(s,val); updated++;
+        if(f.retention && val && !before){ const r=ensureRetentionTransfer(s); r.ok?transferred++:failed++; } }); });
+    save(); pendingRender=true; // רענון הרשימה עם סגירת החלון
+    $("#bi-out").innerHTML=`<b style="color:var(--good)">עודכנו ${updated} תלמידות</b> · ${esc(f.label)}: ${val?'כן':'לא'}`
+      +(transferred?` · ${transferred} הועברו להשארות`:'')+(failed?` · ${failed} לא הועברו`:'')
+      +(notFound.length?`<div class="hint" style="color:var(--warn);margin-top:6px">לא נמצאו ${notFound.length} ת"ז: ${notFound.slice(0,30).map(esc).join(", ")}${notFound.length>30?'…':''}</div>`:'');
+  };
+}
 function openImport(){
   const state={ list:[], mapped:[] };
   modal(`
@@ -1329,6 +1787,7 @@ function openImport(){
     <div class="checks">
       <label class="check"><input type="checkbox" id="imp-absorbed" checked> סמן את כולם כ"קלוט בעירייה"</label>
       <label class="check"><input type="checkbox" id="imp-reg" checked> סמן את כולם כ"נרשמה על ידינו"</label>
+      <label class="check"><input type="checkbox" id="imp-tzaharon"> סמן את כולם כרשומות לצהרון</label>
       <label class="check"><input type="checkbox" id="imp-skipdup" checked> דלג על ת"ז שכבר קיימת בשנה זו</label>
     </div>
     <div class="hint">אם בקובץ יש עמודת "קלוט בעירייה" / "נרשמה על ידינו" — הערך שבקובץ גובר על ברירות המחדל.</div>
@@ -1352,7 +1811,7 @@ function openImport(){
   $("#imp-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
     readFileSmart(f, txt=>{ $("#imp-text").value=txt; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }); };
 
-  const opts=()=>({ absorbed:$("#imp-absorbed").checked, reg:$("#imp-reg").checked, skipdup:$("#imp-skipdup").checked });
+  const opts=()=>({ absorbed:$("#imp-absorbed").checked, reg:$("#imp-reg").checked, tzaharon:$("#imp-tzaharon").checked, skipdup:$("#imp-skipdup").checked });
 
   $("#imp-preview").onclick=()=>{
     const rows=parseTable($("#imp-text").value);
@@ -1505,6 +1964,8 @@ function openGan(g){
       <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
       <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}"></div>
+      <div><label>קמפוס</label><select id="g-campus"><option value="">— ללא —</option>${(g.campus && !CAMPUSES.includes(g.campus))?`<option selected>${esc(g.campus)}</option>`:''}${CAMPUSES.slice().sort((a,b)=>a.localeCompare(b,"he")).map(c=>`<option ${g.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select>
+        <div class="hint">${CAMPUSES.length?'הקמפוס נקבע כאן — ואצל התלמידות בגן יתעדכן אוטומטית.':'להוספת קמפוסים: הגדרות → קמפוסים.'}</div></div>
     </div>
   </fieldset>
   <fieldset><legend>כתובת ואזור</legend>
@@ -1534,12 +1995,14 @@ function openGan(g){
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{
       ganName:val("g-ganName"),internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),education:val("g-education"),
-      teacherName:val("g-teacherName"),capacity:val("g-capacity"),
+      teacherName:val("g-teacherName"),capacity:val("g-capacity"),campus:val("g-campus"),
       address:val("g-address"),building:val("g-building"),street:val("g-street"),zone:val("g-zone"),
       phoneGan:val("g-phoneGan"),docsNote:val("g-docsNote"),active:chk("g-active")
     });
     if(!data.ganName && !data.teacherName && !data.ganSymbol && !data.internalSymbol){ toast("יש להזין שם הגן, גננת או סמל"); return; }
     const i=DB.gans.findIndex(x=>x.id===g.id); if(i>=0)DB.gans[i]=data; else DB.gans.push(data);
+    /* עדכון אוטומטי של הקמפוס אצל התלמידות בגן זה — הצלבה גן↔תלמידה */
+    DB.students.forEach(s=>{ if(s.ganId===data.id && s.campus!==data.campus) s.campus=data.campus; });
     save(); closeModal(); route(); toast(isNew?"נוסף גן":"הגן נשמר");
   };
   $("#cancelGan").onclick=closeModal;
@@ -1557,6 +2020,7 @@ const GAN_HEADER_MAP = {
   "שםהגננת":"teacherName","גננת":"teacherName","שםגננת":"teacherName","מורה":"teacherName",
   "גיל":"age","קבוצתגיל":"age",
   "חינוך":"education","סוגחינוך":"education",
+  "קמפוס":"campus","קמפוסגנים":"campus",
   "כתובת":"address","כתובתהגן":"address",
   "רחוב":"street",
   "מספר":"building","בניין":"building","מספרבית":"building","בית":"building","מספרבניין":"building",
@@ -1589,6 +2053,7 @@ function buildGanImportRows(rows){
     gn.teacherName=g("teacherName");
     const a=g("age").replace(/\s/g,""); gn.age=GAN_AGES.includes(a)?a:a.replace(/[^\d/]/g,"");
     if(idx.education!=null) gn.education=normEduVal(g("education")); else if(activeEdu) gn.education=activeEdu;
+    gn.campus=g("campus");
     gn.address=g("address"); gn.street=g("street"); gn.building=g("building"); gn.zone=g("zone");
     gn.phoneGan=g("phoneGan"); gn.phoneHome=g("phoneHome"); gn.teacherMobile=fixPhone(g("teacherMobile"));
     gn.assistantName=g("assistantName"); gn.assistantMobile=fixPhone(g("assistantMobile"));
@@ -2148,11 +2613,14 @@ function viewMunicipality(root){
 /* ============================================================
    טאב צוות — מאגר אנשי צוות הגנים (סעיף 16), עם מיון וסינון (סעיף 13)
    ============================================================ */
-let staffFilter = { q:"", role:"" };
+let staffFilter = { q:"", role:"", status:"active" }; // status: active / left / all
+const staffIsActive = m => m.active!==false;              // רשומות ישנות ללא הדגל = פעילות
 let staffSort = { key:"lastName", dir:1 };
 function staffFiltered(){
   const q=staffFilter.q.trim().toLowerCase();
   const list=eduScope(DB.staff).filter(m=>{ // מכבד את בורר החינוך הראשי (רגיל/מיוחד)
+    if(staffFilter.status==='active' && !staffIsActive(m)) return false;   // הסתרת מי שעזב/ה
+    if(staffFilter.status==='left'   &&  staffIsActive(m)) return false;
     if(staffFilter.role && m.role!==staffFilter.role) return false;
     if(q){ const hay=(staffName(m)+" "+m.tz+" "+m.email+" "+m.role+" "+m.phone+" "+m.mobile+" "+m.city).toLowerCase(); if(!hay.includes(q)) return false; }
     return true;
@@ -2179,13 +2647,16 @@ function viewStaff(root){
     <div class="toolbar">
       <div class="field grow"><label>חיפוש (שם / טלפון / עיר)</label><input id="fs-q" value="${esc(staffFilter.q)}" placeholder="הקלד/י…"></div>
       <div class="field"><label>תפקיד</label><select id="fs-role"><option value="">הכל</option>${STAFF_ROLES.map(r=>`<option ${staffFilter.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
+      <div class="field"><label>סטטוס</label><select id="fs-status">
+        ${[["active","פעילים/ות"],["left","עזבו/יצאו"],["all","הכל"]].map(o=>`<option value="${o[0]}" ${staffFilter.status===o[0]?'selected':''}>${o[1]}</option>`).join("")}
+      </select></div>
     </div>
     <div id="staffTable"></div>
   </div>`;
   $("#addStaff").onclick=()=>openStaff(makeStaff());
   $("#impStaff").onclick=openStaffImport;
   const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ staffFilter[key]=e.value; renderStaffTable(); }; };
-  bind("#fs-q","q"); bind("#fs-role","role");
+  bind("#fs-q","q"); bind("#fs-role","role"); bind("#fs-status","status");
   renderStaffTable();
 }
 function renderStaffTable(){
@@ -2197,11 +2668,11 @@ function renderStaffTable(){
   const th=(k,l)=>`<th class="sortable" data-sort="${k}">${l}${arr(k)}</th>`;
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
     ${th("lastName","שם משפחה")}${th("firstName","שם פרטי")}${th("tz",'ת"ז')}${th("role","תפקיד")}${th("education","חינוך")}${th("phone","טלפון")}${th("mobile","נייד")}${th("email","מייל")}${th("city","עיר")}<th></th></tr></thead><tbody>
-    ${list.map(m=>`<tr>
-      <td><b>${esc(m.lastName)||'—'}</b></td>
+    ${list.map(m=>`<tr${staffIsActive(m)?'':' style="opacity:.6"'}>
+      <td><b>${esc(m.lastName)||'—'}</b>${staffIsActive(m)?'':' <span class="pill warn">עזב/ה</span>'}</td>
       <td>${esc(m.firstName)||'—'}</td>
       <td>${esc(m.tz)||'—'}</td>
-      <td><span class="pill neutral">${esc(m.role)||'—'}</span></td>
+      <td>${roleChip(m.role)}</td>
       <td>${eduBadge(m)}</td>
       <td>${m.phone?`<a href="tel:${esc(m.phone)}">${esc(m.phone)}</a>`:'—'}</td>
       <td>${m.mobile?`<a href="tel:${esc(m.mobile)}">${esc(m.mobile)}</a>`:'—'}</td>
@@ -2214,7 +2685,15 @@ function renderStaffTable(){
 }
 function openStaff(m){
   const isNew=!DB.staff.some(x=>x.id===m.id);
-  modal(`<h3>${isNew?'איש/אשת צוות חדש':'עריכת איש/אשת צוות'}</h3>
+  /* מבנים חדשים — הבטחת קיום מערכים (סעיפים 6, 10, 17) */
+  m.movements=Array.isArray(m.movements)?m.movements:[];
+  m.absences=Array.isArray(m.absences)?m.absences:[];
+  m.lateness=Array.isArray(m.lateness)?m.lateness:[];
+  m.notesList=Array.isArray(m.notesList)?m.notesList:[];
+  m.docFiles=m.docFiles||{};
+  if(!m.notesList.length && m.notes) m.notesList=[m.notes]; // מיגרציה מהערה בודדת ישנה
+  modal(`<h3>${isNew?'איש/אשת צוות חדש':'תיק איש/אשת צוות'}</h3>
+    <fieldset><legend>פרטים אישיים</legend>
     <div class="grid g2">
       <div><label>שם משפחה</label><input id="st-lastName" value="${esc(m.lastName)}"></div>
       <div><label>שם פרטי</label><input id="st-firstName" value="${esc(m.firstName)}"></div>
@@ -2225,15 +2704,174 @@ function openStaff(m){
       <div><label>טלפון</label><input id="st-phone" value="${esc(m.phone)}" inputmode="tel"></div>
       <div><label>נייד</label><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
-      <div><label>הערות</label><input id="st-notes" value="${esc(m.notes)}"></div>
     </div>
+    <label class="check" style="margin-top:10px;background:var(--warn-soft);border-color:var(--warn)"><input type="checkbox" id="st-left" ${m.active===false?'checked':''}> 🚪 עזב/ה — כבר לא במערכת (מוסתר/ת מהרשימה; הנתונים נשמרים)</label>
+    </fieldset>
+    <fieldset><legend>תעודה</legend>
+      <div id="st-cert"></div>
+    </fieldset>
+    <fieldset><legend>כניסה / יציאה באמצע שנה</legend>
+      <div class="hint" style="margin-bottom:8px">לדוגמה: יצאה לחופשת לידה וחזרה. לכל שורה: כניסה/יציאה · תאריך · פירוט.</div>
+      <div id="st-moves"></div>
+      <button class="btn ghost sm" id="st-add-move" type="button" style="margin-top:6px">➕ הוספת שורה</button>
+    </fieldset>
+    <fieldset><legend>הערות</legend>
+      <div id="st-notes-list"></div>
+      <button class="btn ghost sm" id="st-add-note" type="button" style="margin-top:6px">➕ הוספת הערה</button>
+    </fieldset>
+    <fieldset><legend>העדרויות</legend>
+      <div id="st-absences"></div>
+      <button class="btn ghost sm" id="st-add-absence" type="button" style="margin-top:6px">➕ הוספת העדרות</button>
+    </fieldset>
+    <fieldset><legend>איחורים</legend>
+      <div id="st-lateness"></div>
+      <button class="btn ghost sm" id="st-add-late" type="button" style="margin-top:6px">➕ הוספת איחור</button>
+    </fieldset>
+    <fieldset><legend>תיק מלא — גנים, תפקידים וילדות</legend>
+      <div id="st-full"></div>
+    </fieldset>
+    ${DRIVE_READY?`<fieldset><legend>תיקיית דרייב</legend>
+      <div class="hint" style="margin-bottom:8px">תיקייה אישית בדרייב, מחולקת לפי חינוך רגיל/מיוחד.</div>
+      <div id="st-drive"></div>
+    </fieldset>`:''}
     <div class="foot">${!isNew?'<button class="btn danger" id="delSt">מחיקה</button>':''}<button class="btn" id="saveSt" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="cancelSt">ביטול</button></div>`);
-  $("#saveSt").onclick=()=>{ const val=id=>$("#"+id).value.trim();
-    const lastName=val("st-lastName"), firstName=val("st-firstName");
-    const data=Object.assign({},m,{lastName,firstName,name:[lastName,firstName].filter(Boolean).join(" "),
-      tz:digits(val("st-tz")),email:val("st-email"),role:val("st-role"),education:val("st-education"),phone:val("st-phone"),mobile:val("st-mobile"),city:val("st-city"),notes:val("st-notes")});
-    if(!data.lastName && !data.firstName){ toast("יש להזין שם משפחה או שם פרטי"); return; }
-    const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0)DB.staff[i]=data; else DB.staff.push(data);
+
+  const val=id=>$("#"+id)?.value.trim()??"";
+  function readPersonal(){
+    m.lastName=val("st-lastName"); m.firstName=val("st-firstName"); m.name=[m.lastName,m.firstName].filter(Boolean).join(" ");
+    m.tz=digits(val("st-tz")); m.email=val("st-email"); m.role=val("st-role"); m.education=val("st-education");
+    m.phone=val("st-phone"); m.mobile=val("st-mobile"); m.city=val("st-city");
+    const lf=$("#st-left"); if(lf) m.active = !lf.checked;   // מסומן = עזב/ה
+  }
+  function persistStaff(){ readPersonal(); const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0) DB.staff[i]=Object.assign({},m); else DB.staff.push(Object.assign({},m)); save(); }
+
+  /* תעודה — סימון + צירוף מסמך (סעיף 17) */
+  function staffDocBase(label){ return `${label} · ${staffName(m)}${m.tz?(" · "+m.tz):""}`; }
+  async function uploadStaffDoc(file,key,label){
+    persistStaff(); await driveEnsureStaffFolder(m);
+    const res=await driveUploadNamed(file, m.driveFolderId, staffDocBase(label));
+    m.docFiles=m.docFiles||{}; m.docFiles[key]={id:res.fileId||res.id||"",name:res.name||file.name,link:res.link||res.webViewLink||""};
+    if(key==='certificate') m.certificate=true;
+    persistStaff();
+  }
+  function renderCert(){
+    const host=$("#st-cert"); if(!host) return;
+    const f=(m.docFiles||{}).certificate;
+    const attached=f?`<a class="btn ghost sm" href="${esc(f.link||'#')}" target="_blank">📄 ${esc(f.name||'קובץ')}</a>`:"";
+    const btn=DRIVE_READY?`<label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:4px">📎 צירוף<input type="file" id="st-cert-file" hidden></label>`:"";
+    host.innerHTML=`<div class="doc-row"><label class="lbl"><input type="checkbox" id="st-cert-chk" ${m.certificate?'checked':''}> יש תעודה</label> ${attached} ${btn}</div>`;
+    $("#st-cert-chk").onchange=e=>{ m.certificate=e.target.checked; };
+    const fi=$("#st-cert-file"); if(fi) fi.onchange=async ()=>{ const file=fi.files[0]; if(!file) return;
+      try{ toast("מעלה תעודה…"); await uploadStaffDoc(file,'certificate','תעודה'); renderCert(); toast("התעודה צורפה ✓"); }
+      catch(e){ console.error(e); toast(driveErrHe(e)); } fi.value=""; };
+  }
+  renderCert();
+
+  /* כניסה/יציאה (סעיף 6) */
+  function renderMovements(){
+    const host=$("#st-moves"); if(!host) return;
+    host.innerHTML=m.movements.length? m.movements.map((mv,i)=>`
+      <div class="row mv-row" data-i="${i}" style="gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">
+        <select class="mv-type" style="min-width:110px"><option value="entry" ${mv.type!=='exit'?'selected':''}>כניסה</option><option value="exit" ${mv.type==='exit'?'selected':''}>יציאה</option></select>
+        <input class="mv-date" type="date" value="${esc(mv.date||'')}">
+        <input class="mv-detail" placeholder="פירוט (למשל: חופשת לידה)" value="${esc(mv.detail||'')}" style="flex:1;min-width:160px">
+        <button class="btn ghost sm mv-del" type="button" title="מחיקה">🗑️</button>
+      </div>`).join("") : `<div class="hint">אין רישומי כניסה/יציאה.</div>`;
+    host.querySelectorAll(".mv-row").forEach(row=>{ const i=+row.dataset.i;
+      row.querySelector(".mv-type").onchange=e=>{ m.movements[i].type=e.target.value; };
+      row.querySelector(".mv-date").onchange=e=>{ m.movements[i].date=e.target.value; };
+      row.querySelector(".mv-detail").oninput=e=>{ m.movements[i].detail=e.target.value; };
+      row.querySelector(".mv-del").onclick=()=>{ m.movements.splice(i,1); renderMovements(); };
+    });
+  }
+  renderMovements();
+  $("#st-add-move").onclick=()=>{ m.movements.push({type:'entry',date:'',detail:''}); renderMovements(); };
+
+  /* הערות מרובות (סעיף 10) */
+  function renderNotesList(){
+    const host=$("#st-notes-list"); if(!host) return;
+    host.innerHTML=m.notesList.length? m.notesList.map((t,i)=>`
+      <div class="row nl-row" data-i="${i}" style="gap:6px;margin-bottom:6px;align-items:flex-start">
+        <textarea class="nl-text" rows="2" style="flex:1">${esc(t)}</textarea>
+        <button class="btn ghost sm nl-del" type="button" title="מחיקה">🗑️</button>
+      </div>`).join("") : `<div class="hint">אין הערות.</div>`;
+    host.querySelectorAll(".nl-row").forEach(row=>{ const i=+row.dataset.i;
+      row.querySelector(".nl-text").oninput=e=>{ m.notesList[i]=e.target.value; };
+      row.querySelector(".nl-del").onclick=()=>{ m.notesList.splice(i,1); renderNotesList(); };
+    });
+  }
+  renderNotesList();
+  $("#st-add-note").onclick=()=>{ m.notesList.push(""); renderNotesList(); };
+
+  /* העדרויות / איחורים — {תאריך, סיבה} (סעיף 10) */
+  function renderDR(hostId, arr){
+    const host=$("#"+hostId); if(!host) return;
+    host.innerHTML=arr.length? arr.map((x,i)=>`
+      <div class="row dr-row" data-i="${i}" style="gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">
+        <input class="dr-date" type="date" value="${esc(x.date||'')}">
+        <input class="dr-reason" placeholder="סיבה" value="${esc(x.reason||'')}" style="flex:1;min-width:160px">
+        <button class="btn ghost sm dr-del" type="button" title="מחיקה">🗑️</button>
+      </div>`).join("") : `<div class="hint">אין רישומים.</div>`;
+    host.querySelectorAll(".dr-row").forEach(row=>{ const i=+row.dataset.i;
+      row.querySelector(".dr-date").onchange=e=>{ arr[i].date=e.target.value; };
+      row.querySelector(".dr-reason").oninput=e=>{ arr[i].reason=e.target.value; };
+      row.querySelector(".dr-del").onclick=()=>{ arr.splice(i,1); renderDR(hostId,arr); };
+    });
+  }
+  renderDR("st-absences", m.absences);
+  renderDR("st-lateness", m.lateness);
+  $("#st-add-absence").onclick=()=>{ m.absences.push({date:'',reason:''}); renderDR("st-absences",m.absences); };
+  $("#st-add-late").onclick=()=>{ m.lateness.push({date:'',reason:''}); renderDR("st-lateness",m.lateness); };
+
+  /* תיק מלא — כל השיבוצים (סעיף 22) */
+  (function renderFull(){
+    const host=$("#st-full"); if(!host) return;
+    const rows=staffAssignmentsFull(m.id);
+    if(!rows.length){ host.innerHTML=`<div class="hint">עדיין אין שיבוצים לאיש/אשת צוות זה. לאחר שיבוץ בלשונית "שיבוץ" יופיע כאן פירוט הגנים, התפקידים והילדות.</div>`; return; }
+    rows.sort((a,b)=> (a.year+ctxLabel(a.ctx)+ganName(a.ganId)).localeCompare(b.year+ctxLabel(b.ctx)+ganName(b.ganId),"he"));
+    host.innerHTML=`<div class="table-wrap"><table><thead><tr><th>שנה</th><th>הקשר</th><th>גן</th><th>תפקיד</th><th>ימים/תקופה</th><th>ילדות משויכות</th></tr></thead><tbody>`+
+      rows.map(r=>{ const cur={days:r.days,durType:r.durType,durMonths:r.durMonths,durFrom:r.durFrom,durTo:r.durTo,students:r.students};
+        const extra=asgExtraText(r.role,cur); const kids=asgStudentsLabel(r.role,cur);
+        return `<tr><td>${esc(r.year)}</td><td>${esc(ctxLabel(r.ctx))}</td><td>${esc(ganName(r.ganId))}</td><td>${roleChip(r.role)}</td><td>${extra?esc(extra):'—'}</td><td>${kids?esc(kids):'—'}</td></tr>`;
+      }).join("")+`</tbody></table></div>`;
+  })();
+
+  /* דרייב אישי (סעיף 17) */
+  if(DRIVE_READY){
+    const host=$("#st-drive");
+    const render=()=>{
+      host.innerHTML=`<div class="row">
+        <button class="btn ghost" id="st-drive-open" type="button">${m.driveFolderId?'📂 פתח תיקייה בדרייב':'📁 צור תיקייה בדרייב'}</button>
+        <label class="btn ghost" style="display:${m.driveFolderId?'inline-flex':'none'};align-items:center;gap:6px">⬆️ העלאת מסמכים<input type="file" id="st-drive-file" hidden multiple></label>
+        <span id="st-drive-status" class="hint" style="align-self:center"></span>
+      </div>`;
+      const status=t=>{ const e=$("#st-drive-status"); if(e) e.textContent=t||""; };
+      $("#st-drive-open").onclick=async ()=>{
+        try{ if(m.driveFolderId){ window.open(m.driveFolder||("https://drive.google.com/drive/folders/"+m.driveFolderId),"_blank"); return; }
+          status("יוצר תיקייה…"); persistStaff(); await driveEnsureStaffFolder(m); status("נוצרה ✓"); toast("נוצרה תיקייה בדרייב"); render();
+        }catch(e){ console.error(e); status(""); toast(driveErrHe(e)); }
+      };
+      const up=$("#st-drive-file");
+      if(up) up.onchange=async ()=>{ const files=[...up.files]; if(!files.length) return;
+        try{ status("מעלה…"); persistStaff(); await driveEnsureStaffFolder(m);
+          const ident=staffName(m)+(m.tz?(" · "+m.tz):"");
+          for(const f of files){ const base=f.name.replace(fileExt(f.name),"")+(ident?(" · "+ident):""); await driveUploadNamed(f, m.driveFolderId, base); }
+          status("הועלו "+files.length+" ✓"); toast("המסמכים הועלו");
+        }catch(e){ console.error(e); status(""); toast(driveErrHe(e)); } up.value="";
+      };
+    };
+    render();
+  }
+
+  $("#saveSt").onclick=()=>{
+    readPersonal();
+    if(!m.lastName && !m.firstName){ toast("יש להזין שם משפחה או שם פרטי"); return; }
+    m.notesList=(m.notesList||[]).map(t=>String(t).trim()).filter(Boolean);
+    m.notes=m.notesList.join("\n"); // תאימות לאחור לייצוא
+    m.absences=(m.absences||[]).filter(x=>x.date||x.reason);
+    m.lateness=(m.lateness||[]).filter(x=>x.date||x.reason);
+    m.movements=(m.movements||[]).filter(x=>x.date||x.detail);
+    const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0)DB.staff[i]=Object.assign({},m); else DB.staff.push(Object.assign({},m));
     save(); closeModal(); route(); toast("נשמר"); };
   $("#cancelSt").onclick=closeModal;
   if(!isNew)$("#delSt").onclick=()=>{ if(confirm("למחוק?")){ DB.staff=DB.staff.filter(x=>x.id!==m.id); save(); closeModal(); route(); } };
@@ -2338,17 +2976,27 @@ function openStaffImport(){
    סעיפים 5, 7, 8, 17–18
    ============================================================ */
 let asgContext = "activity"; // הקשר השיבוץ הנבחר (סעיף 8)
+let asgGanQ = "";            // חיפוש גן בשיבוץ (סעיף 19)
 function asgYear(){ return DB.assignments[DB.activeYear] || (DB.assignments[DB.activeYear]={}); }
 function asgCtxMap(ctx=asgContext){ const y=asgYear(); return y[ctx] || (y[ctx]={}); } // ליצירה/כתיבה
 function ganAsg(ganId, ctx=asgContext){ const y=DB.assignments[DB.activeYear]; const c=y&&y[ctx]; return (c&&c[ganId])||{}; } // קריאה בלבד
 function ctxLabel(id){ const c=ASSIGN_CONTEXTS.find(x=>x.id===id); return c?c.label:id; }
 function asgRoleMeta(role){ return ASSIGN_ROLES.find(r=>r.role===role); }
-function asgExtraLabel(role){ const m=asgRoleMeta(role); return m&&m.extra==="days"?"ימים":(m&&m.extra==="duration"?"תקופה":""); }
+function asgExtraLabel(role){ const ex=EXTRA_BY_ROLE[role]; return ex==="days"?"ימים":(ex==="duration"?"תקופה":""); }
 function asgExtraText(role, cur){
-  const m=asgRoleMeta(role); if(!m||!m.extra||!cur) return "";
-  if(m.extra==="days") return (cur.days||[]).join(", ");
-  if(m.extra==="duration"){ if(cur.durType==="year") return "שנה"; if(cur.durType==="months") return cur.durMonths?`${cur.durMonths} חודשים`:"מספר חודשים"; }
+  const ex=EXTRA_BY_ROLE[role]; if(!ex||!cur) return "";
+  if(ex==="days") return (cur.days||[]).join(", ");
+  if(ex==="duration"){
+    if(cur.durType==="year") return "שנה";
+    if(cur.durType==="dates") return (cur.durFrom||cur.durTo)?`${cur.durFrom?fmtDate(cur.durFrom):'—'} עד ${cur.durTo?fmtDate(cur.durTo):'—'}`:"טווח תאריכים";
+    if(cur.durType==="months") return cur.durMonths?`${cur.durMonths} חודשים`:"מספר חודשים"; // תאימות לאחור
+  }
   return "";
+}
+/* שמות הילדות המשויכות לעובד/ת בתפקיד סיוע (שילוב/רפואית/מנתחת/הכנה) — סעיפים 15, 21 */
+function asgStudentsLabel(role, cur){
+  if(!supportKeyForRole(role) || !cur || !Array.isArray(cur.students) || !cur.students.length) return "";
+  return cur.students.map(id=>{ const s=DB.students.find(x=>x.id===id); return s?staffName({lastName:s.lastName,firstName:s.firstName}):""; }).filter(Boolean).join(", ");
 }
 /* אינדקס שיבוצי צוות לשנה+הקשר הנוכחיים לפי מזהה עובד/ת — לצורך מניעת שיבוץ כפול (סעיף 1).
    מדלג על הגן הנוכחי (exceptGanId) כדי לזהות רק שיבוצים בגנים אחרים. הכל לפי השנה הפעילה (סעיף 3). */
@@ -2364,6 +3012,20 @@ function staffAsgIndex(ctx=asgContext, exceptGanId=null){
     });
   });
   return idx;
+}
+/* כל שיבוצי איש/אשת צוות בכל השנים/הקשרים — לתיק מלא (סעיף 22) */
+function staffAssignmentsFull(staffId){
+  const out=[]; const A=DB.assignments||{};
+  Object.keys(A).forEach(year=>{ const yc=A[year]||{};
+    Object.keys(yc).forEach(ctx=>{ const cg=yc[ctx]||{};
+      Object.keys(cg).forEach(ganId=>{ const entry=cg[ganId]||{};
+        Object.keys(entry).forEach(role=>{ const v=entry[role]; if(!v||v.staffId!==staffId) return;
+          out.push({ year, ctx, ganId, role, days:v.days||[], durType:v.durType, durMonths:v.durMonths, durFrom:v.durFrom, durTo:v.durTo, students:v.students||[] });
+        });
+      });
+    });
+  });
+  return out;
 }
 /* הימים התפוסים לעובד/ת בגנים אחרים (תפקידי "לפי ימים") → { יום: שם הגן } */
 function staffTakenDays(idx, staffId){
@@ -2422,11 +3084,13 @@ function viewAssign(root){
     const c=ganReg(g); const cls=(g.capacity && c>+g.capacity)?'no':'ok'; return `<span class="pill ${cls}">${c}${g.capacity?(' / '+esc(g.capacity)):''}</span>`;
   };
   pick.innerHTML=`${asgContext==='tzaharon'?`<div class="hint" style="margin-bottom:8px">מינימום לפתיחת צהרון: <b>${tzMin||'לא הוגדר'}</b> (נקבע בהגדרות). אדום = מתחת למינימום, ירוק = ניתן לפתוח.</div>`:''}
+    <div class="field" style="max-width:340px;margin-bottom:8px"><label>🔎 חיפוש גן (שם / סמל / כתובת)</label><input id="asgGanSearch" value="${esc(asgGanQ)}" placeholder="הקלד/י שם גן…"></div>
     <div class="table-wrap"><table><thead><tr>
     <th>שם הגן</th><th>סמל</th><th>כתובת</th><th>${esc(regLabel)}</th><th>מצב שיבוץ</th><th></th></tr></thead><tbody>
     ${gans.map(g=>{
       const filled=Object.keys(ganAsg(g.id)).length;
-      return `<tr>
+      const hay=(ganName(g.id)+" "+(g.ganSymbol||"")+" "+(g.internalSymbol||"")+" "+(g.address||"")+" "+(g.building||"")).toLowerCase();
+      return `<tr class="asg-gan-row" data-hay="${esc(hay)}">
         <td><b>${esc(ganName(g.id))}</b></td>
         <td>${esc(g.ganSymbol||g.internalSymbol)||'—'}</td>
         <td>${esc([g.address,g.building].filter(Boolean).join(" "))||'—'}</td>
@@ -2436,15 +3100,23 @@ function viewAssign(root){
     }).join("")}
   </tbody></table></div>`;
   pick.querySelectorAll("[data-asg]").forEach(b=> b.onclick=()=>openGanAssign(b.dataset.asg));
+  /* חיפוש גן בשיבוץ — סינון חי של שורות הטבלה (סעיף 19) */
+  const asgSearch=$("#asgGanSearch");
+  if(asgSearch){ const applyGanFilter=()=>{ const q=asgGanQ.trim().toLowerCase();
+      pick.querySelectorAll(".asg-gan-row").forEach(r=>{ r.style.display=(!q||r.dataset.hay.includes(q))?"":"none"; }); };
+    asgSearch.oninput=()=>{ asgGanQ=asgSearch.value; applyGanFilter(); };
+    applyGanFilter();
+  }
   /* רשימת השיבוץ המלאה למטה — "רצה" כמו בשאר הלשוניות (סעיף 5) */
   const host=$("#asgList");
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
     <th>שם הגן</th><th>סמל</th><th>גיל</th><th>חינוך</th><th>צוות משובץ</th><th></th></tr></thead><tbody>
     ${gans.map(g=>{
       const a=ganAsg(g.id);
-      const items=ASSIGN_ROLES.map(meta=>{ const cur=a[meta.role]; if(!cur||!(cur.name||cur.staffId)) return "";
+      const items=assignRoles().map(meta=>{ const cur=a[meta.role]; if(!cur||!(cur.name||cur.staffId)) return "";
         const extra=asgExtraText(meta.role,cur);
-        return `<div style="margin:2px 0"><span class="pill neutral">${esc(meta.role)}</span> <b>${esc(cur.name||"")}</b>${cur.phone?` · ${esc(cur.phone)}`:""}${extra?` · <span style="color:var(--muted)">${esc(asgExtraLabel(meta.role))}: ${esc(extra)}</span>`:""}</div>`;
+        const kids=asgStudentsLabel(meta.role, cur);
+        return `<div style="margin:2px 0">${roleChip(meta.role)} <b>${esc(cur.name||"")}</b>${cur.phone?` · ${esc(cur.phone)}`:""}${extra?` · <span style="color:var(--muted)">${esc(asgExtraLabel(meta.role))}: ${esc(extra)}</span>`:""}${kids?`<div style="margin-inline-start:14px;color:var(--accent-strong);font-size:.85rem">👧 ${esc(kids)}</div>`:""}</div>`;
       }).filter(Boolean).join("");
       return `<tr>
         <td><b>${esc(ganName(g.id))}</b></td>
@@ -2458,16 +3130,46 @@ function viewAssign(root){
   host.querySelectorAll("[data-asg2]").forEach(b=> b.onclick=()=>openGanAssign(b.dataset.asg2));
 }
 /* מודל שיבוץ צוות לגן בודד — סעיפים 5, 7 */
+/* גן חובה — גיל 5 (בגני חובה אין "סייעת ב'") — סעיף 14 */
+function isMandatoryGan(g){ return String(g&&g.age||"").trim()==="5"; }
 function openGanAssign(ganId){
   const g=ganById(ganId); if(!g) return;
   const a=ganAsg(ganId);
+  const ganEdu=eduLabel(g);
   const reg=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
   /* אינדקס שיבוצי צוות בגנים אחרים (אותה שנה + אותו הקשר) — למניעת שיבוץ כפול (סעיף 1) */
   const idx=staffAsgIndex(asgContext, ganId);
-  /* "סייעת ב'" נפתחת רק כשהגן הגיע ל-30 בנות; אם כבר קיים שיבוץ כזה נשמור אותו לעריכה (סעיף 2) */
+  /* "סייעת ב'" נפתחת רק כשהגן הגיע ל-30 בנות; אם כבר קיים שיבוץ כזה נשמור אותו לעריכה (סעיף 2).
+     בגני חובה (גיל 5) אין "סייעת ב'" כלל (סעיף 14). */
+  const mandatory = isMandatoryGan(g);
   const bAssigned = !!(a[ASSISTANT_B_ROLE] && (a[ASSISTANT_B_ROLE].staffId||a[ASSISTANT_B_ROLE].name));
-  const bEligible = reg>=ASSISTANT_B_MIN;
-  const roles = ASSIGN_ROLES.filter(m=> m.role!==ASSISTANT_B_ROLE || bEligible || bAssigned);
+  const bEligible = reg>=ASSISTANT_B_MIN && !mandatory;
+  const roles = assignRoles()   // לפי הסדר שנקבע בהגדרות
+    .filter(m=> m.role!==ASSISTANT_B_ROLE || ((bEligible || bAssigned) && !mandatory))
+    .filter(m=> roleFitsEdu(m.role, ganEdu)); // רק תפקידים המשויכים לחינוך הגן
+  /* בניית רשימת עובדות לבחירה — משלים אוטומטי מקובץ, עם הפרדה לפי חינוך הגן (רגיל/מיוחד) */
+  const byNameHe=(x,y)=>staffName(x).localeCompare(staffName(y),"he");
+  const staffEduMatch=m=> eduLabel(m)===ganEdu;   // רק צוות מאותו חינוך של הגן — לא לערבב רגיל/מיוחד
+  function staffPool(role, q){
+    const ql=String(q||"").trim();
+    const ok=m=> staffIsActive(m) && staffEduMatch(m) && (!ql || (staffName(m)+" "+(m.mobile||"")+" "+(m.phone||"")+" "+(m.role||"")).includes(ql));
+    return { here:DB.staff.filter(m=>ok(m)&&m.role===role).sort(byNameHe),
+             other:DB.staff.filter(m=>ok(m)&&m.role!==role).sort(byNameHe) };
+  }
+  /* HTML של רשימה נפתחת מקובצת: קודם התפקיד המבוקש, ואז "שאר הצוות" */
+  function dropHtml(role, q){
+    const {here,other}=staffPool(role,q);
+    const item=(m,showRole)=>{ const elsewhere=idx[m.id]?ganName(idx[m.id][0].ganId):"";
+      return `<div class="asg-opt" data-id="${esc(m.id)}"><b>${esc(staffName(m))}</b>${showRole?` · <span style="color:var(--muted)">[${esc(m.role||'ללא תפקיד')}]</span>`:''}${(m.mobile||m.phone)?` · ${esc(m.mobile||m.phone)}`:''}${elsewhere?` <span style="color:var(--warn)">· כבר משובצת ב${esc(elsewhere)}</span>`:''}</div>`; };
+    let h="";
+    if(here.length) h+=`<div class="asg-grp">${esc(role)}</div>`+here.map(m=>item(m,false)).join("");
+    if(other.length) h+=`<div class="asg-grp">שאר הצוות</div>`+other.map(m=>item(m,true)).join("");
+    if(!h) h=`<div class="asg-empty">אין תוצאות בחינוך ${ganEdu==='ח"מ'?'המיוחד':'הרגיל'}</div>`;
+    return h;
+  }
+  function resolveStaff(role, text){ const t=String(text||"").trim(); if(!t) return null;
+    const pool=DB.staff.filter(m=>staffEduMatch(m));
+    return pool.find(m=>m.role===role && staffName(m)===t) || pool.find(m=>staffName(m)===t) || null; }
   /* בניית תיבות הימים לתפקיד "לפי ימים" — משבצת רק ימים פנויים לעובד/ת שנבחרה (סעיף 1) */
   function daysBoxHtml(selectedStaffId, wantDays){
     const taken = selectedStaffId ? staffTakenDays(idx, selectedStaffId) : {};
@@ -2480,9 +3182,18 @@ function openGanAssign(ganId){
   }
   const fixed=[["סמל פנימי",g.internalSymbol],["סמל גן",g.ganSymbol],["גיל",g.age],["חינוך",eduLabel(g)],
     ["כתובת",[g.address,g.building].filter(Boolean).join(" ")],["אזור",g.zone],["טל' גן",g.phoneGan],["קיבולת",g.capacity],["רשומות",reg]];
-  const bHint = (!bEligible && !bAssigned)
-    ? `<div class="hint" style="margin-bottom:10px;color:var(--muted)">💡 שיבוץ "${esc(ASSISTANT_B_ROLE)}" ייפתח כשהגן יגיע ל-${ASSISTANT_B_MIN} בנות (כרגע ${reg}).</div>` : "";
+  const bHint = mandatory
+    ? `<div class="hint" style="margin-bottom:10px;color:var(--muted)">💡 גן חובה (גיל 5) — אין שיבוץ "${esc(ASSISTANT_B_ROLE)}".</div>`
+    : ((!bEligible && !bAssigned)
+      ? `<div class="hint" style="margin-bottom:10px;color:var(--muted)">💡 שיבוץ "${esc(ASSISTANT_B_ROLE)}" ייפתח כשהגן יגיע ל-${ASSISTANT_B_MIN} בנות (כרגע ${reg}).</div>` : "");
   modal(`
+    <style>
+      .asg-drop{position:absolute;z-index:60;inset-inline:0;top:100%;margin-top:2px;max-height:240px;overflow:auto;background:var(--card,#fff);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+      .asg-grp{position:sticky;top:0;background:var(--surface,#f2f2f2);color:var(--accent-strong);font-weight:700;font-size:.8rem;padding:4px 10px;border-bottom:1px solid var(--border)}
+      .asg-opt{padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.9rem}
+      .asg-opt:hover{background:var(--accent-soft)}
+      .asg-empty{padding:10px;color:var(--muted);font-size:.85rem}
+    </style>
     <h3>שיבוץ — ${esc(ganName(g.id))} <span style="color:var(--muted);font-weight:400">· ${esc(ctxLabel(asgContext))}</span></h3>
     <div class="hint" style="margin-bottom:10px">${fixed.filter(f=>f[1]!==""&&f[1]!=null).map(f=>`${esc(f[0])}: <b>${esc(f[1])}</b>`).join(" · ")}</div>
     ${bHint}
@@ -2490,7 +3201,11 @@ function openGanAssign(ganId){
       ${roles.map(meta=>{
         const role=meta.role, cur=a[role]||{}, days=cur.days||[];
         const isDays = meta.extra==="days";
-        const opts=DB.staff.filter(m=>m.role===role);
+        const supKey = supportKeyForRole(role);          // תפקיד סיוע → מפתח הסיוע
+        const multiGan = !!supKey;                        // עובדות סיוע יכולות להיות בכמה גנים
+        const curStaff = cur.staffId ? DB.staff.find(x=>x.id===cur.staffId) : null;
+        const display = curStaff ? staffName(curStaff) : (cur.name||"");
+        const datesOn = (cur.durType==='dates'||cur.durType==='months');
         let extraHtml="";
         if(isDays){
           extraHtml=`<div class="field" style="min-width:230px;flex:1"><label>ימים</label>
@@ -2502,46 +3217,70 @@ function openGanAssign(ganId){
               <select class="asg-durtype">
                 <option value="" ${!cur.durType?'selected':''}>—</option>
                 <option value="year" ${cur.durType==='year'?'selected':''}>שנה</option>
-                <option value="months" ${cur.durType==='months'?'selected':''}>מספר חודשים (חופשת לידה)</option>
+                <option value="dates" ${datesOn?'selected':''}>מתאריך עד תאריך</option>
               </select></div>
-            <div class="field asg-months-wrap" style="min-width:110px;${cur.durType==='months'?'':'display:none'}"><label>מס' חודשים</label>
-              <input class="asg-durmonths" inputmode="numeric" value="${esc(cur.durMonths||"")}"></div>`;
+            <div class="field asg-dates-wrap" style="min-width:150px;${datesOn?'':'display:none'}"><label>מתאריך</label>
+              <input type="date" class="asg-durfrom" value="${esc(cur.durFrom||'')}"></div>
+            <div class="field asg-dates-wrap" style="min-width:150px;${datesOn?'':'display:none'}"><label>עד תאריך</label>
+              <input type="date" class="asg-durto" value="${esc(cur.durTo||'')}"></div>`;
         }
-        /* תפקיד רגיל (לא "לפי ימים"): עובד/ת המשובצת בגן אחר מושבתת ברשימה עם ציון היכן (סעיף 1) */
-        const optHtml=opts.map(m=>{
-          const elsewhere = !isDays && idx[m.id] && cur.staffId!==m.id;
-          const where = elsewhere ? ganName(idx[m.id][0].ganId) : "";
-          return `<option value="${m.id}" ${cur.staffId===m.id?'selected':''} ${elsewhere?'disabled':''}>${esc(staffName(m))}${m.mobile||m.phone?(' · '+esc(m.mobile||m.phone)):''}${elsewhere?` · כבר משובצת ב${esc(where)}`:''}</option>`;
-        }).join("");
-        return `<div class="panel" style="padding:10px;margin:0" data-role="${esc(role)}" data-days="${isDays?1:0}">
+        /* תיבת בחירת ילדות משויכות לתפקידי סיוע — רק ילדות בגן זה המסומנות באותו סיוע */
+        let kidsHtml="";
+        if(supKey){
+          const supLbl=(SUPPORT_TYPES.find(t=>t[0]===supKey)||[])[1]||"";
+          const kids=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished && s.support && s.support[supKey]);
+          const chosen=new Set(cur.students||[]);
+          kidsHtml=`<div class="field" style="flex:1 1 100%;min-width:230px"><label>ילדות משויכות · ${esc(supLbl)}</label>
+            ${kids.length? `<div class="checks asg-kids-box" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px">
+              ${kids.map(s=>`<label class="check"><input type="checkbox" class="asg-kid" value="${esc(s.id)}" ${chosen.has(s.id)?'checked':''}> ${esc(s.lastName)} ${esc(s.firstName)}</label>`).join("")}
+            </div>` : `<div class="hint">אין בגן זה ילדות המסומנות "${esc(supLbl)}". יש לסמן זאת בתיק הילדה (שונות → סיוע/העשרה).</div>`}
+          </div>`;
+        }
+        return `<div class="panel" style="padding:10px;margin:0" data-role="${esc(role)}" data-days="${isDays?1:0}" data-multi="${multiGan?1:0}">
           <div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap">
-            <div class="field" style="min-width:180px"><label>${esc(role)}</label>
-              <select class="asg-staff">
-                <option value="">— בחר/י —</option>
-                ${optHtml}
-              </select></div>
-            <div class="field" style="min-width:150px"><label>שם</label><input class="asg-name" value="${esc(cur.name||"")}"></div>
+            <div class="field asg-pick" style="min-width:200px;flex:1;position:relative"><label>${roleChip(role)}</label>
+              <input class="asg-combo" value="${esc(display)}" placeholder="הקלד/י שם או בחר/י ▾" autocomplete="off">
+              <div class="asg-drop" style="display:none"></div>
+              <input type="hidden" class="asg-staffid" value="${esc(cur.staffId||'')}"></div>
             <div class="field" style="min-width:130px"><label>טלפון</label><input class="asg-phone" value="${esc(cur.phone||"")}" inputmode="tel"></div>
             ${extraHtml}
+            <button class="btn ghost sm asg-clear" type="button" title="הסרת השיבוץ בשורה זו">🗑️ הסר</button>
           </div>
+          ${kidsHtml}
         </div>`;
       }).join("")}
     </div>
     <div class="foot">
-      <button class="btn" id="asg-save">💾 שמירה</button>
+      <button class="btn" id="asg-save" style="margin-inline-start:auto">💾 שמירה</button>
       <button class="btn ghost" id="asg-cancel">ביטול</button>
     </div>`);
   $("#modal").querySelectorAll("[data-role]").forEach(box=>{
-    const sel=box.querySelector(".asg-staff"), nm=box.querySelector(".asg-name"), ph=box.querySelector(".asg-phone");
-    sel.onchange=()=>{
-      const m=DB.staff.find(x=>x.id===sel.value); if(m){ nm.value=staffName(m); ph.value=m.mobile||m.phone||""; }
+    const combo=box.querySelector(".asg-combo"), sid=box.querySelector(".asg-staffid"), ph=box.querySelector(".asg-phone"), drop=box.querySelector(".asg-drop");
+    let lastId=sid.value||"";
+    const setStaff=st=>{
+      sid.value=st.id; combo.value=staffName(st); if(st.mobile||st.phone) ph.value=st.mobile||st.phone;
       if(box.dataset.days==='1'){ const dbox=box.querySelector(".asg-days-box"); if(dbox){
         const checked=[...dbox.querySelectorAll(".asg-day:checked")].map(x=>x.value);
-        dbox.innerHTML=daysBoxHtml(sel.value, checked);
-      } }
+        dbox.innerHTML=daysBoxHtml(st.id, checked); } }
+      if(st.id!==lastId && box.dataset.multi!=='1' && box.dataset.days!=='1' && idx[st.id]){
+        toast("שים/י לב: "+staffName(st)+" כבר משובצת ב"+ganName(idx[st.id][0].ganId)); }
+      lastId=st.id;
     };
+    const openDrop=q=>{ // בונה ומציג את הרשימה המקובצת, ומחווט בחירה
+      drop.innerHTML=dropHtml(box.dataset.role, q); drop.style.display="block";
+      drop.querySelectorAll(".asg-opt").forEach(el=> el.onmousedown=e=>{ e.preventDefault(); const st=DB.staff.find(x=>x.id===el.dataset.id); if(st){ setStaff(st); drop.style.display="none"; } });
+    };
+    combo.onfocus=()=>openDrop("");
+    combo.oninput=()=>{ openDrop(combo.value); // סינון חי
+      const st=resolveStaff(box.dataset.role, combo.value); if(st){ sid.value=st.id; } else { sid.value=""; lastId=""; } };
+    combo.onblur=()=>setTimeout(()=>{ drop.style.display="none"; }, 150);
+    /* הסרת שיבוץ בשורה */
+    const clr=box.querySelector(".asg-clear");
+    if(clr) clr.onclick=()=>{ combo.value=""; sid.value=""; ph.value=""; lastId=""; drop.style.display="none";
+      box.querySelectorAll(".asg-kid:checked,.asg-day:checked").forEach(c=>c.checked=false); };
+    /* תקופה: הצגת שדות התאריכים כשנבחר "מתאריך עד תאריך" */
     const dt=box.querySelector(".asg-durtype");
-    if(dt) dt.onchange=()=>{ const w=box.querySelector(".asg-months-wrap"); if(w) w.style.display = dt.value==='months'?'':'none'; };
+    if(dt) dt.onchange=()=>{ box.querySelectorAll(".asg-dates-wrap").forEach(w=> w.style.display = dt.value==='dates'?'':'none'); };
   });
   $("#asg-cancel").onclick=closeModal;
   $("#asg-save").onclick=()=>{
@@ -2553,12 +3292,14 @@ function openGanAssign(ganId){
     Object.keys(existing).forEach(r=>{ if(!rendered.has(r)) entry[r]=existing[r]; });
     $("#modal").querySelectorAll("[data-role]").forEach(box=>{
       const role=box.dataset.role;
-      const sel=box.querySelector(".asg-staff"), nm=box.querySelector(".asg-name"), ph=box.querySelector(".asg-phone");
-      const val={ staffId:sel.value, name:nm.value.trim(), phone:ph.value.trim() };
+      const combo=box.querySelector(".asg-combo"), sid=box.querySelector(".asg-staffid"), ph=box.querySelector(".asg-phone");
+      const st=sid.value? DB.staff.find(x=>x.id===sid.value) : null;
+      const val={ staffId:sid.value||"", name:(st?staffName(st):combo.value.trim()), phone:ph.value.trim() };
       const days=[...box.querySelectorAll(".asg-day:checked")].map(x=>x.value); if(days.length) val.days=days;
+      const kids=[...box.querySelectorAll(".asg-kid:checked")].map(x=>x.value); if(kids.length) val.students=kids;
       const dt=box.querySelector(".asg-durtype");
-      if(dt&&dt.value){ val.durType=dt.value; if(dt.value==='months'){ const mm=box.querySelector(".asg-durmonths"); if(mm) val.durMonths=mm.value.trim(); } }
-      if(val.staffId||val.name||val.phone||val.days||val.durType) entry[role]=val;
+      if(dt&&dt.value){ val.durType=dt.value; if(dt.value==='dates'){ const df=box.querySelector(".asg-durfrom"), dto=box.querySelector(".asg-durto"); if(df&&df.value) val.durFrom=df.value; if(dto&&dto.value) val.durTo=dto.value; } }
+      if(val.staffId||val.name||val.phone||val.days||val.durType||val.students) entry[role]=val;
     });
     if(Object.keys(entry).length) cmap[ganId]=entry; else delete cmap[ganId];
     save(); closeModal(); route(); toast("השיבוץ נשמר");
@@ -2585,12 +3326,12 @@ function openAsgExport(){
     const phones=$("#ax-phones").checked, fixed=$("#ax-fixed").checked;
     const gans=eduScope(DB.gans.slice()).sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
     const headers=["שם הגן"]; if(fixed) headers.push("סמל פנימי","סמל גן","גיל","חינוך","כתובת","אזור","טל' גן","קיבולת","רשומות","סטטוס");
-    ASSIGN_ROLES.forEach(meta=>{ headers.push(meta.role); if(phones) headers.push(meta.role+" — טלפון"); if(meta.extra) headers.push(meta.role+" — "+asgExtraLabel(meta.role)); });
+    assignRoles().forEach(meta=>{ headers.push(meta.role); if(phones) headers.push(meta.role+" — טלפון"); if(meta.extra) headers.push(meta.role+" — "+asgExtraLabel(meta.role)); });
     const rows=gans.map(g=>{
       const reg=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
       const a=ganAsg(g.id); const row=[ganName(g.id)];
       if(fixed) row.push(g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),[g.address,g.building].filter(Boolean).join(" "),g.zone,g.phoneGan,g.capacity,reg,g.active?"פעיל":"כבוי");
-      ASSIGN_ROLES.forEach(meta=>{ const c=a[meta.role]||{}; row.push(c.name||""); if(phones) row.push(c.phone||""); if(meta.extra) row.push(asgExtraText(meta.role,c)); });
+      assignRoles().forEach(meta=>{ const c=a[meta.role]||{}; row.push(c.name||""); if(phones) row.push(c.phone||""); if(meta.extra) row.push(asgExtraText(meta.role,c)); });
       return row;
     });
     return { headers, rows };
@@ -2925,8 +3666,8 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
-    <h2>התקנה כאפליקציה בטלפון</h2>
-    <div class="sub">אפשר להתקין את המערכת כאפליקציה במסך הבית של הטלפון או המחשב — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג".</div>
+    <h2>התקנה כאפליקציה — טלפון או מחשב</h2>
+    <div class="sub">אפשר להתקין את המערכת כאפליקציה עצמאית — על המחשב (חלון נפרד עם אייקון בשולחן העבודה) או במסך הבית של הטלפון — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג". כניסה ישירה לתוכנה בלי לפתוח דפדפן.</div>
     <div id="install-box"></div>
   </div>
 
@@ -2941,19 +3682,20 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
-    <h2>מעבר שנה — קידום גיל</h2>
-    <div class="sub">בתחילת שנה חדשה: מעתיקים את התלמידות משנה קודמת, מקדמים גיל (3→4), ומאפסים מסמכים — כך שכל המסמכים עולים מחדש. אפשר לבחור מאיזו שנה ולאיזו.</div>
+    <h2>מעבר שנה — קידום לגן המתקדם</h2>
+    <div class="sub">בתחילת שנה חדשה: מעתיקים את התלמידות משנה קודמת. עוברים <b>רק</b> הפרטים האישיים והכתובת, וכל ילדה מקודמת ל<b>גן המתקדם באותו קמפוס</b> (גיל+1). נתוני השנה הקודמת נשמרים במלואם.</div>
     <div class="row">
       <div class="field" style="min-width:150px"><label>משנה</label><select id="pr-from">${DB.years.map(y=>`<option>${esc(y)}</option>`).join("")}</select></div>
       <div class="field" style="min-width:150px"><label>לשנה</label><select id="pr-to">${DB.years.map(y=>`<option ${y===DB.activeYear?'selected':''}>${esc(y)}</option>`).join("")}</select></div>
-      <label class="check" style="align-self:end"><input type="checkbox" id="pr-age" checked ${dis}> קדם גיל ב-1</label>
-      <label class="check" style="align-self:end"><input type="checkbox" id="pr-skip5" checked ${dis}> אל תעביר גיל 5 (מסיימות) — פרט לילדות השארות</label>
-      <label class="check" style="align-self:end"><input type="checkbox" id="pr-keepId" checked ${dis}> העבר גם את מסמך צילום ת"ז (מסמך קבוע)</label>
       ${DRIVE_READY?`<label class="check" style="align-self:end"><input type="checkbox" id="pr-copyId" checked ${dis}> העתק פיזית את קובץ ת"ז לתיקיית השנה החדשה (איטי יותר)</label>`:""}
-      <button class="btn" id="doPromote" style="align-self:end" ${dis}>בצע קידום</button>
+      <button class="btn" id="doPromote" style="align-self:end" ${dis}>בצע מעבר שנה</button>
     </div>
     <div id="pr-status" class="hint" style="margin-top:6px"></div>
-    <div class="note" style="margin-top:8px">כל הפרטים האישיים כולל <b>מספר הזהות (ת"ז)</b>, השם, ההורים והכתובת <b>עוברים אוטומטית</b> לשנת היעד. <b>צילום ת"ז</b> (הסימון והקובץ הפיזי המצורף) עובר גם הוא כברירת מחדל — כי זהו מסמך קבוע; שאר המסמכים (נספח, תקנון) מתאפסים ועולים מחדש. ילדות בגיל 5 (מסיימות) לא יועברו — למעט ילדות המסומנות "השארות", שיועברו ללא קידום גיל.</div>
+    <div class="note" style="margin-top:8px">
+      <b>מה עובר:</b> פרטים אישיים (כולל ת"ז), הורים וכתובת · <b>צילום ת"ז</b> (סימון + קובץ פיזי לדרייב החדש). <b>מתאפס:</b> נספח/תקנון, תוכניות/מועדונים, סיוע והעשרה, קלוט בעירייה, ביטוח, שיבוץ סופי (לא משובצת) והערות.<br>
+      <b>גן:</b> קידום לגן המתקדם באותו קמפוס. אם יש כמה גנים מתאימים או אין — הילדה תעבור <b>ללא גן</b> (תופיע בסינון "ללא גן"). <b>שונות:</b> גרושים / ילדת חוץ / אחר — הסימון עובר, מסמכים וחתימות מחדש.<br>
+      <b>מסיימות</b> (גן חובה / גיל 5) לא יועברו — למעט ילדות שסומנו <b>"השארות לשנה הבאה"</b> (שכבר עברו אוטומטית, באותו גן).
+    </div>
   </div>
 
   <div class="panel">
@@ -2990,12 +3732,23 @@ function viewSettings(root){
 
   <div class="panel">
     <h2>תפקידי צוות</h2>
-    <div class="sub">התפקידים שמופיעים לבחירה בכרטיס איש/אשת צוות, בסינון הצוות ובייבוא. אפשר להוסיף, לערוך או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
+    <div class="sub">התפקידים שמופיעים לבחירה בכרטיס איש/אשת צוות, בסינון הצוות ובייבוא. לכל תפקיד אפשר לקבוע <b>שיוך חינוך</b> (רגיל / מיוחד / שניהם) — ובשיבוץ יוצגו רק תפקידים המתאימים לחינוך הגן — וכן <b>צבע</b> ייחודי. אפשר להוסיף, לערוך או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
     <div id="roles-box"></div>
     ${admin?`<div class="row" style="margin-top:10px">
       <div class="field grow"><label>הוספת תפקיד</label><input id="new-role" placeholder="למשל: מטפלת"></div>
       <button class="btn" id="addRole" style="align-self:end">הוסף</button>
       <button class="btn ghost" id="resetRoles" style="align-self:end">איפוס לברירת מחדל</button>
+    </div>`:""}
+  </div>
+
+  <div class="panel">
+    <h2>קמפוסים</h2>
+    <div class="sub">רשימת הקמפוסים לבחירה בכרטיס הגן. הקמפוס של כל תלמידה נקבע <b>אוטומטית לפי הגן שלה</b> — כך שלא יופיעו ערכים שלא הוגדרו. כאן מגדירים, עורכים או מוחקים קמפוסים.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
+    <div id="campus-box"></div>
+    ${admin?`<div class="row" style="margin-top:10px">
+      <div class="field grow"><label>הוספת קמפוס</label><input id="new-campus" placeholder="למשל: קמפוס מרכז"></div>
+      <button class="btn" id="addCampus" style="align-self:end">הוסף</button>
+      <button class="btn ghost" id="syncCampus" style="align-self:end" title="עדכון הקמפוס אצל כל התלמידות לפי הגן שלהן — מנקה ערכים ישנים">🔄 עדכן אצל התלמידות לפי הגן</button>
     </div>`:""}
   </div>
 
@@ -3014,6 +3767,20 @@ function viewSettings(root){
     <div class="sub">המערכת מאובטחת בכניסה עם אימייל וסיסמה (Firebase). הנתונים נשמרים בענן ומסונכרנים בין כל המכשירים.</div>
     <div id="auth-box"></div>
   </div>
+
+  ${admin?`<div class="panel">
+    <h2>ניהול משתמשים</h2>
+    <div class="sub">הוספת משתמשים חדשים שיוכלו להתחבר למערכת (אימייל + סיסמה), איפוס סיסמה ומחיקה — למנהלי מערכת בלבד. פועל דרך גשר ה-Apps Script: <b>הוספת משתמש עובדת מיד</b>; רשימת המשתמשים, מחיקה ואיפוס סיסמה דורשים הגדרה חד-פעמית נוספת בגשר (ראה <b>SETUP.md</b> — "ניהול משתמשים"). תמיד אפשר גם לנהל בקונסולת Firebase → Authentication.</div>
+    <div class="row" style="margin-top:10px">
+      <div class="field" style="min-width:150px"><label>שם (לא חובה)</label><input id="nu-name" autocomplete="off" placeholder="שם מלא"></div>
+      <div class="field" style="min-width:200px"><label>אימייל של המשתמש החדש</label><input id="nu-email" type="email" inputmode="email" autocomplete="off" placeholder="name@example.com"></div>
+      <div class="field" style="min-width:150px"><label>סיסמה ראשונית (6 תווים+)</label><input id="nu-pass" type="text" autocomplete="new-password" placeholder="לפחות 6 תווים"></div>
+      <button class="btn" id="nu-create" style="align-self:end">➕ צור משתמש</button>
+    </div>
+    <div id="nu-msg" class="note" style="display:none;margin-top:10px"></div>
+    <div class="row" style="margin-top:14px"><button class="btn ghost" id="nu-refresh">🔄 רענן רשימת משתמשים</button></div>
+    <div id="users-box" style="margin-top:10px"></div>
+  </div>`:""}
 
   <div class="panel">
     <h2>חיבור Google Drive</h2>
@@ -3034,16 +3801,95 @@ function viewSettings(root){
   renderDriveBox();
   renderInstallBox();
 
+  // ניהול משתמשים (למנהל בלבד) — דרך Cloud Function adminUsers
+  if(admin){
+    const usersBox=$("#users-box");
+    const nuMsg=$("#nu-msg");
+    const showNuMsg=(text, ok)=>{ if(!nuMsg)return; nuMsg.style.display="block"; nuMsg.textContent=text;
+      nuMsg.style.background = ok? "var(--good-soft)":"var(--bad-soft)";
+      nuMsg.style.color = ok? "var(--good)":"var(--bad)";
+      nuMsg.style.borderColor = ok? "var(--good)":"var(--bad)"; };
+    const fmtWhen=v=>{ if(!v)return "—"; const d=new Date(v); return isNaN(d)? "—" : d.toLocaleDateString("he-IL"); };
+    const meEmail=(currentUser&&currentUser.email||"").toLowerCase();
+    const activity=(DB.settings&&DB.settings.userActivity)||{};
+    const renderUsers=list=>{
+      if(!list || !list.length){ usersBox.innerHTML=`<div class="hint">אין משתמשים להצגה.</div>`; return; }
+      usersBox.innerHTML=`<div class="table-wrap"><table style="min-width:660px"><thead><tr>
+        <th>שם</th><th>אימייל</th><th>נוצר</th><th>עריכה אחרונה בנתונים</th><th>כניסה אחרונה</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
+        list.map(u=>`<tr>
+          <td>${u.name?esc(u.name):'<span style="color:var(--muted)">—</span>'}</td>
+          <td dir="ltr" style="text-align:right">${esc(u.email||"—")}${(u.email||"").toLowerCase()===meEmail?' <span class="pill neutral">זה אני</span>':''}</td>
+          <td>${fmtWhen(u.created)}</td>
+          <td>${fmtWhen(activity[(u.email||"").toLowerCase()])}</td>
+          <td>${fmtWhen(u.lastSignIn)}</td>
+          <td style="text-align:end;white-space:nowrap">
+            <button class="btn ghost sm" data-nm="${esc(u.uid)}" data-em="${esc(u.email||"")}" data-cur="${esc(u.name||"")}">✏️ שם</button>
+            <button class="btn ghost sm" data-pw="${esc(u.uid)}" data-em="${esc(u.email||"")}">🔑 סיסמה</button>
+            <button class="btn danger sm" data-del="${esc(u.uid)}" data-em="${esc(u.email||"")}" ${(u.email||"").toLowerCase()===meEmail?"disabled title=\"אי אפשר למחוק את עצמך\"":""}>🗑️ מחיקה</button>
+          </td></tr>`).join("")}</tbody></table></div>`;
+      usersBox.querySelectorAll("[data-nm]").forEach(b=>b.onclick=async ()=>{
+        const uid=b.dataset.nm, em=b.dataset.em, cur=b.dataset.cur||"";
+        const nm=prompt(`שם עבור ${em}:`, cur);
+        if(nm===null) return;
+        try{ await adminUsersCall("setName",{uid, name:String(nm).trim()}); showNuMsg(`השם של ${em} עודכן.`, true); loadUsers(); }
+        catch(e){ showNuMsg(adminUsersErrHe(e), false); }
+      });
+      usersBox.querySelectorAll("[data-del]").forEach(b=>b.onclick=async ()=>{
+        const uid=b.dataset.del, em=b.dataset.em;
+        if(!confirm(`למחוק את המשתמש ${em}? הפעולה בלתי הפיכה והוא לא יוכל יותר להתחבר.`)) return;
+        b.disabled=true;
+        try{ await adminUsersCall("delete",{uid}); toast("המשתמש נמחק"); loadUsers(); }
+        catch(e){ b.disabled=false; showNuMsg(adminUsersErrHe(e), false); }
+      });
+      usersBox.querySelectorAll("[data-pw]").forEach(b=>b.onclick=async ()=>{
+        const uid=b.dataset.pw, em=b.dataset.em;
+        const p=prompt(`סיסמה חדשה עבור ${em} (6 תווים לפחות):`);
+        if(p===null) return;
+        if(String(p).length<6){ showNuMsg("הסיסמה חייבת להיות באורך 6 תווים לפחות.", false); return; }
+        try{ await adminUsersCall("setPassword",{uid, password:p}); showNuMsg(`הסיסמה של ${em} עודכנה.`, true); }
+        catch(e){ showNuMsg(adminUsersErrHe(e), false); }
+      });
+    };
+    const loadUsers=async ()=>{
+      usersBox.innerHTML=`<div class="hint">טוען רשימת משתמשים…</div>`;
+      try{ const res=await adminUsersCall("list");
+        if(res && res.saConfigured===false){
+          usersBox.innerHTML=`<div class="hint">רשימת המשתמשים, מחיקה ואיפוס סיסמה יופיעו כאן לאחר הגדרת <b>Service Account</b> בגשר (ראה SETUP.md — "ניהול משתמשים"), או תמיד בקונסולת Firebase → Authentication. <b>הוספת משתמש חדש עובדת כאן כרגיל.</b></div>`;
+          return;
+        }
+        renderUsers((res&&res.users)||[]);
+      }
+      catch(e){ usersBox.innerHTML=`<div class="hint" style="color:var(--bad)">${esc(adminUsersErrHe(e))}</div>`; }
+    };
+    $("#nu-create").onclick=async ()=>{
+      const name=($("#nu-name").value||"").trim(), email=($("#nu-email").value||"").trim(), password=$("#nu-pass").value||"";
+      if(!email){ showNuMsg("יש להזין אימייל.", false); return; }
+      if(password.length<6){ showNuMsg("הסיסמה חייבת להיות באורך 6 תווים לפחות.", false); return; }
+      const btn=$("#nu-create"); btn.disabled=true;
+      try{ await adminUsersCall("create",{email, password, name});
+        showNuMsg(`נוצר משתמש ${email}${name?` (${name})`:""}. אפשר למסור לו את האימייל והסיסמה להתחברות.`, true);
+        $("#nu-name").value=""; $("#nu-email").value=""; $("#nu-pass").value=""; loadUsers();
+      }catch(e){ showNuMsg(adminUsersErrHe(e), false); }
+      finally{ btn.disabled=false; }
+    };
+    $("#nu-refresh").onclick=loadUsers;
+    loadUsers(); // טעינה ראשונית (תציג הודעה ידידותית אם הפונקציה עדיין לא פרוסה)
+  }
+
   // גילי ילדים ותפקידי צוות (עריכה למנהל בלבד)
   const saveAges  = next => { DB.settings.childAges  = cleanList(next)||[]; save(); route(); toast("נשמר"); };
   const saveRoles = next => { DB.settings.staffRoles = cleanList(next)||[]; save(); route(); toast("נשמר"); };
+  const saveCampuses = next => { DB.settings.campuses = cleanList(next)||[]; save(); route(); toast("נשמר"); };
   renderSettingsList($("#ages-box"),  CHILD_AGES.slice(),  saveAges,  dis);
-  renderSettingsList($("#roles-box"), STAFF_ROLES.slice(), saveRoles, dis);
+  renderRolesEditor($("#roles-box"), dis);
+  renderSettingsList($("#campus-box"), CAMPUSES.slice(), saveCampuses, dis);
   if(admin){
     $("#addAge").onclick=()=>{ const v=$("#new-age").value.trim(); if(!v)return; if(CHILD_AGES.includes(v)){toast("כבר קיים");return;} saveAges(CHILD_AGES.concat(v)); };
     $("#resetAges").onclick=()=>{ delete DB.settings.childAges; save(); route(); toast("אופס לברירת מחדל"); };
     $("#addRole").onclick=()=>{ const v=$("#new-role").value.trim(); if(!v)return; if(STAFF_ROLES.includes(v)){toast("כבר קיים");return;} saveRoles(STAFF_ROLES.concat(v)); };
     $("#resetRoles").onclick=()=>{ delete DB.settings.staffRoles; save(); route(); toast("אופס לברירת מחדל"); };
+    $("#addCampus").onclick=()=>{ const v=$("#new-campus").value.trim(); if(!v)return; if(CAMPUSES.includes(v)){toast("כבר קיים");return;} saveCampuses(CAMPUSES.concat(v)); };
+    $("#syncCampus").onclick=()=>{ let n=0; DB.students.forEach(s=>{ if(!s.ganId) return; const c=ganCampus(s.ganId); if(s.campus!==c){ s.campus=c; n++; } }); if(n) save(); route(); toast(n?`עודכנו ${n} תלמידות`:"הכל כבר מעודכן לפי הגנים"); };
   }
 
   // מיתוג (כותרת + לוגו)
@@ -3073,40 +3919,25 @@ function viewSettings(root){
   yb.querySelectorAll("[data-dely]").forEach(b=>b.onclick=()=>{ const y=b.dataset.dely;
     if(studentsOfYear(y).length && !confirm(`בשנת ${y} יש תלמידות. למחוק את השנה ואת התלמידות שבה?`)) return;
     DB.years=DB.years.filter(x=>x!==y); DB.students=DB.students.filter(s=>s.year!==y);
-    if(DB.activeYear===y)DB.activeYear=DB.years[0]; save(); route(); });
+    if(DB.activeYear===y){ DB.activeYear=DB.years[0]; setYearPref(DB.activeYear); } save(); route(); });
   if(admin) $("#addYear").onclick=()=>{ const y=$("#new-year").value.trim(); if(!y)return; if(DB.years.includes(y)){toast("שנה קיימת");return;} DB.years.push(y); save(); route(); toast("נוספה שנה"); };
 
   if(admin) $("#doPromote").onclick=async ()=>{
-    const from=$("#pr-from").value, to=$("#pr-to").value, bump=$("#pr-age").checked, skip5=$("#pr-skip5").checked, keepId=$("#pr-keepId").checked;
-    const copyId = keepId && DRIVE_READY && !!($("#pr-copyId")&&$("#pr-copyId").checked);
+    const from=$("#pr-from").value, to=$("#pr-to").value;
+    const copyId = DRIVE_READY && !!($("#pr-copyId")&&$("#pr-copyId").checked);
     if(from===to){ toast("בחר/י שנת מקור ושנת יעד שונות"); return; }
     const src=DB.students.filter(s=>s.year===from);
     if(!src.length){ toast("אין תלמידות בשנת המקור"); return; }
     const existing=new Set(DB.students.filter(s=>s.year===to).map(s=>digits(s.tz)).filter(Boolean));
-    let added=0, skipped5=0;
+    let added=0, skippedGrad=0, noGan=0;
     const toCopy=[]; // {id: מזהה התלמידה החדשה, src: מזהה קובץ ת"ז המקורי}
-    src.forEach(s=>{ if(s.tz && existing.has(digits(s.tz))) return; // כבר קיימת ביעד
-      const isRetention = !!(s.special && s.special.retention);
-      // אל תעביר ילדות בגיל 5 (מסיימות), למעט המסומנות בהשארות
-      if(skip5 && String(s.age)==='5' && !isRetention){ skipped5++; return; }
-      const n=JSON.parse(JSON.stringify(s));
-      n.id=uid(); n.year=to; n.finished=false; n.period="א"; n.absorbedMunicipality=false;
-      // ילדת השארות נשארת באותו גיל (חוזרת על השנה); אחרת מקדמים גיל ב-1
-      if(bump && s.age && !isRetention) n.age=String(+s.age+1);
-      n.docs={nispach:false,idCopy:false,takanon:false};
-      n.docFiles={};
-      // צילום ת"ז הוא מסמך קבוע — מעבירים את הסימון ואת הקובץ הפיזי המצורף לשנה הבאה
-      if(keepId){
-        if(s.docs && s.docs.idCopy) n.docs.idCopy=true;
-        if(s.docFiles && s.docFiles.idCopy){
-          n.docFiles.idCopy=JSON.parse(JSON.stringify(s.docFiles.idCopy));
-          if(copyId && s.docFiles.idCopy.id) toCopy.push({ id:n.id, src:s.docFiles.idCopy.id });
-        }
-      }
-      n.special.approvalFather=n.special.approvalMother=n.special.paymentArrangement=n.special.retentionDoc=false;
-      n.driveFolder=""; n.driveFolderId=""; n.createdAt=new Date().toISOString();
+    src.forEach(s=>{ if(s.tz && existing.has(digits(s.tz))) return; // כבר קיימת ביעד (למשל הועברה בהשארות)
+      const n=buildPromoted(s, to); // כללי המעבר המלאים (גן מתקדם, איפוסים, שונות)
+      if(!n){ skippedGrad++; return; } // מסיימת (גן חובה) שאינה בהשארות
+      if(!n.ganId) noGan++;
+      if(copyId && s.docFiles && s.docFiles.idCopy && s.docFiles.idCopy.id) toCopy.push({ id:n.id, src:s.docFiles.idCopy.id });
       DB.students.push(n); added++; });
-    save(); route(); toast(`קודמו ${added} תלמידות לשנת ${to}${skipped5?` · דולגו ${skipped5} בגיל 5`:''}`);
+    save(); route(); toast(`הועברו ${added} תלמידות לשנת ${to}${skippedGrad?` · ${skippedGrad} מסיימות דולגו`:''}${noGan?` · ${noGan} ללא גן (לשיבוץ)`:''}`);
 
     // מעבר אסינכרוני: העתקה פיזית של קובצי ת"ז לתיקיות השנה החדשה (לא חוסם את הקידום)
     if(copyId && toCopy.length){
@@ -3204,7 +4035,7 @@ $("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeMod
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ navToTab(b.dataset.tab); } });
-$("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; save(); route(); });
+$("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; setYearPref(DB.activeYear); route(); }); // העדפה מקומית — ללא כתיבה לענן
 
 /* theme */
 (function(){ const KEY="rg-theme"; const saved=localStorage.getItem(KEY); if(saved)document.documentElement.dataset.theme=saved;
