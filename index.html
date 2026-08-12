@@ -198,7 +198,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-         doc, setDoc, deleteDoc, onSnapshot, collection }
+         doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* ===== הגדרות Firebase — הדבק/י כאן את 6 המפתחות מהפרויקט שלך (ראה SETUP.md) ===== */
@@ -416,11 +416,13 @@ function showOfflineBanner(){
       <button class="btn sm" id="ob-restsave" type="button">📤 שמור לענן (מצב חלופי)</button>
       <button class="btn sm" id="ob-restload" type="button">📥 טען נתונים (מצב חלופי)</button>
       <button class="btn sm" id="ob-test" type="button">🔌 בדיקת חיבור</button>
+      <button class="btn sm" id="ob-reset" type="button">🧹 אפס והורד מחדש מהשרת</button>
       <button class="btn sm" id="ob-reload" type="button">🔄 רענן</button>
       <button class="btn ghost sm" id="ob-dismiss" type="button">הבנתי</button>
     </span></div>`;
   b.style.display="block";
   const ls=$("#ob-restsave"); if(ls) ls.onclick=pushLocalViaRest;
+  const rs=$("#ob-reset"); if(rs) rs.onclick=hardResetLocal;
   const lr=$("#ob-restload"); if(lr) lr.onclick=loadViaRest;
   const t=$("#ob-test"); if(t) t.onclick=testCloudConnection;
   const r=$("#ob-reload"); if(r) r.onclick=()=>location.reload();
@@ -489,6 +491,19 @@ async function pushLocalViaRest(){
     hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced");
     toast("הנתונים נשמרו בענן (מצב חלופי)");
   }catch(e){ console.error(e); if(out) out.innerHTML=`<b style="color:var(--bad)">השמירה נכשלה:</b> ${netErrHe(e)}`; }
+}
+/* איפוס העותק המקומי הפגום בדפדפן וטעינה מחדש מהשרת — לשימוש כשהמצב המקומי (מטמון
+   Firestore ב-IndexedDB) נתקע, בעוד הנתונים בענן תקינים (למשל נראים במכשיר אחר).
+   פעולה הרסנית לעותק המקומי בלבד — לא נוגעת בנתונים שבשרת. מוגנת באישור. */
+async function hardResetLocal(){
+  const ok = confirm("איפוס המכשיר הזה:\n\nזה ימחק את העותק המקומי בדפדפן ויוריד הכול מחדש מהשרת. הנתונים בענן לא ייפגעו.\n\n⚠️ אם עשית שינוי *רק* במכשיר הזה שעדיין לא נשמר בשרת — הוא יימחק. ודא/י שמכשיר אחר מציג את כל השינויים לפני שממשיכים.\n\nלהמשיך?");
+  if(!ok) return;
+  try{ if(dataUnsub){ dataUnsub(); dataUnsub=null; } }catch(_){}
+  try{ if(db) await terminate(db); }catch(_){}
+  try{ if(db) await clearIndexedDbPersistence(db); }catch(_){}
+  // גיבוי: מחיקה ישירה של מאגרי IndexedDB של firebase שנותרו (אם clearIndexedDbPersistence נחסם)
+  try{ if(indexedDB.databases){ const dbs=await indexedDB.databases(); for(const d of dbs){ if(d.name && /firebase|firestore/i.test(d.name)){ try{ indexedDB.deleteDatabase(d.name); }catch(_){} } } } }catch(_){}
+  setTimeout(()=>location.reload(), 400);
 }
 /* קידוד לערכי Firestore REST (הפוך מ-decFsVal) — לכתיבה במצב חלופי */
 function encFsVal(v){
