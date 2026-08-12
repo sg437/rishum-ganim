@@ -355,7 +355,8 @@ let lastSyncError="";      // קוד/הודעת השגיאה האחרונה מ-F
    כדי לדעת אם הנתונים באמת עלו לשרת (ונראים לשאר המשתמשים) או תקועים מקומית. */
 function setSyncStatus(state){
   const el=$("#syncStatus"); if(!el) return;
-  if(!currentUser){ el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; hideOfflineBanner(); return; }
+  _syncState=state;
+  if(!currentUser){ el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; hideOfflineBanner(); return; }
   const map={
     pending:["⏳ מסנכרן…","var(--warn)","יש שינויים שממתינים להעלאה לשרת — השאר/י את החלון פתוח עד שהחיווי יתחלף ל\"נשמר בענן\""],
     synced :["✓ נשמר בענן","var(--good)","כל הנתונים נשמרו בשרת ומשותפים לכל המשתמשים המחוברים"],
@@ -370,8 +371,31 @@ function setSyncStatus(state){
   } else {
     if(!_offlineTimer && !_offlineDismissed) _offlineTimer=setTimeout(showOfflineBanner, 12000);
   }
+  // שומר-סף לכתיבה תקועה: כשהקריאה מהשרת עובדת (serverConfirmed) אך "מסנכרן" לא מתחלף ל"נשמר בענן"
+  // תוך ~15 שניות — סימן שערוץ הכתיבה של ה-SDK חסום (רשת/פרוקסי) בעוד הקריאה עוברת. עוברים אוטומטית
+  // לכתיבה דרך REST (דחיפה, בלי לדרוס נתונים מקומיים) כדי לשחרר את התקיעה גם ללא התערבות המשתמש.
+  if(state==="pending" && serverConfirmed && !restMode){
+    if(!_pendingWatch) _pendingWatch=setTimeout(recoverStuckWrite, 15000);
+  } else {
+    clearTimeout(_pendingWatch); _pendingWatch=null;
+  }
 }
-let _offlineTimer=null, _offlineDismissed=false;
+let _offlineTimer=null, _offlineDismissed=false, _pendingWatch=null, _syncState="";
+/* מעבר אוטומטי לכתיבה דרך REST כשכתיבת ה-SDK נתקעת על "מסנכרן" (ראו setSyncStatus).
+   דוחף את הנתונים המקומיים כפי שהם — כדי לא לאבד עריכה שטרם עלתה לשרת. */
+async function recoverStuckWrite(){
+  _pendingWatch=null;
+  if(restMode || !currentUser || _syncState!=="pending" || !serverConfirmed) return;
+  const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
+  if(localEmpty) return; // אין מה לדחוף — לא נדרוס שרת עם DB ריק
+  try{
+    enterRestMode();
+    await pushAllRest();
+    savePending=false;
+    setSyncStatus("synced");
+    toast("הסנכרון הושלם (מצב חלופי)");
+  }catch(e){ console.error(e); setSyncStatus("error"); toast("שגיאת סנכרון — נסה/י שוב או בדוק/י חיבור"); }
+}
 function hideOfflineBanner(){ const b=$("#offlineBanner"); if(b) b.style.display="none"; }
 function showOfflineBanner(){
   const b=$("#offlineBanner"); if(!b) return;
@@ -389,12 +413,14 @@ function showOfflineBanner(){
       <div style="margin-top:6px;font-weight:500">עדיין תקוע אחרי הכול? עדכן/י את המנהל (עם צילום מסך של הבדיקה) — ונטפל בזה יחד.</div>
     </div>
     <span style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn sm" id="ob-restsave" type="button">📤 שמור לענן (מצב חלופי)</button>
       <button class="btn sm" id="ob-restload" type="button">📥 טען נתונים (מצב חלופי)</button>
       <button class="btn sm" id="ob-test" type="button">🔌 בדיקת חיבור</button>
       <button class="btn sm" id="ob-reload" type="button">🔄 רענן</button>
       <button class="btn ghost sm" id="ob-dismiss" type="button">הבנתי</button>
     </span></div>`;
   b.style.display="block";
+  const ls=$("#ob-restsave"); if(ls) ls.onclick=pushLocalViaRest;
   const lr=$("#ob-restload"); if(lr) lr.onclick=loadViaRest;
   const t=$("#ob-test"); if(t) t.onclick=testCloudConnection;
   const r=$("#ob-reload"); if(r) r.onclick=()=>location.reload();
@@ -438,6 +464,22 @@ async function loadViaRest(){
     hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced"); route();
     toast("הנתונים נטענו (מצב חלופי) — אפשר גם לערוך");
   }catch(e){ console.error(e); if(out) out.innerHTML=`<b style="color:var(--bad)">הטעינה נכשלה:</b> ${esc(String(e&&e.message||e))}`; }
+}
+/* דחיפת הנתונים המקומיים לענן דרך Firestore REST — משחרר "מסנכרן" תקוע כשערוץ הכתיבה של
+   ה-SDK חסום, מבלי לדרוס את מה שהוזן מקומית (בניגוד ל-loadViaRest שמושך מהשרת). */
+async function pushLocalViaRest(){
+  const out=$("#ob-result");
+  if(!currentUser){ if(out) out.innerHTML=`<b style="color:var(--bad)">יש להתחבר קודם.</b>`; return; }
+  const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
+  if(localEmpty){ if(out) out.innerHTML=`<b style="color:var(--bad)">אין נתונים מקומיים לשמירה.</b> נסה/י "טען נתונים" תחילה.`; return; }
+  if(out) out.innerHTML="שומר לענן במצב חלופי… ⏳";
+  try{
+    enterRestMode();
+    await pushAllRest();
+    savePending=false;
+    hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced");
+    toast("הנתונים נשמרו בענן (מצב חלופי)");
+  }catch(e){ console.error(e); if(out) out.innerHTML=`<b style="color:var(--bad)">השמירה נכשלה:</b> ${esc(String(e&&e.message||e))}`; }
 }
 /* קידוד לערכי Firestore REST (הפוך מ-decFsVal) — לכתיבה במצב חלופי */
 function encFsVal(v){
@@ -896,7 +938,7 @@ function startDataSync(){
   // מעבר אוטומטי למצב חלופי (REST) אם חיבור ה-SDK לא הצליח למשוך נתונים תוך ~12 שניות
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
 }
-function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; hideOfflineBanner(); }
+function stopDataSync(){ if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
 
 function boot(){
   try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
