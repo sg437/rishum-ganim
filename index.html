@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#4a9d5b">
 <title>מערכת רישום וקליטת תלמידות</title>
-<!-- PWA — התקנה כאפליקציה בטלפון עם אייקון מהלוגו (מתעדכן דינמית) -->
-<link rel="manifest" id="manifestLink">
-<link rel="icon" id="faviconLink" type="image/png">
-<link rel="apple-touch-icon" id="appleIcon">
+<!-- PWA — התקנה כאפליקציה בטלפון. Manifest ואייקונים סטטיים (נדרש להתקנה אמיתית באנדרואיד — WebAPK) -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" id="faviconLink" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" id="appleIcon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -831,19 +831,9 @@ function updatePwaIcons(){
     const ai=$("#appleIcon"); if(ai) ai.href=i192;
     const fi=$("#faviconLink"); if(fi) fi.href=i192;
     const at=document.querySelector('meta[name="apple-mobile-web-app-title"]'); if(at) at.content=appTitle();
-    const scope=location.pathname.replace(/[^/]*$/,'');
-    const manifest={
-      id:scope, name:appTitle(), short_name:(appTitle()||'רישום').slice(0,12),
-      start_url:location.pathname+location.search, scope,
-      display:'standalone', display_override:['standalone'], categories:['education','productivity'],
-      background_color:'#eaf4ec', theme_color:'#4a9d5b', lang:'he', dir:'rtl',
-      icons:[ {src:i192,sizes:'192x192',type:'image/png',purpose:'any maskable'},
-              {src:i512,sizes:'512x512',type:'image/png',purpose:'any maskable'} ]
-    };
-    const ml=$("#manifestLink");
-    if(ml){ if(_manifestUrl) try{ URL.revokeObjectURL(_manifestUrl); }catch(e){}
-      _manifestUrl=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));
-      ml.href=_manifestUrl; }
+    // ה-manifest והאייקונים הראשיים סטטיים (manifest.webmanifest + icon-192/512.png) —
+    // נדרש כדי שאנדרואיד יתקין אפליקציה אמיתית (WebAPK) ולא רק קיצור דרך. כאן מעדכנים רק
+    // את הפאביקון/אייקון ה-Apple ללוגו מותאם אם הוגדר (מיתוג), בלי לגעת ב-manifest.
   }catch(e){ console.error(e); }
 }
 let deferredInstallPrompt=null;
