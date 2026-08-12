@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#4a9d5b">
-<title>מערכת רישום וקליטת תלמידות</title>
+<title>מערכת ניהול רשת הגנים מודיעין עילית</title>
 <!-- PWA — התקנה כאפליקציה בטלפון. Manifest ואייקונים סטטיים (נדרש להתקנה אמיתית באנדרואיד — WebAPK) -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" id="faviconLink" type="image/png" href="icon-192.png">
@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="רישום תלמידות">
+<meta name="apple-mobile-web-app-title" content="רשת הגנים">
 <style>
 :root{
   --bg:#eaf4ec;--surface:#fff;--surface-2:#f1f8f2;--ink:#12251a;--ink-soft:#3d5546;
@@ -796,7 +796,7 @@ function ensureRetentionTransfer(src){
 }
 
 /* ---------- מיתוג: כותרת ולוגו ניתנים לשינוי (סעיפים 1–2) ---------- */
-const DEFAULT_TITLE = "מערכת רישום וקליטת תלמידות";
+const DEFAULT_TITLE = "מערכת ניהול רשת הגנים מודיעין עילית";
 const DEFAULT_LOGO = "🎒";
 function appTitle(){ return (DB.settings && DB.settings.appTitle) || DEFAULT_TITLE; }
 function appLogo(){ return (DB.settings && DB.settings.appLogo) || DEFAULT_LOGO; }
