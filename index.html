@@ -441,6 +441,15 @@ function decFsVal(v){
   return null;
 }
 function decFsFields(fields){ const o={}; for(const k in fields) o[k]=decFsVal(fields[k]); return o; }
+/* תרגום שגיאת רשת להסבר ברור בעברית — "Failed to fetch"/TypeError פירושו שהמכשיר
+   כלל לא הצליח להגיע לשרת Google/Firebase (רשת/פרוקסי/VPN/סינון חוסמים, או token שפג
+   שאי-אפשר לרענן ללא רשת). מבדיל מבעיית הרשאות/נתונים שמגיעה עם קוד סטטוס. */
+function netErrHe(e){
+  const m=String((e&&e.message)||e||"");
+  if(/failed to fetch|networkerror|load failed|type ?error|err_|ERR_/i.test(m))
+    return `<b style="color:var(--bad)">לא הצלחנו להגיע לשרת</b> (${esc(m)}). הרשת או הדפדפן חוסמים כרגע את החיבור ל-Firebase — הנתונים שמורים אצלך מקומית ובטוחים. עברו ל<b>רשת סלולרית</b> (או להיפך), כבו <b>VPN/סינון תוכן/חוסם פרסומות</b>, או נסו <b>דפדפן/מכשיר אחר</b> — ואז לחצו שוב "שמור לענן".`;
+  return `${esc(m)}`;
+}
 async function loadViaRest(){
   const out=$("#ob-result");
   if(!currentUser){ if(out) out.innerHTML=`<b style="color:var(--bad)">יש להתחבר קודם.</b>`; return; }
@@ -463,7 +472,7 @@ async function loadViaRest(){
     enterRestMode(); rebuildDB(cloudDocs);
     hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced"); route();
     toast("הנתונים נטענו (מצב חלופי) — אפשר גם לערוך");
-  }catch(e){ console.error(e); if(out) out.innerHTML=`<b style="color:var(--bad)">הטעינה נכשלה:</b> ${esc(String(e&&e.message||e))}`; }
+  }catch(e){ console.error(e); if(out) out.innerHTML=`<b style="color:var(--bad)">הטעינה נכשלה:</b> ${netErrHe(e)}`; }
 }
 /* דחיפת הנתונים המקומיים לענן דרך Firestore REST — משחרר "מסנכרן" תקוע כשערוץ הכתיבה של
    ה-SDK חסום, מבלי לדרוס את מה שהוזן מקומית (בניגוד ל-loadViaRest שמושך מהשרת). */
@@ -479,7 +488,7 @@ async function pushLocalViaRest(){
     savePending=false;
     hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced");
     toast("הנתונים נשמרו בענן (מצב חלופי)");
-  }catch(e){ console.error(e); if(out) out.innerHTML=`<b style="color:var(--bad)">השמירה נכשלה:</b> ${esc(String(e&&e.message||e))}`; }
+  }catch(e){ console.error(e); if(out) out.innerHTML=`<b style="color:var(--bad)">השמירה נכשלה:</b> ${netErrHe(e)}`; }
 }
 /* קידוד לערכי Firestore REST (הפוך מ-decFsVal) — לכתיבה במצב חלופי */
 function encFsVal(v){
@@ -520,10 +529,25 @@ async function testCloudConnection(){
   const email=(currentUser && currentUser.email) || "";
   let reachable=false;
   try{ await fetch("https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app?pageSize=1",{ mode:"no-cors", cache:"no-store" }); reachable=true; }catch(e){}
+  // בדיקה אמיתית: קריאת REST מאומתת (עם token) — קובעת חד-משמעית אם הבקשה בפועל עוברת,
+  // בניגוד ל-no-cors שעשוי "להצליח" גם כשהבקשה האמיתית נחסמת (וגם חושף token שפג שאי-אפשר לרענן).
+  let realOk=false, realMsg="";
+  if(email){
+    try{
+      const token=await currentUser.getIdToken();
+      const r=await fetch("https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app?pageSize=1",{ headers:{ Authorization:"Bearer "+token }, cache:"no-store" });
+      realOk=r.ok; realMsg=r.ok?"":("("+r.status+")");
+    }catch(err){ realOk=false; realMsg=String((err&&err.message)||err); }
+  }
   if(!out) return;
   const G=t=>`<b style="color:var(--good)">${t}</b>`, R=t=>`<b style="color:var(--bad)">${t}</b>`;
+  const netBlocked=/failed to fetch|networkerror|load failed|type ?error|err_|ERR_/i.test(realMsg);
   let msg = email ? `מחובר/ת כ: <b dir="ltr">${esc(email)}</b>.<br>` : `${R("לא מחובר/ת לחשבון")} — יש להתחבר עם אימייל וסיסמה.<br>`;
-  msg += reachable ? `רשת: ${G("יש גישה לשרת")} (הרשת לא חוסמת).<br>` : `רשת: ${R("אין גישה לשרת")} — עבור/עברי לרשת אחרת (חבילת גלישה) או דפדפן אחר.<br>`;
+  if(email){
+    msg += realOk ? `בדיקת חיבור אמיתית לשרת: ${G("עברה ✓")} — החיבור תקין, אפשר לשמור.<br>`
+      : `בדיקת חיבור אמיתית לשרת: ${R("נכשלה")} ${esc(realMsg)} — ${netBlocked?"הרשת/הדפדפן חוסמים כרגע את החיבור ל-Firebase. עברו ל<b>רשת סלולרית</b> (או להיפך), כבו <b>VPN/סינון תוכן</b>, או נסו <b>דפדפן/מכשיר אחר</b>":"נסו שוב מאוחר יותר"}.<br>`;
+  }
+  msg += reachable ? `רשת (בדיקה בסיסית): ${G("הדומיין נגיש")}.<br>` : `רשת (בדיקה בסיסית): ${R("הדומיין חסום")} — עבור/עברי לרשת אחרת (חבילת גלישה) או דפדפן אחר.<br>`;
   // נתונים שהתקבלו בפועל מהשרת — הקובע אם זו בעיית חיבור או בעיית בחירת שנה/סינון
   const totalStu=DB.students.length, totalGan=DB.gans.length;
   msg += `נתונים מהשרת: ${serverConfirmed? G("התקבלו ✓") : R("טרם התקבלו ✗")} · נטענו <b>${totalStu}</b> תלמידות ו-<b>${totalGan}</b> גנים.<br>`;
