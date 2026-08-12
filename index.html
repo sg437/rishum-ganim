@@ -1084,6 +1084,17 @@ const GUIDE_CSS = `
 .gd-tree .i3{padding-inline-start:54px}
 .gd-tree .i4{padding-inline-start:72px}
 .gd-body h4{margin:6px 0 4px}
+.gd-gan{background:#fff;border:1px solid var(--g-border);border-radius:10px;padding:10px 14px}
+.gd-gan .gd-gan-h{font-size:1rem;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.gd-gan .gd-gan-b{color:var(--g-muted);font-size:.9rem}
+.gd-capbar{height:9px;border-radius:6px;background:var(--g-surf);border:1px solid var(--g-border);margin:8px 0 3px;overflow:hidden}
+.gd-capbar>span{display:block;height:100%;background:var(--g-accent)}
+.gd-assign>div{background:#fff;border:1px solid var(--g-border);border-radius:8px;padding:6px 12px;margin-top:6px}
+.gd-bars>div{display:flex;align-items:center;gap:8px;margin:6px 0}
+.gd-bars .lbl{width:58px;font-weight:700;font-size:.85rem}
+.gd-bars .bar{background:var(--g-accent);color:#fff;border-radius:6px;padding:2px 8px;font-weight:700;font-size:.82rem;text-align:start;min-width:26px}
+.gd-filters{display:flex;gap:8px;flex-wrap:wrap}
+.gd-fld{background:#fff;border:1px solid var(--g-border);border-radius:8px;padding:5px 10px;font-size:.85rem;font-weight:600}
 @media print{.gd{break-inside:avoid}.gd>summary::after{display:none}.gd-ill{break-inside:avoid}}
 `;
 
@@ -1154,6 +1165,36 @@ function guideContent(){
       <div class="i4">📄 תקנון · אבו מיכל · <span dir="ltr">123456789.pdf</span></div>
     </div></div>`;
 
+  const illFilter = `<div class="gd-ill"><div class="gd-cap">סרגל הסינון</div>
+    <div class="gd-filters">
+      <span class="gd-fld">🔎 שם / ת"ז</span><span class="gd-fld">גן: הכל ▾</span>
+      <span class="gd-fld">גיל: 3 · 4</span><span class="gd-fld">שיבוץ: ממתינה ▾</span>
+      <span class="gd-fld">ביטוח: לא שולם ▾</span>
+    </div></div>`;
+
+  const illGan = `<div class="gd-ill"><div class="gd-cap">כרטיס גן</div>
+    <div class="gd-gan">
+      <div class="gd-gan-h"><b>גן שרה</b> <span class="gd-pill">גיל 4</span> <span class="gd-pill">רגיל</span></div>
+      <div class="gd-gan-b">גננת: שרה כהן · קמפוס: רשב"ם · קיבולת 25</div>
+      <div class="gd-capbar"><span style="width:80%"></span></div>
+      <div class="gd-mut" style="font-size:.82rem">20 מתוך 25 משובצות</div>
+    </div></div>`;
+
+  const illAssign = `<div class="gd-ill"><div class="gd-cap">שיבוץ צוות — לפי הקשר</div>
+    <div class="gd-tabs"><i class="on">פעילות הגן</i><i>צהרונים</i><i>קייטנות</i></div>
+    <div class="gd-assign">
+      <div><b>גננת</b> · שרה כהן · 050-0000000</div>
+      <div><b>סייעת</b> · רבקה לוי · 052-0000000</div>
+      <div><b>סייעת ב'</b> · <span class="gd-mut">נפתח כשהגן מגיע ל-30 בנות</span></div>
+    </div></div>`;
+
+  const illReports = `<div class="gd-ill"><div class="gd-cap">התפלגות לפי גיל (דוגמה)</div>
+    <div class="gd-bars">
+      <div><span class="lbl">גיל 3</span><span class="bar" style="width:55%">42</span></div>
+      <div><span class="lbl">גיל 4</span><span class="bar" style="width:78%">56</span></div>
+      <div><span class="lbl">גיל 5</span><span class="bar" style="width:42%">31</span></div>
+    </div></div>`;
+
   const quickstart = `<b>🚀 התחלה מהירה</b>
     <ol style="margin:6px 0 0;padding-inline-start:20px">
       <li>בראש המסך בוחרים <b>שנה</b>, ואפשר לסנן <b>חינוך</b> (הכל / רגיל / מיוחד).</li>
@@ -1194,6 +1235,7 @@ function guideContent(){
       </ul>` },
 
     { icon:"🔎", title:"חיפוש, סינון ומיון ברשימה", html:
+      illFilter+
       `<ul>
         <li><b>חיפוש</b> — לפי שם או ת"ז.</li>
         <li><b>סינון</b> — גן (כולל <b>"ללא גן (הוצאו)"</b>), גיל (ריבוי), עיר, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס.</li>
@@ -1213,6 +1255,7 @@ function guideContent(){
       <div class="gd-tip">💡 שימושי לסימון גן שלם ששילם ביטוח, או קבוצה שנרשמה לקייטנה.</div>` },
 
     { icon:"🏫", title:"גנים", html:
+      illGan+
       `<ul>
         <li>לשונית <b>גנים</b> → <b>➕ הוספת גן</b>: שם, סמל, גיל, חינוך, גננת, כתובת, טלפונים, <b>קיבולת</b>, קמפוס, הפעלה/כיבוי.</li>
         <li>גנים דו-גילאיים נתמכים (למשל 3/4, 4/5).</li>
@@ -1220,6 +1263,7 @@ function guideContent(){
       </ul>` },
 
     { icon:"👩‍🏫", title:"שיבוץ צוות", html:
+      illAssign+
       `<ul>
         <li>שיבוץ לפי <b>שנה</b> ולפי <b>הקשר</b>: פעילות הגן · צהרונים · קייטנות.</li>
         <li>בוחרים גן, ומשבצים צוות לפי תפקיד (שם + טלפון מהמאגר). למשלימה — <b>ימים</b>; לממלאת מקום — <b>תקופה</b>.</li>
@@ -1228,6 +1272,7 @@ function guideContent(){
       </ul>` },
 
     { icon:"📊", title:"דוחות ואחוזים", html:
+      illReports+
       `<ul>
         <li>התפלגות תלמידות לפי גן/קמפוס/גיל, והשוואה בין שנים.</li>
         <li>מחשבון אחוזים חופשי — בחירת שנים/קמפוסים/גילאים.</li>
