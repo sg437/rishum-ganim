@@ -647,6 +647,7 @@ function rebuildDB(docsMap){
 function normStudent(s){
   if(s.campus==null) s.campus=""; // קמפוס גנים (סעיף 1)
   if(s.placed==null) s.placed=true; // רשומות קיימות נחשבות משובצות (הגירה חד-פעמית)
+  if(s.insurancePaid==null) s.insurancePaid=false; // תשלום ביטוח תלמידים
   s.docs = Object.assign({ nispach:false, idCopy:false, takanon:false }, s.docs||{});
   s.docFiles = s.docFiles||{};
   s.programs = Object.assign({ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, s.programs||{});
@@ -699,6 +700,17 @@ function findSiblings(ref){
 }
 function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // ברירת מחדל: חינוך רגיל
 function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
+/* איתור כפילות ת"ז באותה שנה — כולל בין סוגי חינוך שונים (מניעת רישום כפול). מחזיר את הרשומה הקיימת או null */
+function tzClashInYear(tz, year, exceptId){
+  const d=digits(tz); if(!d) return null;
+  return DB.students.find(x=> x.id!==exceptId && x.year===year && digits(x.tz)===d) || null;
+}
+/* תיאור קצר של הרשומה הקיימת — שם · חינוך · גן */
+function clashDesc(c){
+  const eduTxt = eduLabel(c)==='ח"מ' ? 'חינוך מיוחד' : 'חינוך רגיל';
+  const nm=[c.lastName,c.firstName].filter(Boolean).join(" ")||'ללא שם';
+  return nm+' · '+eduTxt+(c.ganId?(' · '+ganName(c.ganId)):'');
+}
 
 /* ---------- מיתוג: כותרת ולוגו ניתנים לשינוי (סעיפים 1–2) ---------- */
 const DEFAULT_TITLE = "מערכת רישום וקליטת תלמידות";
@@ -806,6 +818,7 @@ function makeStudent(){ return {
   docFiles:{}, // { [docKey]: {id,name,link} } — קובץ פיזי שצורף לכל מסמך (סעיף 12)
   programs:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, // סעיף 9
   programsPaid:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, // סעיף 5 — תשלום קייטנה
+  insurancePaid:false, // תשלום ביטוח תלמידים (שולם/לא שולם)
   special:{ divorced:false, approvalFather:false, approvalMother:false,
             idFather:false, idMother:false, approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false, // סעיף 7 — מסמכי הורים גרושים
             outOfCity:false, paymentArrangement:false,
@@ -1247,7 +1260,9 @@ const STU_FLAGS = {
   tzaharon:     { label:"צהרון",          test:s=>!!(s.programs && s.programs.tzaharon) },
   campHanukkah: { label:"קייטנת חנוכה",   test:s=>!!(s.programs && s.programs.campHanukkah) },
   campNisan:    { label:"קייטנת ניסן",    test:s=>!!(s.programs && s.programs.campNisan) },
-  campEndYear:  { label:"קייטנת סוף שנה", test:s=>!!(s.programs && s.programs.campEndYear) }
+  campEndYear:  { label:"קייטנת סוף שנה", test:s=>!!(s.programs && s.programs.campEndYear) },
+  insurancePaid:{ label:"ביטוח שולם",     test:s=>!!s.insurancePaid },
+  insuranceUnpaid:{ label:"ביטוח לא שולם", test:s=>!s.insurancePaid }
 };
 let stuSort = { key:"name", dir:1 }; // מיון לפי עמודה (סעיף 10)
 
@@ -1446,7 +1461,7 @@ function openStudent(s){
     <div class="grid g3">
       <div><label>שם פרטי</label><input id="s-firstName" value="${esc(s.firstName)}"></div>
       <div><label>שם משפחה</label><input id="s-lastName" value="${esc(s.lastName)}"></div>
-      <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"></div>
+      <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"><div id="s-tz-warn" class="hint" style="color:var(--bad);font-weight:600"></div></div>
       <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
@@ -1479,6 +1494,7 @@ function openStudent(s){
       <label class="check"><input type="checkbox" id="s-placed" ${s.placed!==false?'checked':''}> משובצת בגן (שיבוץ סופי)</label>
       <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
       <label class="check"><input type="checkbox" id="s-absorbedMunicipality" ${s.absorbedMunicipality?'checked':''}> קלוט בעירייה</label>
+      <label class="check"><input type="checkbox" id="s-insurancePaid" ${s.insurancePaid?'checked':''}> תשלום ביטוח תלמידים שולם</label>
     </div>
   </fieldset>
   <fieldset><legend>מסמכים</legend>
@@ -1634,6 +1650,12 @@ function openStudent(s){
 
   const refreshSuggest=()=>{ const tmp=collect(); $("#s-folderSuggest").value=suggestFolder(tmp); };
   ["s-firstName","s-lastName","s-tz"].forEach(id=> $("#"+id).oninput=refreshSuggest);
+  /* בדיקה חיה של ת"ז — התראה מיידית אם הילדה כבר רשומה בשנה זו (גם בחינוך אחר) */
+  const tzWarn=()=>{ const el=$("#s-tz-warn"); if(!el) return;
+    const c=tzClashInYear($("#s-tz").value, s.year, s.id);
+    el.textContent = c ? ("⚠️ כבר רשומה בשנה זו: "+clashDesc(c)) : "";
+  };
+  $("#s-tz").addEventListener("input", tzWarn); tzWarn();
   /* בעדכון הגן — הקמפוס מתעדכן אוטומטית לפי הגן (בלשונית גנים) */
   const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; };
   $("#copyFolder").onclick=()=>{ navigator.clipboard?.writeText($("#s-folderSuggest").value).then(()=>toast("שם התיקייה הועתק"),()=>{}); };
@@ -1704,7 +1726,7 @@ function openStudent(s){
       street:val("s-street"), building:val("s-building"), city:val("s-city"),
       campus: (ganCampus(val("s-ganId")) || val("s-campus")),   // קמפוס נגזר מהגן
       ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
-      placed:chk("s-placed"),
+      placed:chk("s-placed"), insurancePaid:chk("s-insurancePaid"),
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
       docs, docFiles:s.docFiles||{}, programs, programsPaid,
@@ -1716,6 +1738,10 @@ function openStudent(s){
   $("#saveStu").onclick=()=>{
     const data=collect();
     if(!data.firstName && !data.lastName){ toast("יש להזין לפחות שם"); return; }
+    /* חסימת רישום כפול — ת"ז שכבר קיימת באותה שנה (גם בחינוך אחר) */
+    const clash=tzClashInYear(data.tz, data.year, s.id);
+    if(clash){ const w=$("#s-tz-warn"); if(w) w.textContent="⚠️ כבר רשומה בשנה זו: "+clashDesc(clash);
+      toast('לא ניתן לרשום — הילדה כבר רשומה בשנה זו: '+clashDesc(clash)); return; }
     const i=DB.students.findIndex(x=>x.id===s.id);
     if(i>=0) DB.students[i]=data; else DB.students.push(data);
     save(); closeModal(); route(); toast(isNew?"נוסף תיק ילדה":"התיק נשמר");
