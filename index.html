@@ -647,6 +647,8 @@ function rebuildDB(docsMap){
 function normStudent(s){
   if(s.campus==null) s.campus=""; // קמפוס גנים (סעיף 1)
   if(s.placed==null) s.placed=true; // רשומות קיימות נחשבות משובצות (הגירה חד-פעמית)
+  if(s.insurancePaid==null) s.insurancePaid=false; // תשלום ביטוח תלמידים
+  if(s.retentionNext==null) s.retentionNext=false; // השארות לשנה הבאה
   s.docs = Object.assign({ nispach:false, idCopy:false, takanon:false }, s.docs||{});
   s.docFiles = s.docFiles||{};
   s.programs = Object.assign({ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, s.programs||{});
@@ -699,6 +701,99 @@ function findSiblings(ref){
 }
 function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // ברירת מחדל: חינוך רגיל
 function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
+/* איתור כפילות ת"ז באותה שנה — כולל בין סוגי חינוך שונים (מניעת רישום כפול). מחזיר את הרשומה הקיימת או null */
+function tzClashInYear(tz, year, exceptId){
+  const d=digits(tz); if(!d) return null;
+  return DB.students.find(x=> x.id!==exceptId && x.year===year && digits(x.tz)===d) || null;
+}
+/* תיאור קצר של הרשומה הקיימת — שם · חינוך · גן */
+function clashDesc(c){
+  const eduTxt = eduLabel(c)==='ח"מ' ? 'חינוך מיוחד' : 'חינוך רגיל';
+  const nm=[c.lastName,c.firstName].filter(Boolean).join(" ")||'ללא שם';
+  return nm+' · '+eduTxt+(c.ganId?(' · '+ganName(c.ganId)):'');
+}
+
+/* ============================================================
+   מעבר שנה — לוגיקת קידום (סעיף מעבר שנה)
+   ============================================================ */
+/* גיל של גן — תומך בגנים דו-גלאיים "3/4" / "4/5": האם הגן מכיל את הגיל הנתון */
+function ganMatchesAge(gan, age){ return String(gan.age||"").split("/").map(x=>x.trim()).includes(String(age)); }
+/* הגן המתקדם באותו קמפוס לגיל הנתון — רק אם יש בדיוק גן פעיל אחד מתאים (אחרת null → ללא גן) */
+function nextGanInCampus(src, newAge){
+  const srcGan=ganById(src.ganId);
+  const campus=(src.campus || (srcGan&&srcGan.campus) || "");
+  const edu=eduLabel(src);
+  const cands=DB.gans.filter(g=> g.active!==false && (g.campus||"")===campus && eduLabel(g)===edu && ganMatchesAge(g,newAge));
+  return cands.length===1 ? cands[0] : null;
+}
+/* השנה שאחרי (לפי סדר DB.years — סדר כרונולוגי של הוספה) */
+function nextYearOf(y){ const i=DB.years.indexOf(y); return (i>=0 && i<DB.years.length-1) ? DB.years[i+1] : null; }
+
+/* בניית רשומת התלמידה לשנת היעד לפי כללי המעבר.
+   forceRetain=true → השארות: אותו גן, אותו גיל, בלי קידום.
+   מחזיר null אם הילדה מסיימת (גן חובה / גיל 5+) ואינה בהשארות. */
+function buildPromoted(src, toYear, forceRetain){
+  const retain = forceRetain || !!src.retentionNext;
+  const curAge = parseInt(src.age,10);
+  if(!retain){
+    // מסיימת: גיל 5+ (גן חובה) — לא עוברת
+    if(!isNaN(curAge) && curAge>=5) return null;
+  }
+  const n=JSON.parse(JSON.stringify(src));
+  n.id=uid(); n.year=toYear; n.createdAt=new Date().toISOString();
+  n.period="א"; n.finished=false;
+  n.placed=false;                 // לא מסומנת משובצת
+  n.absorbedMunicipality=false;   // לא קלוט בעירייה (יעודכן בהמשך בעדכון קבוצתי)
+  n.insurancePaid=false;          // ביטוח — מחדש כל שנה
+  n.retentionNext=false;          // דגל ההשארות לא ממשיך אוטומטית הלאה
+  // גן + גיל
+  if(retain){
+    n.ganId=src.ganId; n.age=src.age; n.campus=src.campus;
+  } else if(!isNaN(curAge)){
+    const newAge=curAge+1;
+    const ng=nextGanInCampus(src,newAge);
+    n.age=String(newAge);
+    n.ganId = ng? ng.id : "";               // ללא גן אם אין התאמה יחידה (החלטה: להשאיר ללא גן)
+    n.campus = ng? (ng.campus||"") : "";
+  } else {
+    n.ganId=""; n.campus="";                // אין גיל — עובר ללא גן
+  }
+  // מסמכים — רק צילום ת"ז (סימון + קובץ) עובר; נספח/תקנון מתאפסים
+  const idFile = (src.docFiles && src.docFiles.idCopy) ? JSON.parse(JSON.stringify(src.docFiles.idCopy)) : null;
+  n.docs={ nispach:false, idCopy: !!(src.docs&&src.docs.idCopy), takanon:false };
+  n.docFiles = idFile ? { idCopy:idFile } : {};
+  // תוכניות/מועדונים + תשלומי קייטנה — ריק
+  n.programs={ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false };
+  n.programsPaid={ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false };
+  // סיוע והעשרה — ריק
+  n.support={ shiluv:false, salIshi:false, behavior:false, prepA:false };
+  // שונות: גרושים/חוץ/אחר — הסימון עובר; מסמכים וחתימות מחדש; השארות (של השנה) לא עוברת
+  const sp=src.special||{};
+  n.special={
+    divorced: !!sp.divorced,
+    approvalFather:false, approvalMother:false, idFather:false, idMother:false,
+    approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false,
+    outOfCity: !!sp.outOfCity, paymentArrangement:false,
+    retention:false, retentionDoc:false,
+    other: !!sp.other, otherText: sp.other ? (sp.otherText||"") : ""
+  };
+  // דרייב — תיקייה חדשה לשנה החדשה (תיווצר עם הצורך)
+  n.driveFolder=""; n.driveFolderId="";
+  // הערות — נקי
+  n.notes="";
+  return n;
+}
+/* העברה מיידית של ילדה שסומנה "השארות לשנה הבאה" — לשנה הבאה, באותו גן, אם עוד לא קיימת שם.
+   מחזיר {ok, year, reason}. אינו שומר — הקורא אחראי ל-save(). */
+function ensureRetentionTransfer(src){
+  const toYear=nextYearOf(src.year);
+  if(!toYear) return { ok:false, reason:"אין שנה הבאה מוגדרת בהגדרות" };
+  if(tzClashInYear(src.tz, toYear, null)) return { ok:false, reason:"כבר קיימת בשנה הבאה" };
+  const n=buildPromoted(src, toYear, true);
+  if(!n) return { ok:false, reason:"לא נוצרה רשומה" };
+  DB.students.push(n);
+  return { ok:true, year:toYear };
+}
 
 /* ---------- מיתוג: כותרת ולוגו ניתנים לשינוי (סעיפים 1–2) ---------- */
 const DEFAULT_TITLE = "מערכת רישום וקליטת תלמידות";
@@ -802,10 +897,12 @@ function makeStudent(){ return {
   ganId:"", age:"", period:"א", education:"רגיל",
   registeredByUs:true, absorbedMunicipality:false, finished:false,
   placed:true, // שיבוץ סופי בגן (משובצת). ילדה רשומה לגן דרך ganId; placed=false = ממתינה לשיבוץ עד סיום הבירור
+  retentionNext:false, // השארות לשנה הבאה — סימון קדימה שמעביר אוטומטית לשנה הבאה (נפרד מ-special.retention של השנה הנוכחית)
   docs:{ nispach:false, idCopy:false, takanon:false },
   docFiles:{}, // { [docKey]: {id,name,link} } — קובץ פיזי שצורף לכל מסמך (סעיף 12)
   programs:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, // סעיף 9
   programsPaid:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, // סעיף 5 — תשלום קייטנה
+  insurancePaid:false, // תשלום ביטוח תלמידים (שולם/לא שולם)
   special:{ divorced:false, approvalFather:false, approvalMother:false,
             idFather:false, idMother:false, approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false, // סעיף 7 — מסמכי הורים גרושים
             outOfCity:false, paymentArrangement:false,
@@ -1247,9 +1344,45 @@ const STU_FLAGS = {
   tzaharon:     { label:"צהרון",          test:s=>!!(s.programs && s.programs.tzaharon) },
   campHanukkah: { label:"קייטנת חנוכה",   test:s=>!!(s.programs && s.programs.campHanukkah) },
   campNisan:    { label:"קייטנת ניסן",    test:s=>!!(s.programs && s.programs.campNisan) },
-  campEndYear:  { label:"קייטנת סוף שנה", test:s=>!!(s.programs && s.programs.campEndYear) }
+  campEndYear:  { label:"קייטנת סוף שנה", test:s=>!!(s.programs && s.programs.campEndYear) },
+  insurancePaid:{ label:"ביטוח שולם",     test:s=>!!s.insurancePaid },
+  insuranceUnpaid:{ label:"ביטוח לא שולם", test:s=>!s.insurancePaid },
+  retentionNext:{ label:"השארות לשנה הבאה", test:s=>!!s.retentionNext }
 };
 let stuSort = { key:"name", dir:1 }; // מיון לפי עמודה (סעיף 10)
+
+/* ---------- עדכון קבוצתי (סימון מרובה + החלה על קבוצה) ---------- */
+let bulkMode=false;               // מצב בחירה מרובה פעיל
+const bulkSel=new Set();          // מזהי התלמידות המסומנות
+let bulkField="insurancePaid";    // השדה שנבחר לעדכון
+/* שדות הניתנים לעדכון קבוצתי — לכל שדה set(student, value:boolean) */
+const BULK_FIELDS = [
+  { key:"insurancePaid",      label:"תשלום ביטוח תלמידים",           set:(s,v)=>{ s.insurancePaid=v; } },
+  { key:"placed",             label:"משובצת (שיבוץ סופי)",            set:(s,v)=>{ s.placed=v; } },
+  { key:"absorbedMunicipality",label:"קלוט בעירייה",                 set:(s,v)=>{ s.absorbedMunicipality=v; } },
+  { key:"prog.tzaharon",      label:"רישום צהרון",                    set:(s,v)=>{ s.programs=s.programs||{}; s.programs.tzaharon=v; } },
+  { key:"prog.campHanukkah",  label:"רישום קייטנת חנוכה",             set:(s,v)=>{ s.programs=s.programs||{}; s.programs.campHanukkah=v; } },
+  { key:"prog.campNisan",     label:"רישום קייטנת ניסן",              set:(s,v)=>{ s.programs=s.programs||{}; s.programs.campNisan=v; } },
+  { key:"prog.campEndYear",   label:"רישום קייטנת סוף שנה",           set:(s,v)=>{ s.programs=s.programs||{}; s.programs.campEndYear=v; } },
+  { key:"paid.tzaharon",      label:"תשלום צהרון",                    set:(s,v)=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid.tzaharon=v; } },
+  { key:"paid.campHanukkah",  label:"תשלום קייטנת חנוכה",             set:(s,v)=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid.campHanukkah=v; } },
+  { key:"paid.campNisan",     label:"תשלום קייטנת ניסן",              set:(s,v)=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid.campNisan=v; } },
+  { key:"paid.campEndYear",   label:"תשלום קייטנת סוף שנה",           set:(s,v)=>{ s.programsPaid=s.programsPaid||{}; s.programsPaid.campEndYear=v; } },
+  { key:"retentionNext",      label:"השארות לשנה הבאה (מעביר אוטומטית)", set:(s,v)=>{ s.retentionNext=v; }, retention:true }
+];
+/* החלת עדכון קבוצתי על התלמידות המסומנות */
+function applyBulk(fieldKey, val){
+  const f=BULK_FIELDS.find(x=>x.key===fieldKey); if(!f){ toast("בחר/י שדה"); return; }
+  const ids=[...bulkSel]; if(!ids.length){ toast("לא סומנו תלמידות"); return; }
+  let n=0, transferred=0, failed=0;
+  ids.forEach(id=>{ const s=DB.students.find(x=>x.id===id); if(!s) return;
+    const before = f.retention ? !!s.retentionNext : null;
+    f.set(s, val); n++;
+    if(f.retention && val && !before){ const r=ensureRetentionTransfer(s); r.ok?transferred++:failed++; }
+  });
+  save(); bulkSel.clear(); renderStuTable();
+  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}`);
+}
 
 function viewStudents(root){
   const gans = eduScope(DB.gans.slice()).sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
@@ -1262,11 +1395,14 @@ function viewStudents(root){
       <div><h2>תיקי התלמידות · שנת ${esc(DB.activeYear)}${esc(scopeNote)}</h2>
         <div class="sub">תיק לכל ילדה עם כל הפרטים, המסמכים והשונות. סימון "סיימה גן" מעביר אותה ל"שסיימו" (אינה נמחקת — ניתן לצפות בה דרך סינון הסטטוס). לחיצה על כותרת עמודה ממיינת.</div></div>
       <div class="row" style="gap:8px">
+        <button class="btn ghost" id="importUpdate">⬆️ ייבוא לעדכון (לפי ת"ז)</button>
+        <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
         <button class="btn ghost" id="importStu">⬆️ ייבוא מקובץ</button>
         <button class="btn" id="addStu">➕ הוספת ילדה</button>
       </div>
     </div>
     <div id="stuSummary" style="margin:2px 0 12px"></div>
+    <div id="bulkBar"></div>
     <div class="toolbar">
       <div class="field grow"><label>חיפוש (שם / ת"ז)</label><input id="f-q" value="${esc(stuFilter.q)}" placeholder="הקלד/י שם או ת&quot;ז…"></div>
       <div class="field"><label>גן</label><select id="f-gan"><option value="">הכל</option><option value="__none__" ${stuFilter.gan==='__none__'?'selected':''}>— ללא גן (הוצאו) —</option>${gans.map(g=>`<option value="${g.id}" ${stuFilter.gan===g.id?'selected':''}>${esc(ganName(g.id))}</option>`).join("")}</select></div>
@@ -1292,6 +1428,8 @@ function viewStudents(root){
 
   $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#importStu").onclick = ()=> openImport();
+  $("#bulkToggle").onclick = ()=>{ bulkMode=!bulkMode; bulkSel.clear(); viewStudents(root); };
+  $("#importUpdate").onclick = ()=> openBulkImport();
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
   bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
   // סינון גיל בריבוי בחירה — לחיצה מוסיפה/מסירה גיל (סעיף 6)
@@ -1392,20 +1530,42 @@ function renderStuSummary(){
     ${flagTile}
   </div>`;
 }
+function renderBulkBar(list){
+  const bar=$("#bulkBar"); if(!bar) return;
+  if(!bulkMode){ bar.innerHTML=""; return; }
+  bar.innerHTML=`<div class="panel" style="padding:12px;margin:4px 0 12px;background:var(--surface-2)">
+    <div class="row" style="gap:10px;align-items:end;flex-wrap:wrap">
+      <div class="field"><label>שדה לעדכון</label><select id="bulk-field">${BULK_FIELDS.map(f=>`<option value="${f.key}" ${bulkField===f.key?'selected':''}>${esc(f.label)}</option>`).join("")}</select></div>
+      <button class="btn" id="bulk-yes">✔️ סמן כן (${bulkSel.size})</button>
+      <button class="btn ghost" id="bulk-no">✖️ סמן לא (${bulkSel.size})</button>
+      <button class="btn ghost" id="bulk-selall">בחר/י הכל (${list.length})</button>
+      <button class="btn ghost" id="bulk-clear">נקה בחירה</button>
+    </div>
+    <div class="hint" style="margin-top:6px">סמן/י ילדות בעמודה השמאלית, בחר/י שדה וערך, ולחצ/י "סמן כן/לא". הבחירה חלה על השנה והסינון הנוכחיים.</div>
+  </div>`;
+  $("#bulk-field").onchange=e=>{ bulkField=e.target.value; };
+  $("#bulk-yes").onclick=()=> applyBulk($("#bulk-field").value, true);
+  $("#bulk-no").onclick =()=> applyBulk($("#bulk-field").value, false);
+  $("#bulk-clear").onclick=()=>{ bulkSel.clear(); renderStuTable(); };
+  $("#bulk-selall").onclick=()=>{ const all=list.every(s=>bulkSel.has(s.id)); if(all) list.forEach(s=>bulkSel.delete(s.id)); else list.forEach(s=>bulkSel.add(s.id)); renderStuTable(); };
+}
 function renderStuTable(){
   renderTabs();
   renderStuSummary();
   const list = filteredStudents();
+  renderBulkBar(list);
   const host = $("#stuTable");
   const statusLbl = { active:"פעילות", finished:"שסיימו / יצאו", all:"כל הסטטוסים" }[stuFilter.status]||"";
   if(!list.length){ host.innerHTML = `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`; return; }
   const arr=k=> stuSort.key===k ? `<span class="arr">${stuSort.dir>0?'▲':'▼'}</span>` : "";
   const th=(k,lbl)=>`<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>`;
   host.innerHTML = `<div class="table-wrap"><table><thead><tr>
+    ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
     <th style="text-align:center" title="סימון 'סיימה/יצאה' — מסונכרן עם התיק">סיימו</th>
     ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}<th title="שיבוץ סופי בגן — לחיצה משנה בין 'משובצת' ל'ממתינה'">שיבוץ</th>${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
     <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
-    ${list.map(s=>`<tr>
+    ${list.map(s=>`<tr${bulkMode&&bulkSel.has(s.id)?' style="background:var(--good-soft)"':''}>
+      ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
       <td style="text-align:center"><input type="checkbox" class="stu-finish" data-id="${esc(s.id)}" ${s.finished?'checked':''} title="סימון 'סיימה/יצאה' — מסונכרן עם התיק"></td>
       <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
       <td>${esc(s.tz)||'—'}</td>
@@ -1431,6 +1591,9 @@ function renderStuTable(){
   /* החלפת סטטוס שיבוץ בלחיצה אחת מהרשימה (משובצת ⇄ ממתינה) */
   host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(stuSort.key===k) stuSort.dir*=-1; else { stuSort.key=k; stuSort.dir=1; } renderStuTable(); });
+  /* עדכון קבוצתי — סימון שורות + בחירת הכל */
+  host.querySelectorAll(".bulk-cb").forEach(cb=> cb.onchange=()=>{ cb.checked?bulkSel.add(cb.dataset.id):bulkSel.delete(cb.dataset.id); renderStuTable(); });
+  const bAll=$("#bulk-all"); if(bAll) bAll.onchange=()=>{ if(bAll.checked) list.forEach(s=>bulkSel.add(s.id)); else list.forEach(s=>bulkSel.delete(s.id)); renderStuTable(); };
 }
 
 /* טופס תיק ילדה */
@@ -1446,7 +1609,7 @@ function openStudent(s){
     <div class="grid g3">
       <div><label>שם פרטי</label><input id="s-firstName" value="${esc(s.firstName)}"></div>
       <div><label>שם משפחה</label><input id="s-lastName" value="${esc(s.lastName)}"></div>
-      <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"></div>
+      <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"><div id="s-tz-warn" class="hint" style="color:var(--bad);font-weight:600"></div></div>
       <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
@@ -1479,6 +1642,8 @@ function openStudent(s){
       <label class="check"><input type="checkbox" id="s-placed" ${s.placed!==false?'checked':''}> משובצת בגן (שיבוץ סופי)</label>
       <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
       <label class="check"><input type="checkbox" id="s-absorbedMunicipality" ${s.absorbedMunicipality?'checked':''}> קלוט בעירייה</label>
+      <label class="check"><input type="checkbox" id="s-insurancePaid" ${s.insurancePaid?'checked':''}> תשלום ביטוח תלמידים שולם</label>
+      <label class="check" title="סימון זה יעביר את הילדה אוטומטית לשנה הבאה (באותו גן, לא משובצת), עם שמירת השנה הנוכחית"><input type="checkbox" id="s-retentionNext" ${s.retentionNext?'checked':''}> השארות לשנה הבאה (מעביר אוטומטית)</label>
     </div>
   </fieldset>
   <fieldset><legend>מסמכים</legend>
@@ -1634,6 +1799,12 @@ function openStudent(s){
 
   const refreshSuggest=()=>{ const tmp=collect(); $("#s-folderSuggest").value=suggestFolder(tmp); };
   ["s-firstName","s-lastName","s-tz"].forEach(id=> $("#"+id).oninput=refreshSuggest);
+  /* בדיקה חיה של ת"ז — התראה מיידית אם הילדה כבר רשומה בשנה זו (גם בחינוך אחר) */
+  const tzWarn=()=>{ const el=$("#s-tz-warn"); if(!el) return;
+    const c=tzClashInYear($("#s-tz").value, s.year, s.id);
+    el.textContent = c ? ("⚠️ כבר רשומה בשנה זו: "+clashDesc(c)) : "";
+  };
+  $("#s-tz").addEventListener("input", tzWarn); tzWarn();
   /* בעדכון הגן — הקמפוס מתעדכן אוטומטית לפי הגן (בלשונית גנים) */
   const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; };
   $("#copyFolder").onclick=()=>{ navigator.clipboard?.writeText($("#s-folderSuggest").value).then(()=>toast("שם התיקייה הועתק"),()=>{}); };
@@ -1704,7 +1875,7 @@ function openStudent(s){
       street:val("s-street"), building:val("s-building"), city:val("s-city"),
       campus: (ganCampus(val("s-ganId")) || val("s-campus")),   // קמפוס נגזר מהגן
       ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
-      placed:chk("s-placed"),
+      placed:chk("s-placed"), insurancePaid:chk("s-insurancePaid"), retentionNext:chk("s-retentionNext"),
       registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
       finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
       docs, docFiles:s.docFiles||{}, programs, programsPaid,
@@ -1716,9 +1887,20 @@ function openStudent(s){
   $("#saveStu").onclick=()=>{
     const data=collect();
     if(!data.firstName && !data.lastName){ toast("יש להזין לפחות שם"); return; }
+    /* חסימת רישום כפול — ת"ז שכבר קיימת באותה שנה (גם בחינוך אחר) */
+    const clash=tzClashInYear(data.tz, data.year, s.id);
+    if(clash){ const w=$("#s-tz-warn"); if(w) w.textContent="⚠️ כבר רשומה בשנה זו: "+clashDesc(clash);
+      toast('לא ניתן לרשום — הילדה כבר רשומה בשנה זו: '+clashDesc(clash)); return; }
     const i=DB.students.findIndex(x=>x.id===s.id);
+    const hadRetention = i>=0 ? !!DB.students[i].retentionNext : false;
     if(i>=0) DB.students[i]=data; else DB.students.push(data);
-    save(); closeModal(); route(); toast(isNew?"נוסף תיק ילדה":"התיק נשמר");
+    /* השארות לשנה הבאה — העברה מיידית לשנה הבאה כשהסימון נדלק */
+    let extra="";
+    if(data.retentionNext && !hadRetention){
+      const r=ensureRetentionTransfer(data);
+      extra = r.ok ? ` · הועברה להשארות בשנת ${r.year}` : ` · השארות לא הועברה (${r.reason})`;
+    }
+    save(); closeModal(); route(); toast((isNew?"נוסף תיק ילדה":"התיק נשמר")+extra);
   };
   $("#cancelStu").onclick=closeModal;
   /* בדיקת אחים/אחיות בקמפוס — לפי שם משפחה + כתובת (סעיף 2) */
@@ -1958,6 +2140,42 @@ function undoLastImport(){
     const ids=new Set(batch.map(s=>s.id));
     DB.students=DB.students.filter(s=>!ids.has(s.id));
     save(); closeModal(); route(); toast(`נמחקו ${batch.length} תלמידות`);
+  };
+}
+/* ייבוא לעדכון — הדבקת רשימת ת"ז ועדכון שדה אחד לכל ההתאמות בשנה הפעילה (בלי יצירת תלמידות) */
+function openBulkImport(){
+  modal(`
+  <h3>עדכון קבוצתי מרשימת ת"ז · שנת ${esc(DB.activeYear)}</h3>
+  <div class="note">מדביקים רשימת מספרי זהות (אחד בכל שורה, או מופרדים בפסיק/רווח), בוחרים שדה וערך — והמערכת מעדכנת את כל הילדות התואמות בשנה הפעילה (בכל סוגי החינוך). לא נוצרות תלמידות חדשות; ת"ז שלא נמצאה — תדווח.</div>
+  <fieldset style="margin-top:12px"><legend>שדה וערך</legend>
+    <div class="row" style="gap:10px;align-items:end;flex-wrap:wrap">
+      <div class="field"><label>שדה לעדכון</label><select id="bi-field">${BULK_FIELDS.map(f=>`<option value="${f.key}">${esc(f.label)}</option>`).join("")}</select></div>
+      <div class="field"><label>ערך</label><select id="bi-val"><option value="yes">כן</option><option value="no">לא</option></select></div>
+    </div>
+  </fieldset>
+  <fieldset><legend>רשימת ת"ז</legend>
+    <textarea id="bi-text" rows="8" placeholder="123456789&#10;987654321"></textarea>
+  </fieldset>
+  <div class="row">
+    <button class="btn" id="bi-do" type="button">⬆️ עדכן</button>
+    <button class="btn ghost" id="bi-cancel" type="button" style="margin-inline-start:auto">סגירה</button>
+  </div>
+  <div id="bi-out" style="margin-top:14px"></div>`);
+  $("#bi-cancel").onclick=closeModal;
+  $("#bi-do").onclick=()=>{
+    const fieldKey=$("#bi-field").value, val=$("#bi-val").value==="yes";
+    const f=BULK_FIELDS.find(x=>x.key===fieldKey); if(!f) return;
+    const tzs=[...new Set(($("#bi-text").value||"").split(/[^0-9]+/).map(x=>x.trim()).filter(Boolean))];
+    if(!tzs.length){ $("#bi-out").innerHTML='<b style="color:var(--bad)">לא הוזנו מספרי ת"ז.</b>'; return; }
+    const byTz={}; studentsOfYear().forEach(s=>{ const d=digits(s.tz); if(d) (byTz[d]=byTz[d]||[]).push(s); });
+    let updated=0, transferred=0, failed=0; const notFound=[];
+    tzs.forEach(tz=>{ const d=digits(tz), arr=byTz[d]; if(!arr||!arr.length){ notFound.push(tz); return; }
+      arr.forEach(s=>{ const before=f.retention?!!s.retentionNext:null; f.set(s,val); updated++;
+        if(f.retention && val && !before){ const r=ensureRetentionTransfer(s); r.ok?transferred++:failed++; } }); });
+    save(); pendingRender=true; // רענון הרשימה עם סגירת החלון
+    $("#bi-out").innerHTML=`<b style="color:var(--good)">עודכנו ${updated} תלמידות</b> · ${esc(f.label)}: ${val?'כן':'לא'}`
+      +(transferred?` · ${transferred} הועברו להשארות`:'')+(failed?` · ${failed} לא הועברו`:'')
+      +(notFound.length?`<div class="hint" style="color:var(--warn);margin-top:6px">לא נמצאו ${notFound.length} ת"ז: ${notFound.slice(0,30).map(esc).join(", ")}${notFound.length>30?'…':''}</div>`:'');
   };
 }
 function openImport(){
@@ -3872,19 +4090,20 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
-    <h2>מעבר שנה — קידום גיל</h2>
-    <div class="sub">בתחילת שנה חדשה: מעתיקים את התלמידות משנה קודמת, מקדמים גיל (3→4), ומאפסים מסמכים — כך שכל המסמכים עולים מחדש. אפשר לבחור מאיזו שנה ולאיזו.</div>
+    <h2>מעבר שנה — קידום לגן המתקדם</h2>
+    <div class="sub">בתחילת שנה חדשה: מעתיקים את התלמידות משנה קודמת. עוברים <b>רק</b> הפרטים האישיים והכתובת, וכל ילדה מקודמת ל<b>גן המתקדם באותו קמפוס</b> (גיל+1). נתוני השנה הקודמת נשמרים במלואם.</div>
     <div class="row">
       <div class="field" style="min-width:150px"><label>משנה</label><select id="pr-from">${DB.years.map(y=>`<option>${esc(y)}</option>`).join("")}</select></div>
       <div class="field" style="min-width:150px"><label>לשנה</label><select id="pr-to">${DB.years.map(y=>`<option ${y===DB.activeYear?'selected':''}>${esc(y)}</option>`).join("")}</select></div>
-      <label class="check" style="align-self:end"><input type="checkbox" id="pr-age" checked ${dis}> קדם גיל ב-1</label>
-      <label class="check" style="align-self:end"><input type="checkbox" id="pr-skip5" checked ${dis}> אל תעביר גיל 5 (מסיימות) — פרט לילדות השארות</label>
-      <label class="check" style="align-self:end"><input type="checkbox" id="pr-keepId" checked ${dis}> העבר גם את מסמך צילום ת"ז (מסמך קבוע)</label>
       ${DRIVE_READY?`<label class="check" style="align-self:end"><input type="checkbox" id="pr-copyId" checked ${dis}> העתק פיזית את קובץ ת"ז לתיקיית השנה החדשה (איטי יותר)</label>`:""}
-      <button class="btn" id="doPromote" style="align-self:end" ${dis}>בצע קידום</button>
+      <button class="btn" id="doPromote" style="align-self:end" ${dis}>בצע מעבר שנה</button>
     </div>
     <div id="pr-status" class="hint" style="margin-top:6px"></div>
-    <div class="note" style="margin-top:8px">כל הפרטים האישיים כולל <b>מספר הזהות (ת"ז)</b>, השם, ההורים והכתובת <b>עוברים אוטומטית</b> לשנת היעד. <b>צילום ת"ז</b> (הסימון והקובץ הפיזי המצורף) עובר גם הוא כברירת מחדל — כי זהו מסמך קבוע; שאר המסמכים (נספח, תקנון) מתאפסים ועולים מחדש. ילדות בגיל 5 (מסיימות) לא יועברו — למעט ילדות המסומנות "השארות", שיועברו ללא קידום גיל.</div>
+    <div class="note" style="margin-top:8px">
+      <b>מה עובר:</b> פרטים אישיים (כולל ת"ז), הורים וכתובת · <b>צילום ת"ז</b> (סימון + קובץ פיזי לדרייב החדש). <b>מתאפס:</b> נספח/תקנון, תוכניות/מועדונים, סיוע והעשרה, קלוט בעירייה, ביטוח, שיבוץ סופי (לא משובצת) והערות.<br>
+      <b>גן:</b> קידום לגן המתקדם באותו קמפוס. אם יש כמה גנים מתאימים או אין — הילדה תעבור <b>ללא גן</b> (תופיע בסינון "ללא גן"). <b>שונות:</b> גרושים / ילדת חוץ / אחר — הסימון עובר, מסמכים וחתימות מחדש.<br>
+      <b>מסיימות</b> (גן חובה / גיל 5) לא יועברו — למעט ילדות שסומנו <b>"השארות לשנה הבאה"</b> (שכבר עברו אוטומטית, באותו גן).
+    </div>
   </div>
 
   <div class="panel">
@@ -4112,36 +4331,21 @@ function viewSettings(root){
   if(admin) $("#addYear").onclick=()=>{ const y=$("#new-year").value.trim(); if(!y)return; if(DB.years.includes(y)){toast("שנה קיימת");return;} DB.years.push(y); save(); route(); toast("נוספה שנה"); };
 
   if(admin) $("#doPromote").onclick=async ()=>{
-    const from=$("#pr-from").value, to=$("#pr-to").value, bump=$("#pr-age").checked, skip5=$("#pr-skip5").checked, keepId=$("#pr-keepId").checked;
-    const copyId = keepId && DRIVE_READY && !!($("#pr-copyId")&&$("#pr-copyId").checked);
+    const from=$("#pr-from").value, to=$("#pr-to").value;
+    const copyId = DRIVE_READY && !!($("#pr-copyId")&&$("#pr-copyId").checked);
     if(from===to){ toast("בחר/י שנת מקור ושנת יעד שונות"); return; }
     const src=DB.students.filter(s=>s.year===from);
     if(!src.length){ toast("אין תלמידות בשנת המקור"); return; }
     const existing=new Set(DB.students.filter(s=>s.year===to).map(s=>digits(s.tz)).filter(Boolean));
-    let added=0, skipped5=0;
+    let added=0, skippedGrad=0, noGan=0;
     const toCopy=[]; // {id: מזהה התלמידה החדשה, src: מזהה קובץ ת"ז המקורי}
-    src.forEach(s=>{ if(s.tz && existing.has(digits(s.tz))) return; // כבר קיימת ביעד
-      const isRetention = !!(s.special && s.special.retention);
-      // אל תעביר ילדות בגיל 5 (מסיימות), למעט המסומנות בהשארות
-      if(skip5 && String(s.age)==='5' && !isRetention){ skipped5++; return; }
-      const n=JSON.parse(JSON.stringify(s));
-      n.id=uid(); n.year=to; n.finished=false; n.period="א"; n.absorbedMunicipality=false;
-      // ילדת השארות נשארת באותו גיל (חוזרת על השנה); אחרת מקדמים גיל ב-1
-      if(bump && s.age && !isRetention) n.age=String(+s.age+1);
-      n.docs={nispach:false,idCopy:false,takanon:false};
-      n.docFiles={};
-      // צילום ת"ז הוא מסמך קבוע — מעבירים את הסימון ואת הקובץ הפיזי המצורף לשנה הבאה
-      if(keepId){
-        if(s.docs && s.docs.idCopy) n.docs.idCopy=true;
-        if(s.docFiles && s.docFiles.idCopy){
-          n.docFiles.idCopy=JSON.parse(JSON.stringify(s.docFiles.idCopy));
-          if(copyId && s.docFiles.idCopy.id) toCopy.push({ id:n.id, src:s.docFiles.idCopy.id });
-        }
-      }
-      n.special.approvalFather=n.special.approvalMother=n.special.paymentArrangement=n.special.retentionDoc=false;
-      n.driveFolder=""; n.driveFolderId=""; n.createdAt=new Date().toISOString();
+    src.forEach(s=>{ if(s.tz && existing.has(digits(s.tz))) return; // כבר קיימת ביעד (למשל הועברה בהשארות)
+      const n=buildPromoted(s, to); // כללי המעבר המלאים (גן מתקדם, איפוסים, שונות)
+      if(!n){ skippedGrad++; return; } // מסיימת (גן חובה) שאינה בהשארות
+      if(!n.ganId) noGan++;
+      if(copyId && s.docFiles && s.docFiles.idCopy && s.docFiles.idCopy.id) toCopy.push({ id:n.id, src:s.docFiles.idCopy.id });
       DB.students.push(n); added++; });
-    save(); route(); toast(`קודמו ${added} תלמידות לשנת ${to}${skipped5?` · דולגו ${skipped5} בגיל 5`:''}`);
+    save(); route(); toast(`הועברו ${added} תלמידות לשנת ${to}${skippedGrad?` · ${skippedGrad} מסיימות דולגו`:''}${noGan?` · ${noGan} ללא גן (לשיבוץ)`:''}`);
 
     // מעבר אסינכרוני: העתקה פיזית של קובצי ת"ז לתיקיות השנה החדשה (לא חוסם את הקידום)
     if(copyId && toCopy.length){
