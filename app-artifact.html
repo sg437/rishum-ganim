@@ -776,6 +776,12 @@ const GUIDE_CSS = `
 .gd-item.on{background:var(--g-accent);color:#fff;border-color:transparent;font-weight:700}
 .gd-app{margin-top:14px;text-align:center;font-weight:700}
 .gd-app b{display:block;font-size:1.7rem}
+.gd-tree{background:#fff;border:1px solid var(--g-border);border-radius:8px;padding:10px 12px;font-size:.86rem;line-height:1.95}
+.gd-tree .i1{padding-inline-start:18px}
+.gd-tree .i2{padding-inline-start:36px}
+.gd-tree .i3{padding-inline-start:54px}
+.gd-tree .i4{padding-inline-start:72px}
+.gd-body h4{margin:6px 0 4px}
 @media print{.gd{break-inside:avoid}.gd>summary::after{display:none}.gd-ill{break-inside:avoid}}
 `;
 
@@ -835,6 +841,17 @@ function guideContent(){
     <div class="gd-app">🟩<b>&nbsp;</b>רשת הגנים</div>
   </div></div>`;
 
+  const illTree = `<div class="gd-ill"><div class="gd-cap">מבנה השמירה ב-Google Drive</div>
+    <div class="gd-tree">
+      <div>📁 <b>רשת הגנים</b> <span class="gd-mut">(תיקיית שורש)</span></div>
+      <div class="i1">📁 חינוך רגיל</div>
+      <div class="i2">📁 תשפ"ח</div>
+      <div class="i3">📁 אבו מיכל · 123456789 <span class="gd-mut">← תיקיית הילדה</span></div>
+      <div class="i4">📄 צילום תעודת זהות · אבו מיכל · <span dir="ltr">123456789.pdf</span></div>
+      <div class="i4">📄 נספח · אבו מיכל · <span dir="ltr">123456789.pdf</span></div>
+      <div class="i4">📄 תקנון · אבו מיכל · <span dir="ltr">123456789.pdf</span></div>
+    </div></div>`;
+
   const quickstart = `<b>🚀 התחלה מהירה</b>
     <ol style="margin:6px 0 0;padding-inline-start:20px">
       <li>בראש המסך בוחרים <b>שנה</b>, ואפשר לסנן <b>חינוך</b> (הכל / רגיל / מיוחד).</li>
@@ -855,14 +872,14 @@ function guideContent(){
     { icon:"🧒", title:"תלמידות — הוספת תיק וכל השדות", html:
       `<ol class="gd-steps">
         <li><b>➕ הוספת ילדה</b> → נפתח תיק; ממלאים פרטים אישיים, הורים וכתובת.</li>
-        <li><b>מספר זהות (ת"ז)</b> — אם הילדה כבר רשומה באותה שנה (גם בחינוך אחר!), תופיע <b style="color:var(--g-bad)">התראה מיד</b> והשמירה תיחסם — כדי למנוע רישום כפול.</li>
+        <li><b>מספר זהות (ת"ז)</b> — אם הילדה כבר רשומה באותה שנה (גם בחינוך אחר!), תופיע <b style="color:var(--g-bad)">התראה מיד</b> והשמירה תיחסם — כדי למנוע רישום כפול.
+          <div class="gd-line"><span class="gd-pill bad">⚠️ כבר רשומה בשנה זו: מיכל אבו · חינוך מיוחד · גן רבקה</span></div></li>
         <li><b>גן משובצת · גיל · מועד · חינוך</b> — הקמפוס נגזר אוטומטית מהגן.</li>
         <li><b>מסמכים</b> — נספח / צילום ת"ז / תקנון, עם צירוף קובץ פיזי (דרייב).</li>
         <li><b>תוכניות ומועדונים</b> — צהרון וקייטנות, כולל סימון <b>תשלום</b> לכל קייטנה.</li>
         <li><b>תשלום ביטוח תלמידים</b> · <b>סיוע והעשרה</b> · <b>שונות</b> (גרושים/חוץ/השארות/אחר).</li>
         <li><b>🔎 בדיקת אחים/אחיות</b> — מאתר תיקים עם אותו שם משפחה + כתובת, לשיבוץ באותו קמפוס.</li>
       </ol>`+
-      `<div class="gd-line"><span class="gd-pill bad">⚠️ כבר רשומה בשנה זו: מיכל אבו · חינוך מיוחד · גן רבקה</span></div>`+
       `<div class="gd-tip">💡 סימון "סיימה/יצאה" נמצא <b>רק בתוך התיק</b> (לא ברשימה) — כדי לא להסיר ילדה בטעות.</div>` },
 
     { icon:"✅", title:"שיבוץ סופי — משובצת / ממתינה לשיבוץ", html:
@@ -945,21 +962,35 @@ function guideContent(){
         <li>שחזור מגיבוי — גם להעברת נתונים מהדמו המקומי לגרסה המתארחת.</li>
       </ul>` },
 
-    { icon:"📎", title:"מסמכים ודרייב", html:
+    { icon:"📎", title:"מסמכים ודרייב — איך כל קובץ נשמר", html:
+      `<p>כשמצרפים קובץ בתיק ילדה, המערכת יוצרת לה <b>תיקייה משלה ב-Google Drive</b> ושומרת בה את הקבצים בשמות ברורים — כך שקל למצוא כל מסמך.</p>`+
+      illTree+
       `<ul>
-        <li>צירוף קבצים לכל מסמך בתיק, וצפייה/הורדה מ-Google Drive.</li>
-        <li>נוצרת תיקייה לכל ילדה (לפי שנה ושם).</li>
+        <li><b>תיקייה לכל ילדה</b> — נוצרת אוטומטית בשם <b>"שם משפחה שם פרטי · ת"ז"</b> (למשל: אבו מיכל · 123456789), תחת חלוקה לפי <b>חינוך</b> (רגיל/מיוחד) ולפי <b>שנה</b>.</li>
+        <li><b>מסמך מזוהה</b> (נספח / צילום ת"ז / תקנון) — נשמר בשם <b>"שם המסמך · שם הילדה · ת"ז"</b> עם סיומת הקובץ המקורית. לדוגמה: <span class="gd-mut">צילום תעודת זהות · אבו מיכל · <span dir="ltr">123456789.pdf</span></span></li>
+        <li><b>קבצים כלליים</b> (העלאה מרובה מאזור הדרייב שבתיק) — נשמרים בשם הקובץ המקורי + שם הילדה + ת"ז.</li>
+        <li><b>פתיחה וצפייה</b> — כפתור בתיק פותח את תיקיית הילדה; אפשר לצפות ולהוריד כל קובץ.</li>
+        <li><b>מעבר שנה</b> — צילום ת"ז מועתק פיזית לתיקיית הילדה בשנה החדשה (שאר המסמכים עולים מחדש).</li>
+        <li><b>צוות</b> — לכל איש/אשת צוות נוצרת תיקייה דומה (לפי חינוך), עם קבצים בשם "שם המסמך · שם · ת"ז".</li>
       </ul>
       <div class="gd-tip">💡 בגרסת הדמו חיבור הדרייב מושבת — פעיל רק בגרסה המתארחת בענן.</div>` },
 
-    { icon:"📱", title:"התקנה כאפליקציה בטלפון (אנדרואיד)", html:
+    { icon:"📱💻", title:"התקנה כאפליקציה (טלפון ומחשב)", html:
+      `<h4 style="margin:2px 0 6px">📱 אנדרואיד (טלפון)</h4>`+
       illInstall+
       `<ol class="gd-steps">
         <li>פותחים את כתובת המערכת ב-<b>Chrome</b>.</li>
         <li>תפריט <b>⋮</b> → <b>"התקן אפליקציה"</b> (אם כתוב "פתח באפליקציה" — כבר מותקנת).</li>
         <li>האייקון יופיע במגירת האפליקציות בשם <b>"רשת הגנים"</b>, ותיפתח במסך מלא.</li>
       </ol>
-      <div class="gd-tip">💡 אם מופיע רק "הוסף למסך הבית" (קיצור דרך) — רענן/י פעם-פעמיים ונסה/י שוב.</div>` },
+      <div class="gd-tip">💡 אם מופיע רק "הוסף למסך הבית" (קיצור דרך) — רענן/י פעם-פעמיים ונסה/י שוב.</div>
+      <h4 style="margin:16px 0 6px">💻 מחשב (Chrome / Edge)</h4>
+      <ol class="gd-steps">
+        <li>פותחים את כתובת המערכת ב-<b>Chrome</b> או <b>Edge</b>.</li>
+        <li>בקצה <b>שורת הכתובת</b> מופיע אייקון התקנה (מסך קטן עם חץ / ⊕) — לוחצים עליו; לחלופין תפריט <b>⋮</b> → <b>"התקנת רשת הגנים…"</b> / <b>"Install app"</b>.</li>
+        <li>מאשרים — האפליקציה נפתחת ב<b>חלון נפרד</b>, ונוסף קיצור לשולחן העבודה / תפריט התחל (במק — ל-Dock).</li>
+      </ol>
+      <div class="gd-tip">💡 באייפון: פותחים ב-<b>Safari</b> → כפתור שיתוף ⬆️ → <b>"הוסף למסך הבית"</b>.</div>` },
 
     { icon:"⚙️", title:"הגדרות ומיתוג", html:
       `<ul>
