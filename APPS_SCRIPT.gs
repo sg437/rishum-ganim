@@ -50,6 +50,7 @@ function doPost(e){
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
       case 'copy':           return json_(out, copy_(req.fileId, req.folderId, req.name));
       case 'download':       return json_(out, download_(req.fileId));
+      case 'sheetSync':      return json_(out, sheetSync_(req.title, req.sheets));
       case 'share':          return json_(out, share_(req.email, req.role));
       case 'shareList':      return json_(out, shareList_());
       case 'shareRemove':    return json_(out, shareRemove_(req.email));
@@ -148,6 +149,57 @@ function share_(email, role){
   var r = root_();
   if(role === 'writer') r.addEditor(email); else r.addViewer(email);
   return { ok:true };
+}
+
+/* ==================================================================
+   שיקוף נתונים ל-Google Sheets (סעיף 12)
+   ------------------------------------------------------------------
+   מקבל מהתוכנה מבנה של גיליונות: [{ name, headers:[...], rows:[[...],...] }, ...]
+   ומכתיב אותם לקובץ Google Sheets בתיקיית האב (יוצר אם אין, לשונית לכל ישות).
+   הקובץ הוא "מראה" של הנתונים — מקור האמת נשאר Firestore.
+   ================================================================== */
+var SHEET_FILE_NAME = 'רשת הגנים מודיעין עילית — נתונים (שיקוף)';
+function sheetSync_(title, sheets){
+  if(!sheets || !sheets.length) return { ok:false, error:'no-data' };
+  var r = root_();
+  var name = String(title || SHEET_FILE_NAME);
+  var ss = null;
+  var it = r.getFilesByName(name);
+  if(it.hasNext()){
+    try{ ss = SpreadsheetApp.open(it.next()); }catch(e){ ss = null; }
+  }
+  if(!ss){
+    ss = SpreadsheetApp.create(name);
+    // העברת הקובץ שנוצר לתיקיית האב (SpreadsheetApp.create יוצר בשורש ה-Drive)
+    try{ var f = DriveApp.getFileById(ss.getId()); r.addFile(f); DriveApp.getRootFolder().removeFile(f); }catch(e){}
+  }
+  var keep = {};
+  sheets.forEach(function(s){
+    var sName = String(s.name || 'גיליון');
+    keep[sName] = true;
+    var sh = ss.getSheetByName(sName) || ss.insertSheet(sName);
+    sh.clear();
+    try{ sh.setRightToLeft(true); }catch(e){}
+    var headers = s.headers || [];
+    var rows = s.rows || [];
+    var W = headers.length;
+    if(!W) return;
+    var data = [headers];
+    for(var i=0;i<rows.length;i++){
+      var src = rows[i] || [], row = [];
+      for(var c=0;c<W;c++){ row.push(src[c] != null ? src[c] : ''); }
+      data.push(row);
+    }
+    sh.getRange(1, 1, data.length, W).setValues(data);
+    sh.setFrozenRows(1);
+    sh.getRange(1, 1, 1, W).setFontWeight('bold').setBackground('#e8f2ea');
+    try{ sh.autoResizeColumns(1, W); }catch(e){}
+  });
+  // הסרת לשוניות ישנות שאינן בשימוש (כולל לשונית ברירת המחדל)
+  ss.getSheets().forEach(function(sh){
+    if(!keep[sh.getName()] && ss.getSheets().length > 1){ try{ ss.deleteSheet(sh); }catch(e){} }
+  });
+  return { ok:true, sheetId:ss.getId(), sheetLink:ss.getUrl() };
 }
 /* מי משותף עם תיקיית האב — בעלים/עורכים/צופים (שם, אימייל, הרשאה). */
 function shareList_(){
