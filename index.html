@@ -714,7 +714,9 @@ async function testCloudConnection(){
   }
   out.innerHTML=msg;
 }
-function save(){ if(!db) return; recordUserActivity(); setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250); }
+let _skipSheetSchedule=false; // מונע לולאה: כתיבת קישור הגיליון עצמה לא תפעיל שיקוף חוזר
+function save(){ if(!db) return; recordUserActivity(); setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250);
+  if(_skipSheetSchedule){ _skipSheetSchedule=false; } else { try{ scheduleSheetSync(); }catch(_){} } }
 /* רישום פעילות: חותמת-זמן אחרונה שבה המשתמש המחובר שינה נתונים (לפי אימייל).
    נשמר בתוך settings ומסונכרן, ומוצג בעמודת "עריכה אחרונה" בניהול המשתמשים. */
 function recordUserActivity(){
@@ -1813,15 +1815,76 @@ function driveErrHe(e){
   if(m.includes("unauthorized")||m.includes("token")) return "בעיית הרשאה — התחבר/י מחדש למערכת";
   return "שגיאת דרייב — נסה/י שוב";
 }
+/* ---------- שיקוף נתונים ל-Google Sheets (סעיף 12) ----------
+   בונה טבלאות (תלמידות/גנים/צוות/שיבוץ) ושולח לגשר, שמכתיב אותן לגיליון Google.
+   הגיליון הוא "מראה" מתעדכן — מקור האמת נשאר Firestore. */
+const SHEET_TITLE = "רשת הגנים מודיעין עילית — נתונים (שיקוף)";
+function buildSheetPayload(){
+  const yn=v=>v?"כן":"לא";
+  const stuHeaders=["שנה","שם משפחה","שם פרטי",'ת"ז',"גן","קמפוס","גיל","מועד","חינוך","משובצת","קלוט בעירייה","נרשמה על ידינו","ביטוח שולם","טלפון","נייד","רחוב","בניין","עיר","סטטוס","הערות"];
+  const stuRows=DB.students.map(s=>[s.year,s.lastName,s.firstName,s.tz,ganName(s.ganId),ganCampus(s.ganId)||s.campus||"",s.age,s.period,eduLabel(s),yn(s.placed!==false),yn(s.absorbedMunicipality),yn(s.registeredByUs),yn(s.insurancePaid),s.phone,s.mobile,s.street,s.building,s.city,(s.finished?"סיימה":"פעילה"),s.notes]);
+  const ganHeaders=["שם הגן","סמל פנימי","סמל גן","גיל","חינוך","גננת","קמפוס","כתובת","בניין","אזור","טל' גן","נייד גננת","קיבולת","רשומות (שנה פעילה)","פעיל"];
+  const ganRows=DB.gans.map(g=>[g.ganName,g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.teacherName,g.campus,g.address,g.building,g.zone,g.phoneGan,g.teacherMobile,g.capacity,studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length,yn(g.active)]);
+  const staffHeaders=["שם משפחה","שם פרטי",'ת"ז',"תפקיד","חינוך","טלפון","נייד","מייל","עיר","הערות"];
+  const staffRows=DB.staff.map(m=>[m.lastName,m.firstName,m.tz,m.role,eduLabel(m),m.phone,m.mobile,m.email,m.city,m.notes]);
+  const asgHeaders=["שנה","הקשר","גן","תפקיד","שם העובד/ת"];
+  const asgRows=[]; const A=DB.assignments||{};
+  Object.keys(A).forEach(year=>{ const yc=A[year]||{}; Object.keys(yc).forEach(ctx=>{ const cg=yc[ctx]||{}; Object.keys(cg).forEach(ganId=>{ const entry=cg[ganId]||{};
+    Object.keys(entry).forEach(role=>{ const v=entry[role]; if(!v||!v.staffId) return; const m=DB.staff.find(x=>x.id===v.staffId); const nm=m?[m.lastName,m.firstName].filter(Boolean).join(" "):""; asgRows.push([year,ctxLabel(ctx),ganName(ganId),role,nm]); });
+  }); }); });
+  return { title:SHEET_TITLE, sheets:[
+    { name:"תלמידות", headers:stuHeaders, rows:stuRows },
+    { name:"גנים",     headers:ganHeaders, rows:ganRows },
+    { name:"צוות",     headers:staffHeaders, rows:staffRows },
+    { name:"שיבוץ",    headers:asgHeaders, rows:asgRows }
+  ] };
+}
+let _sheetSyncing=false, _sheetAutoTimer=null;
+async function syncToSheets(silent){
+  if(!DRIVE_READY){ if(!silent) toast("גשר ה-Drive לא מוגדר"); return false; }
+  if(_sheetSyncing) return false;
+  _sheetSyncing=true; if(!silent){ const b=$("#sheet-sync"); if(b){ b.disabled=true; b.textContent="⏳ משקף…"; } }
+  try{
+    const res=await driveCall("sheetSync", buildSheetPayload());
+    if(res && res.ok){
+      DB.settings=DB.settings||{}; DB.settings.sheetLink=res.sheetLink; DB.settings.sheetSyncedAt=Date.now(); _skipSheetSchedule=true; save();
+      if(!silent) toast("הנתונים שוקפו ל-Google Sheets ✓");
+      renderDriveBox(); return true;
+    }
+    if(!silent) toast("שגיאה בשיקוף: "+((res&&res.error)||"לא ידועה"));
+    return false;
+  }catch(e){ console.error(e); if(!silent) toast(driveErrHe(e)); return false; }
+  finally{ _sheetSyncing=false; const b=$("#sheet-sync"); if(b){ b.disabled=false; b.textContent="🔄 שקף עכשיו ל-Google Sheets"; } }
+}
+/* שיקוף אוטומטי — מופעל בהגדרות; רץ בהשהיה אחרי שינויים כדי לא להעמיס על הגשר */
+function scheduleSheetSync(){
+  if(!DRIVE_READY || !(DB.settings&&DB.settings.sheetAuto)) return;
+  clearTimeout(_sheetAutoTimer); _sheetAutoTimer=setTimeout(()=>{ syncToSheets(true); }, 25000);
+}
+
 function renderDriveBox(){
   const box=$("#drive-box"); if(!box) return;
   if(!DRIVE_READY){ box.innerHTML=`<div class="note">חיבור הדרייב עדיין לא הוגדר. יש להשלים את שלב "גשר Drive" ב-SETUP.md ולהזין את כתובת הסקריפט בקוד.</div>`; return; }
   const d=DB.settings.drive||{};
+  const sheetLink=DB.settings.sheetLink||"";
+  const syncedAt=DB.settings.sheetSyncedAt;
+  const syncedTxt=syncedAt?new Date(syncedAt).toLocaleString("he-IL"):"";
+  const auto=!!DB.settings.sheetAuto;
   box.innerHTML=`
     <div class="note">✅ חיבור הדרייב פעיל דרך הגשר. כל משתמש בתוכנה יכול ליצור תיקיות, להעלות ולצפות במסמכים — מהמייל שלו, בלי חיבור Google אישי.</div>
     <div class="row" style="margin-top:10px">
       <button class="btn ghost" id="drive-ping" type="button">🔄 בדיקת חיבור</button>
       ${d.rootLink?`<a class="btn ghost" href="${esc(d.rootLink)}" target="_blank">📂 פתח תיקיית האב בדרייב</a>`:''}
+    </div>
+    <div style="margin-top:16px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)">
+      <div class="row" style="align-items:center;gap:8px;margin-bottom:6px"><b>📊 שיקוף ל-Google Sheets</b></div>
+      <div class="hint" style="margin-bottom:10px">יצירת/עדכון גיליון Google בתיקיית האב עם כל הנתונים (תלמידות · גנים · צוות · שיבוץ), לשונית לכל ישות. הגיליון הוא <b>מראה/גיבוי</b> — מקור האמת נשאר במערכת.</div>
+      <div class="row" style="gap:8px;align-items:center">
+        <button class="btn" id="sheet-sync" type="button">🔄 שקף עכשיו ל-Google Sheets</button>
+        ${sheetLink?`<a class="btn ghost" href="${esc(sheetLink)}" target="_blank">📄 פתח את הגיליון</a>`:''}
+      </div>
+      <label class="check" style="margin-top:10px;max-width:420px"><input type="checkbox" id="sheet-auto" ${auto?'checked':''}> שיקוף אוטומטי אחרי שינויים (בהשהיה קצרה)</label>
+      ${syncedTxt?`<div class="hint" style="margin-top:6px">שוקף לאחרונה: ${esc(syncedTxt)}</div>`:''}
     </div>
     <div style="margin-top:12px">
       <label>מתן גישה ישירה ל-Google Drive למשתמש (לפי אימייל Google)</label>
@@ -1840,6 +1903,8 @@ function renderDriveBox(){
       <div id="drive-shares" style="margin-top:8px"></div>
     </div>`;
   $("#drive-ping").onclick=async ()=>{ try{ await drivePing(); toast("החיבור לגשר תקין ✓"); renderDriveBox(); }catch(e){ toast(driveErrHe(e)); } };
+  const sheetBtn=$("#sheet-sync"); if(sheetBtn) sheetBtn.onclick=()=>syncToSheets(false);
+  const sheetAuto=$("#sheet-auto"); if(sheetAuto) sheetAuto.onchange=()=>{ DB.settings=DB.settings||{}; DB.settings.sheetAuto=sheetAuto.checked; save(); toast(sheetAuto.checked?"שיקוף אוטומטי הופעל":"שיקוף אוטומטי כובה"); };
   let lastShares=[];
   /* שם מותאם לכל שיתוף — תווית מקומית שנשמרת ב-settings (כשל-Google אין שם או שרוצים שם ידידותי) */
   const shareNames=()=> (DB.settings&&DB.settings.driveShareNames)||{};
