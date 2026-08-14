@@ -161,6 +161,19 @@ main{max-width:1200px;margin:0 auto;padding:18px 16px 80px}
 .btn.danger{background:var(--bad-soft);color:var(--bad)}
 .btn.danger:hover{background:var(--bad);color:#fff}
 
+/* שורת חיפוש עם זכוכית מגדלת + סינון מתקדם נפתח */
+.searchbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.search-field{position:relative;flex:1;min-width:200px}
+.search-field .mag{position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:1rem}
+.search-field input{padding-inline-start:36px}
+.filter-toggle{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);padding:9px 14px;border-radius:10px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.filter-toggle.on{background:var(--accent-soft);color:var(--accent-strong);border-color:var(--accent)}
+.filter-toggle .fcount{background:var(--accent);color:#fff;border-radius:999px;font-size:.72rem;padding:0 7px}
+.filter-panel{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:var(--surface-2)}
+.filter-panel[hidden]{display:none}
+tbody tr.clickable{cursor:pointer}
+tbody tr.clickable:hover{background:var(--accent-soft)}
+
 /* toolbar */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
 .toolbar .field{min-width:130px}
@@ -1900,6 +1913,9 @@ function renderInstallBox(){
    טאב תלמידות
    ============================================================ */
 let stuFilter = { q:"", gan:"", age:[], city:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; // age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
+let stuFiltersOpen=false; // האם פאנל הסינון המתקדם פתוח
+function stuActiveFilterCount(){ const f=stuFilter; let n=0;
+  if(f.gan)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
 /* מאפייני סינון מיוחדים לתלמידה — לסינון + סיכום מותנה (סעיף השארות/צהרון/קייטנות) */
 const STU_FLAGS = {
   retention:    { label:"השארות",        test:s=>!!(s.special && s.special.retention) },
@@ -2033,40 +2049,42 @@ function viewStudents(root){
   const gans = eduScope(DB.gans.slice()).sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
   const cities = [...new Set(studentsOfYear().map(s=>s.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
   const campuses = [...new Set(studentsOfYear().map(s=>s.campus).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
-  const scopeNote = activeEdu ? ` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}` : "";
+  const fOpen = stuFiltersOpen || stuActiveFilterCount()>0;
   root.innerHTML = `
   <div class="panel">
-    <div class="section-title">
-      <div><h2>תיקי התלמידות · שנת ${esc(DB.activeYear)}${esc(scopeNote)}</h2>
-        <div class="sub">תיק לכל ילדה עם כל הפרטים, המסמכים והשונות. סימון "סיימה גן" מעביר אותה ל"שסיימו" (אינה נמחקת — ניתן לצפות בה דרך סינון הסטטוס). לחיצה על כותרת עמודה ממיינת.</div></div>
-      <div class="row" style="gap:8px">
-        <button class="btn ghost" id="importUpdate">⬆️ ייבוא לעדכון (לפי ת"ז)</button>
-        <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
-        <button class="btn ghost" id="importStu">⬆️ ייבוא מקובץ</button>
-        <button class="btn" id="addStu">➕ הוספת ילדה</button>
-      </div>
-    </div>
+    <div class="section-title" style="margin-bottom:10px"><h2>תיקי התלמידות</h2></div>
     <div id="stuSummary" style="margin:2px 0 12px"></div>
+    <div class="row" style="gap:8px;margin-bottom:12px">
+      <button class="btn" id="addStu">➕ הוספת ילדה</button>
+      <button class="btn ghost" id="importUpdate">⬆️ ייבוא לעדכון (לפי ת"ז)</button>
+      <button class="btn ghost" id="importStu">⬆️ ייבוא מקובץ</button>
+      <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
+    </div>
     <div id="bulkBar"></div>
-    <div class="toolbar">
-      <div class="field grow"><label>חיפוש (שם / ת"ז)</label><input id="f-q" value="${esc(stuFilter.q)}" placeholder="הקלד/י שם או ת&quot;ז…"></div>
-      <div class="field"><label>גן</label><select id="f-gan"><option value="">הכל</option><option value="__none__" ${stuFilter.gan==='__none__'?'selected':''}>— ללא גן (הוצאו) —</option>${gans.map(g=>`<option value="${g.id}" ${stuFilter.gan===g.id?'selected':''}>${esc(ganName(g.id))}</option>`).join("")}</select></div>
-      <div class="field"><label>גיל (אפשר לבחור כמה)</label>
-        <div class="row" id="f-age" style="gap:4px;flex-wrap:wrap">
-          ${CHILD_AGES.map(a=>`<button type="button" class="btn sm ${stuFilter.age.includes(a)?'':'ghost'}" data-age="${a}">${a}</button>`).join("")}
-        </div></div>
-      <div class="field"><label>עיר</label><select id="f-city"><option value="">הכל</option>${cities.map(c=>`<option ${stuFilter.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
-      ${campuses.length?`<div class="field"><label>קמפוס</label><select id="f-campus"><option value="">הכל</option>${campuses.map(c=>`<option ${stuFilter.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>`:""}
-      <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
-      ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
-      <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
-      <div class="field"><label>שיבוץ</label><select id="f-placed"><option value="">הכל</option><option value="yes" ${stuFilter.placed==='yes'?'selected':''}>משובצת</option><option value="no" ${stuFilter.placed==='no'?'selected':''}>לא משובצת</option></select></div>
-      <div class="field"><label>מאפיין</label><select id="f-flag"><option value="">הכל</option>${Object.entries(STU_FLAGS).map(([k,d])=>`<option value="${k}" ${stuFilter.flag===k?'selected':''}>${esc(d.label)}</option>`).join("")}</select></div>
-      <div class="field"><label>סטטוס</label><select id="f-status">
-        <option value="active" ${stuFilter.status==='active'?'selected':''}>פעילות</option>
-        <option value="finished" ${stuFilter.status==='finished'?'selected':''}>שסיימו / יצאו</option>
-        <option value="all" ${stuFilter.status==='all'?'selected':''}>הכל</option>
-      </select></div>
+    <div class="searchbar">
+      <div class="search-field"><span class="mag">🔎</span><input id="f-q" value="${esc(stuFilter.q)}" placeholder="חיפוש שם או ת&quot;ז…"></div>
+      <button class="filter-toggle ${fOpen?'on':''}" id="stuFilterToggle" type="button" aria-expanded="${fOpen}">☰ סינון<span class="fcount" id="stuFilterCount"></span></button>
+    </div>
+    <div class="filter-panel" id="stuFilterPanel" ${fOpen?'':'hidden'}>
+      <div class="toolbar" style="margin-bottom:0">
+        <div class="field"><label>גן</label><select id="f-gan"><option value="">הכל</option><option value="__none__" ${stuFilter.gan==='__none__'?'selected':''}>— ללא גן (הוצאו) —</option>${gans.map(g=>`<option value="${g.id}" ${stuFilter.gan===g.id?'selected':''}>${esc(ganName(g.id))}</option>`).join("")}</select></div>
+        <div class="field"><label>גיל (אפשר לבחור כמה)</label>
+          <div class="row" id="f-age" style="gap:4px;flex-wrap:wrap">
+            ${CHILD_AGES.map(a=>`<button type="button" class="btn sm ${stuFilter.age.includes(a)?'':'ghost'}" data-age="${a}">${a}</button>`).join("")}
+          </div></div>
+        <div class="field"><label>עיר</label><select id="f-city"><option value="">הכל</option>${cities.map(c=>`<option ${stuFilter.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
+        ${campuses.length?`<div class="field"><label>קמפוס</label><select id="f-campus"><option value="">הכל</option>${campuses.map(c=>`<option ${stuFilter.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>`:""}
+        <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
+        ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
+        <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
+        <div class="field"><label>שיבוץ</label><select id="f-placed"><option value="">הכל</option><option value="yes" ${stuFilter.placed==='yes'?'selected':''}>משובצת</option><option value="no" ${stuFilter.placed==='no'?'selected':''}>לא משובצת</option></select></div>
+        <div class="field"><label>מאפיין</label><select id="f-flag"><option value="">הכל</option>${Object.entries(STU_FLAGS).map(([k,d])=>`<option value="${k}" ${stuFilter.flag===k?'selected':''}>${esc(d.label)}</option>`).join("")}</select></div>
+        <div class="field"><label>סטטוס</label><select id="f-status">
+          <option value="active" ${stuFilter.status==='active'?'selected':''}>פעילות</option>
+          <option value="finished" ${stuFilter.status==='finished'?'selected':''}>שסיימו / יצאו</option>
+          <option value="all" ${stuFilter.status==='all'?'selected':''}>הכל</option>
+        </select></div>
+      </div>
     </div>
     <div id="stuTable"></div>
   </div>`;
@@ -2075,6 +2093,7 @@ function viewStudents(root){
   $("#importStu").onclick = ()=> openImport();
   $("#bulkToggle").onclick = ()=>{ bulkMode=!bulkMode; bulkSel.clear(); viewStudents(root); };
   $("#importUpdate").onclick = ()=> openBulkImport();
+  $("#stuFilterToggle").onclick = ()=>{ stuFiltersOpen = $("#stuFilterPanel").hasAttribute("hidden"); viewStudents(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
   bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
   // סינון גיל בריבוי בחירה — לחיצה מוסיפה/מסירה גיל (סעיף 6)
@@ -2197,6 +2216,7 @@ function renderBulkBar(list){
 function renderStuTable(){
   renderTabs();
   renderStuSummary();
+  const fc=$("#stuFilterCount"); if(fc){ const n=stuActiveFilterCount(); fc.textContent=n||""; fc.hidden=!n; const tg=$("#stuFilterToggle"); if(tg&&n) tg.classList.add("on"); }
   const list = filteredStudents();
   renderBulkBar(list);
   const host = $("#stuTable");
@@ -2207,8 +2227,8 @@ function renderStuTable(){
   host.innerHTML = `<div class="table-wrap"><table><thead><tr>
     ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
     ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}<th title="שיבוץ סופי בגן — לחיצה משנה בין 'משובצת' ל'ממתינה'">שיבוץ</th>${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
-    <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th>סטטוס</th><th></th></tr></thead><tbody>
-    ${list.map(s=>`<tr${bulkMode&&bulkSel.has(s.id)?' style="background:var(--good-soft)"':''}>
+    <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th>סטטוס</th></tr></thead><tbody>
+    ${list.map(s=>`<tr data-sid="${esc(s.id)}" class="${bulkMode?'':'clickable'}"${bulkMode&&bulkSel.has(s.id)?' style="background:var(--good-soft)"':''}>
       ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
       <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
       <td>${esc(s.tz)||'—'}</td>
@@ -2223,12 +2243,14 @@ function renderStuTable(){
       <td>${specialBadges(s)||'<span class="pill neutral">—</span>'}</td>
       <td>${s.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
       <td>${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
-      <td class="actions">
-        <button class="btn ghost sm" data-edit="${s.id}">פתח תיק</button>
-      </td></tr>`).join("")}
+      </tr>`).join("")}
   </tbody></table></div>
-  <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}).</div>`;
-  host.querySelectorAll("[data-edit]").forEach(b=> b.onclick=()=>{ const s=DB.students.find(x=>x.id===b.dataset.edit); openStudent(JSON.parse(JSON.stringify(s))); });
+  <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק.</div>`;
+  // לחיצה על שורה (מחוץ לכפתורים/תיבות סימון) פותחת את התיק (סעיף 8.4.3)
+  host.querySelectorAll("tr.clickable").forEach(tr=> tr.onclick=e=>{
+    if(e.target.closest("button,input,a,.stu-place")) return;
+    const s=DB.students.find(x=>x.id===tr.dataset.sid); if(s) openStudent(JSON.parse(JSON.stringify(s)));
+  });
   /* החלפת סטטוס שיבוץ בלחיצה אחת מהרשימה (משובצת ⇄ ממתינה) */
   host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(stuSort.key===k) stuSort.dir*=-1; else { stuSort.key=k; stuSort.dir=1; } renderStuTable(); });
@@ -2912,6 +2934,7 @@ function openImport(){
    טאב גנים
    ============================================================ */
 let ganFilter = { q:"", zone:"", status:"" };
+let ganFiltersOpen=false;
 let ganSort = { key:"name", dir:1 }; // מיון רשימת הגנים לפי עמודה
 const GAN_SORT_VAL = {
   name:g=>ganName(g.id), internalSymbol:g=>g.internalSymbol, ganSymbol:g=>g.ganSymbol,
@@ -2936,28 +2959,33 @@ function gansScoped(){
 }
 function viewGans(root){
   const zones=[...new Set(DB.gans.map(g=>g.zone).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
-  const scopeNote = activeEdu ? ` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}` : "";
+  const fCount=(ganFilter.zone?1:0)+(ganFilter.status?1:0);
+  const fOpen=ganFiltersOpen || fCount>0;
   root.innerHTML = `
   <div class="panel">
-    <div class="section-title">
-      <div><h2>רשימת הגנים${esc(scopeNote)}</h2><div class="sub">כל פרטי הגן, קיבולת, ומסמכים. גן שאינו פעיל אינו נספר במניין הגנים.</div></div>
-      <div class="row" style="gap:8px">
-        <button class="btn ghost" id="impGan">⬆️ ייבוא מקובץ</button>
-        <button class="btn ghost" id="exportGans">📤 ייצוא / הדפסה</button>
-        <button class="btn" id="addGan">➕ הוספת גן</button>
+    <div class="section-title" style="margin-bottom:10px"><h2>רשימת הגנים</h2></div>
+    <div class="searchbar">
+      <div class="search-field"><span class="mag">🔎</span><input id="fg-q" value="${esc(ganFilter.q)}" placeholder="חיפוש שם הגן / גננת / סמל / כתובת…"></div>
+      <button class="filter-toggle ${fOpen?'on':''}" id="ganFilterToggle" type="button" aria-expanded="${fOpen}">☰ סינון${fCount?`<span class="fcount">${fCount}</span>`:''}</button>
+    </div>
+    <div class="filter-panel" id="ganFilterPanel" ${fOpen?'':'hidden'}>
+      <div class="toolbar" style="margin-bottom:0">
+        <div class="field"><label>אזור</label><select id="fg-zone"><option value="">הכל</option>${zones.map(z=>`<option ${ganFilter.zone===z?'selected':''}>${esc(z)}</option>`).join("")}</select></div>
+        <div class="field"><label>סטטוס</label><select id="fg-status"><option value="">הכל</option><option value="active" ${ganFilter.status==='active'?'selected':''}>פעיל</option><option value="off" ${ganFilter.status==='off'?'selected':''}>כבוי</option></select></div>
       </div>
     </div>
-    <div class="toolbar">
-      <div class="field grow"><label>חיפוש (שם הגן / גננת / סמל / כתובת)</label><input id="fg-q" value="${esc(ganFilter.q)}" placeholder="הקלד/י…"></div>
-      <div class="field"><label>אזור</label><select id="fg-zone"><option value="">הכל</option>${zones.map(z=>`<option ${ganFilter.zone===z?'selected':''}>${esc(z)}</option>`).join("")}</select></div>
-      <div class="field"><label>סטטוס</label><select id="fg-status"><option value="">הכל</option><option value="active" ${ganFilter.status==='active'?'selected':''}>פעיל</option><option value="off" ${ganFilter.status==='off'?'selected':''}>כבוי</option></select></div>
+    <div class="row" style="gap:8px;margin-bottom:12px">
+      <button class="btn" id="addGan">➕ הוספת גן</button>
+      <button class="btn ghost" id="impGan">⬆️ ייבוא מקובץ</button>
+      <button class="btn ghost" id="exportGans">📤 ייצוא / הדפסה</button>
     </div>
     <div id="ganTable"></div>
   </div>`;
   $("#addGan").onclick=()=>{ const g=makeGan(); if(activeEdu) g.education=activeEdu; openGan(g); };
   $("#impGan").onclick=openGanImport;
   $("#exportGans").onclick=openGanExport;
-  const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ ganFilter[key]=e.value; renderGanTable(); }; };
+  $("#ganFilterToggle").onclick=()=>{ ganFiltersOpen=$("#ganFilterPanel").hasAttribute("hidden"); viewGans(root); };
+  const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ ganFilter[key]=e.value; renderGanTable(); }; };
   bind("#fg-q","q"); bind("#fg-zone","zone"); bind("#fg-status","status");
   renderGanTable();
 }
@@ -2973,10 +3001,10 @@ function renderGanTable(){
   const eduNote = activeEdu ? ` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})` : "";
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
     ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${th("age","גיל")}${th("","חינוך")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("zone","אזור")}
-    ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("","סטטוס")}<th></th></tr></thead><tbody>
+    ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("","סטטוס")}</tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
-      return `<tr>
+      return `<tr data-gid="${esc(g.id)}" class="clickable">
         <td><b>${esc(ganName(g.id))}</b></td>
         <td>${esc(g.internalSymbol)||'—'}</td>
         <td>${esc(g.ganSymbol)||'—'}</td>
@@ -2990,11 +3018,11 @@ function renderGanTable(){
         <td>${esc(g.capacity)||'—'}</td>
         <td><span class="pill ${g.capacity&&reg>+g.capacity?'no':'ok'}">${reg}${g.capacity?(' / '+esc(g.capacity)):''}</span></td>
         <td>${g.active?'<span class="pill ok">פעיל</span>':'<span class="pill neutral">כבוי</span>'}</td>
-        <td class="actions"><button class="btn ghost sm" data-editg="${g.id}">עריכה</button></td></tr>`;
+        </tr>`;
     }).join("")}
   </tbody></table></div>
-  <div class="hint">מוצגים ${shownActive} מתוך ${totalActive} גנים פעילים${eduNote}.</div>`;
-  host.querySelectorAll("[data-editg]").forEach(b=> b.onclick=()=>{ const g=DB.gans.find(x=>x.id===b.dataset.editg); openGan(JSON.parse(JSON.stringify(g))); });
+  <div class="hint">מוצגים ${shownActive} מתוך ${totalActive} גנים פעילים${eduNote}. לחיצה על שורה פותחת את הגן.</div>`;
+  host.querySelectorAll("tr.clickable").forEach(tr=> tr.onclick=e=>{ if(e.target.closest("button,input,a")) return; const g=DB.gans.find(x=>x.id===tr.dataset.gid); if(g) openGan(JSON.parse(JSON.stringify(g))); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(ganSort.key===k) ganSort.dir*=-1; else { ganSort.key=k; ganSort.dir=1; } renderGanTable(); });
 }
 function openGan(g){
@@ -3663,6 +3691,7 @@ function viewMunicipality(root){
    טאב צוות — מאגר אנשי צוות הגנים (סעיף 16), עם מיון וסינון (סעיף 13)
    ============================================================ */
 let staffFilter = { q:"", role:"", status:"active" }; // status: active / left / all
+let staffFiltersOpen=false;
 const staffIsActive = m => m.active!==false;              // רשומות ישנות ללא הדגל = פעילות
 let staffSort = { key:"lastName", dir:1 };
 function staffFiltered(){
@@ -3684,27 +3713,33 @@ function staffFiltered(){
   });
 }
 function viewStaff(root){
+  const fCount=(staffFilter.role?1:0)+(staffFilter.status&&staffFilter.status!=='active'?1:0);
+  const fOpen=staffFiltersOpen || fCount>0;
   root.innerHTML=`
   <div class="panel">
-    <div class="section-title">
-      <div><h2>רשימת צוות הגנים</h2><div class="sub">מאגר כללי של כל אנשי הצוות (גננת, סייעת, סייעת ב', רפואית, צמודה, משלימה, ממלאת מקום) — עם ת"ז ומייל. משמש לשיבוץ בגנים. אפשר לייבא מקובץ.</div></div>
-      <div class="row" style="gap:8px">
-        <button class="btn ghost" id="impStaff">⬆️ ייבוא מקובץ</button>
-        <button class="btn" id="addStaff">➕ הוספת איש/אשת צוות</button>
+    <div class="section-title" style="margin-bottom:10px"><h2>רשימת צוות הגנים</h2></div>
+    <div class="searchbar">
+      <div class="search-field"><span class="mag">🔎</span><input id="fs-q" value="${esc(staffFilter.q)}" placeholder="חיפוש שם / טלפון / עיר…"></div>
+      <button class="filter-toggle ${fOpen?'on':''}" id="staffFilterToggle" type="button" aria-expanded="${fOpen}">☰ סינון${fCount?`<span class="fcount">${fCount}</span>`:''}</button>
+    </div>
+    <div class="filter-panel" id="staffFilterPanel" ${fOpen?'':'hidden'}>
+      <div class="toolbar" style="margin-bottom:0">
+        <div class="field"><label>תפקיד</label><select id="fs-role"><option value="">הכל</option>${STAFF_ROLES.map(r=>`<option ${staffFilter.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
+        <div class="field"><label>סטטוס</label><select id="fs-status">
+          ${[["active","פעילים/ות"],["left","עזבו/יצאו"],["all","הכל"]].map(o=>`<option value="${o[0]}" ${staffFilter.status===o[0]?'selected':''}>${o[1]}</option>`).join("")}
+        </select></div>
       </div>
     </div>
-    <div class="toolbar">
-      <div class="field grow"><label>חיפוש (שם / טלפון / עיר)</label><input id="fs-q" value="${esc(staffFilter.q)}" placeholder="הקלד/י…"></div>
-      <div class="field"><label>תפקיד</label><select id="fs-role"><option value="">הכל</option>${STAFF_ROLES.map(r=>`<option ${staffFilter.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
-      <div class="field"><label>סטטוס</label><select id="fs-status">
-        ${[["active","פעילים/ות"],["left","עזבו/יצאו"],["all","הכל"]].map(o=>`<option value="${o[0]}" ${staffFilter.status===o[0]?'selected':''}>${o[1]}</option>`).join("")}
-      </select></div>
+    <div class="row" style="gap:8px;margin-bottom:12px">
+      <button class="btn" id="addStaff">➕ הוספת איש/אשת צוות</button>
+      <button class="btn ghost" id="impStaff">⬆️ ייבוא מקובץ</button>
     </div>
     <div id="staffTable"></div>
   </div>`;
   $("#addStaff").onclick=()=>openStaff(makeStaff());
   $("#impStaff").onclick=openStaffImport;
-  const bind=(id,key)=>{ const e=$(id); e.oninput=e.onchange=()=>{ staffFilter[key]=e.value; renderStaffTable(); }; };
+  $("#staffFilterToggle").onclick=()=>{ staffFiltersOpen=$("#staffFilterPanel").hasAttribute("hidden"); viewStaff(root); };
+  const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ staffFilter[key]=e.value; renderStaffTable(); }; };
   bind("#fs-q","q"); bind("#fs-role","role"); bind("#fs-status","status");
   renderStaffTable();
 }
@@ -3716,8 +3751,8 @@ function renderStaffTable(){
   const arr=k=> staffSort.key===k?`<span class="arr">${staffSort.dir>0?'▲':'▼'}</span>`:"";
   const th=(k,l)=>`<th class="sortable" data-sort="${k}">${l}${arr(k)}</th>`;
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
-    ${th("lastName","שם משפחה")}${th("firstName","שם פרטי")}${th("tz",'ת"ז')}${th("role","תפקיד")}${th("education","חינוך")}${th("phone","טלפון")}${th("mobile","נייד")}${th("email","מייל")}${th("city","עיר")}<th></th></tr></thead><tbody>
-    ${list.map(m=>`<tr${staffIsActive(m)?'':' style="opacity:.6"'}>
+    ${th("lastName","שם משפחה")}${th("firstName","שם פרטי")}${th("tz",'ת"ז')}${th("role","תפקיד")}${th("education","חינוך")}${th("phone","טלפון")}${th("mobile","נייד")}${th("email","מייל")}${th("city","עיר")}</tr></thead><tbody>
+    ${list.map(m=>`<tr data-mid="${esc(m.id)}" class="clickable"${staffIsActive(m)?'':' style="opacity:.6"'}>
       <td><b>${esc(m.lastName)||'—'}</b>${staffIsActive(m)?'':' <span class="pill warn">עזב/ה</span>'}</td>
       <td>${esc(m.firstName)||'—'}</td>
       <td>${esc(m.tz)||'—'}</td>
@@ -3727,9 +3762,9 @@ function renderStaffTable(){
       <td>${m.mobile?`<a href="tel:${esc(m.mobile)}">${esc(m.mobile)}</a>`:'—'}</td>
       <td>${m.email?`<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>`:'—'}</td>
       <td>${esc(m.city)||'—'}</td>
-      <td class="actions"><button class="btn ghost sm" data-em="${m.id}">עריכה</button></td></tr>`).join("")}
-  </tbody></table></div><div class="hint">${list.length} אנשי צוות.</div>`;
-  host.querySelectorAll("[data-em]").forEach(b=>b.onclick=()=>openStaff(JSON.parse(JSON.stringify(DB.staff.find(x=>x.id===b.dataset.em)))));
+      </tr>`).join("")}
+  </tbody></table></div><div class="hint">${list.length} אנשי צוות. לחיצה על שורה פותחת לעריכה.</div>`;
+  host.querySelectorAll("tr.clickable").forEach(tr=>tr.onclick=e=>{ if(e.target.closest("button,input,a")) return; const m=DB.staff.find(x=>x.id===tr.dataset.mid); if(m) openStaff(JSON.parse(JSON.stringify(m))); });
   host.querySelectorAll("[data-sort]").forEach(t=>t.onclick=()=>{ const k=t.dataset.sort; if(staffSort.key===k)staffSort.dir*=-1; else{staffSort.key=k;staffSort.dir=1;} renderStaffTable(); });
 }
 function openStaff(m){
@@ -4082,16 +4117,13 @@ function staffTakenDays(idx, staffId){
 }
 function viewAssign(root){
   const gans=eduScope(DB.gans.slice()).sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
-  const scopeNote = activeEdu ? ` · ${activeEdu==='ח"מ'?'חינוך מיוחד':'חינוך רגיל'}` : "";
   root.innerHTML=`
   <div class="panel">
-    <div class="section-title">
-      <div><h2>שיבוץ צוות · שנת ${esc(DB.activeYear)}${esc(scopeNote)}</h2>
-        <div class="sub">בוחרים הקשר (פעילות הגן / צהרונים / קייטנה), פותחים גן לשיבוץ וממלאים את הצוות. השמות נמשכים ממאגר הצוות (טאב "צוות"). הרשימה המלאה מוצגת למטה.</div></div>
+    <div class="section-title" style="margin-bottom:10px"><h2>שיבוץ צוות</h2></div>
+    <div class="row" style="gap:10px;align-items:end;margin-bottom:12px;flex-wrap:wrap">
+      <div class="field" style="min-width:220px"><label>הקשר השיבוץ</label>
+        <select id="asgCtxSel">${ASSIGN_CONTEXTS.map(c=>`<option value="${c.id}" ${c.id===asgContext?'selected':''}>${esc(c.label)}</option>`).join("")}</select></div>
       <button class="btn ghost" id="exportAsg">📤 ייצוא / הדפסה</button>
-    </div>
-    <div class="row" id="asgCtx" style="gap:6px;flex-wrap:wrap;margin-bottom:6px">
-      ${ASSIGN_CONTEXTS.map(c=>`<button class="btn ${c.id===asgContext?'':'ghost'} sm" data-ctx="${c.id}">${esc(c.label)}</button>`).join("")}
     </div>
     <div id="asgSummary" style="margin-bottom:10px"></div>
     ${!gans.length?`<div class="empty">אין גנים ${activeEdu?'בסינון זה':''}. הוסף/י גנים בטאב "גנים".</div>`:`
@@ -4103,7 +4135,7 @@ function viewAssign(root){
       <div id="asgList"></div>`}
   </div>`;
   $("#exportAsg").onclick=openAsgExport;
-  $("#asgCtx").querySelectorAll("[data-ctx]").forEach(b=> b.onclick=()=>{ asgContext=b.dataset.ctx; route(); });
+  $("#asgCtxSel").onchange=e=>{ asgContext=e.target.value; route(); };
   if(!gans.length) return;
   /* טבלת בחירה מצומצמת: שם הגן · סמל · כתובת · שיבוץ (סעיף 5) */
   const pick=$("#asgPick");
@@ -4133,7 +4165,7 @@ function viewAssign(root){
     const c=ganReg(g); const cls=(g.capacity && c>+g.capacity)?'no':'ok'; return `<span class="pill ${cls}">${c}${g.capacity?(' / '+esc(g.capacity)):''}</span>`;
   };
   pick.innerHTML=`${asgContext==='tzaharon'?`<div class="hint" style="margin-bottom:8px">מינימום לפתיחת צהרון: <b>${tzMin||'לא הוגדר'}</b> (נקבע בהגדרות). אדום = מתחת למינימום, ירוק = ניתן לפתוח.</div>`:''}
-    <div class="field" style="max-width:340px;margin-bottom:8px"><label>🔎 חיפוש גן (שם / סמל / כתובת)</label><input id="asgGanSearch" value="${esc(asgGanQ)}" placeholder="הקלד/י שם גן…"></div>
+    <div class="searchbar" style="max-width:420px"><div class="search-field"><span class="mag">🔎</span><input id="asgGanSearch" value="${esc(asgGanQ)}" placeholder="חיפוש גן (שם / סמל / כתובת)…"></div></div>
     <div class="table-wrap"><table><thead><tr>
     <th>שם הגן</th><th>סמל</th><th>כתובת</th><th>${esc(regLabel)}</th><th>מצב שיבוץ</th><th></th></tr></thead><tbody>
     ${gans.map(g=>{
