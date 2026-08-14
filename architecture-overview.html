@@ -1,0 +1,294 @@
+<title>ארכיטקטורת מערכת הרישום</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --paper:#f6f7f9;
+    --surface:#ffffff;
+    --surface-2:#eef1f5;
+    --ink:#1b2430;
+    --ink-soft:#4a5568;
+    --ink-faint:#8a96a6;
+    --line:#dde3ea;
+    --line-strong:#c3ccd7;
+    /* תפקידים */
+    --host:#4c5bd4;      --host-bg:#eaecfb;   --host-ink:#2f3aa0;
+    --data:#c9791f;      --data-bg:#fbefdd;   --data-ink:#98590f;
+    --bridge:#2e9e6b;    --bridge-bg:#e0f2e9; --bridge-ink:#1d6f49;
+    --shadow:0 1px 2px rgba(27,36,48,.05),0 8px 24px rgba(27,36,48,.06);
+    --radius:14px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#0f141b;
+      --surface:#161d27;
+      --surface-2:#1d2632;
+      --ink:#eef2f7;
+      --ink-soft:#aeb9c7;
+      --ink-faint:#71809180;
+      --ink-faint:#7a8798;
+      --line:#28323f;
+      --line-strong:#3a4759;
+      --host:#8a95f0;      --host-bg:#20263f;   --host-ink:#b7bef7;
+      --data:#e0a35a;      --data-bg:#33261629; --data-bg:#332616; --data-ink:#f0c48a;
+      --bridge:#5cc394;    --bridge-bg:#16302331;--bridge-bg:#163023; --bridge-ink:#8fdcb6;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0f141b;
+    --surface:#161d27;
+    --surface-2:#1d2632;
+    --ink:#eef2f7;
+    --ink-soft:#aeb9c7;
+    --ink-faint:#7a8798;
+    --line:#28323f;
+    --line-strong:#3a4759;
+    --host:#8a95f0;      --host-bg:#20263f;   --host-ink:#b7bef7;
+    --data:#e0a35a;      --data-bg:#332616;   --data-ink:#f0c48a;
+    --bridge:#5cc394;    --bridge-bg:#163023; --bridge-ink:#8fdcb6;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:system-ui,"Segoe UI",Arial,sans-serif;
+    line-height:1.6;
+    direction:rtl;
+    text-align:right;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:clamp(24px,5vw,64px) clamp(18px,4vw,40px) 80px}
+
+  /* ---- Hero ---- */
+  .eyebrow{
+    font-size:.78rem;letter-spacing:.14em;font-weight:700;
+    color:var(--ink-faint);text-transform:uppercase;margin:0 0 14px
+  }
+  h1{
+    font-size:clamp(1.9rem,5vw,3rem);line-height:1.12;margin:0 0 18px;
+    font-weight:800;letter-spacing:-.01em;text-wrap:balance
+  }
+  .lede{
+    font-size:clamp(1.02rem,2.2vw,1.2rem);color:var(--ink-soft);
+    max-width:62ch;margin:0
+  }
+  .lede b{color:var(--ink);font-weight:700}
+
+  /* ---- Diagram ---- */
+  .flow{
+    margin:clamp(34px,6vw,56px) 0 0;
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:20px;padding:clamp(20px,4vw,36px);box-shadow:var(--shadow)
+  }
+  .flow-title{font-size:.82rem;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-faint);margin:0 0 26px}
+  .rail{
+    display:flex;align-items:stretch;gap:0;flex-wrap:nowrap;overflow-x:auto;
+    padding-bottom:6px
+  }
+  .node{
+    flex:1 1 0;min-width:150px;border-radius:var(--radius);
+    padding:16px 16px 18px;border:1px solid var(--line);
+    background:var(--surface-2);display:flex;flex-direction:column;gap:6px
+  }
+  .node .k{font-size:.72rem;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;opacity:.8}
+  .node .n{font-weight:800;font-size:1.05rem}
+  .node .d{font-size:.86rem;color:var(--ink-soft);line-height:1.5}
+  .node.host{background:var(--host-bg);border-color:transparent}
+  .node.host .k,.node.host .n{color:var(--host-ink)}
+  .node.data{background:var(--data-bg);border-color:transparent}
+  .node.data .k,.node.data .n{color:var(--data-ink)}
+  .node.bridge{background:var(--bridge-bg);border-color:transparent}
+  .node.bridge .k,.node.bridge .n{color:var(--bridge-ink)}
+  .arrow{
+    flex:0 0 auto;align-self:center;color:var(--line-strong);
+    font-size:1.4rem;padding:0 6px;user-select:none
+  }
+  /* חץ ב-RTL: הזרימה נעה שמאלה, נשתמש בחץ שמאלה */
+  .split{flex:1 1 0;min-width:170px;display:flex;flex-direction:column;gap:12px}
+
+  @media (max-width:640px){
+    .rail{flex-direction:column}
+    .arrow{transform:rotate(90deg);padding:2px 0}
+    .split{gap:12px}
+  }
+
+  /* ---- Cards ---- */
+  .cards{display:grid;gap:16px;margin-top:clamp(30px,5vw,44px)}
+  .card{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:16px;padding:clamp(20px,3vw,28px);box-shadow:var(--shadow);
+    position:relative;overflow:hidden
+  }
+  .card::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px}
+  .card.host::before{background:var(--host)}
+  .card.data::before{background:var(--data)}
+  .card.bridge::before{background:var(--bridge)}
+  .card-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .badge{
+    font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:4px 10px;border-radius:999px
+  }
+  .card.host .badge{background:var(--host-bg);color:var(--host-ink)}
+  .card.data .badge{background:var(--data-bg);color:var(--data-ink)}
+  .card.bridge .badge{background:var(--bridge-bg);color:var(--bridge-ink)}
+  .card h2{font-size:1.3rem;margin:0;font-weight:800;letter-spacing:-.01em}
+  .card .role{font-size:.95rem;color:var(--ink-soft);margin:0 0 16px}
+  .card ul{margin:0;padding:0;list-style:none;display:grid;gap:9px}
+  .card li{position:relative;padding-inline-start:22px;font-size:.95rem;color:var(--ink)}
+  .card li::before{
+    content:"";position:absolute;inset-inline-start:2px;top:.62em;
+    width:7px;height:7px;border-radius:50%;background:var(--tick)
+  }
+  .card.host li::before{background:var(--host)}
+  .card.data li::before{background:var(--data)}
+  .card.bridge li::before{background:var(--bridge)}
+  .card li b{font-weight:700}
+
+  /* ---- Journey ---- */
+  .journey{margin-top:clamp(34px,6vw,52px)}
+  .journey h3{font-size:1.15rem;font-weight:800;margin:0 0 6px}
+  .journey p.sub{margin:0 0 24px;color:var(--ink-soft);font-size:.95rem}
+  ol.steps{margin:0;padding:0;list-style:none;display:grid;gap:0;
+    counter-reset:s;border-inline-start:2px solid var(--line);
+    margin-inline-start:14px}
+  ol.steps li{counter-increment:s;position:relative;padding:0 30px 22px 0}
+  ol.steps li:last-child{padding-bottom:0}
+  ol.steps li::before{
+    content:counter(s);position:absolute;inset-inline-start:-15px;top:-2px;
+    width:28px;height:28px;border-radius:50%;
+    background:var(--surface);border:2px solid var(--line-strong);
+    color:var(--ink-soft);font-size:.82rem;font-weight:700;
+    display:grid;place-items:center
+  }
+  ol.steps li .st{font-weight:700;display:block;margin-bottom:2px}
+  ol.steps li .sd{color:var(--ink-soft);font-size:.93rem}
+  .tag{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 8px;
+    border-radius:6px;margin-inline-start:6px;vertical-align:middle}
+  .tag.host{background:var(--host-bg);color:var(--host-ink)}
+  .tag.data{background:var(--data-bg);color:var(--data-ink)}
+  .tag.bridge{background:var(--bridge-bg);color:var(--bridge-ink)}
+
+  .foot{margin-top:clamp(40px,6vw,60px);padding-top:22px;
+    border-top:1px solid var(--line);color:var(--ink-faint);font-size:.85rem}
+  .foot b{color:var(--ink-soft)}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">מערכת רישום וקליטת תלמידות · ארכיטקטורה</p>
+  <h1>שלושה שירותי ענן, תפקיד אחד לכל אחד</h1>
+  <p class="lede">כל האפליקציה היא קובץ אתר אחד שרץ בדפדפן — בלי שרת משלכם. במקום שרת, המערכת נשענת על שלושה שירותים חינמיים: <b>GitHub</b> מארח את האתר, <b>Firebase</b> שומר את הנתונים ומטפל בהתחברות, ו־<b>Apps Script</b> מגשר אל Google Drive וניהול המשתמשים.</p>
+
+  <!-- Diagram -->
+  <section class="flow" aria-label="דיאגרמת זרימה">
+    <p class="flow-title">מסלול הזרימה</p>
+    <div class="rail">
+      <div class="node">
+        <span class="k">משתמש</span>
+        <span class="n">הדפדפן</span>
+        <span class="d">טלפון או מחשב</span>
+      </div>
+      <div class="arrow" aria-hidden="true">←</div>
+      <div class="node host">
+        <span class="k">אירוח</span>
+        <span class="n">GitHub Pages</span>
+        <span class="d">מגיש את האתר (index.html)</span>
+      </div>
+      <div class="arrow" aria-hidden="true">←</div>
+      <div class="split">
+        <div class="node data">
+          <span class="k">נתונים + כניסה</span>
+          <span class="n">Firebase</span>
+          <span class="d">Firestore + Authentication</span>
+        </div>
+        <div class="node bridge">
+          <span class="k">גשר</span>
+          <span class="n">Apps Script</span>
+          <span class="d">Drive · משתמשים · Sheets</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cards -->
+  <div class="cards">
+
+    <article class="card host">
+      <div class="card-head">
+        <span class="badge">GitHub</span>
+        <h2>האירוח — "השרת" של האתר</h2>
+      </div>
+      <p class="role">מביא את האפליקציה אל המשתמש, ומחזיק את הקוד עצמו.</p>
+      <ul>
+        <li>מפרסם את קובץ ה־HTML כאתר חי דרך <b>GitHub Pages</b>.</li>
+        <li>מגיש את האפליקציה לדפדפן — ותו לא.</li>
+        <li><b>לא</b> שומר שום נתוני תלמידות; רק מגיש קוד.</li>
+        <li>כאן מנוהלים הקוד, הענפים והגרסאות.</li>
+      </ul>
+    </article>
+
+    <article class="card data">
+      <div class="card-head">
+        <span class="badge">Firebase</span>
+        <h2>מסד הנתונים + ההתחברות</h2>
+      </div>
+      <p class="role">הלב של המערכת — מקור האמת של כל הנתונים.</p>
+      <ul>
+        <li><b>Firestore</b> — תיקי תלמידות, גנים, צוות, שיבוצים והגדרות. מסתנכרן בזמן אמת בין כל המכשירים.</li>
+        <li><b>Authentication</b> — כניסה עם אימייל וסיסמה או חשבון Google; רק מי שהוגדר מראש.</li>
+        <li>כללי אבטחה (<b>firestore.rules</b>) מוודאים שרק משתמש מחובר קורא או כותב.</li>
+      </ul>
+    </article>
+
+    <article class="card bridge">
+      <div class="card-head">
+        <span class="badge">Apps Script</span>
+        <h2>הגשר לחשבון Google של הארגון</h2>
+      </div>
+      <p class="role">מכסה מה ש־Firebase לבד לא עושה — רץ בחשבון הארגון כ־Web App.</p>
+      <ul>
+        <li><b>Google Drive</b> — תיקייה לכל ילדה ולכל איש צוות, העלאה, צפייה והורדה של מסמכים — בלי חיבור Google אישי לכל משתמש.</li>
+        <li><b>ניהול משתמשים</b> — מנהל מוסיף, מאפס סיסמה ומוחק ישירות מתוך התוכנה.</li>
+        <li><b>שיקוף ל־Google Sheets</b> — גיבוי ודוחות; מראה בלבד, מקור האמת נשאר Firestore.</li>
+        <li>כל בקשה מאומתת מול Firebase, כולל בדיקת הרשאת מנהל — לא ניתן לעקוף מהדפדפן.</li>
+      </ul>
+    </article>
+
+  </div>
+
+  <!-- Journey -->
+  <section class="journey">
+    <h3>איך בקשה אחת עוברת במערכת</h3>
+    <p class="sub">מרגע שהמשתמש נכנס ועד שהמסמך נשמר — כל שירות נכנס בתורו.</p>
+    <ol class="steps">
+      <li>
+        <span class="st">נכנסים לכתובת האתר <span class="tag host">GitHub Pages</span></span>
+        <span class="sd">השרת מגיש את index.html לדפדפן.</span>
+      </li>
+      <li>
+        <span class="st">מתחברים <span class="tag data">Firebase Auth</span></span>
+        <span class="sd">אימייל וסיסמה או חשבון Google; רק משתמש מורשה נכנס.</span>
+      </li>
+      <li>
+        <span class="st">קוראים וכותבים נתונים <span class="tag data">Firestore</span></span>
+        <span class="sd">כל שינוי נשמר ומסתנכרן בזמן אמת בין כל המכשירים.</span>
+      </li>
+      <li>
+        <span class="st">מעלים מסמך או מנהלים משתמשים <span class="tag bridge">Apps Script</span></span>
+        <span class="sd">האתר קורא לגשר, שפועל מול Google Drive ו־Firebase Auth בחשבון הארגון.</span>
+      </li>
+    </ol>
+  </section>
+
+  <p class="foot">
+    <b>בקצרה:</b> GitHub מארח · Firebase שומר ומאמת · Apps Script מגשר.
+    &nbsp;·&nbsp; שים לב: "גיטאב" כאן הוא <b>GitHub</b> (לא GitLab) — כל המערכת בנויה סביב GitHub Pages.
+  </p>
+
+</div>
