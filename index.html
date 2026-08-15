@@ -988,27 +988,14 @@ async function updatePwaIcons(){
   try{
     const logo=appLogo(), title=appTitle(), isImg=/^(https?:|data:)/i.test(logo);
     const key=logo+"|"+title; if(key===_lastIconKey) return; _lastIconKey=key;
-    const i512 = isImg? await iconFromImage(logo,512) : iconFromEmoji(logo,512);
     const i192 = isImg? await iconFromImage(logo,192) : iconFromEmoji(logo,192);
-    if(!i192||!i512){ _lastIconKey=""; return; }
-    const ai=$("#appleIcon"); if(ai) ai.href=i192;
-    const fi=$("#faviconLink"); if(fi) fi.href=i192;
+    if(!i192){ _lastIconKey=""; return; }
+    const ai=$("#appleIcon"); if(ai) ai.href=i192;   // אייקון מסך-הבית ב-iOS
+    const fi=$("#faviconLink"); if(fi) fi.href=i192;  // פאביקון בלשונית הדפדפן
     const at=document.querySelector('meta[name="apple-mobile-web-app-title"]'); if(at) at.content=title;
-    // manifest דינמי — כדי שגם אייקון האפליקציה המותקנת (אנדרואיד/מחשב) יהיה הלוגו המותאם.
-    // רק כשהוגדר מיתוג מותאם; אחרת נשאר ה-manifest הסטטי (icon-192/512.png).
-    if(DB.settings && DB.settings.appLogo){
-      const man={ id:"./", name:title||"מערכת ניהול", short_name:(title||"רשת הגנים").slice(0,12),
-        start_url:".", scope:".", display:"standalone", display_override:["standalone"],
-        orientation:"portrait-primary", background_color:"#eaf4ec", theme_color:"#4a9d5b",
-        lang:"he", dir:"rtl", categories:["education","productivity"],
-        icons:[ {src:i192,sizes:"192x192",type:"image/png",purpose:"any"},
-                {src:i512,sizes:"512x512",type:"image/png",purpose:"any"},
-                {src:i512,sizes:"512x512",type:"image/png",purpose:"maskable"} ] };
-      const blob=new Blob([JSON.stringify(man)],{type:"application/manifest+json"});
-      if(_manifestUrl){ try{ URL.revokeObjectURL(_manifestUrl); }catch(_){} }
-      _manifestUrl=URL.createObjectURL(blob);
-      const link=document.querySelector('link[rel="manifest"]'); if(link) link.href=_manifestUrl;
-    }
+    // ה-manifest נשאר סטטי (manifest.webmanifest + icon-192/512.png) — נדרש כדי שאנדרואיד יתקין
+    // אפליקציה אמיתית (WebAPK) שנכנסת לרשימת האפליקציות, ולא רק קיצור דרך במסך הבית.
+    // הערה: manifest מסוג blob/data שובר את מנגנון ה-WebAPK ולכן אינו בשימוש.
   }catch(e){ console.error(e); }
 }
 let deferredInstallPrompt=null;
