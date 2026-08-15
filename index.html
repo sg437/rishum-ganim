@@ -1124,6 +1124,7 @@ const TABS = [
   {id:"gans",      label:"גנים", icon:"🏫"},
   {id:"staff",     label:"צוות הגנים", icon:"👩‍🏫"},
   {id:"assign",    label:"שיבוץ צוות", icon:"🧩"},
+  {id:"templates", label:"מסמכים ותבניות", icon:"📄"},
   {id:"reports",   label:"דוחות ואחוזים", icon:"📊"},
   {id:"municipality", label:"עירייה", icon:"🏛️"},
   {id:"export",    label:"ייצוא", icon:"📤"},
@@ -1615,7 +1616,7 @@ function route(){
   renderTabs(); renderYearSelect(); renderEduPick();
   const so=$("#signOutBtn"); if(so) so.style.display=currentUser?"flex":"none";
   const v = $("#view");
-  ({home:viewHome, students:viewStudents, gans:viewGans, staff:viewStaff, assign:viewAssign, reports:viewReports,
+  ({home:viewHome, students:viewStudents, gans:viewGans, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
     municipality:viewMunicipality, export:viewExport, management:viewManagement, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
 }
 
@@ -3369,6 +3370,75 @@ function printTable(title, headers, rows){
     <table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></body></html>`);
   w.document.close(); setTimeout(()=>{ w.focus(); w.print(); }, 250);
+}
+
+/* ============================================================
+   מסמכים ותבניות — הפקה והדפסה של מכתב שיבוץ ורשימת גן (סעיף 14)
+   ============================================================ */
+function docHeaderHtml(){
+  const logo=appLogo(), isImg=/^(https?:|data:)/i.test(logo);
+  const logoEl = isImg ? `<img class="lg" src="${esc(logo)}">` : `<span class="lg em">${esc(logo)}</span>`;
+  return `<div class="doc-hd">${logoEl}<div class="doc-hd-t"><div class="t1">${esc(appTitle())}</div><div class="t2">${esc(appSubtitle())}</div></div></div>`;
+}
+function printDoc(title, bodyHtml){
+  const w=window.open("","_blank"); if(!w){ toast("החלון נחסם — אפשר/י חלונות קופצים בדפדפן"); return; }
+  const style=`<style>
+    @page{margin:16mm}
+    *{box-sizing:border-box}
+    body{font-family:"Assistant","Heebo",Arial,sans-serif;direction:rtl;color:#12251a;margin:0;padding:22px}
+    .doc-hd{display:flex;align-items:center;gap:14px;border-bottom:3px solid #4a9d5b;padding-bottom:12px;margin-bottom:18px}
+    .doc-hd .lg{width:58px;height:58px;object-fit:contain;border-radius:12px;flex:0 0 auto}
+    .doc-hd .lg.em{display:grid;place-items:center;font-size:42px}
+    .doc-hd .t1{font-weight:800;font-size:20px}
+    .doc-hd .t2{color:#6a8072;font-weight:700;font-size:13px}
+    h2{font-size:18px;margin:0 0 14px}
+    table{border-collapse:collapse;width:100%;font-size:13px}
+    th,td{border:1px solid #c7ddcd;padding:6px 9px;text-align:right}
+    th{background:#e6f3e9;font-weight:800}
+    .meta{color:#3d5546;font-weight:700;margin-bottom:12px}
+    .letter{page-break-after:always}
+    .letter:last-child{page-break-after:auto}
+    .lt-body{line-height:2;font-size:15.5px;margin-top:6px}
+    .lt-date{text-align:left;color:#3d5546;margin-bottom:8px}
+    .sig{margin-top:46px;text-align:left;font-weight:700}
+    .sig .line{margin-top:26px;border-top:1px solid #12251a;width:220px;margin-inline-start:auto;padding-top:4px;font-weight:600;color:#3d5546}
+  </style>`;
+  w.document.write(`<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${esc(title)}</title>${style}</head><body>${bodyHtml}</body></html>`);
+  w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 350);
+}
+/* רשימת גן — טבלת תלמידות הגן להדפסה לגננת */
+function makeGanRoster(ganId){
+  const g=ganById(ganId); if(!g){ toast("יש לבחור גן"); return; }
+  const list = studentsOfYear().filter(s=>!s.finished && s.ganId===ganId)
+    .sort((a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he") || (a.firstName||"").localeCompare(b.firstName||"","he"));
+  const cols=["שם משפחה","שם פרטי",'ת"ז',"גיל","טלפון","נייד","כתובת"];
+  const rows=list.map((s,i)=>[i+1, s.lastName, s.firstName, s.tz, s.age, s.phone, s.mobile, [s.street,s.building].filter(Boolean).join(" ")]);
+  const body=`${docHeaderHtml()}
+    <h2>רשימת גן — ${esc(ganName(ganId))}</h2>
+    <div class="meta">שנת ${esc(DB.activeYear)}${g.ganSymbol?` · סמל ${esc(g.ganSymbol)}`:""}${g.teacherName?` · גננת: ${esc(g.teacherName)}`:""} · ${list.length} תלמידות</div>
+    <table><thead><tr><th>#</th>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  if(!list.length){ toast("אין תלמידות בגן זה"); }
+  printDoc("רשימת גן · "+ganName(ganId), body);
+}
+function viewTemplates(root){
+  const gans = eduScope(DB.gans.filter(g=>g.active)).slice()
+    .sort((a,b)=>(ganName(a.id)).localeCompare(ganName(b.id),"he"));
+  const ganOpts = gans.map(g=>`<option value="${g.id}">${esc(ganName(g.id))}${g.ganSymbol?` · ${esc(g.ganSymbol)}`:""}</option>`).join("");
+  root.innerHTML = `
+  <div class="panel">
+    <div class="section-title" style="margin-bottom:6px"><h2>מסמכים ותבניות</h2></div>
+    <div class="sub">הפקת מסמכים מוכנים להדפסה (או שמירה כ-PDF), ממולאים אוטומטית מהנתונים העדכניים.</div>
+    <fieldset><legend>📋 רשימת גן</legend>
+      <div class="hint" style="margin-bottom:10px">רשימת התלמידות בגן — שם, ת"ז, גיל, טלפונים וכתובת — להדפסה לגננת.</div>
+      <div class="row" style="align-items:end;gap:10px">
+        <div class="field" style="min-width:220px"><label>גן</label><select id="tpl-roster-gan"><option value="">— בחר/י גן —</option>${ganOpts}</select></div>
+        <button class="btn" id="tpl-roster-go">🖨️ הפקה והדפסה</button>
+      </div>
+    </fieldset>
+    <div class="note">💡 בחלון ההדפסה שנפתח אפשר לבחור מדפסת אמיתית או "שמירה כ-PDF" (Save as PDF) כדי לשמור קובץ.</div>
+  </div>`;
+  $("#tpl-roster-go").onclick=()=>{ const gid=$("#tpl-roster-gan").value; if(!gid){ toast("יש לבחור גן"); return; } makeGanRoster(gid); };
 }
 
 /* ============================================================
