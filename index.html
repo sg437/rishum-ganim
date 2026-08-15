@@ -4800,10 +4800,15 @@ function viewSettings(root){
 
   <div class="panel">
     <h2>מיתוג — כותרת ולוגו</h2>
-    <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר להזין אימוג'י (למשל 🎒) או כתובת/קישור לתמונה.</div>
+    <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר <b>להעלות קובץ תמונה</b> (מומלץ), או להזין אימוג'י (למשל 🎒).</div>
     <div class="grid g2">
       <div><label>כותרת ראשית</label><input id="br-title" value="${esc(appTitle())}" ${dis}></div>
-      <div><label>לוגו (אימוג'י או קישור לתמונה)</label><input id="br-logo" value="${esc(appLogo())}" ${dis}></div>
+      <div><label>לוגו — אימוג'י או קישור לתמונה</label><input id="br-logo" value="${esc(appLogo())}" ${dis}></div>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:center;gap:10px">
+      <div style="width:52px;height:52px;border-radius:12px;border:1px solid var(--border);display:grid;place-items:center;overflow:hidden;background:var(--surface-2);font-size:1.6rem" id="br-logo-prev">${logoHtml()}</div>
+      <label class="btn ghost" style="${dis?'opacity:.5;pointer-events:none;':''}display:inline-flex;align-items:center;gap:6px">📤 העלאת קובץ לוגו<input type="file" id="br-logo-file" accept="image/*" hidden ${dis}></label>
+      <span class="hint" style="flex:1;min-width:180px">בחר/י תמונה מהמחשב/טלפון — היא תוקטן ותוטמע בתוך המערכת (בלי תלות בקישור חיצוני / Drive). לאחר הבחירה לחצ/י "שמור מיתוג".</span>
     </div>
     <div class="row" style="margin-top:10px">
       <button class="btn" id="saveBrand" ${dis}>💾 שמור מיתוג</button>
@@ -5040,7 +5045,25 @@ function viewSettings(root){
 
   // מיתוג (כותרת + לוגו)
   if(admin){
-    $("#saveBrand").onclick=()=>{ DB.settings.appTitle=$("#br-title").value.trim(); DB.settings.appLogo=$("#br-logo").value.trim(); save(); applyBranding(); toast("המיתוג נשמר"); };
+    const logoPrevUpdate=()=>{ const p=$("#br-logo-prev"); if(!p) return; const v=$("#br-logo").value.trim();
+      p.innerHTML = /^(https?:|data:)/i.test(v) ? `<img src="${esc(v)}" alt="לוגו" style="width:100%;height:100%;object-fit:cover">` : esc(v||"🎒"); };
+    $("#br-logo").addEventListener("input", logoPrevUpdate);
+    // העלאת קובץ לוגו — קריאה, הקטנה לקנבס (עד 512px) והטמעה כ-data URI (בלי תלות בקישור חיצוני)
+    const lf=$("#br-logo-file"); if(lf) lf.onchange=()=>{
+      const file=lf.files&&lf.files[0]; if(!file) return;
+      if(!/^image\//.test(file.type)){ toast("יש לבחור קובץ תמונה"); return; }
+      const rd=new FileReader();
+      rd.onload=()=>{ const img=new Image(); img.onload=()=>{
+        const max=512, scale=Math.min(1, max/Math.max(img.width,img.height));
+        const w=Math.max(1,Math.round(img.width*scale)), h=Math.max(1,Math.round(img.height*scale));
+        const c=document.createElement("canvas"); c.width=w; c.height=h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        let uri; try{ uri=c.toDataURL("image/png"); }catch(_){ uri=rd.result; }
+        $("#br-logo").value=uri; logoPrevUpdate(); toast('הלוגו נטען — לחצ/י "שמור מיתוג" לשמירה');
+      }; img.onerror=()=>toast("לא ניתן לקרוא את התמונה"); img.src=rd.result; };
+      rd.onerror=()=>toast("שגיאה בקריאת הקובץ"); rd.readAsDataURL(file);
+    };
+    $("#saveBrand").onclick=()=>{ DB.settings.appTitle=$("#br-title").value.trim(); DB.settings.appLogo=$("#br-logo").value.trim(); save(); applyBranding(); logoPrevUpdate(); toast("המיתוג נשמר"); };
     $("#resetBrand").onclick=()=>{ delete DB.settings.appTitle; delete DB.settings.appLogo; save(); route(); toast("הוחזר לברירת מחדל"); };
   }
 
