@@ -3406,37 +3406,6 @@ function printDoc(title, bodyHtml){
   w.document.write(`<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${esc(title)}</title>${style}</head><body>${bodyHtml}</body></html>`);
   w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 350);
 }
-function heDate(){ try{ return new Date().toLocaleDateString("he-IL",{day:"numeric",month:"long",year:"numeric"}); }catch(_){ return ""; } }
-/* מכתב שיבוץ — עמוד לכל ילדה משובצת בגן שנבחר (או בכל הגנים בסינון הפעיל) */
-function makePlacementLetters(ganId){
-  const scopeGans = eduScope(DB.gans.filter(g=>g.active));
-  const gans = ganId ? scopeGans.filter(g=>g.id===ganId) : scopeGans;
-  const ganIds = new Set(gans.map(g=>g.id));
-  const list = studentsOfYear().filter(s=>!s.finished && s.ganId && ganIds.has(s.ganId))
-    .sort((a,b)=> String(a.ganId).localeCompare(String(b.ganId)) || (a.lastName||"").localeCompare(b.lastName||"","he"));
-  if(!list.length){ toast("אין תלמידות משובצות בבחירה זו"); return; }
-  const body = list.map(s=>{
-    const g=ganById(s.ganId)||{};
-    const nm=[s.firstName,s.lastName].filter(Boolean).join(" ")||"—";
-    const ganNm=ganName(s.ganId);
-    const addr=[g.address,g.building].filter(Boolean).join(" ");
-    return `<div class="letter">
-      ${docHeaderHtml()}
-      <div class="lt-date">${esc(heDate())} · שנת ${esc(DB.activeYear)}</div>
-      <h2>אישור שיבוץ לגן</h2>
-      <div class="lt-body">
-        לכבוד הורי התלמידה <b>${esc(nm)}</b>,<br>
-        שלום וברכה,<br><br>
-        הרינו לאשר בזאת כי בתכם <b>${esc(nm)}</b>${s.tz?`, ת.ז. <b>${esc(s.tz)}</b>`:""}, שובצה לשנת הלימודים <b>${esc(s.year)}</b>
-        בגן <b>${esc(ganNm)}</b>${g.ganSymbol?` (סמל ${esc(g.ganSymbol)})`:""}${g.teacherName?`, אצל הגננת <b>${esc(g.teacherName)}</b>`:""}${addr?`, בכתובת ${esc(addr)}`:""}.<br>
-        ${s.age?`גיל: ${esc(s.age)} · `:""}${s.period?`מועד רישום: ${esc(s.period)}.`:""}<br><br>
-        בברכה,
-      </div>
-      <div class="sig">הנהלת ${esc(appSubtitle())}<div class="line">חתימה וחותמת</div></div>
-    </div>`;
-  }).join("");
-  printDoc("מכתבי שיבוץ · "+DB.activeYear, body);
-}
 /* רשימת גן — טבלת תלמידות הגן להדפסה לגננת */
 function makeGanRoster(ganId){
   const g=ganById(ganId); if(!g){ toast("יש לבחור גן"); return; }
@@ -3460,13 +3429,6 @@ function viewTemplates(root){
   <div class="panel">
     <div class="section-title" style="margin-bottom:6px"><h2>מסמכים ותבניות</h2></div>
     <div class="sub">הפקת מסמכים מוכנים להדפסה (או שמירה כ-PDF), ממולאים אוטומטית מהנתונים העדכניים.</div>
-    <fieldset><legend>✉️ מכתב שיבוץ</legend>
-      <div class="hint" style="margin-bottom:10px">מכתב אישי לכל ילדה משובצת — עם שם, ת"ז, גן, גננת וכתובת. עמוד נפרד לכל ילדה.</div>
-      <div class="row" style="align-items:end;gap:10px">
-        <div class="field" style="min-width:220px"><label>גן</label><select id="tpl-letter-gan"><option value="">— כל הגנים ${activeEdu?'בחינוך הנבחר':''} —</option>${ganOpts}</select></div>
-        <button class="btn" id="tpl-letter-go">🖨️ הפקה והדפסה</button>
-      </div>
-    </fieldset>
     <fieldset><legend>📋 רשימת גן</legend>
       <div class="hint" style="margin-bottom:10px">רשימת התלמידות בגן — שם, ת"ז, גיל, טלפונים וכתובת — להדפסה לגננת.</div>
       <div class="row" style="align-items:end;gap:10px">
@@ -3476,7 +3438,6 @@ function viewTemplates(root){
     </fieldset>
     <div class="note">💡 בחלון ההדפסה שנפתח אפשר לבחור מדפסת אמיתית או "שמירה כ-PDF" (Save as PDF) כדי לשמור קובץ.</div>
   </div>`;
-  $("#tpl-letter-go").onclick=()=> makePlacementLetters($("#tpl-letter-gan").value);
   $("#tpl-roster-go").onclick=()=>{ const gid=$("#tpl-roster-gan").value; if(!gid){ toast("יש לבחור גן"); return; } makeGanRoster(gid); };
 }
 
