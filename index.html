@@ -2099,9 +2099,13 @@ function viewHome(root){
       <span class="sp"><span class="dt" style="background:${DOT_R}"></span>רגיל <b>${rn}</b></span>
       <span class="sp"><span class="dt" style="background:${DOT_S}"></span>מיוחד <b>${sn}</b></span></div>`;
 
-  // כרטיסי גנים — מתעדכנים אונליין עם כל שינוי בנתונים
+  // כרטיסי גנים — מתעדכנים אונליין עם כל שינוי בנתונים.
+  // מיון: לפי גיל הגן עולה (3 → 4 → 5; דו-גילאי לפי ממוצע), ובתוך אותו גיל לפי שם הגננת (א-ב).
+  const ageKey=g=>{ const ns=(String(g.age||"").match(/\d+/g)||[]).map(Number); return ns.length? ns.reduce((a,b)=>a+b,0)/ns.length : 999; };
   const perGan = scopeGans.map(g=>({g, n:notFinished.filter(s=>s.ganId===g.id).length}))
-                          .sort((a,b)=>b.n-a.n || (a.g.ganName||"").localeCompare(b.g.ganName||"","he"));
+                          .sort((a,b)=> (ageKey(a.g)-ageKey(b.g))
+                            || (a.g.teacherName||"").localeCompare(b.g.teacherName||"","he")
+                            || (a.g.ganName||"").localeCompare(b.g.ganName||"","he"));
   const ganCards = perGan.length ? perGan.map(({g,n})=>{
     const nm = g.ganName || g.teacherName || ("גן "+(g.ganSymbol||g.internalSymbol||""));
     const cap = +g.capacity||0;
