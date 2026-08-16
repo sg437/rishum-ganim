@@ -1082,6 +1082,29 @@ function isAdmin(){
   const em=(currentUser&&currentUser.email||"").toLowerCase();
   return admins.map(x=>String(x).toLowerCase()).includes(em);
 }
+/* ---------- הרשאת עריכה לפי חינוך (הסתרה בממשק — סעיף 7) ----------
+   DB.settings.editScopes[email] = "רגיל" | 'ח"מ' → המשתמש רשאי לערוך רק חינוך זה
+   (רואה הכל, אך אינו יכול לשמור/למחוק בחינוך השני). מנהל מערכת עורך הכל. */
+function myEditScope(){
+  if(isAdmin()) return "";
+  const em=(currentUser&&currentUser.email||"").toLowerCase();
+  const map=(DB.settings&&DB.settings.editScopes)||{};
+  for(const k in map){ if(String(k).toLowerCase()===em){ const v=map[k]; return (v==="רגיל"||v==='ח"מ')?v:""; } }
+  return "";
+}
+function canEditEdu(edu){ const sc=myEditScope(); if(!sc) return true; return (edu==='ח"מ'?'ח"מ':'רגיל')===sc; }
+function canEditRec(x){ return canEditEdu(eduLabel(x)); }
+function editScopeNote(){ const sc=myEditScope(); return sc ? ("לתצוגה בלבד — הרשאת עריכה בחינוך "+(sc==='ח"מ'?'מיוחד':'רגיל')+" בלבד.") : ""; }
+/* הפיכת מודל פתוח לקריאה-בלבד: השבתת שדות + הסתרת כפתורי שמירה/מחיקה שצוינו + הודעה */
+function makeModalReadOnly(hideIds){
+  const m=$("#modal"); if(!m) return;
+  m.querySelectorAll("input,select,textarea").forEach(el=>{ el.disabled=true; });
+  (hideIds||[]).forEach(id=>{ const b=$("#"+id); if(b) b.style.display="none"; });
+  const note=editScopeNote(), h=m.querySelector("h3");
+  if(h && note){ const bn=document.createElement("div"); bn.className="note";
+    bn.style.cssText="background:var(--warn-soft);color:var(--warn);border-color:var(--warn);margin:8px 0";
+    bn.textContent="🔒 "+note; h.insertAdjacentElement("afterend", bn); }
+}
 /* ---------- גישה מותרת (בעיקר לאכיפת התחברות Google לפי מיילים מוגדרים) ----------
    המיילים המוכרים למערכת = מנהלים ∪ allowedEmails ∪ מי שכבר ערך נתונים (userActivity).
    מערכת "טרייה" ללא הגדרות — פתוחה (איתחול), כמו isAdmin. */
@@ -2149,14 +2172,15 @@ const BULK_FIELDS = [
 function applyBulk(fieldKey, val){
   const f=BULK_FIELDS.find(x=>x.key===fieldKey); if(!f){ toast("בחר/י שדה"); return; }
   const ids=[...bulkSel]; if(!ids.length){ toast("לא סומנו תלמידות"); return; }
-  let n=0, transferred=0, failed=0;
+  let n=0, transferred=0, failed=0, blocked=0;
   ids.forEach(id=>{ const s=DB.students.find(x=>x.id===id); if(!s) return;
+    if(!canEditRec(s)){ blocked++; return; } // הרשאת עריכה לפי חינוך
     const before = f.retention ? !!s.retentionNext : null;
     f.set(s, val); n++;
     if(f.retention && val && !before){ const r=ensureRetentionTransfer(s); r.ok?transferred++:failed++; }
   });
   save(); bulkSel.clear(); renderStuTable();
-  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}`);
+  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}${blocked?` · ${blocked} דולגו (אין הרשאת חינוך)`:''}`);
 }
 
 /* ============================================================
@@ -2462,7 +2486,7 @@ function renderStuTable(){
     const s=DB.students.find(x=>x.id===tr.dataset.sid); if(s) openStudent(JSON.parse(JSON.stringify(s)));
   });
   /* החלפת סטטוס שיבוץ בלחיצה אחת מהרשימה (משובצת ⇄ ממתינה) */
-  host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
+  host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; if(!canEditRec(st)){ toast("אין הרשאת עריכה בחינוך זה"); return; } st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(stuSort.key===k) stuSort.dir*=-1; else { stuSort.key=k; stuSort.dir=1; } renderStuTable(); });
   /* עדכון קבוצתי — סימון שורות + בחירת הכל */
   host.querySelectorAll(".bulk-cb").forEach(cb=> cb.onchange=()=>{ cb.checked?bulkSel.add(cb.dataset.id):bulkSel.delete(cb.dataset.id); renderStuTable(); });
@@ -2776,6 +2800,10 @@ function openStudent(s){
   $("#saveStu").onclick=()=>{
     const data=collect();
     if(!data.firstName && !data.lastName){ toast("יש להזין לפחות שם"); return; }
+    /* הרשאת עריכה לפי חינוך — קיים: לפי החינוך המקורי (מאפשר העברה לחינוך אחר); חדש: לפי החינוך הנבחר */
+    const origRec=DB.students.find(x=>x.id===s.id);
+    const allowedEdu = isNew ? canEditEdu(data.education) : canEditRec(origRec||s);
+    if(!allowedEdu){ toast("אין הרשאת עריכה בחינוך זה"); return; }
     /* חסימת רישום כפול — ת"ז שכבר קיימת באותה שנה (גם בחינוך אחר) */
     const clash=tzClashInYear(data.tz, data.year, s.id);
     if(clash){ const w=$("#s-tz-warn"); if(w) w.textContent="⚠️ כבר רשומה בשנה זו: "+clashDesc(clash);
@@ -2814,6 +2842,10 @@ function openStudent(s){
     out.querySelectorAll(".sib-open").forEach(b=> b.onclick=()=>openStudentById(b.dataset.sid));
   };
   if(!isNew) $("#delStu").onclick=()=>{ if(confirm("למחוק את תיק הילדה לצמיתות?")){ DB.students=DB.students.filter(x=>x.id!==s.id); save(); closeModal(); route(); toast("התיק נמחק"); } };
+  /* הרשאת עריכה לפי חינוך (הסתרה בממשק): רשומה קיימת בחינוך שאינו מורשה → קריאה בלבד;
+     רשומה חדשה למשתמש מוגבל → נעילת שדה החינוך לחינוך המורשה */
+  if(!isNew && !canEditRec(s)) makeModalReadOnly(["saveStu","delStu"]);
+  else if(isNew){ const sc=myEditScope(); if(sc){ const e=$("#s-education"); if(e){ e.value=sc; e.disabled=true; } } }
 }
 function suggestFolder(s){
   const name=[s.lastName,s.firstName].filter(Boolean).join(" ")||"ללא שם";
@@ -3308,6 +3340,8 @@ function openGan(g){
       phoneGan:val("g-phoneGan"),docsNote:val("g-docsNote"),active:chk("g-active")
     });
     if(!data.ganName && !data.teacherName && !data.ganSymbol && !data.internalSymbol){ toast("יש להזין שם הגן, גננת או סמל"); return; }
+    const origGan=DB.gans.find(x=>x.id===g.id);
+    if(!(isNew ? canEditEdu(data.education) : canEditRec(origGan||g))){ toast("אין הרשאת עריכה בחינוך זה"); return; }
     const i=DB.gans.findIndex(x=>x.id===g.id); if(i>=0)DB.gans[i]=data; else DB.gans.push(data);
     /* עדכון אוטומטי של הקמפוס אצל התלמידות בגן זה — הצלבה גן↔תלמידה */
     DB.students.forEach(s=>{ if(s.ganId===data.id && s.campus!==data.campus) s.campus=data.campus; });
@@ -3315,6 +3349,8 @@ function openGan(g){
   };
   $("#cancelGan").onclick=closeModal;
   if(!isNew) $("#delGan").onclick=()=>{ if(confirm("למחוק את הגן?")){ DB.gans=DB.gans.filter(x=>x.id!==g.id); save(); closeModal(); route(); toast("הגן נמחק"); } };
+  if(!isNew && !canEditRec(g)) makeModalReadOnly(["saveGan","delGan"]);
+  else if(isNew){ const sc=myEditScope(); if(sc){ const e=$("#g-education"); if(e){ e.value=sc; e.disabled=true; } } }
 }
 
 /* ====== ייבוא מרוכז של גנים ======
@@ -4313,6 +4349,8 @@ function openStaff(m){
   $("#saveSt").onclick=()=>{
     readPersonal();
     if(!m.lastName && !m.firstName){ toast("יש להזין שם משפחה או שם פרטי"); return; }
+    const origSt=DB.staff.find(x=>x.id===m.id);
+    if(!(isNew ? canEditEdu(m.education) : canEditRec(origSt||m))){ toast("אין הרשאת עריכה בחינוך זה"); return; }
     m.notesList=(m.notesList||[]).map(t=>String(t).trim()).filter(Boolean);
     m.notes=m.notesList.join("\n"); // תאימות לאחור לייצוא
     m.absences=(m.absences||[]).filter(x=>x.date||x.reason);
@@ -4322,6 +4360,8 @@ function openStaff(m){
     save(); closeModal(); route(); toast("נשמר"); };
   $("#cancelSt").onclick=closeModal;
   if(!isNew)$("#delSt").onclick=()=>{ if(confirm("למחוק?")){ DB.staff=DB.staff.filter(x=>x.id!==m.id); save(); closeModal(); route(); } };
+  if(!isNew && !canEditRec(m)) makeModalReadOnly(["saveSt","delSt"]);
+  else if(isNew){ const sc=myEditScope(); if(sc){ const e=$("#st-education"); if(e){ e.value=sc; e.disabled=true; } } }
 }
 function openStaffImport(){
   const state={ list:[], mapped:[] };
@@ -4727,7 +4767,9 @@ function openGanAssign(ganId){
     if(dt) dt.onchange=()=>{ box.querySelectorAll(".asg-dates-wrap").forEach(w=> w.style.display = dt.value==='dates'?'':'none'); };
   });
   $("#asg-cancel").onclick=closeModal;
+  if(!canEditRec(g)) makeModalReadOnly(["asg-save"]);
   $("#asg-save").onclick=()=>{
+    if(!canEditRec(g)){ toast("אין הרשאת עריכה בחינוך זה"); return; }
     const cmap=asgCtxMap();
     const existing=cmap[ganId]||{};
     const rendered=new Set([...$("#modal").querySelectorAll("[data-role]")].map(b=>b.dataset.role));
@@ -5238,6 +5280,17 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
+  ${admin?`<div class="panel">
+    <h2>הרשאות עריכה לפי חינוך</h2>
+    <div class="sub">אפשר להגביל משתמש/ת כך שיראה/תראה את <b>כל</b> הנתונים אך יוכל/תוכל <b>לערוך רק חינוך אחד</b> (רגיל או מיוחד). למשל מפקחת חינוך מיוחד תוכל לערוך רק חינוך מיוחד, ותראה את הרגיל בלבד. מנהל מערכת עורך תמיד הכל. <b>שים/י לב:</b> ההגבלה היא ברמת הממשק (הסתרת עריכה/שמירה) ולא חסימת שרת.</div>
+    <div id="editscopes-box"></div>
+    <div class="row" style="margin-top:10px">
+      <div class="field grow"><label>אימייל המשתמש/ת</label><input id="es-email" type="email" inputmode="email" placeholder="name@example.com"></div>
+      <div class="field"><label>רשאי/ת לערוך</label><select id="es-edu"><option value="רגיל">רק חינוך רגיל</option><option value="ח&quot;מ">רק חינוך מיוחד</option></select></div>
+      <button class="btn" id="es-add" style="align-self:end">הוסף הגבלה</button>
+    </div>
+  </div>`:""}
+
   <div class="panel">
     <h2>חשבון והתחברות</h2>
     <div class="sub">המערכת מאובטחת בכניסה עם אימייל וסיסמה (Firebase). הנתונים נשמרים בענן ומסונכרנים בין כל המכשירים.</div>
@@ -5405,6 +5458,22 @@ function viewSettings(root){
     $("#addAdmin").onclick=()=>{ const e=$("#new-admin").value.trim().toLowerCase(); if(!e)return;
       if(admins.map(x=>x.toLowerCase()).includes(e)){ toast("כבר ברשימה"); return; }
       DB.settings.admins=admins.concat(e); save(); route(); toast("נוסף מנהל"); };
+  }
+
+  // הרשאות עריכה לפי חינוך
+  const esBox=$("#editscopes-box");
+  if(esBox){
+    const scopes=DB.settings.editScopes||{}; const emails=Object.keys(scopes);
+    esBox.innerHTML = emails.length
+      ? `<div class="table-wrap"><table><thead><tr><th>אימייל</th><th>רשאי/ת לערוך</th>${admin?'<th></th>':''}</tr></thead><tbody>${emails.map(e=>`<tr><td>${esc(e)}</td><td><span class="pill ${scopes[e]==='ח"מ'?'warn':'neutral'}">רק חינוך ${scopes[e]==='ח"מ'?'מיוחד':'רגיל'}</span></td>${admin?`<td><button class="btn ghost sm" data-esdel="${esc(e)}">הסר</button></td>`:''}</tr>`).join("")}</tbody></table></div>`
+      : `<div class="hint">אין הגבלות מוגדרות — כל משתמש מורשה עורך את שני סוגי החינוך.</div>`;
+    if(admin){
+      esBox.querySelectorAll("[data-esdel]").forEach(b=> b.onclick=()=>{ const e=b.dataset.esdel;
+        const m=Object.assign({},DB.settings.editScopes); delete m[e]; DB.settings.editScopes=m; save(); route(); toast("ההגבלה הוסרה"); });
+      const esa=$("#es-add"); if(esa) esa.onclick=()=>{ const e=($("#es-email").value||"").trim().toLowerCase(); const edu=$("#es-edu").value;
+        if(!e){ toast("יש להזין אימייל"); return; }
+        DB.settings.editScopes=Object.assign({},DB.settings.editScopes,{[e]:(edu==='ח"מ'?'ח"מ':'רגיל')}); save(); route(); toast("ההגבלה נשמרה"); };
+    }
   }
 
   // years
