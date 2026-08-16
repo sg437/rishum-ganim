@@ -18,14 +18,14 @@
   --bg:#f6f2e9;--surface:#fffdf7;--surface-2:#efe9db;--ink:#182b20;--ink-soft:#48594e;
   --muted:#8a9488;--border:#e4dccb;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e0ecdf;
   --brass:#a97f2e;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a2691c;--warn-soft:#f3e6cd;
-  --bad:#a5342b;--bad-soft:#f5dcd9;
+  --bad:#a5342b;--bad-soft:#f5dcd9;--over1:#7b3fb3;--over1-soft:#ece0f7;
   --shadow:0 2px 6px rgba(24,43,32,.06),0 14px 34px rgba(24,43,32,.09);--radius:16px}
 @media(prefers-color-scheme:dark){:root{--bg:#0e150f;--surface:#15201a;--surface-2:#1c2a22;--ink:#edf3ec;
   --ink-soft:#aebcae;--muted:#6f7d70;--border:#26362b;--accent:#4aa877;--accent-strong:#6fce9c;--accent-soft:#16281e;
   --brass:#d3a956;--good:#54b888;--good-soft:#123527;--warn:#d3a45c;--warn-soft:#2e2411;
-  --bad:#e07b6f;--bad-soft:#3a1c18;--shadow:0 2px 6px rgba(0,0,0,.4),0 16px 40px rgba(0,0,0,.5)}}
-:root[data-theme="light"]{--bg:#f6f2e9;--surface:#fffdf7;--surface-2:#efe9db;--ink:#182b20;--ink-soft:#48594e;--muted:#8a9488;--border:#e4dccb;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e0ecdf;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a2691c;--warn-soft:#f3e6cd;--bad:#a5342b;--bad-soft:#f5dcd9}
-:root[data-theme="dark"]{--bg:#0e150f;--surface:#15201a;--surface-2:#1c2a22;--ink:#edf3ec;--ink-soft:#aebcae;--muted:#6f7d70;--border:#26362b;--accent:#4aa877;--accent-strong:#6fce9c;--accent-soft:#16281e;--good:#54b888;--good-soft:#123527;--warn:#d3a45c;--warn-soft:#2e2411;--bad:#e07b6f;--bad-soft:#3a1c18}
+  --bad:#e07b6f;--bad-soft:#3a1c18;--over1:#c39be8;--over1-soft:#2a1f3a;--shadow:0 2px 6px rgba(0,0,0,.4),0 16px 40px rgba(0,0,0,.5)}}
+:root[data-theme="light"]{--bg:#f6f2e9;--surface:#fffdf7;--surface-2:#efe9db;--ink:#182b20;--ink-soft:#48594e;--muted:#8a9488;--border:#e4dccb;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e0ecdf;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a2691c;--warn-soft:#f3e6cd;--bad:#a5342b;--bad-soft:#f5dcd9;--over1:#7b3fb3;--over1-soft:#ece0f7}
+:root[data-theme="dark"]{--bg:#0e150f;--surface:#15201a;--surface-2:#1c2a22;--ink:#edf3ec;--ink-soft:#aebcae;--muted:#6f7d70;--border:#26362b;--accent:#4aa877;--accent-strong:#6fce9c;--accent-soft:#16281e;--good:#54b888;--good-soft:#123527;--warn:#d3a45c;--warn-soft:#2e2411;--bad:#e07b6f;--bad-soft:#3a1c18;--over1:#c39be8;--over1-soft:#2a1f3a}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);direction:rtl;line-height:1.55;
   font-family:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif;font-size:15px}
@@ -872,11 +872,11 @@ function capState(reg, capacity){
   if(!cap || reg<=cap) return 'ok';
   return reg===cap+1 ? 'over1' : 'over';
 }
-function capColor(state){ return state==='over' ? 'var(--bad)' : state==='over1' ? 'var(--brass)' : 'var(--good)'; }
+function capColor(state){ return state==='over' ? 'var(--bad)' : state==='over1' ? 'var(--over1)' : 'var(--good)'; }
 /* תגית מספר רשומות/קיבולת עם צבע לפי מצב הקיבולת (ok/over1/over) */
 function capPill(reg, capacity){
   const st=capState(reg, capacity), cls=st==='over'?'no':'ok';
-  const style=st==='over1'?' style="background:var(--warn-soft);color:var(--brass)"':'';
+  const style=st==='over1'?' style="background:var(--over1-soft);color:var(--over1)"':'';
   const title=st==='over1'?'חריגה של ילדה אחת מהקיבולת':st==='over'?'חריגה מהקיבולת':'בתוך הקיבולת';
   return `<span class="pill ${cls}"${style} title="${title}">${reg}${capacity?(' / '+esc(capacity)):''}</span>`;
 }
