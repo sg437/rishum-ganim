@@ -3475,9 +3475,11 @@ function openGanExport(){
         ${GAN_EXPORT_FIELDS.map(f=>`<label class="check"><input type="checkbox" class="gx-col" value="${f[0]}" ${ganExportSel.has(f[0])?'checked':''}> ${esc(f[1])}</label>`).join("")}
       </div>
     </fieldset>
+    <label class="check" style="margin-top:8px"><input type="checkbox" id="gx-onepage"> התאם לעמוד אחד</label>
     <div class="foot">
       <button class="btn" id="gx-csv" type="button">⬇️ ייצוא לאקסל (CSV)</button>
       <button class="btn ghost" id="gx-pdf" type="button">🖨️ הדפסה / PDF</button>
+      <button class="btn ghost" id="gx-mail" type="button">✉️ שיתוף במייל</button>
       <button class="btn ghost" id="gx-cancel" type="button" style="margin-inline-start:auto">סגירה</button>
     </div>`);
   $("#gx-cancel").onclick=closeModal;
@@ -3493,9 +3495,15 @@ function openGanExport(){
     const csv=[C.map(c=>c[1]).join(",")].concat(rows.map(g=>C.map(c=>csvCell(c[2](g))).join(","))).join("\r\n");
     downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `גנים_${DB.activeYear}.csv`); toast("קובץ אקסל נוצר");
   };
+  const ganTitle=()=>`רשימת גנים · ${DB.activeYear}${activeEdu?` · חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'}`:''}`;
   $("#gx-pdf").onclick=()=>{
     const C=cols(), rows=gansScoped(); if(!C.length||!rows.length){ toast("אין נתונים"); return; }
-    printTable(`רשימת גנים · ${DB.activeYear}${activeEdu?` · חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'}`:''}`, C.map(c=>c[1]), rows.map(g=>C.map(c=>c[2](g))));
+    printReport({ title:ganTitle(), subtitle:`${rows.length} גנים`, headers:C.map(c=>c[1]), rows:rows.map(g=>C.map(c=>c[2](g))),
+      onePage:$("#gx-onepage").checked, landscape:C.length>6 });
+  };
+  $("#gx-mail").onclick=()=>{
+    const C=cols(), rows=gansScoped(); if(!C.length||!rows.length){ toast("אין נתונים לשיתוף"); return; }
+    shareReportEmail({ title:ganTitle(), subtitle:`${rows.length} גנים`, headers:C.map(c=>c[1]), rows:rows.map(g=>C.map(c=>c[2](g))) });
   };
 }
 /* הדפסה של טבלה כלשהי בחלון נפרד (ל-PDF) */
@@ -3509,6 +3517,60 @@ function printTable(title, headers, rows){
     <table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></body></html>`);
   w.document.close(); setTimeout(()=>{ w.focus(); w.print(); }, 250);
+}
+/* שורת פרטי גן קצרה — לכותרת יצוא ממותגת (מתחת ללוגו) */
+function ganPlaceLine(g){
+  if(!g) return "";
+  return [ganName(g.id), g.ganSymbol?("סמל "+g.ganSymbol):"", [g.address,g.building].filter(Boolean).join(" "),
+          g.zone?("אזור "+g.zone):"", g.phoneGan?("טל' "+g.phoneGan):""].filter(Boolean).join(" · ");
+}
+/* יצוא/הדפסה ממותג: לוגו הרשת + כותרת · פרטי המקום (subtitle) · טבלה.
+   onePage=true → התאמת הכול לעמוד אחד (זום אוטומטי). landscape=true → לרוחב. */
+function printReport({ title, subtitle, headers, rows, onePage=false, landscape=false, footNote="" }){
+  const w=window.open("","_blank"); if(!w){ toast("החלון נחסם — אפשר/י חלונות קופצים בדפדפן"); return; }
+  const logo=appLogo(), isImg=/^(https?:|data:)/i.test(logo);
+  const logoEl = isImg ? `<img class="lg" src="${esc(logo)}">` : `<span class="lg em">${esc(logo)}</span>`;
+  const style=`<style>
+    @page{size:A4 ${landscape?'landscape':'portrait'};margin:12mm}
+    *{box-sizing:border-box} html,body{margin:0}
+    body{font-family:"Assistant","Heebo",Arial,sans-serif;direction:rtl;color:#12251a;padding:10mm}
+    .doc-hd{display:flex;align-items:center;gap:14px;border-bottom:3px solid #2c6a4c;padding-bottom:10px;margin-bottom:6px}
+    .doc-hd .lg{width:56px;height:56px;object-fit:contain;border-radius:12px;flex:0 0 auto}
+    .doc-hd .lg.em{display:grid;place-items:center;font-size:40px}
+    .doc-hd .t1{font-weight:800;font-size:19px} .doc-hd .t2{color:#6a8072;font-weight:700;font-size:12.5px}
+    h2{font-size:17px;margin:12px 0 3px}
+    .place{color:#2c6a4c;font-weight:800;font-size:14px;margin:2px 0 10px}
+    table{border-collapse:collapse;width:100%;font-size:12.5px}
+    th,td{border:1px solid #c7ddcd;padding:5px 8px;text-align:right} th{background:#e6f3e9;font-weight:800}
+    tr{break-inside:avoid}
+    .foot-note{margin-top:10px;color:#6a8072;font-size:11px}
+  </style>`;
+  const body=`<div class="doc-hd">${logoEl}<div><div class="t1">${esc(appTitle())}</div><div class="t2">${esc(appSubtitle())}</div></div></div>
+    <h2>${esc(title)}</h2>
+    ${subtitle?`<div class="place">${esc(subtitle)}</div>`:""}
+    <table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    ${footNote?`<div class="foot-note">${esc(footNote)}</div>`:""}`;
+  w.document.write(`<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${esc(title)}</title>${style}</head><body>${body}</body></html>`);
+  w.document.close();
+  setTimeout(()=>{
+    try{
+      if(onePage){
+        const availMm=(landscape?186:273), avail=availMm*96/25.4; // גובה הדפסה זמין בפיקסלים
+        const h=w.document.body.scrollHeight;
+        if(h>avail) w.document.body.style.zoom = String(Math.max(0.4, avail/h));
+      }
+      w.focus(); w.print();
+    }catch(e){}
+  }, 350);
+}
+/* שיתוף דוח במייל — פותח את תוכנת המייל עם סיכום הדוח בגוף ההודעה (mailto לא מצרף קובץ) */
+function shareReportEmail({ title, subtitle, headers, rows, to="" }){
+  let body = title + (subtitle?("\n"+subtitle):"") + "\n\n" + headers.join(" | ") + "\n";
+  for(const r of rows){ const l=r.map(c=>String(c??"")).join(" | ");
+    if((body.length+l.length)>1700){ body+="… (רשימה חלקית — לפירוט המלא צרפ/י את הקובץ שיוצא)\n"; break; }
+    body += l + "\n"; }
+  location.href = "mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(title)+"&body="+encodeURIComponent(body);
 }
 
 /* ============================================================
@@ -4698,9 +4760,11 @@ function openAsgExport(){
         <label class="check"><input type="checkbox" id="ax-fixed" checked> כלול נתוני גן קבועים (סמל, גיל, כתובת…)</label>
       </div>
     </fieldset>
+    <label class="check" style="margin-top:8px"><input type="checkbox" id="ax-onepage"> התאם לעמוד אחד</label>
     <div class="foot">
       <button class="btn" id="ax-csv" type="button">⬇️ ייצוא לאקסל (CSV)</button>
       <button class="btn ghost" id="ax-pdf" type="button">🖨️ הדפסה / PDF</button>
+      <button class="btn ghost" id="ax-mail" type="button">✉️ שיתוף במייל</button>
       <button class="btn ghost" id="ax-cancel" type="button" style="margin-inline-start:auto">סגירה</button>
     </div>`);
   $("#ax-cancel").onclick=closeModal;
@@ -4724,9 +4788,15 @@ function openAsgExport(){
     const csv=[headers.join(",")].concat(rows.map(r=>r.map(csvCell).join(","))).join("\r\n");
     downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `שיבוץ_${ctxFile}_${DB.activeYear}${activeEdu==='ח"מ'?'_מיוחד':(activeEdu?'_רגיל':'')}.csv`); toast("קובץ אקסל נוצר");
   };
+  const asgTitle=()=>`שיבוץ צוות · ${DB.activeYear} · ${ctxLabel(asgContext)}`;
+  const asgSub=()=>`${activeEdu?`חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'} · `:''}${eduScope(DB.gans.slice()).length} גנים`;
   $("#ax-pdf").onclick=()=>{
     const {headers,rows}=build(); if(!rows.length){ toast("אין נתונים"); return; }
-    printTable(`שיבוץ צוות · ${DB.activeYear} · ${ctxLabel(asgContext)}${activeEdu?` · חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'}`:''}`, headers, rows);
+    printReport({ title:asgTitle(), subtitle:asgSub(), headers, rows, onePage:$("#ax-onepage").checked, landscape:headers.length>6 });
+  };
+  $("#ax-mail").onclick=()=>{
+    const {headers,rows}=build(); if(!rows.length){ toast("אין נתונים לשיתוף"); return; }
+    shareReportEmail({ title:asgTitle(), subtitle:asgSub(), headers, rows });
   };
 }
 
@@ -4794,13 +4864,18 @@ function viewExport(root){
         ${EXPORT_FIELDS.map(f=>`<label class="check"><input type="checkbox" class="x-col" value="${f[0]}" ${exportSel.has(f[0])?'checked':''}> ${esc(f[1])}</label>`).join("")}
       </div>
     </fieldset>
-    <div class="row">
+    <div class="row" style="align-items:center;flex-wrap:wrap">
       <button class="btn" id="x-preview">🔎 תצוגה מקדימה</button>
       <button class="btn ghost" id="x-csv">⬇️ ייצוא לאקסל (CSV)</button>
       <button class="btn ghost" id="x-pdf">🖨️ ייצוא ל-PDF / הדפסה</button>
+      <button class="btn ghost" id="x-mail">✉️ שיתוף במייל</button>
+      <label class="check" style="margin-inline-start:auto"><input type="checkbox" id="x-onepage"> התאם לעמוד אחד</label>
     </div>
     <div id="x-out" style="margin-top:14px"></div>
   </div>`;
+  const subtitleOf=()=>{ const g=DB.gans.find(x=>x.id===$("#x-gan").value); if(g) return ganPlaceLine(g);
+    const parts=["שנת "+DB.activeYear]; const av=$("#x-age").value, pv=$("#x-period").value, ev=(activeEdu||$("#x-edu").value);
+    if(ev) parts.push("חינוך "+(ev==='ח"מ'?'מיוחד':'רגיל')); if(av) parts.push("גיל "+av); if(pv) parts.push(pv); return parts.join(" · "); };
   const gather=()=>{
     const gv=$("#x-gan").value, av=$("#x-age").value, pv=$("#x-period").value, ev=(activeEdu||$("#x-edu").value), mv=$("#x-muni").value, fv=$("#x-fin").value;
     return studentsOfYear().filter(s=>{
@@ -4839,7 +4914,21 @@ function viewExport(root){
     const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"});
     downloadBlob(blob, `תלמידות_${DB.activeYear}.csv`); toast("קובץ אקסל נוצר");
   };
-  $("#x-pdf").onclick=()=>{ const rows=preview(); if(!rows.length){ toast("אין נתונים"); return; } setTimeout(()=>window.print(),120); };
+  $("#x-pdf").onclick=()=>{
+    const rows=gather(), C=cols();
+    if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
+    if(!rows.length){ toast("אין נתונים"); return; }
+    const g=DB.gans.find(x=>x.id===$("#x-gan").value);
+    printReport({ title:"רשימת תלמידות"+(g?" · "+ganName(g.id):""), subtitle:subtitleOf(),
+      headers:C.map(c=>c[1]), rows:rows.map(s=>C.map(c=>c[2](s))),
+      onePage:$("#x-onepage").checked, footNote:rows.length+" תלמידות · שנת "+DB.activeYear });
+  };
+  $("#x-mail").onclick=()=>{
+    const rows=gather(), C=cols();
+    if(!C.length||!rows.length){ toast("אין נתונים לשיתוף"); return; }
+    shareReportEmail({ title:"רשימת תלמידות · "+DB.activeYear, subtitle:subtitleOf(),
+      headers:C.map(c=>c[1]), rows:rows.map(s=>C.map(c=>c[2](s))) });
+  };
   preview();
 }
 function csvCell(v){ v=String(v??""); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
