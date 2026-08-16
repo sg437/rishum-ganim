@@ -643,8 +643,9 @@
     for(var g=0; g<c.gan; g++){
       var isSpc=!!spcSet[g];
       var age=pick([3,3,4,4,4,5,5]);
-      var cap= isSpc? ri(10,18) : ri(24,32);
-      var enrolled= isSpc? ri(6, Math.min(cap,15)) : ri(18, cap);
+      /* תלמידות לגן: רגיל ~29, מיוחד ~9. הקיבולת מעט מעל מספר התלמידות. */
+      var enrolled= isSpc? ri(7,11) : ri(26,32);
+      var cap= enrolled + (isSpc? ri(1,4) : ri(1,5));
       var base=pick(GAN_NAMES);
       usedNames[base]=(usedNames[base]||0)+1;
       var suf = usedNames[base]>1 ? ' '+(HEBLET[usedNames[base]-1]||usedNames[base]) : '';
