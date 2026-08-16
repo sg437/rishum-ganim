@@ -2337,6 +2337,13 @@ function programBadges(s){
   PROGRAMS.forEach(([k,lbl])=>{ if(p[k]) b.push(`<span class="pill ok" style="background:var(--accent-soft);color:var(--accent-strong)">${esc(lbl)}</span>`); });
   return b.join(" ");
 }
+/* סימון הערה בטבלת התלמידות — מציג רק חיווי צבעוני שיש הערה, בלי לחשוף את תוכן ההערה.
+   התוכן עצמו נשאר בתוך התיק (שדה "הערות"). */
+function noteMark(s){
+  return String(s.notes||"").trim()
+    ? '<span class="pill warn" title="יש הערה — לצפייה פתחו את התיק">📝 הערה</span>'
+    : '<span class="pill neutral">—</span>';
+}
 
 /* פס סיכום חכם מעל הטבלה — מתעדכן לפי הסינון (כולל הגן הנבחר), ומתעלם מסינון "קלוט"
    כדי להראות תמיד את הפילוח המלא. צבעים: לא-קלוט אדום כשיש כאלה (ירוק כשאין),
@@ -2398,7 +2405,7 @@ function renderStuTable(){
   host.innerHTML = `<div class="table-wrap"><table><thead><tr>
     ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
     ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}<th title="שיבוץ סופי בגן — לחיצה משנה בין 'משובצת' ל'ממתינה'">שיבוץ</th>${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
-    <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th>סטטוס</th></tr></thead><tbody>
+    <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th title="סימון בלבד — תוכן ההערה בתוך התיק">הערות</th><th>סטטוס</th></tr></thead><tbody>
     ${list.map(s=>`<tr data-sid="${esc(s.id)}" class="${bulkMode?'':'clickable'}"${bulkMode&&bulkSel.has(s.id)?' style="background:var(--good-soft)"':''}>
       ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
       <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
@@ -2413,6 +2420,7 @@ function renderStuTable(){
       <td>${programBadges(s)||'<span class="pill neutral">—</span>'}</td>
       <td>${specialBadges(s)||'<span class="pill neutral">—</span>'}</td>
       <td>${s.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
+      <td>${noteMark(s)}</td>
       <td>${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
       </tr>`).join("")}
   </tbody></table></div>
