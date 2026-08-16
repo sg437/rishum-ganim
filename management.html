@@ -469,6 +469,26 @@
       <label style="margin-inline-start:8px">גיל:</label><select id="rAge"><option value="all">הכל</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
     </div>
     <div class="kpis" id="rKpis" style="margin-bottom:14px"></div>
+    <div class="grid-2" style="grid-template-columns:1fr 1fr; margin-bottom:14px">
+      <div class="card pad">
+        <div class="sec-title">פילוח חינוך <span class="sec-note" style="margin-inline-start:auto">בסינון הנוכחי</span></div>
+        <div class="sec-note" style="margin-bottom:14px">חלוקת התלמידות בין רגיל למיוחד</div>
+        <div class="donut-wrap">
+          <div class="donut" id="rEduDonut"><div class="din"><b id="rEduPct">—</b><span>רגיל</span></div></div>
+          <div class="legend" id="rEduLegend"></div>
+        </div>
+      </div>
+      <div class="card pad">
+        <div class="sec-title">פילוח מועדי רישום</div>
+        <div class="sec-note" style="margin-bottom:12px">מתי נרשמו התלמידות בסינון — א׳ / ב׳ / ג׳ / סופי</div>
+        <div id="rTiming"></div>
+      </div>
+    </div>
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">פילוח לפי אזור</div>
+      <div class="sec-note" style="margin-bottom:12px">מספר תלמידות לכל אזור בסינון</div>
+      <div id="rRegion"></div>
+    </div>
     <div class="card pad">
       <div class="sec-title">אחוז מלאות לכל גן <span class="sec-note" id="rCount" style="margin-inline-start:auto"></span></div>
       <div class="sec-note" style="margin-bottom:12px">ממוין מהמלא לפנוי · אדום = מעל 92% (קרוב לקיבולת)</div>
@@ -519,6 +539,32 @@
         <div class="hl-stat"><div class="l">שעות שנצברו היום</div><div class="v" id="hlHours">—</div><div class="s">מצטבר חי מכל העובדות</div></div>
         <div class="hl-stat"><div class="l">שכר שנצבר היום</div><div class="v livec" id="hlPay">—</div><div class="s">תרגום אוטומטי לפי תעריף</div></div>
         <div class="hl-stat"><div class="l">החתמות היום</div><div class="v" id="hlPunch">—</div><div class="s">כניסות ויציאות</div></div>
+        <div class="hl-stat"><div class="l">שכר חודשי צפוי</div><div class="v" id="hlMonth">—</div><div class="s">הערכה לפי הקצב הנוכחי</div></div>
+      </div>
+    </div>
+
+    <div class="grid-3" style="margin-bottom:16px">
+      <div class="card pad">
+        <div class="sec-title" style="font-size:.98rem">איך שעות הופכות לשכר</div>
+        <div class="sec-note" style="margin-bottom:12px">כל החתמה מתורגמת אוטומטית — בלי הקלדה</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:800">
+          <span class="box-f" style="background:var(--live-soft);color:var(--live);border:1px solid color-mix(in srgb,var(--live) 30%,transparent);padding:9px 13px;border-radius:10px">שעות</span>
+          <span style="color:var(--muted)">×</span>
+          <span class="box-f" style="background:var(--accent-soft);color:var(--accent-strong);border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);padding:9px 13px;border-radius:10px">תעריף לתפקיד</span>
+          <span style="color:var(--muted)">=</span>
+          <span class="box-f" style="background:var(--brass-soft);color:var(--brass);border:1px solid color-mix(in srgb,var(--brass) 30%,transparent);padding:9px 13px;border-radius:10px">₪ שכר</span>
+        </div>
+        <div id="rateList" style="margin-top:14px"></div>
+      </div>
+      <div class="card pad">
+        <div class="sec-title" style="font-size:.98rem">פילוח לפי מקור החתמה</div>
+        <div class="sec-note" style="margin-bottom:12px">מאיפה מגיעות ההחתמות כעת</div>
+        <div id="srcSplit"></div>
+      </div>
+      <div class="card pad">
+        <div class="sec-title" style="font-size:.98rem">שכר שנצבר היום — לפי עיר</div>
+        <div class="sec-note" style="margin-bottom:12px">מתעדכן חי · הערכה</div>
+        <div id="payByCity" style="max-height:190px;overflow-y:auto"></div>
       </div>
     </div>
 
@@ -854,6 +900,45 @@
       {l:'גנים מלאים (92%+)',v:full}
     ].map(function(r){return '<div class="card kpi"><div class="kl">'+r.l+'</div><div class="kv '+(r.cls||'')+'">'+r.v+'</div></div>';}).join('');
     $('#rCount').textContent=list.length+' גנים';
+
+    /* --- education split (filtered) --- */
+    var regS=list.filter(function(o){return o.g.edu==='reg';}).reduce(function(a,o){return a+o.g.enrolled},0);
+    var spcS=totS-regS;
+    var rp=totS?Math.round(regS/totS*100):0;
+    var cReg=getComputedStyle(document.documentElement).getPropertyValue('--accent')||'#0e7c86';
+    var cSpc=getComputedStyle(document.documentElement).getPropertyValue('--brass')||'#a9781f';
+    var rd=$('#rEduDonut');
+    rd.style.background='conic-gradient('+cReg+' 0 '+rp+'%, '+cSpc+' '+rp+'% 100%)';
+    $('#rEduPct').textContent=rp+'%';
+    $('#rEduLegend').innerHTML=
+      '<div class="li"><span class="sw" style="background:var(--accent)"></span> רגיל — <b>&nbsp;'+he(regS)+'</b>&nbsp;('+rp+'%)</div>'+
+      '<div class="li"><span class="sw" style="background:var(--brass)"></span> מיוחד — <b>&nbsp;'+he(spcS)+'</b>&nbsp;('+(totS?100-rp:0)+'%)</div>'+
+      '<div class="li" style="color:var(--muted);font-size:.8rem;margin-top:2px">סה״כ '+he(totS)+' תלמידות</div>';
+
+    /* --- registration timing (מועדים) --- */
+    var mo=[
+      {k:'מועד א׳',p:0.46},{k:'מועד ב׳',p:0.30},{k:'מועד ג׳',p:0.16},{k:'סופי',p:0.08}
+    ];
+    var acc=0; mo.forEach(function(m,i){ m.v = i===mo.length-1 ? (totS-acc) : Math.round(totS*m.p); acc+=m.v; });
+    var moMax=Math.max.apply(null,mo.map(function(m){return m.v})) || 1;
+    $('#rTiming').innerHTML=mo.map(function(m){
+      var w=Math.round(m.v/moMax*100);
+      return '<div style="margin-top:11px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-weight:700;font-size:.88rem">'+m.k+'</span><span class="num strong">'+he(m.v)+' <span style="color:var(--muted);font-weight:600;font-size:.78rem">'+(totS?Math.round(m.v/totS*100):0)+'%</span></span></div>'+
+        '<div class="fillbar" style="height:12px"><i style="width:'+w+'%"></i></div></div>';
+    }).join('');
+
+    /* --- region breakdown --- */
+    var reg2={}; list.forEach(function(o){var c=CITIES.filter(function(x){return x.name===o.city;})[0]; var rg=c?c.region:'—'; reg2[rg]=(reg2[rg]||0)+o.g.enrolled;});
+    var regArr=Object.keys(reg2).map(function(k){return {k:k,v:reg2[k]};}).sort(function(a,b){return b.v-a.v;});
+    var regMax=Math.max.apply(null,regArr.map(function(r){return r.v})) || 1;
+    $('#rRegion').innerHTML=regArr.map(function(r){
+      var w=Math.round(r.v/regMax*100);
+      return '<div style="display:grid;grid-template-columns:130px 1fr 90px;gap:12px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">'+
+        '<div class="strong" style="font-size:.88rem">'+r.k+'</div>'+
+        '<div class="fillbar" style="height:12px"><i style="width:'+w+'%"></i></div>'+
+        '<div style="text-align:left"><span class="strong num">'+he(r.v)+'</span> <span style="color:var(--muted);font-size:.78rem">'+(totS?Math.round(r.v/totS*100):0)+'%</span></div></div>';
+    }).join('') || '<div class="sec-note">—</div>';
+
     var max=1; list.forEach(function(o){max=Math.max(max,o.g.enrolled/o.g.cap);});
     $('#reportBars').innerHTML=list.map(function(o){
       var p=Math.round(o.g.enrolled/o.g.cap*100);
@@ -900,11 +985,31 @@
     $('#wCount').textContent=LIVE.length+' פעילות';
     $('#workerList').innerHTML=LIVE.map(function(w,i){
       var h=hoursOf(w); var pay=h*w.rate;
+      var inT=new Date(w.start).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
       return '<div class="worker on" data-wi="'+i+'">'+
-        '<div><div class="wn">'+w.name+'</div><div class="wm"><span class="pill reg" style="font-size:.68rem;padding:2px 7px">'+w.role+'</span> · '+w.gan+' · '+w.city+' · <span class="src">'+(w.src==='phone'?'📞 טלפון':'🖥️ מכשיר בגן')+'</span></div></div>'+
+        '<div><div class="wn">'+w.name+'</div><div class="wm"><span class="pill reg" style="font-size:.68rem;padding:2px 7px">'+w.role+'</span> · '+w.gan+' · '+w.city+'</div>'+
+        '<div class="wm" style="margin-top:3px">'+(w.src==='phone'?'📞 טלפון אוטומטי':'🖥️ מכשיר בגן')+' · כניסה '+inT+'</div></div>'+
         '<div><div class="wh" data-h="'+i+'">'+fmtHM(h)+'</div><div class="ws wsal" data-p="'+i+'">₪'+Math.round(pay)+' · '+w.rate+'₪/ש׳</div></div>'+
         '</div>';
     }).join('');
+    renderRateList(); renderSrcSplit();
+  }
+  function renderRateList(){
+    var seen={}; var rows=[];
+    LIVE.forEach(function(w){ if(!seen[w.role]){seen[w.role]=1; rows.push({r:w.role,rate:w.rate});} });
+    rows.sort(function(a,b){return b.rate-a.rate;});
+    $('#rateList').innerHTML='<div class="sec-note" style="margin-bottom:6px">תעריף לדוגמה לפי תפקיד (₪ לשעה)</div>'+rows.map(function(o){
+      return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:.86rem"><span>'+o.r+'</span><span class="strong num">₪'+o.rate+'</span></div>';
+    }).join('');
+  }
+  function renderSrcSplit(){
+    var ph=LIVE.filter(function(w){return w.src==='phone';}).length;
+    var dv=LIVE.length-ph;
+    var pp=LIVE.length?Math.round(ph/LIVE.length*100):0;
+    $('#srcSplit').innerHTML=
+      '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-weight:700">📞 טלפון אוטומטי</span><span class="strong num">'+ph+' ('+pp+'%)</span></div><div class="fillbar" style="height:13px"><i style="width:'+pp+'%"></i></div></div>'+
+      '<div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-weight:700">🖥️ מכשיר בגן</span><span class="strong num">'+dv+' ('+(100-pp)+'%)</span></div><div class="fillbar" style="height:13px"><i class="hot" style="width:'+(100-pp)+'%"></i></div></div>'+
+      '<div class="sec-note" style="margin-top:12px">שני המקורות מזרימים לאותו לוח — בלי הבדל למערכת.</div>';
   }
   function tickWorkers(){
     LIVE.forEach(function(w,i){
@@ -917,11 +1022,30 @@
     var totH=0, totP=0; LIVE.forEach(function(w){var h=hoursOf(w); totH+=h; totP+=h*w.rate;});
     /* add "already left today" baseline so numbers feel network-wide */
     var baseH= LIVE.length*4.2, baseP=baseH*42;
+    var dayPay=totP+baseP;
     $('#hlOn').textContent=he(LIVE.length);
     $('#hlTotal').textContent=he(TOT.staff);
     $('#hlHours').textContent=he(Math.round(totH+baseH));
-    $('#hlPay').textContent='₪'+he(Math.round(totP+baseP));
+    $('#hlPay').textContent='₪'+he(Math.round(dayPay));
     $('#hlPunch').textContent=he(punchesToday);
+    /* monthly projection: scale today's network pay to the full staff over ~22 working days */
+    var perStaffDay = dayPay / Math.max(1,LIVE.length);
+    var monthEst = perStaffDay * TOT.staff * 22 * 0.34;
+    $('#hlMonth').textContent='₪'+he(Math.round(monthEst/1000))+'K';
+    renderPayByCity(dayPay);
+  }
+  function renderPayByCity(dayPay){
+    /* distribute today's pay across cities proportional to staff, with small live jitter */
+    var rows=CITIES.map(function(c){ return {name:c.name, v: Math.round(dayPay*(c.staff/TOT.staff))}; })
+      .sort(function(a,b){return b.v-a.v;});
+    var mx=Math.max.apply(null,rows.map(function(r){return r.v}))||1;
+    $('#payByCity').innerHTML=rows.map(function(r){
+      var w=Math.round(r.v/mx*100);
+      return '<div style="display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;padding:4px 0">'+
+        '<div style="font-size:.82rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.name+'</div>'+
+        '<div class="fillbar" style="height:10px"><i style="width:'+w+'%"></i></div>'+
+        '<div class="strong num" style="font-size:.82rem;text-align:left">₪'+he(r.v)+'</div></div>';
+    }).join('');
   }
   var punchTypes=[
     {c:'enter',ic:'📞',v:'כניסה · טלפון אוטומטי'},
@@ -962,7 +1086,7 @@
     var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
     var next = cur? (cur==='dark'?'light':'dark') : (sysDark?'light':'dark');
     root.setAttribute('data-theme',next);
-    renderEduDonut();
+    renderEduDonut(); renderReports();
   });
 
   /* ---------- CLOCK ---------- */
