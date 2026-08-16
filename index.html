@@ -2469,6 +2469,10 @@ function renderStuTable(){
   const bAll=$("#bulk-all"); if(bAll) bAll.onchange=()=>{ if(bAll.checked) list.forEach(s=>bulkSel.add(s.id)); else list.forEach(s=>bulkSel.delete(s.id)); renderStuTable(); };
 }
 
+/* פתיחת תיק ילדה לפי מזהה — לשימוש מקישורים (כפילות ת"ז / בדיקת אחיות / לשונית גנים) */
+function openStudentById(id){ const st=DB.students.find(x=>x.id===id); if(st) openStudent(JSON.parse(JSON.stringify(st))); }
+/* מעבר ללשונית התלמידות מסונן לגן נתון — "צפייה בתלמידות הגן" מלשונית גנים */
+function viewGanStudents(ganId){ stuFilter.gan=ganId||""; stuFilter.status='active'; closeModal(); navToTab('students'); }
 /* טופס תיק ילדה */
 function openStudent(s){
   const isNew = !DB.students.some(x=>x.id===s.id);
@@ -2502,7 +2506,7 @@ function openStudent(s){
       <div><label>קמפוס גנים</label><input id="s-campus" value="${esc(ganCampus(s.ganId)||s.campus||"")}" readonly placeholder="נקבע לפי הגן">
         <div class="hint">נקבע אוטומטית לפי הקמפוס של הגן (בלשונית גנים).</div></div>
       <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
-      <div><label>גיל</label><select id="s-age"><option value="">—</option>${(s.age && !CHILD_AGES.map(String).includes(String(s.age)))?`<option selected>${esc(s.age)}</option>`:''}${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
+      <div><label>גיל</label><select id="s-age"><option value="">—</option>${(s.age && !CHILD_AGES.map(String).includes(String(s.age)))?`<option selected>${esc(s.age)}</option>`:''}${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select><div id="s-age-hint" class="hint"></div></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="s-education">${EDU_TYPES.map(t=>`<option ${eduLabel(s)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
     </div>
@@ -2675,11 +2679,23 @@ function openStudent(s){
   /* בדיקה חיה של ת"ז — התראה מיידית אם הילדה כבר רשומה בשנה זו (גם בחינוך אחר) */
   const tzWarn=()=>{ const el=$("#s-tz-warn"); if(!el) return;
     const c=tzClashInYear($("#s-tz").value, s.year, s.id);
-    el.textContent = c ? ("⚠️ כבר רשומה בשנה זו: "+clashDesc(c)) : "";
+    if(!c){ el.innerHTML=""; return; }
+    el.innerHTML="⚠️ כבר רשומה בשנה זו: "+esc(clashDesc(c))+
+      ' <button type="button" id="s-tz-open" style="background:none;border:none;padding:0;cursor:pointer;color:var(--accent-strong);font-weight:800;text-decoration:underline">↩ פתיחת התיק</button>';
+    const b=$("#s-tz-open"); if(b) b.onclick=()=>openStudentById(c.id);
   };
   $("#s-tz").addEventListener("input", tzWarn); tzWarn();
-  /* בעדכון הגן — הקמפוס מתעדכן אוטומטית לפי הגן (בלשונית גנים) */
-  const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; };
+  /* בעדכון הגן — הקמפוס והגיל מתעדכנים אוטומטית לפי הגן (בלשונית גנים).
+     גן חד-גילאי → הגיל נקבע אוטומטית. גן דו-גילאי (3/4, 4/5) → בחירה בין שתי האפשרויות. */
+  function applyGanAge(){
+    const g=DB.gans.find(x=>x.id===$("#s-ganId").value);
+    const ageSel=$("#s-age"), hint=$("#s-age-hint"); if(!ageSel) return;
+    if(!g || !g.age){ if(hint) hint.textContent=""; return; }
+    const ages=String(g.age).split("/").map(x=>x.trim()).filter(Boolean);
+    if(ages.length===1){ ageSel.value=ages[0]; if(hint) hint.textContent="הגיל נקבע אוטומטית לפי הגן ("+ages[0]+")."; }
+    else if(ages.length>=2){ if(!ages.includes(ageSel.value)) ageSel.value=""; if(hint) hint.textContent="גן דו-גילאי — בחר/י גיל: "+ages.join(" / "); }
+  }
+  const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; applyGanAge(); };
   $("#copyFolder").onclick=()=>{ navigator.clipboard?.writeText($("#s-folderSuggest").value).then(()=>toast("שם התיקייה הועתק"),()=>{}); };
 
   function persistCurrent(){ const data=collect(); const i=DB.students.findIndex(x=>x.id===s.id); if(i>=0) DB.students[i]=data; else DB.students.push(data); Object.assign(s,data); return data; }
@@ -2785,15 +2801,17 @@ function openStudent(s){
     if(missing){ out.innerHTML=`<div class="note">להזין שם משפחה וכתובת (רחוב / בניין / עיר) כדי לבדוק.</div>`; return; }
     if(!list.length){ out.innerHTML=`<div class="note" style="background:var(--good-soft);color:var(--good);border-color:var(--good)">לא נמצאו אחים/אחיות באותה כתובת בשנה זו.</div>`; return; }
     out.innerHTML=`<div class="note">נמצאו ${list.length} תיקים באותו שם משפחה וכתובת:</div>
-      <div class="table-wrap" style="margin-top:6px"><table><thead><tr><th>שם</th><th>קמפוס</th><th>גן</th><th>גיל</th><th>מועד</th></tr></thead><tbody>
+      <div class="table-wrap" style="margin-top:6px"><table><thead><tr><th>שם</th><th>קמפוס</th><th>גן</th><th>גיל</th><th>מועד</th><th></th></tr></thead><tbody>
       ${list.map(o=>`<tr>
         <td><b>${esc([o.lastName,o.firstName].filter(Boolean).join(" "))}</b></td>
         <td>${o.campus?`<span class="pill ok">${esc(o.campus)}</span>`:'<span class="pill neutral">—</span>'}</td>
         <td>${o.ganId?esc(ganName(o.ganId)):'—'}</td>
         <td>${esc(o.age)||'—'}</td>
-        <td><span class="pill neutral">${esc(o.period)}</span></td></tr>`).join("")}
+        <td><span class="pill neutral">${esc(o.period)}</span></td>
+        <td><button type="button" class="btn ghost sm sib-open" data-sid="${esc(o.id)}">↩ פתיחת התיק</button></td></tr>`).join("")}
       </tbody></table></div>
       ${list.some(o=>o.campus)?`<div class="hint">אפשר לשבץ באותו קמפוס — לחצ/י על שדה "קמפוס גנים" ובחר/י מהרשימה.</div>`:''}`;
+    out.querySelectorAll(".sib-open").forEach(b=> b.onclick=()=>openStudentById(b.dataset.sid));
   };
   if(!isNew) $("#delStu").onclick=()=>{ if(confirm("למחוק את תיק הילדה לצמיתות?")){ DB.students=DB.students.filter(x=>x.id!==s.id); save(); closeModal(); route(); toast("התיק נמחק"); } };
 }
@@ -3226,12 +3244,13 @@ function renderGanTable(){
         <td>${esc(g.zone)||'—'}</td>
         <td>${esc(g.phoneGan)||'—'}</td>
         <td>${esc(g.capacity)||'—'}</td>
-        <td>${capPill(reg, g.capacity)}</td>
+        <td><button type="button" class="gan-reg-open" data-gid="${esc(g.id)}" title="צפייה בתלמידות הגן" style="background:none;border:none;padding:0;cursor:pointer">${capPill(reg, g.capacity)}</button></td>
         <td>${g.active?'<span class="pill ok">פעיל</span>':'<span class="pill neutral">כבוי</span>'}</td>
         </tr>`;
     }).join("")}
   </tbody></table></div>
-  <div class="hint">מוצגים ${shownActive} מתוך ${totalActive} גנים פעילים${eduNote}. לחיצה על שורה פותחת את הגן.</div>`;
+  <div class="hint">מוצגים ${shownActive} מתוך ${totalActive} גנים פעילים${eduNote}. לחיצה על שורה פותחת את הגן · לחיצה על מספר הרשומות מציגה את תלמידות הגן.</div>`;
+  host.querySelectorAll(".gan-reg-open").forEach(b=> b.onclick=e=>{ e.stopPropagation(); viewGanStudents(b.dataset.gid); });
   host.querySelectorAll("tr.clickable").forEach(tr=> tr.onclick=e=>{ if(e.target.closest("button,input,a")) return; const g=DB.gans.find(x=>x.id===tr.dataset.gid); if(g) openGan(JSON.parse(JSON.stringify(g))); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(ganSort.key===k) ganSort.dir*=-1; else { ganSort.key=k; ganSort.dir=1; } renderGanTable(); });
 }
@@ -3275,9 +3294,11 @@ function openGan(g){
   </fieldset>
   <div class="foot">
     ${!isNew?'<button class="btn danger" id="delGan">מחיקה</button>':''}
+    ${!isNew?'<button class="btn ghost" id="ganStudents">🎒 צפייה בתלמידות</button>':''}
     <button class="btn" id="saveGan" style="margin-inline-start:auto">💾 שמירה</button>
     <button class="btn ghost" id="cancelGan">ביטול</button>
   </div>`);
+  if(!isNew){ const gs=$("#ganStudents"); if(gs) gs.onclick=()=>viewGanStudents(g.id); }
   $("#saveGan").onclick=()=>{
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{
@@ -4061,7 +4082,7 @@ function openStaff(m){
       <div><label>שם משפחה</label><input id="st-lastName" value="${esc(m.lastName)}"></div>
       <div><label>שם פרטי</label><input id="st-firstName" value="${esc(m.firstName)}"></div>
       <div><label>מספר זהות (ת"ז)</label><input id="st-tz" value="${esc(m.tz)}" inputmode="numeric"></div>
-      <div><label>מייל</label><input id="st-email" value="${esc(m.email)}" type="email" inputmode="email"></div>
+      <div><label>מייל</label><div class="row" style="gap:6px"><input id="st-email" value="${esc(m.email)}" type="email" inputmode="email" style="flex:1"><button type="button" class="btn ghost sm" id="st-email-send" title="שליחת מייל">✉️</button></div></div>
       <div><label>תפקיד</label><select id="st-role">${(m.role && !STAFF_ROLES.includes(m.role))?`<option selected>${esc(m.role)}</option>`:''}${STAFF_ROLES.map(r=>`<option ${m.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="st-education">${EDU_TYPES.map(t=>`<option ${eduLabel(m)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>טלפון</label><input id="st-phone" value="${esc(m.phone)}" inputmode="tel"></div>
@@ -4100,6 +4121,7 @@ function openStaff(m){
     <div class="foot">${!isNew?'<button class="btn danger" id="delSt">מחיקה</button>':''}<button class="btn" id="saveSt" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="cancelSt">ביטול</button></div>`);
 
   const val=id=>$("#"+id)?.value.trim()??"";
+  { const es=$("#st-email-send"); if(es) es.onclick=()=>{ const e=val("st-email"); if(e) location.href="mailto:"+encodeURIComponent(e); else toast("אין כתובת מייל רשומה"); }; }
   function readPersonal(){
     m.lastName=val("st-lastName"); m.firstName=val("st-firstName"); m.name=[m.lastName,m.firstName].filter(Boolean).join(" ");
     m.tz=digits(val("st-tz")); m.email=val("st-email"); m.role=val("st-role"); m.education=val("st-education");
