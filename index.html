@@ -274,6 +274,16 @@ body.locked .top-chips,body.locked .hamburger{display:none!important}
 .btn{transition:background .2s,transform .2s,box-shadow .2s}
 .btn:hover{transform:translateY(-1px)}
 @media (prefers-reduced-motion:reduce){.hcard,.stat,.gan-card,.btn,.drawer-nav button{transition:none}.hcard::after,.stat::after{transition:none}}
+
+/* ===== Evergreen polish · phase 3 (refinement) ===== */
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.pill{display:inline-flex;align-items:center;gap:5px}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
+.pill.neutral::before{opacity:.55}
+.table-wrap{border-radius:16px}
+.brand .logo,.drawer-head .logo{background:linear-gradient(145deg,var(--accent),var(--accent-strong))}
+.icon-btn{transition:background .18s,border-color .18s,color .18s,transform .15s}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent-strong);transform:translateY(-1px)}
 </style>
 </head>
 <body>
