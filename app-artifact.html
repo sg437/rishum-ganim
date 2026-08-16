@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#4a9d5b">
+<meta name="theme-color" content="#2c6a4c">
 <title>מערכת ניהול רשת הגנים</title>
 <!-- PWA — התקנה כאפליקציה בטלפון עם אייקון מהלוגו (מתעדכן דינמית) -->
 <link rel="manifest" id="manifestLink">
@@ -15,17 +15,17 @@
 <meta name="apple-mobile-web-app-title" content="רשת הגנים">
 <style>
 :root{
-  --bg:#eaf4ec;--surface:#fff;--surface-2:#f1f8f2;--ink:#12251a;--ink-soft:#3d5546;
-  --muted:#6a8072;--border:#d5e7d9;--accent:#4a9d5b;--accent-strong:#357a44;--accent-soft:#d8eede;
-  --brass:#9c6f2c;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a15b12;--warn-soft:#f6e6d2;
+  --bg:#f6f2e9;--surface:#fffdf7;--surface-2:#efe9db;--ink:#182b20;--ink-soft:#48594e;
+  --muted:#8a9488;--border:#e4dccb;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e0ecdf;
+  --brass:#a97f2e;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a2691c;--warn-soft:#f3e6cd;
   --bad:#a5342b;--bad-soft:#f5dcd9;
-  --shadow:0 1px 2px rgba(16,43,24,.06),0 10px 30px rgba(16,43,24,.08);--radius:14px}
-@media(prefers-color-scheme:dark){:root{--bg:#0a1710;--surface:#0f2117;--surface-2:#163021;--ink:#e9f4ec;
-  --ink-soft:#b2ccb8;--muted:#7d977f;--border:#22402c;--accent:#4cbf6a;--accent-strong:#6ad684;--accent-soft:#103322;
-  --brass:#cc9c56;--good:#54b888;--good-soft:#123527;--warn:#d9a25a;--warn-soft:#3a2c15;
-  --bad:#e07b6f;--bad-soft:#3a1c18;--shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.4)}}
-:root[data-theme="light"]{--bg:#eaf4ec;--surface:#fff;--surface-2:#f1f8f2;--ink:#12251a;--ink-soft:#3d5546;--muted:#6a8072;--border:#d5e7d9;--accent:#4a9d5b;--accent-strong:#357a44;--accent-soft:#d8eede;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a15b12;--warn-soft:#f6e6d2;--bad:#a5342b;--bad-soft:#f5dcd9}
-:root[data-theme="dark"]{--bg:#0a1710;--surface:#0f2117;--surface-2:#163021;--ink:#e9f4ec;--ink-soft:#b2ccb8;--muted:#7d977f;--border:#22402c;--accent:#4cbf6a;--accent-strong:#6ad684;--accent-soft:#103322;--good:#54b888;--good-soft:#123527;--warn:#d9a25a;--warn-soft:#3a2c15;--bad:#e07b6f;--bad-soft:#3a1c18}
+  --shadow:0 2px 6px rgba(24,43,32,.06),0 14px 34px rgba(24,43,32,.09);--radius:16px}
+@media(prefers-color-scheme:dark){:root{--bg:#0e150f;--surface:#15201a;--surface-2:#1c2a22;--ink:#edf3ec;
+  --ink-soft:#aebcae;--muted:#6f7d70;--border:#26362b;--accent:#4aa877;--accent-strong:#6fce9c;--accent-soft:#16281e;
+  --brass:#d3a956;--good:#54b888;--good-soft:#123527;--warn:#d3a45c;--warn-soft:#2e2411;
+  --bad:#e07b6f;--bad-soft:#3a1c18;--shadow:0 2px 6px rgba(0,0,0,.4),0 16px 40px rgba(0,0,0,.5)}}
+:root[data-theme="light"]{--bg:#f6f2e9;--surface:#fffdf7;--surface-2:#efe9db;--ink:#182b20;--ink-soft:#48594e;--muted:#8a9488;--border:#e4dccb;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e0ecdf;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a2691c;--warn-soft:#f3e6cd;--bad:#a5342b;--bad-soft:#f5dcd9}
+:root[data-theme="dark"]{--bg:#0e150f;--surface:#15201a;--surface-2:#1c2a22;--ink:#edf3ec;--ink-soft:#aebcae;--muted:#6f7d70;--border:#26362b;--accent:#4aa877;--accent-strong:#6fce9c;--accent-soft:#16281e;--good:#54b888;--good-soft:#123527;--warn:#d3a45c;--warn-soft:#2e2411;--bad:#e07b6f;--bad-soft:#3a1c18}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);direction:rtl;line-height:1.55;
   font-family:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif;font-size:15px}
@@ -529,7 +529,7 @@ function updatePwaIcons(){
       id:scope, name:appTitle(), short_name:(appTitle()||'רישום').slice(0,12),
       start_url:location.pathname+location.search, scope,
       display:'standalone', display_override:['standalone'], categories:['education','productivity'],
-      background_color:'#eaf4ec', theme_color:'#4a9d5b', lang:'he', dir:'rtl',
+      background_color:'#f6f2e9', theme_color:'#2c6a4c', lang:'he', dir:'rtl',
       icons:[ {src:i192,sizes:'192x192',type:'image/png',purpose:'any maskable'},
               {src:i512,sizes:'512x512',type:'image/png',purpose:'any maskable'} ]
     };
@@ -2591,7 +2591,7 @@ function printTable(title, headers, rows){
 /* ============================================================
    עוגות (donut) — כלי עזר לציור התפלגויות באחוזים ובצבעים
    ============================================================ */
-const PIE_PALETTE = ['#4a9d5b','#e0a53a','#3f7cac','#c65d5d','#7b5ea7','#4bb1a6','#b0743e','#8a9b3e','#c977a6','#5a7a8c','#9c6f2c','#6a8f5b','#a15b12','#5b8def','#d08770','#69a297'];
+const PIE_PALETTE = ['#2c6a4c','#e0a53a','#3f7cac','#c65d5d','#7b5ea7','#4bb1a6','#b0743e','#8a9b3e','#c977a6','#5a7a8c','#9c6f2c','#6a8f5b','#a15b12','#5b8def','#d08770','#69a297'];
 
 /* SVG donut. items:[{label,value,color}] — center מוצג במרכז */
 function donutSVG(items,{size=190,thickness=30,center=''}={}){
