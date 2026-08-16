@@ -1629,7 +1629,7 @@ function guideContent(){
         <li><b>ייצוא</b> — לאקסל (CSV) ולהדפסה/PDF, עם <b>בחירת שדות</b> ולפי הסינון. קיים לתלמידות, לגנים ולשיבוץ הצוות.</li>
         <li><b>יצוא ממותג</b> — בהדפסה/PDF מופיע <b>לוגו הרשת</b> בראש הדף, ומתחתיו <b>פרטי המקום</b> לפי הבחירה (למשל שם הגן · סמל · כתובת).</li>
         <li><b>"התאם לעמוד אחד"</b> — סימון שמכווץ אוטומטית רשימה ארוכה לעמוד יחיד.</li>
-        <li><b>📎 שיתוף מסמך</b> — משתף את <b>המסמך עצמו כקובץ</b> (למייל / וואטסאפ וכו'). בדפדפנים שאינם תומכים בשיתוף קבצים — המסמך יורד למכשיר ואפשר לצרפו למייל.</li>
+        <li><b>📎 שיתוף מסמך</b> — יוצר <b>PDF ממותג</b> ומשתף אותו כקובץ (למייל / וואטסאפ וכו'). בדפדפנים שאינם תומכים בשיתוף קבצים — ה-PDF יורד למכשיר ואפשר לצרפו למייל.</li>
       </ul>` },
 
     { icon:"💾", title:"גיבוי ושחזור", html:
@@ -3608,24 +3608,102 @@ function printReport(opts){
   w.document.write(buildReportHtml(opts, { autoPrint:true })); w.document.close();
 }
 function safeFileName(s){ return String(s||"דוח").replace(/[\\/:*?"<>|\n\r]+/g,"_").slice(0,90); }
-/* שיתוף המסמך עצמו (קובץ) — דרך Web Share API מצורף כקובץ אמיתי למייל/וואטסאפ וכו'.
-   בדפדפנים שאינם תומכים בשיתוף קבצים — הורדת המסמך + פתיחת מייל לצירוף ידני. */
+/* תוכן המסמך הממותג (ללא עטיפת HTML) — לשימוש ברינדור ל-PDF. סגנונות משויכים ל-.rep-doc */
+function reportInnerHtml({ title, subtitle, headers, rows, footNote="" }){
+  const logo=appLogo(), isImg=/^(https?:|data:)/i.test(logo);
+  const logoEl = isImg ? `<img class="lg" src="${esc(logo)}">` : `<span class="lg em">${esc(logo)}</span>`;
+  return `<style>
+    .rep-doc{font-family:"Assistant","Heebo",Arial,sans-serif;direction:rtl;color:#12251a;background:#fff;padding:20px}
+    .rep-doc .doc-hd{display:flex;align-items:center;gap:14px;border-bottom:3px solid #2c6a4c;padding-bottom:10px;margin-bottom:6px}
+    .rep-doc .doc-hd .lg{width:56px;height:56px;object-fit:contain;border-radius:12px;flex:0 0 auto}
+    .rep-doc .doc-hd .lg.em{display:inline-grid;place-items:center;font-size:40px;line-height:1}
+    .rep-doc .doc-hd .t1{font-weight:800;font-size:19px}
+    .rep-doc .doc-hd .t2{color:#6a8072;font-weight:700;font-size:12.5px}
+    .rep-doc h2{font-size:17px;margin:12px 0 3px}
+    .rep-doc .place{color:#2c6a4c;font-weight:800;font-size:14px;margin:2px 0 10px}
+    .rep-doc table{border-collapse:collapse;width:100%;font-size:12.5px}
+    .rep-doc th,.rep-doc td{border:1px solid #c7ddcd;padding:5px 8px;text-align:right}
+    .rep-doc th{background:#e6f3e9;font-weight:800}
+    .rep-doc .foot-note{margin-top:10px;color:#6a8072;font-size:11px}
+  </style>
+  <div class="rep-doc">
+    <div class="doc-hd">${logoEl}<div><div class="t1">${esc(appTitle())}</div><div class="t2">${esc(appSubtitle())}</div></div></div>
+    <h2>${esc(title)}</h2>
+    ${subtitle?`<div class="place">${esc(subtitle)}</div>`:""}
+    <table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    ${footNote?`<div class="foot-note">${esc(footNote)}</div>`:""}
+  </div>`;
+}
+/* טעינה עצלה של ספריות ה-PDF מ-CDN (כמו טעינת Firebase) — פעם אחת. */
+let _pdfLibs=null;
+function loadPdfLibs(){
+  if(_pdfLibs) return _pdfLibs;
+  const one=src=>new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.onload=res; s.onerror=()=>rej(new Error("load-fail")); document.head.appendChild(s); });
+  _pdfLibs=(async()=>{
+    if(!window.html2canvas) await one("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js");
+    if(!(window.jspdf&&window.jspdf.jsPDF)) await one("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js");
+  })().catch(e=>{ _pdfLibs=null; throw e; });
+  return _pdfLibs;
+}
+/* יצירת PDF ממותג מהמסמך — רינדור לתמונה (עברית RTL מושלמת) ואז לעמודי A4. */
+async function reportToPdfBlob(opts){
+  await loadPdfLibs();
+  const { jsPDF }=window.jspdf;
+  const widthPx = opts.landscape ? 1080 : 760;
+  const holder=document.createElement("div");
+  holder.style.cssText="position:fixed;left:-10000px;top:0;width:"+widthPx+"px;background:#fff;z-index:-1";
+  holder.innerHTML=reportInnerHtml(opts);
+  document.body.appendChild(holder);
+  let canvas;
+  try{ canvas=await window.html2canvas(holder.querySelector(".rep-doc"), { scale:2, backgroundColor:"#fff", useCORS:true }); }
+  finally{ document.body.removeChild(holder); }
+  const pdf=new jsPDF({ orientation: opts.landscape?"landscape":"portrait", unit:"mm", format:"a4" });
+  const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), margin=8;
+  const imgW=pw-margin*2, pxPerMm=canvas.width/imgW, fullH=canvas.height/pxPerMm; // גובה התמונה במ"מ ברוחב העמוד
+  const pageH=ph-margin*2;
+  if(opts.onePage || fullH<=pageH){
+    let drawW=imgW, drawH=fullH;
+    if(drawH>pageH){ const sc=pageH/drawH; drawH*=sc; drawW*=sc; }
+    pdf.addImage(canvas.toDataURL("image/jpeg",0.92),"JPEG",(pw-drawW)/2,margin,drawW,drawH);
+  } else {
+    const sliceHpx=Math.floor(pageH*pxPerMm); let y=0, first=true;
+    while(y<canvas.height){
+      const hpx=Math.min(sliceHpx, canvas.height-y);
+      const sc=document.createElement("canvas"); sc.width=canvas.width; sc.height=hpx;
+      const ctx=sc.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,sc.width,sc.height);
+      ctx.drawImage(canvas,0,y,canvas.width,hpx,0,0,canvas.width,hpx);
+      if(!first) pdf.addPage();
+      pdf.addImage(sc.toDataURL("image/jpeg",0.92),"JPEG",margin,margin,imgW,hpx/pxPerMm);
+      y+=hpx; first=false;
+    }
+  }
+  return pdf.output("blob");
+}
+/* שיתוף המסמך כ-PDF — קובץ אמיתי המצורף למייל/וואטסאפ דרך Web Share API.
+   נפילות: אם יצירת ה-PDF נכשלה → מסמך HTML; אם אין שיתוף קבצים → הורדה + מייל. */
 async function shareReportDoc(opts){
-  const html=buildReportHtml(opts, { autoPrint:false });
-  const fname=safeFileName(opts.fileName||opts.title)+".html";
+  toast("מכין מסמך PDF…");
+  let file;
   try{
-    if(navigator.canShare && typeof File!=="undefined"){
-      const file=new File([html], fname, { type:"text/html" });
-      if(navigator.canShare({ files:[file] })){
-        await navigator.share({ title:opts.title, text:(opts.subtitle||opts.title||""), files:[file] });
-        return;
-      }
+    const blob=await reportToPdfBlob(opts);
+    file=new File([blob], safeFileName(opts.fileName||opts.title)+".pdf", { type:"application/pdf" });
+  }catch(e){
+    console.error("pdf-fail", e);
+    const html=buildReportHtml(opts, { autoPrint:false });
+    file=new File([html], safeFileName(opts.fileName||opts.title)+".html", { type:"text/html" });
+    toast("יצירת PDF נכשלה — משתף מסמך HTML במקום");
+  }
+  try{
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ title:opts.title, text:(opts.subtitle||opts.title||""), files:[file] });
+      return;
     }
   }catch(e){ if(e && e.name==="AbortError") return; }
-  // נפילה חיננית — הורדת המסמך + פתיחת מייל
-  downloadBlob(new Blob([html], { type:"text/html" }), fname);
+  // נפילה — הורדת הקובץ + פתיחת מייל לצירוף ידני
+  downloadBlob(file, file.name);
   toast("המסמך הורד — צרפ/י אותו למייל");
-  location.href="mailto:?subject="+encodeURIComponent(opts.title||"")+"&body="+encodeURIComponent((opts.subtitle||"")+"\n\n(המסמך '"+fname+"' הורד למכשיר — יש לצרפו למייל.)");
+  location.href="mailto:?subject="+encodeURIComponent(opts.title||"")+"&body="+encodeURIComponent((opts.subtitle||"")+"\n\n(הקובץ '"+file.name+"' הורד למכשיר — יש לצרפו למייל.)");
 }
 
 /* ============================================================
