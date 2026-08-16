@@ -863,6 +863,36 @@ function ganName(id){ const g=ganById(id); return g? (g.ganName || g.teacherName
 /* שם איש/אשת צוות: משפחה + פרטי, עם נפילה לשם ישן (סעיף 1) */
 function staffName(m){ if(!m) return ""; return [m.lastName,m.firstName].filter(Boolean).join(" ") || m.name || ""; }
 function studentsOfYear(y=DB.activeYear){ return DB.students.filter(s=>s.year===y); }
+/* מצב קיבולת הגן ביחס למספר הרשומות:
+   'ok'    — בתוך הקיבולת (עד 35 בגן רגיל)
+   'over1' — חריגה של ילדה אחת בדיוק (36) → צבע ביניים (ברונזה/כתום)
+   'over'  — חריגה של שתיים ומעלה (37+) → אדום */
+function capState(reg, capacity){
+  const cap=+capacity||0;
+  if(!cap || reg<=cap) return 'ok';
+  return reg===cap+1 ? 'over1' : 'over';
+}
+function capColor(state){ return state==='over' ? 'var(--bad)' : state==='over1' ? 'var(--brass)' : 'var(--good)'; }
+/* תגית מספר רשומות/קיבולת עם צבע לפי מצב הקיבולת (ok/over1/over) */
+function capPill(reg, capacity){
+  const st=capState(reg, capacity), cls=st==='over'?'no':'ok';
+  const style=st==='over1'?' style="background:var(--warn-soft);color:var(--brass)"':'';
+  const title=st==='over1'?'חריגה של ילדה אחת מהקיבולת':st==='over'?'חריגה מהקיבולת':'בתוך הקיבולת';
+  return `<span class="pill ${cls}"${style} title="${title}">${reg}${capacity?(' / '+esc(capacity)):''}</span>`;
+}
+/* מיפוי חריגת קיבולת ברמת התלמידה: לכל גן עם קיבולת ממיינים את הילדות הפעילות
+   בשנה הפעילה לפי סדר ההוספה (createdAt), ומסמנים את החורגות —
+   הראשונה מעל הקיבולת (למשל ה-36) ב'over1' (צבע ביניים), וכל מי שאחריה ב'over' (אדום). */
+function ganOverflowMap(){
+  const map={};
+  DB.gans.forEach(g=>{
+    const cap=+g.capacity||0; if(!cap) return;
+    const kids=studentsOfYear().filter(s=>!s.finished && s.ganId===g.id)
+      .sort((a,b)=> String(a.createdAt||"").localeCompare(String(b.createdAt||"")) || String(a.id).localeCompare(String(b.id)));
+    kids.forEach((s,i)=>{ if(i>=cap) map[s.id] = (i===cap ? 'over1' : 'over'); });
+  });
+  return map;
+}
 function digits(s){ return String(s||"").replace(/\D/g,""); }
 /* תיקון טלפון בייבוא: מספר נייד שאיבד את ה-0 המוביל (מתחיל ב-5) — מוסיפים 0 (סעיף 4) */
 function fixPhone(v){ v=String(v||"").trim(); if(!v) return ""; const d=v.replace(/\D/g,""); if(d && d[0]==='5' && d.length===9) return "0"+d; return v; }
@@ -2358,7 +2388,7 @@ function renderStuSummary(){
   const waiting=total-placed;                              // ממתינות לשיבוץ
   const g=stuFilter.gan && DB.gans.find(x=>x.id===stuFilter.gan);
   const capTxt = g && g.capacity ? ` <small>/ ${esc(g.capacity)}</small>` : "";
-  const regColor = (g && g.capacity) ? (total>+g.capacity?'var(--bad)':'var(--good)') : "";
+  const regColor = (g && g.capacity) ? capColor(capState(total, g.capacity)) : "";
   const tile=(k,v,color,title)=>`<div class="stat"${title?` title="${esc(title)}"`:''}><div class="k">${k}</div><div class="v"${color?` style="color:${color}"`:''}>${v}</div></div>`;
   // משבצת מותנית: רק כשמסננים לפי מאפיין (השארות/צהרון/קייטנה) מוצג הסיכום שלו
   const fd=stuFilter.flag && STU_FLAGS[stuFilter.flag];
@@ -2397,6 +2427,7 @@ function renderStuTable(){
   const fc=$("#stuFilterCount"); if(fc){ const n=stuActiveFilterCount(); fc.textContent=n||""; fc.hidden=!n; const tg=$("#stuFilterToggle"); if(tg&&n) tg.classList.add("on"); }
   const list = filteredStudents();
   renderBulkBar(list);
+  const ovf = ganOverflowMap(); // חריגת קיבולת ברמת התלמידה — לצביעת החורגות
   const host = $("#stuTable");
   const statusLbl = { active:"פעילות", finished:"שסיימו / יצאו", all:"כל הסטטוסים" }[stuFilter.status]||"";
   if(!list.length){ host.innerHTML = `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`; return; }
@@ -2408,7 +2439,7 @@ function renderStuTable(){
     <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th title="סימון בלבד — תוכן ההערה בתוך התיק">הערות</th><th>סטטוס</th></tr></thead><tbody>
     ${list.map(s=>`<tr data-sid="${esc(s.id)}" class="${bulkMode?'':'clickable'}"${bulkMode&&bulkSel.has(s.id)?' style="background:var(--good-soft)"':''}>
       ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
-      <td><b>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
+      <td><b${ovf[s.id]?` style="color:${capColor(ovf[s.id])}" title="${ovf[s.id]==='over1'?'ילדה מעל הקיבולת (הראשונה מעל הקיבולת)':'ילדה מעל הקיבולת'}"`:''}>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
       <td>${esc(s.tz)||'—'}</td>
       <td>${esc(ganName(s.ganId))}</td>
       <td>${s.ganId?`<button type="button" class="pill ${s.placed!==false?'ok':'warn'} stu-place" data-id="${esc(s.id)}" style="cursor:pointer;border:none" title="לחצי כדי לשנות סטטוס שיבוץ">${s.placed!==false?'✔ משובצת':'⏳ ממתינה'}</button>`:'<span class="pill neutral" title="אין גן משובץ">—</span>'}</td>
@@ -3195,7 +3226,7 @@ function renderGanTable(){
         <td>${esc(g.zone)||'—'}</td>
         <td>${esc(g.phoneGan)||'—'}</td>
         <td>${esc(g.capacity)||'—'}</td>
-        <td><span class="pill ${g.capacity&&reg>+g.capacity?'no':'ok'}">${reg}${g.capacity?(' / '+esc(g.capacity)):''}</span></td>
+        <td>${capPill(reg, g.capacity)}</td>
         <td>${g.active?'<span class="pill ok">פעיל</span>':'<span class="pill neutral">כבוי</span>'}</td>
         </tr>`;
     }).join("")}
@@ -4410,7 +4441,7 @@ function viewAssign(root){
   const regBadgeFor = g => {
     if(asgContext==='tzaharon'){ const c=progCount(g); const cls=(tzMin && c<tzMin)?'no':'ok'; return `<span class="pill ${cls}" title="רשומים לצהרון${tzMin?` · מינימום לפתיחה ${tzMin}`:''}">${c}${tzMin?(' / '+tzMin):''}</span>`; }
     if(isProg){ return `<span class="pill neutral">${progCount(g)}</span>`; }
-    const c=ganReg(g); const cls=(g.capacity && c>+g.capacity)?'no':'ok'; return `<span class="pill ${cls}">${c}${g.capacity?(' / '+esc(g.capacity)):''}</span>`;
+    const c=ganReg(g); return capPill(c, g.capacity);
   };
   pick.innerHTML=`${asgContext==='tzaharon'?`<div class="hint" style="margin-bottom:8px">מינימום לפתיחת צהרון: <b>${tzMin||'לא הוגדר'}</b> (נקבע בהגדרות). אדום = מתחת למינימום, ירוק = ניתן לפתוח.</div>`:''}
     <div class="searchbar" style="max-width:420px"><div class="search-field"><span class="mag">🔎</span><input id="asgGanSearch" value="${esc(asgGanQ)}" placeholder="חיפוש גן (שם / סמל / כתובת)…"></div></div>
