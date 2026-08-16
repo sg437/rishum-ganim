@@ -66,23 +66,24 @@
     line-height:1.55; -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
     -moz-osx-font-smoothing:grayscale;
   }
-  /* ===== floating balloons sky layer ===== */
+  /* ===== floating windows sky layer ===== */
   .sky{position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0}
-  .balloon{position:absolute; bottom:-16vh; border-radius:50% 50% 48% 48%; opacity:.5; filter:blur(.3px);
-    background:radial-gradient(circle at 32% 28%, rgba(255,255,255,.55), transparent 42%), var(--bc,#ff7a9c);
-    box-shadow:0 10px 30px -6px var(--bc,#ff7a9c); animation:rise var(--dur,26s) linear infinite; animation-delay:var(--del,0s);}
-  .balloon::after{content:""; position:absolute; top:100%; left:50%; width:1px; height:26px; transform:translateX(-50%);
-    background:linear-gradient(var(--bc,#ff7a9c), transparent);}
-  .balloon::before{content:""; position:absolute; top:99%; left:50%; width:7px; height:7px; transform:translateX(-50%) rotate(45deg);
-    background:var(--bc,#ff7a9c); clip-path:polygon(50% 100%,0 0,100% 0);}
-  @keyframes rise{
-    0%{transform:translateY(0) translateX(0) rotate(-3deg); opacity:0}
-    12%{opacity:.5}
-    50%{transform:translateY(-62vh) translateX(22px) rotate(3deg)}
-    88%{opacity:.42}
-    100%{transform:translateY(-124vh) translateX(-10px) rotate(-2deg); opacity:0}
+  .winw{position:absolute; border-radius:14px; padding:9px; opacity:.5;
+    background:color-mix(in srgb,var(--surface) 66%, transparent); border:1px solid var(--border);
+    box-shadow:var(--shadow); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+    display:flex; flex-direction:column; gap:5px;
+    animation:floaty var(--dur,16s) ease-in-out infinite; animation-delay:var(--del,0s)}
+  .winw .wbar{display:flex; gap:4px; margin-bottom:2px}
+  .winw .wbar i{width:6px; height:6px; border-radius:50%; background:var(--accent); opacity:.85}
+  .winw .wbar i:nth-child(2){background:var(--accent-2)}
+  .winw .wbar i:nth-child(3){background:var(--accent-cool)}
+  .winw .wline{height:5px; border-radius:3px; background:var(--surface-3)}
+  .winw .wline.a{background:color-mix(in srgb,var(--accent) 40%, var(--surface-3))}
+  @keyframes floaty{
+    0%,100%{transform:translateY(0) rotate(var(--rot,-2deg))}
+    50%{transform:translateY(-20px) rotate(calc(var(--rot,-2deg) * -1))}
   }
-  @media (prefers-reduced-motion:reduce){ .balloon{animation:none; bottom:auto; top:var(--rest,20%)} }
+  @media (prefers-reduced-motion:reduce){ .winw{animation:none} }
   h1,h2,h3,h4{margin:0; line-height:1.18; text-wrap:balance}
   a{color:inherit}
   button{font-family:inherit}
@@ -1364,16 +1365,18 @@
   }
   $('#portals').addEventListener('click',function(e){var b=e.target.closest('.portal'); if(b) switchTab(b.dataset.view);});
 
-  /* ---------- BALLOONS ---------- */
-  function spawnBalloons(){
+  /* ---------- FLOATING WINDOWS ---------- */
+  function spawnWindows(){
     var sky=$('#sky'); if(!sky) return;
-    var cols=['var(--accent)','var(--accent-2)','var(--accent-cool)','var(--live)','var(--brass)'];
-    var n = window.innerWidth<640?7:12;
+    var n = window.innerWidth<640?5:9;
     var html='';
     for(var i=0;i<n;i++){
-      var size=ri(34,74); var left=ri(2,96); var dur=ri(22,40); var del=-ri(0,38); var rest=ri(8,72);
-      html+='<span class="balloon" style="--bc:'+cols[i%cols.length]+';width:'+size+'px;height:'+Math.round(size*1.18)+'px;'+
-        'inset-inline-start:'+left+'%;--dur:'+dur+'s;--del:'+del+'s;--rest:'+rest+'%"></span>';
+      var w=ri(96,168); var left=ri(1,90); var top=ri(4,86);
+      var dur=ri(11,20); var del=-ri(0,18); var rot=(rnd()*7-3.5).toFixed(1);
+      var lines=ri(2,3), lh='';
+      for(var k=0;k<lines;k++){ lh+='<span class="wline'+(k===0?' a':'')+'" style="width:'+ri(45,95)+'%"></span>'; }
+      html+='<span class="winw" style="width:'+w+'px;inset-inline-start:'+left+'%;top:'+top+'%;--dur:'+dur+'s;--del:'+del+'s;--rot:'+rot+'deg">'+
+        '<span class="wbar"><i></i><i></i><i></i></span>'+lh+'</span>';
     }
     sky.innerHTML=html;
   }
@@ -1410,13 +1413,13 @@
   fillCitySelects(); fillRoleSel();
   renderKpis(); renderCityTable(); renderEduDonut(); renderAgeBars();
   renderCityDetail(); renderReports(); renderStaff(); renderWorkers(); renderActivities();
-  renderHome(); spawnBalloons();
+  renderHome(); spawnWindows();
   $$('.navitem').forEach(function(t){t.setAttribute('aria-current', t.dataset.view==='home'?'true':'false');});
   feedEl=$('#feed'); seedFeed(feedEl,7);
   var pf=$('#punchFeed'); (function(){ for(var i=0;i<7;i++){var e=punchEvent(); e.mt=e.mt+' · לפני '+ri(1,25)+' דק׳'; pushFeed(pf,e,12);} })();
   var af=$('#aFeed'); (function(){ for(var i=0;i<6;i++){var e=actFeedEvent(); e.mt=e.mt.replace('עכשיו','לפני '+ri(1,30)+' דק׳'); pushFeed(af,e,10);} })();
   tickWorkers(); tickClock();
-  var rsz; window.addEventListener('resize',function(){ clearTimeout(rsz); rsz=setTimeout(spawnBalloons,400); });
+  var rsz; window.addEventListener('resize',function(){ clearTimeout(rsz); rsz=setTimeout(spawnWindows,400); });
 
   /* ---------- LIVE LOOPS ---------- */
   setInterval(tickClock,1000);
