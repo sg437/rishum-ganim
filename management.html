@@ -602,15 +602,22 @@
   var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------- DEMO DATA ---------- */
+  /* ערים אמיתיות · מספר גנים משוער · spc = מספר גני חינוך מיוחד. תלמידות/עובדות נגזרות אוטומטית. */
   var CITIES=[
-    {name:'ירושלים', gan:34, students:812, special:96, staff:118, region:'מרכז'},
-    {name:'בני ברק', gan:29, students:701, special:74, staff:101, region:'מרכז'},
-    {name:'מודיעין עילית', gan:26, students:648, special:55, staff:92, region:'מרכז'},
-    {name:'ביתר עילית', gan:24, students:590, special:61, staff:86, region:'ירושלים'},
-    {name:'בית שמש', gan:19, students:452, special:48, staff:69, region:'ירושלים'},
-    {name:'אשדוד', gan:17, students:398, special:39, staff:60, region:'דרום'},
-    {name:'אלעד', gan:13, students:305, special:27, staff:46, region:'מרכז'},
-    {name:'צפת', gan:9, students:198, special:22, staff:31, region:'צפון'}
+    {name:'ירושלים', gan:88, spc:22, region:'ירושלים'},
+    {name:'בני ברק', gan:62, spc:14, region:'מרכז'},
+    {name:'מודיעין עילית', gan:50, spc:11, region:'מרכז'},
+    {name:'ביתר עילית', gan:40, spc:9, region:'ירושלים'},
+    {name:'בית שמש', gan:36, spc:7, region:'ירושלים'},
+    {name:'אשדוד', gan:24, spc:5, region:'דרום'},
+    {name:'פתח תקווה', gan:20, spc:4, region:'מרכז'},
+    {name:'נתניה', gan:14, spc:3, region:'שרון'},
+    {name:'אשקלון', gan:13, spc:3, region:'דרום'},
+    {name:'ראשון לציון', gan:12, spc:2, region:'מרכז'},
+    {name:'ראש העין', gan:12, spc:2, region:'מרכז'},
+    {name:'אופקים', gan:12, spc:1, region:'דרום'},
+    {name:'טלז סטון', gan:9, spc:1, region:'ירושלים'},
+    {name:'צפת', gan:8, spc:1, region:'צפון'}
   ];
   var GAN_NAMES=['רימון','כלנית','תמר','נורית','אגוז','יסמין','סביון','ורד','הדס','שקד','גפן','חבצלת','אלון','דקל','ברוש','זית','רקפת','לוטם','מרווה','נרקיס','אירוס','דובדבן','תפוח','ליבנה','אשל','ציפורן','שושן','חמנית','דגנית','אודם'];
   var TEACHER_F=['מרים','רבקה','שרה','לאה','חנה','אסתר','דבורה','רחל','יהודית','בתיה','גיטל','פייגא','חיה','טובה','נחמה','ברכה','מלכה','שיינדל','רייזל','פערל'];
@@ -626,35 +633,36 @@
   function fullName(){return pick(TEACHER_F)+' '+pick(TEACHER_L);}
   function tz(){var s='';for(var i=0;i<9;i++)s+=Math.floor(rnd()*10);return s;}
 
-  /* build gan list per city */
-  CITIES.forEach(function(c,ci){
-    c.gans=[]; var reg=c.students-c.special; var usedNames={};
-    var regLeft=reg, spcLeft=c.special;
+  var HEBLET=['','ב׳','ג׳','ד׳','ה׳','ו׳','ז׳','ח׳','ט׳','י׳'];
+  /* build gan list per city — students & staff derived from actual gans */
+  CITIES.forEach(function(c){
+    c.gans=[]; var usedNames={};
+    /* spread the special gans evenly across the city's gan indices */
+    var spcSet={};
+    if(c.spc>0){ var step=c.gan/c.spc; for(var k=0;k<c.spc;k++){ spcSet[Math.min(c.gan-1, Math.floor(k*step+step/2))]=1; } }
     for(var g=0; g<c.gan; g++){
-      var isSpc = spcLeft>0 && (g%6===5 || (g===c.gan-1 && spcLeft>0));
+      var isSpc=!!spcSet[g];
       var age=pick([3,3,4,4,4,5,5]);
-      var cap=ri(24,32);
-      var enrolled;
-      if(isSpc){ enrolled=Math.min(cap, Math.max(6, Math.round(spcLeft/Math.max(1,Math.ceil((c.gan-g)/6))))); spcLeft-=enrolled; }
-      else { var rem=c.gan-g - Math.ceil(spcLeft/8); enrolled=Math.min(cap, Math.max(14, Math.round(regLeft/Math.max(1,rem)))); regLeft-=enrolled; }
-      if(enrolled<1) enrolled=ri(8,cap);
-      var nm; do{ nm=pick(GAN_NAMES);}while(usedNames[nm]&&Object.keys(usedNames).length<GAN_NAMES.length); usedNames[nm]=1;
+      var cap= isSpc? ri(10,18) : ri(24,32);
+      var enrolled= isSpc? ri(6, Math.min(cap,15)) : ri(18, cap);
+      var base=pick(GAN_NAMES);
+      usedNames[base]=(usedNames[base]||0)+1;
+      var suf = usedNames[base]>1 ? ' '+(HEBLET[usedNames[base]-1]||usedNames[base]) : '';
       c.gans.push({
-        name:'גן '+nm, sym:''+ri(410000,499999), age:age, edu:isSpc?'spc':'reg',
-        cap:cap, enrolled:Math.max(1,enrolled), teacher:pick(TEACHER_F)+' '+pick(TEACHER_L),
+        name:'גן '+base+suf, sym:''+ri(410000,499999), age:age, edu:isSpc?'spc':'reg',
+        cap:cap, enrolled:enrolled, teacher:pick(TEACHER_F)+' '+pick(TEACHER_L),
         region:c.region, on: rnd()>0.06
       });
     }
-    /* reconcile enrolled totals roughly to city.students */
-    var sum=c.gans.reduce(function(a,x){return a+x.enrolled},0);
-    var diff=c.students-sum, i=0;
-    while(diff!==0 && i<c.gans.length*4){ var gg=c.gans[i%c.gans.length]; if(diff>0){gg.enrolled++;diff--;} else if(gg.enrolled>5){gg.enrolled--;diff++;} i++; }
+    c.students=c.gans.reduce(function(a,x){return a+x.enrolled},0);
+    c.special=c.gans.filter(function(g){return g.edu==='spc';}).reduce(function(a,x){return a+x.enrolled},0);
+    c.staff=c.gans.reduce(function(a,g){return a+(g.edu==='spc'?5:3)},0);
   });
 
   var TOT;
   function computeTotals(){
-    TOT={gan:0,students:0,special:0,staff:0};
-    CITIES.forEach(function(c){TOT.gan+=c.gan;TOT.students+=c.students;TOT.special+=c.special;TOT.staff+=c.staff;});
+    TOT={gan:0,students:0,special:0,staff:0,spcGan:0};
+    CITIES.forEach(function(c){TOT.gan+=c.gan;TOT.students+=c.students;TOT.special+=c.special;TOT.staff+=c.staff;TOT.spcGan+=c.spc;});
     TOT.reg=TOT.students-TOT.special;
   }
   computeTotals();
@@ -662,7 +670,7 @@
   /* staff pool per city (sample, not full count) */
   var STAFF=[];
   CITIES.forEach(function(c){
-    var n=Math.max(6, Math.round(c.staff*0.14));
+    var n=Math.max(5, Math.round(c.staff*0.11));
     for(var i=0;i<n;i++){
       var role=pick(ROLES);
       STAFF.push({name:fullName(), role:role, tz:tz(), city:c.name, gan:pick(c.gans).name, on: rnd()>0.28});
@@ -674,7 +682,7 @@
   var LIVE=[];
   (function(){
     var pool=STAFF.filter(function(s){return s.on;});
-    var count=Math.min(16, pool.length);
+    var count=Math.min(18, pool.length);
     for(var i=0;i<count;i++){
       var s=pool[i];
       var startedMin=ri(35, 250); // minutes ago
@@ -706,10 +714,10 @@
     var onNow=LIVE.length + ri(-1,1);
     var rows=[
       {l:'ערים ברשת',v:CITIES.length,s:'משודרות למרכז',cls:'kaccent'},
-      {l:'גנים',v:he(TOT.gan),s:'בכל הערים'},
-      {l:'תלמידות',v:he(TOT.students),s:'סה״כ רשומות'},
+      {l:'גנים',v:he(TOT.gan),s:he(TOT.spcGan)+' חינוך מיוחד'},
+      {l:'תלמידות',v:he(TOT.students),s:'סה״כ רשומות (משוער)'},
       {l:'עובדות',v:he(TOT.staff),s:'בכל התפקידים'},
-      {l:'חינוך מיוחד',v:he(TOT.special),s:Math.round(TOT.special/TOT.students*100)+'% מהתלמידות',cls:'kaccent'},
+      {l:'גני חינוך מיוחד',v:he(TOT.spcGan),s:he(TOT.special)+' תלמידות · '+Math.round(TOT.special/TOT.students*100)+'%',cls:'kaccent'},
       {live:true,l:'נוכחות חיה',v:he(Math.max(0,onNow)),s:'עובדות מחוברות כעת'}
     ];
     $('#kpiRow').innerHTML=rows.map(function(r){
