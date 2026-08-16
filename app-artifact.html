@@ -165,6 +165,23 @@ body.locked nav.tabs,body.locked .year-pick,body.locked #themeBtn,body.locked #l
   .panel{box-shadow:none;border:0}
   th{position:static}
 }
+
+/* ===== Evergreen polish · phase 2 (additive, non-breaking) ===== */
+:root{--shadow-lg:0 10px 26px rgba(24,43,32,.12),0 34px 66px rgba(24,43,32,.18)}
+:root[data-theme="light"]{--shadow-lg:0 10px 26px rgba(24,43,32,.12),0 34px 66px rgba(24,43,32,.18)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--shadow-lg:0 12px 30px rgba(0,0,0,.5),0 40px 80px rgba(0,0,0,.62)}}
+:root[data-theme="dark"]{--shadow-lg:0 12px 30px rgba(0,0,0,.5),0 40px 80px rgba(0,0,0,.62)}
+.hcard,.stat{position:relative;overflow:hidden;transition:transform .28s cubic-bezier(.2,.7,.2,1),box-shadow .28s,border-color .28s}
+.hcard:hover,.stat:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:transparent}
+.hcard::after,.stat::after{content:"";position:absolute;inset-inline:0;top:0;height:3px;pointer-events:none;background:linear-gradient(90deg,var(--accent),var(--brass));transform:scaleX(0);transform-origin:100% 50%;transition:transform .4s cubic-bezier(.2,.7,.2,1)}
+.hcard:hover::after,.stat:hover::after{transform:scaleX(1)}
+.gan-card{transition:transform .26s cubic-bezier(.2,.7,.2,1),box-shadow .26s,border-color .26s}
+.gan-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:transparent}
+.drawer-nav button{transition:background .2s,color .2s,transform .15s}
+.drawer-nav button:hover{transform:translateX(-2px)}
+.btn{transition:background .2s,transform .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-1px)}
+@media (prefers-reduced-motion:reduce){.hcard,.stat,.gan-card,.btn,.drawer-nav button{transition:none}.hcard::after,.stat::after{transition:none}}
 </style>
 </head>
 <body>
