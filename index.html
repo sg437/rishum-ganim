@@ -2520,8 +2520,22 @@ function renderStuTable(){
 
 /* פתיחת תיק ילדה לפי מזהה — לשימוש מקישורים (כפילות ת"ז / בדיקת אחיות / לשונית גנים) */
 function openStudentById(id){ const st=DB.students.find(x=>x.id===id); if(st) openStudent(JSON.parse(JSON.stringify(st))); }
-/* מעבר ללשונית התלמידות מסונן לגן נתון — "צפייה בתלמידות הגן" מלשונית גנים */
-function viewGanStudents(ganId){ stuFilter.gan=ganId||""; stuFilter.status='active'; closeModal(); navToTab('students'); }
+/* מעבר ללשונית התלמידות מסונן לגן נתון — "צפייה בתלמידות הגן" מלשונית גנים.
+   כשנקראת מתוך מודל פתוח (טופס הגן): סוגרים את המודל וממירים את רשומת ההיסטוריה
+   שלו לניווט — במקום history.back() (שיוצר popstate אסינכרוני שמבטל את הניווט). */
+function viewGanStudents(ganId){
+  stuFilter.gan=ganId||""; stuFilter.status='active';
+  const ov=$("#overlay");
+  if(modalHistoryOpen){
+    if(ov) ov.classList.remove("show"); document.body.style.overflow="";
+    modalHistoryOpen=false;
+    active='students';
+    try{ history.replaceState({ rgTab:'students' }, ""); }catch(_){}
+    route(); window.scrollTo(0,0);
+  } else {
+    navToTab('students');
+  }
+}
 /* טופס תיק ילדה */
 function openStudent(s){
   const isNew = !DB.students.some(x=>x.id===s.id);
