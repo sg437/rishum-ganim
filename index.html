@@ -1584,7 +1584,7 @@ function guideContent(){
         <li>גנים דו-גילאיים נתמכים (למשל 3/4, 4/5).</li>
         <li>הקמפוס של הגן קובע את הקמפוס של התלמידות שבו.</li>
         <li><b>מספר הרשומות</b> נצבע לפי הקיבולת: <span class="gd-pill ok">בתוך הקיבולת</span> · חריגה של <b>ילדה אחת</b> (למשל 36 כשהקיבולת 35) <b>בסגול</b> — וגם הילדה שמעל הקיבולת נצבעת בסגול ברשימה · חריגה גדולה יותר <span class="gd-pill" style="background:#f5dcd9;color:#a5342b">אדום</span>.</li>
-        <li><b>צפייה בתלמידות הגן</b> — <b>לחיצה על מספר הרשומות</b> בטבלה (או כפתור <b>🎒 צפייה בתלמידות</b> בתוך טופס הגן) פותחת את רשימת התלמידות מסוננת לאותו גן.</li>
+        <li><b>צפייה בתלמידות הגן</b> — <b>לחיצה על מספר הרשומות</b> בטבלה (או כפתור <b>🎒 צפייה בתלמידות</b> בתוך טופס הגן) פותחת את רשימת התלמידות מסוננת לאותו גן. מעל הרשימה המסוננת מופיע פס פעולות עם <b>🖨️ הדפסה</b> ו-<b>📎 שיתוף מסמך</b> (PDF) של רשימת הגן — כולל <b>"התאם לעמוד אחד"</b>.</li>
       </ul>` },
 
     { icon:"👩‍🏫", title:"שיבוץ צוות", html:
@@ -2463,10 +2463,22 @@ function renderStuTable(){
   const ovf = ganOverflowMap(); // חריגת קיבולת ברמת התלמידה — לצביעת החורגות
   const host = $("#stuTable");
   const statusLbl = { active:"פעילות", finished:"שסיימו / יצאו", all:"כל הסטטוסים" }[stuFilter.status]||"";
-  if(!list.length){ host.innerHTML = `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`; return; }
+  /* כשמסוננים לגן ספציפי — פס פעולות מהיר להדפסה/שיתוף של רשימת הגן */
+  const selGan = (stuFilter.gan && stuFilter.gan!=='__none__') ? ganById(stuFilter.gan) : null;
+  const ganBar = selGan ? `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:10px 12px;background:var(--surface-2);border-radius:12px">
+      <b style="margin-inline-end:auto">📋 רשימת הגן: ${esc(ganName(selGan.id))}</b>
+      <button class="btn ghost sm" id="stuGanPrint" type="button">🖨️ הדפסה</button>
+      <button class="btn ghost sm" id="stuGanShare" type="button">📎 שיתוף מסמך</button>
+      <label class="check" style="margin:0"><input type="checkbox" id="stuGanOnepage"> התאם לעמוד אחד</label>
+    </div>` : "";
+  if(!list.length){ host.innerHTML = ganBar + `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`;
+    if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
+      const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
+      const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
+    return; }
   const arr=k=> stuSort.key===k ? `<span class="arr">${stuSort.dir>0?'▲':'▼'}</span>` : "";
   const th=(k,lbl)=>`<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>`;
-  host.innerHTML = `<div class="table-wrap"><table><thead><tr>
+  host.innerHTML = ganBar + `<div class="table-wrap"><table><thead><tr>
     ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
     ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}<th title="שיבוץ סופי בגן — לחיצה משנה בין 'משובצת' ל'ממתינה'">שיבוץ</th>${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
     <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th title="סימון בלבד — תוכן ההערה בתוך התיק">הערות</th><th>סטטוס</th></tr></thead><tbody>
@@ -2489,6 +2501,10 @@ function renderStuTable(){
       </tr>`).join("")}
   </tbody></table></div>
   <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק.</div>`;
+  /* פס פעולות רשימת הגן — הדפסה/שיתוף ישירות מתוך רשימת התלמידות המסוננת לגן */
+  if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
+    const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
+    const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
   // לחיצה על שורה (מחוץ לכפתורים/תיבות סימון) פותחת את התיק (סעיף 8.4.3)
   host.querySelectorAll("tr.clickable").forEach(tr=> tr.onclick=e=>{
     if(e.target.closest("button,input,a,.stu-place")) return;
