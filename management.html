@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a5f68">
+<meta name="robots" content="noindex">
+</head>
+<body>
+<title>מרכז ניהול ארצי</title>
+<style>
+  :root{
+    /* ===== LIGHT (default) ===== */
+    --bg:#e8f1f0; --surface:#ffffff; --surface-2:#f2f8f7; --surface-3:#e6f1ef;
+    --ink:#0d2529; --ink-soft:#39565c; --muted:#6a848a; --border:#d4e4e2;
+    --accent:#0e7c86; --accent-strong:#0a5f68; --accent-soft:#d5eceb;
+    --brass:#a9781f; --brass-soft:#f2e8d0;
+    --live:#128a5c; --live-soft:#d3efe0;
+    --good:#2c7a52; --good-soft:#d7ecdf;
+    --warn:#a9761f; --warn-soft:#f4e8ce;
+    --alert:#b0442c; --alert-soft:#f4ddd5;
+    --shadow:0 1px 2px rgba(13,37,41,.06),0 10px 28px rgba(13,37,41,.07);
+    --shadow-lg:0 2px 6px rgba(13,37,41,.08),0 24px 60px rgba(13,37,41,.14);
+    --radius:14px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#06171b; --surface:#0d232a; --surface-2:#123039; --surface-3:#16323c;
+      --ink:#e7f3f2; --ink-soft:#aec6c6; --muted:#7c979c; --border:#20414a;
+      --accent:#37b1bd; --accent-strong:#59c9d3; --accent-soft:#0f333c;
+      --brass:#cf9f52; --brass-soft:#2c2413;
+      --live:#31c98a; --live-soft:#0e3327;
+      --good:#54b788; --good-soft:#123527;
+      --warn:#d6a24a; --warn-soft:#33280f;
+      --alert:#df6f59; --alert-soft:#37170f;
+      --shadow:0 1px 2px rgba(0,0,0,.32),0 12px 32px rgba(0,0,0,.4);
+      --shadow-lg:0 2px 8px rgba(0,0,0,.4),0 28px 64px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#06171b; --surface:#0d232a; --surface-2:#123039; --surface-3:#16323c;
+    --ink:#e7f3f2; --ink-soft:#aec6c6; --muted:#7c979c; --border:#20414a;
+    --accent:#37b1bd; --accent-strong:#59c9d3; --accent-soft:#0f333c;
+    --brass:#cf9f52; --brass-soft:#2c2413;
+    --live:#31c98a; --live-soft:#0e3327;
+    --good:#54b788; --good-soft:#123527;
+    --warn:#d6a24a; --warn-soft:#33280f;
+    --alert:#df6f59; --alert-soft:#37170f;
+    --shadow:0 1px 2px rgba(0,0,0,.32),0 12px 32px rgba(0,0,0,.4);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.4),0 28px 64px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--ink); direction:rtl;
+    font-family:"Assistant","Heebo","Rubik","Segoe UI","Arial Hebrew","Alef",system-ui,-apple-system,"Noto Sans Hebrew",sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
+    -moz-osx-font-smoothing:grayscale;
+  }
+  h1,h2,h3,h4{margin:0; line-height:1.18; text-wrap:balance}
+  a{color:inherit}
+  button{font-family:inherit}
+  .num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum"}
+  .eyebrow{font-size:.7rem; letter-spacing:.14em; font-weight:800; color:var(--accent); text-transform:uppercase}
+
+  /* ===== TOP BAR ===== */
+  .topbar{
+    position:sticky; top:0; z-index:40;
+    background:color-mix(in srgb,var(--surface) 88%, transparent);
+    -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  .topbar-in{max-width:1280px; margin:0 auto; padding:12px clamp(14px,3.5vw,34px); display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+  .crest{display:flex; align-items:center; gap:11px; min-width:0}
+  .crest .mark{
+    width:40px; height:40px; border-radius:11px; flex:0 0 auto; display:grid; place-items:center;
+    background:linear-gradient(150deg,var(--accent),var(--accent-strong)); color:#fff; font-weight:800; font-size:1.12rem;
+    box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 40%, transparent);
+  }
+  .crest .t1{font-weight:800; font-size:1.02rem; letter-spacing:-.01em; line-height:1.1}
+  .crest .t2{font-size:.74rem; color:var(--muted); font-weight:600}
+  .top-spacer{flex:1 1 auto}
+  .live-badge{
+    display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px;
+    background:var(--live-soft); color:var(--live); font-weight:800; font-size:.8rem;
+    border:1px solid color-mix(in srgb,var(--live) 30%, transparent); white-space:nowrap;
+  }
+  .live-badge .dot{width:8px; height:8px; border-radius:50%; background:var(--live); box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 60%,transparent); animation:pulse 1.8s infinite}
+  .clock{font-weight:800; font-size:.9rem; color:var(--ink-soft); letter-spacing:.02em; white-space:nowrap}
+  .clock small{color:var(--muted); font-weight:600; margin-inline-start:6px; font-size:.76rem}
+  .iconbtn{
+    width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--ink-soft); cursor:pointer; font-size:1.05rem; display:grid; place-items:center; transition:.15s;
+  }
+  .iconbtn:hover{background:var(--surface-3); color:var(--ink)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--live) 55%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+  /* ===== NAV ===== */
+  .nav{max-width:1280px; margin:0 auto; padding:0 clamp(14px,3.5vw,34px)}
+  .nav-in{display:flex; gap:4px; overflow-x:auto; padding:10px 0 0; scrollbar-width:none}
+  .nav-in::-webkit-scrollbar{display:none}
+  .tab{
+    appearance:none; border:0; background:transparent; color:var(--muted); cursor:pointer;
+    padding:10px 15px 13px; font-weight:700; font-size:.92rem; white-space:nowrap; border-bottom:2.5px solid transparent;
+    display:flex; align-items:center; gap:7px; transition:.15s; border-radius:8px 8px 0 0;
+  }
+  .tab .ti{font-size:1rem}
+  .tab:hover{color:var(--ink-soft); background:var(--surface-2)}
+  .tab[aria-selected="true"]{color:var(--accent); border-bottom-color:var(--accent)}
+  .tab .star{color:var(--brass)}
+
+  /* ===== LAYOUT ===== */
+  .wrap{max-width:1280px; margin:0 auto; padding:clamp(18px,3vw,30px) clamp(14px,3.5vw,34px) 90px}
+  .view{display:none; animation:fade .35s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0; transform:translateY(6px)}to{opacity:1; transform:none}}
+
+  .view-head{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px}
+  .view-head h2{font-size:clamp(1.35rem,2.6vw,1.85rem); font-weight:800; letter-spacing:-.02em}
+  .view-head .sub{font-size:.92rem; color:var(--muted); margin-top:4px; max-width:60ch}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow)}
+  .pad{padding:clamp(16px,2.2vw,22px)}
+  .sec-title{display:flex; align-items:center; gap:9px; font-weight:800; font-size:1.02rem; margin-bottom:2px}
+  .sec-title .badge{font-size:.72rem; font-weight:800; padding:3px 9px; border-radius:999px; background:var(--accent-soft); color:var(--accent-strong)}
+  .sec-note{font-size:.82rem; color:var(--muted)}
+
+  /* ===== KPI ===== */
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:13px}
+  .kpi{position:relative; overflow:hidden; padding:16px 17px 15px}
+  .kpi .kl{font-size:.78rem; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:6px}
+  .kpi .kv{font-size:clamp(1.5rem,3vw,2.05rem); font-weight:800; letter-spacing:-.02em; margin-top:7px; line-height:1}
+  .kpi .kv small{font-size:.5em; font-weight:700; color:var(--ink-soft); margin-inline-start:3px}
+  .kpi .ks{font-size:.76rem; color:var(--muted); margin-top:6px}
+  .kpi.live-kpi{background:linear-gradient(200deg,var(--live-soft),var(--surface)); border-color:color-mix(in srgb,var(--live) 26%,var(--border))}
+  .kpi.live-kpi .kv{color:var(--live)}
+  .kpi .minidot{width:7px;height:7px;border-radius:50%;background:var(--live);animation:pulse 1.8s infinite}
+  .kpi .kaccent{color:var(--accent)}
+  .kpi .up{color:var(--good); font-weight:700}
+
+  .grid-2{display:grid; grid-template-columns:1.55fr 1fr; gap:14px; margin-top:14px}
+  @media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+  .grid-3{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px}
+
+  /* ===== TABLE ===== */
+  .tbl-wrap{overflow-x:auto; border-radius:12px}
+  table{border-collapse:collapse; width:100%; font-size:.9rem; min-width:520px}
+  th,td{text-align:right; padding:11px 13px; border-bottom:1px solid var(--border); white-space:nowrap}
+  th{font-size:.76rem; color:var(--muted); font-weight:800; letter-spacing:.02em; position:sticky; top:0; background:var(--surface); cursor:default}
+  tbody tr{transition:background .12s}
+  tbody tr:hover{background:var(--surface-2)}
+  tbody tr.clickable{cursor:pointer}
+  td .strong{font-weight:800}
+  td.n{font-variant-numeric:tabular-nums}
+
+  /* mini split bar (education) */
+  .split{display:flex; height:9px; border-radius:999px; overflow:hidden; background:var(--surface-3); min-width:90px; border:1px solid var(--border)}
+  .split i{display:block; height:100%}
+  .split .reg{background:var(--accent)}
+  .split .spc{background:var(--brass)}
+  .fillbar{height:9px; border-radius:999px; background:var(--surface-3); overflow:hidden; min-width:70px; border:1px solid var(--border)}
+  .fillbar i{display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,var(--accent),var(--accent-strong))}
+  .fillbar i.hot{background:linear-gradient(90deg,var(--warn),var(--alert))}
+
+  .pill{display:inline-flex; align-items:center; gap:5px; font-size:.74rem; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap}
+  .pill.reg{background:var(--accent-soft); color:var(--accent-strong)}
+  .pill.spc{background:var(--brass-soft); color:var(--brass)}
+  .pill.ok{background:var(--good-soft); color:var(--good)}
+  .pill.warn{background:var(--warn-soft); color:var(--warn)}
+  .pill.live{background:var(--live-soft); color:var(--live)}
+  .pill.off{background:var(--surface-3); color:var(--muted)}
+
+  .src{display:inline-flex; align-items:center; gap:6px; font-size:.78rem; font-weight:700; color:var(--ink-soft)}
+
+  /* ===== ACTIVITY FEED ===== */
+  .feed{display:flex; flex-direction:column; gap:0; max-height:430px; overflow-y:auto}
+  .feed .ev{display:flex; gap:11px; padding:11px 4px; border-bottom:1px solid var(--border); animation:slidein .45s ease}
+  .feed .ev:last-child{border-bottom:0}
+  .feed .ev .ic{width:30px;height:30px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;font-size:.95rem;background:var(--surface-2)}
+  .feed .ev.enter .ic{background:var(--live-soft)}
+  .feed .ev.exit .ic{background:var(--warn-soft)}
+  .feed .ev.reg .ic{background:var(--accent-soft)}
+  .feed .ev .tx{font-size:.86rem; line-height:1.35}
+  .feed .ev .tx b{font-weight:800}
+  .feed .ev .mt{font-size:.72rem; color:var(--muted); margin-top:2px}
+  @keyframes slidein{from{opacity:0; transform:translateY(-8px)}to{opacity:1; transform:none}}
+
+  /* ===== DONUT ===== */
+  .donut-wrap{display:flex; align-items:center; gap:18px; flex-wrap:wrap}
+  .donut{width:132px;height:132px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;position:relative}
+  .donut::after{content:"";position:absolute;inset:20px;border-radius:50%;background:var(--surface)}
+  .donut .din{position:relative;z-index:1;text-align:center}
+  .donut .din b{font-size:1.35rem;font-weight:800;display:block;line-height:1}
+  .donut .din span{font-size:.72rem;color:var(--muted)}
+  .legend{display:flex;flex-direction:column;gap:9px;font-size:.86rem}
+  .legend .li{display:flex;align-items:center;gap:8px}
+  .legend .sw{width:12px;height:12px;border-radius:4px;flex:0 0 auto}
+
+  /* ===== LIVE HOURS BOARD ===== */
+  .board-head{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px}
+  .hero-live{
+    position:relative; overflow:hidden; border-radius:18px; padding:clamp(18px,3vw,26px);
+    background:radial-gradient(120% 150% at 90% -30%, color-mix(in srgb,var(--live) 22%,transparent), transparent 60%),linear-gradient(200deg,var(--surface-2),var(--surface));
+    border:1px solid color-mix(in srgb,var(--live) 22%,var(--border)); box-shadow:var(--shadow);
+  }
+  .hero-live .hl-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px; position:relative; z-index:1}
+  .hl-stat .l{font-size:.8rem; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:6px}
+  .hl-stat .v{font-size:clamp(1.7rem,3.6vw,2.4rem); font-weight:800; letter-spacing:-.02em; margin-top:5px; line-height:1}
+  .hl-stat .v.livec{color:var(--live)}
+  .hl-stat .s{font-size:.76rem; color:var(--muted); margin-top:5px}
+
+  .worker{display:grid; grid-template-columns:1fr auto; gap:6px 12px; align-items:center; padding:13px; border:1px solid var(--border); border-radius:12px; background:var(--surface)}
+  .worker.on{border-color:color-mix(in srgb,var(--live) 34%,var(--border)); box-shadow:inset 3px 0 0 var(--live)}
+  .worker .wn{font-weight:800; font-size:.94rem}
+  .worker .wm{font-size:.76rem; color:var(--muted); margin-top:1px}
+  .worker .wh{font-size:1.05rem; font-weight:800; text-align:left; font-variant-numeric:tabular-nums}
+  .worker .ws{font-size:.75rem; color:var(--muted); text-align:left; margin-top:1px}
+  .worker .wsal{color:var(--live); font-weight:800}
+
+  .filters{display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+  .filters label{font-size:.78rem; color:var(--muted); font-weight:700}
+  select,.sellike{
+    appearance:none; border:1px solid var(--border); background:var(--surface-2); color:var(--ink);
+    padding:8px 30px 8px 12px; border-radius:9px; font-weight:700; font-size:.85rem; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+    background-position:calc(0% + 12px) calc(50% - 2px),calc(0% + 17px) calc(50% - 2px); background-size:5px 5px,5px 5px; background-repeat:no-repeat;
+  }
+  select:focus,.tab:focus-visible,.iconbtn:focus-visible,.chipbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .chips{display:flex; gap:7px; flex-wrap:wrap}
+  .chipbtn{border:1px solid var(--border); background:var(--surface-2); color:var(--ink-soft); font-weight:700; font-size:.82rem; padding:6px 13px; border-radius:999px; cursor:pointer; transition:.15s}
+  .chipbtn[aria-pressed="true"]{background:var(--accent); color:#fff; border-color:var(--accent)}
+
+  /* ===== PLAN VIEW ===== */
+  .plan-hero{
+    position:relative; overflow:hidden; border-radius:20px; padding:clamp(24px,4vw,44px);
+    background:radial-gradient(120% 150% at 88% -25%, color-mix(in srgb,var(--accent) 24%,transparent), transparent 62%),linear-gradient(205deg,var(--surface-2),var(--surface));
+    border:1px solid var(--border); box-shadow:var(--shadow);
+  }
+  .plan-hero h1{font-size:clamp(1.7rem,4.2vw,2.7rem); font-weight:800; letter-spacing:-.025em; margin-top:12px}
+  .plan-hero .lede{margin-top:14px; font-size:clamp(1rem,1.7vw,1.16rem); color:var(--ink-soft); max-width:60ch}
+  .plan-hero .meta{margin-top:20px; font-size:.86rem; color:var(--muted)}
+  .plan-hero .meta b{color:var(--ink-soft)}
+
+  .phase{display:grid; grid-template-columns:auto 1fr; gap:16px}
+  .phase .pn{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:1.15rem;color:#fff;flex:0 0 auto}
+  .phase.p1 .pn{background:var(--good)}
+  .phase.p2 .pn{background:var(--accent)}
+  .phase.p3 .pn{background:linear-gradient(150deg,var(--brass),#8a5f16)}
+  .phase h3{font-size:1.1rem; font-weight:800; display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+  .phase p{margin:6px 0 0; font-size:.9rem; color:var(--ink-soft)}
+  .phase ul{margin:10px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px}
+  .phase ul li{display:flex; gap:9px; font-size:.86rem; color:var(--ink-soft)}
+  .phase ul li::before{content:"✓"; color:var(--good); font-weight:800; flex:0 0 auto}
+  .phase.p3 ul li::before{content:"◇"; color:var(--brass)}
+
+  /* architecture flow */
+  .arch{display:flex; align-items:stretch; gap:12px; flex-wrap:wrap; justify-content:center}
+  .arch .node{flex:1 1 150px; min-width:130px; text-align:center; padding:16px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2)}
+  .arch .node .ni{font-size:1.4rem}
+  .arch .node .nt{font-weight:800; font-size:.9rem; margin-top:6px}
+  .arch .node .nd{font-size:.75rem; color:var(--muted); margin-top:3px}
+  .arch .node.hub{background:linear-gradient(160deg,var(--accent-soft),var(--surface)); border-color:color-mix(in srgb,var(--accent) 34%,transparent)}
+  .arch .node.live{background:linear-gradient(160deg,var(--live-soft),var(--surface)); border-color:color-mix(in srgb,var(--live) 30%,transparent)}
+  .arch .arrow{align-self:center; color:var(--accent); font-weight:800; font-size:1.3rem}
+  @media(max-width:760px){.arch .arrow{transform:rotate(90deg)}}
+
+  .ask{display:flex; gap:12px; align-items:flex-start; background:var(--brass-soft); border:1px solid color-mix(in srgb,var(--brass) 28%,transparent); border-radius:12px; padding:14px 16px}
+  .ask .ic{font-size:1.2rem; line-height:1.2}
+  .ask .t{font-size:.9rem; color:var(--ink)}
+  .ask .t b{color:var(--brass)}
+
+  .note-demo{display:inline-flex; align-items:center; gap:7px; font-size:.76rem; font-weight:700; color:var(--warn); background:var(--warn-soft); border:1px solid color-mix(in srgb,var(--warn) 26%,transparent); padding:5px 11px; border-radius:999px}
+
+  .subtitle-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:26px 0 12px}
+  .subtitle-row h3{font-size:1.15rem; font-weight:800}
+  .subtitle-row .ln{flex:1; height:1px; background:var(--border)}
+
+  .detail-panel{margin-top:14px}
+  .stat-row{display:flex; gap:18px; flex-wrap:wrap; margin-top:4px}
+  .stat-row .st{}
+  .stat-row .st b{font-size:1.3rem; font-weight:800; display:block; line-height:1}
+  .stat-row .st span{font-size:.76rem; color:var(--muted)}
+
+  .backlink{background:none; border:0; color:var(--accent); font-weight:800; cursor:pointer; font-size:.86rem; padding:4px 0; display:inline-flex; align-items:center; gap:5px}
+  .backlink:hover{text-decoration:underline}
+
+  footer{max-width:1280px; margin:10px auto 0; padding:22px clamp(14px,3.5vw,34px) 40px; border-top:1px solid var(--border); display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:.8rem; color:var(--muted)}
+  footer b{color:var(--ink-soft)}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms !important; animation-iteration-count:1 !important}
+    .view{animation:none}
+  }
+</style>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="crest">
+      <div class="mark">מ</div>
+      <div>
+        <div class="t1">מרכז ניהול ארצי</div>
+        <div class="t2">רשת גני הילדות · כל הערים במקום אחד</div>
+      </div>
+    </div>
+    <div class="top-spacer"></div>
+    <span class="note-demo">● הדמיה · נתוני דוגמה</span>
+    <span class="live-badge"><span class="dot"></span> נתונים חיים</span>
+    <span class="clock" id="clock">--:--:--<small id="datewd"></small></span>
+    <button class="iconbtn" id="themeBtn" title="מצב תצוגה" aria-label="החלפת מצב תצוגה">◐</button>
+  </div>
+  <nav class="nav"><div class="nav-in" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-view="plan" aria-selected="false"><span class="ti">🗺️</span> התוכנית</button>
+    <button class="tab" role="tab" data-view="overview" aria-selected="true"><span class="ti">📡</span> סקירה לאומית</button>
+    <button class="tab" role="tab" data-view="cities" aria-selected="false"><span class="ti">🏙️</span> ערים וגנים</button>
+    <button class="tab" role="tab" data-view="reports" aria-selected="false"><span class="ti">📊</span> דוחות ואחוזים</button>
+    <button class="tab" role="tab" data-view="staff" aria-selected="false"><span class="ti">👥</span> עובדות ושיבוץ</button>
+    <button class="tab" role="tab" data-view="hours" aria-selected="false"><span class="star">★</span> שעות ושכר · חי</button>
+  </div></nav>
+</div>
+
+<div class="wrap">
+
+  <!-- ================= PLAN ================= -->
+  <section class="view" id="view-plan" role="tabpanel">
+    <div class="plan-hero">
+      <div class="eyebrow">תוכנית חיה · להצגה מול הערים</div>
+      <h1>כל עיר, כל גן, כל עובדת — במסך אחד חי</h1>
+      <p class="lede">מערכת הניהול הראשית מחברת את כל הערים למקום אחד. הנתונים זורמים בזמן אמת מכל עיר ועיר — מספרי תלמידות, פילוח לפי חינוך, אחוזים לכל גן, ובהמשך גם שעות העבודה של כל עובדת ישירות לשכר. הדף הזה הוא הדמיה חיה: אפשר להסתובב, ללחוץ ולראות איך זה יעבוד.</p>
+      <div class="meta">שלב תכנון · הדמיה עם נתוני דוגמה · <b>לאחר הישיבה עם הצוות</b> נעבור לביצוע מעשי</div>
+    </div>
+
+    <div class="subtitle-row"><h3>שלושה שלבים</h3><div class="ln"></div></div>
+    <div class="grid-3">
+      <div class="card pad phase p1">
+        <div class="pn">1</div>
+        <div>
+          <h3>לכל עיר יש מערכת <span class="pill ok">קיים היום</span></h3>
+          <p>כל עיר מנהלת את הגנים שלה במערכת רישום וקליטת התלמידות — תיקים, גנים, שיבוץ, דוחות.</p>
+          <ul><li>תיקי תלמידות וגנים</li><li>צוות ושיבוץ</li><li>דוחות ואחוזים מקומיים</li></ul>
+        </div>
+      </div>
+      <div class="card pad phase p2">
+        <div class="pn">2</div>
+        <div>
+          <h3>מרכז ארצי מחבר את כולן <span class="pill reg">השלב הזה</span></h3>
+          <p>כל הערים משדרות למרכז אחד. ההנהלה רואה תמונה לאומית חיה — וצוללת עד לכל גן בודד.</p>
+          <ul><li>נתונים חיים מכל עיר</li><li>פילוח חינוך ומספרי תלמידים</li><li>השוואה בין ערים וגנים</li></ul>
+        </div>
+      </div>
+      <div class="card pad phase p3">
+        <div class="pn">3</div>
+        <div>
+          <h3>שעות עבודה → שכר <span class="pill spc">היעד הבא</span></h3>
+          <p>כל עובדת מחתימה כניסה/יציאה — מהטלפון האוטומטי או מהמכשיר בגן — והשעות זורמות חי למערכת ומתורגמות לשכר.</p>
+          <ul><li>שידור חי מכל עובדת</li><li>מקור: טלפון / מכשיר בגן</li><li>תרגום אוטומטי לשכר</li></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="subtitle-row"><h3>איך זה מחובר</h3><div class="ln"></div></div>
+    <div class="card pad">
+      <div class="arch">
+        <div class="node"><div class="ni">🏙️</div><div class="nt">כל עיר</div><div class="nd">המערכת המקומית בכל עיר</div></div>
+        <div class="arrow">←</div>
+        <div class="node"><div class="ni">📞🖥️</div><div class="nt">מקורות חיים</div><div class="nd">טלפון אוטומטי · מכשיר בגן</div></div>
+        <div class="arrow">←</div>
+        <div class="node hub"><div class="ni">🛰️</div><div class="nt">המרכז הארצי</div><div class="nd">איסוף וסנכרון בזמן אמת</div></div>
+        <div class="arrow">←</div>
+        <div class="node live"><div class="ni">📊</div><div class="nt">מסך ההנהלה</div><div class="nd">חי · ברור · לכל גן</div></div>
+      </div>
+      <div class="ask" style="margin-top:18px">
+        <span class="ic">💡</span>
+        <span class="t"><b>מה שנצטרך מכל עיר:</b> חיבור המערכת המקומית למרכז (גישה לנתונים), ובשלב 3 — חיבור מקור השעות הקיים (הטלפון האוטומטי או המכשיר בגן). לא מחליפים כלום — רק מחברים למעלה.</span>
+      </div>
+    </div>
+
+    <div class="subtitle-row"><h3>מה כבר רואים בהדמיה</h3><div class="ln"></div></div>
+    <div class="grid-3">
+      <div class="card pad"><div class="sec-title">📡 סקירה לאומית</div><p class="sec-note" style="margin-top:6px">כל הערים, מספרי תלמידות חיים, פילוח חינוך ופיד פעילות זורם.</p></div>
+      <div class="card pad"><div class="sec-title">🏙️ ערים וגנים</div><p class="sec-note" style="margin-top:6px">בחירת עיר → רשימת הגנים → צלילה לגן בודד עם צוות ותלמידות.</p></div>
+      <div class="card pad"><div class="sec-title">📊 דוחות ואחוזים</div><p class="sec-note" style="margin-top:6px">אחוז מלאות לכל גן, ממוצע, מסננים לפי עיר / חינוך / גיל.</p></div>
+      <div class="card pad"><div class="sec-title">👥 עובדות ושיבוץ</div><p class="sec-note" style="margin-top:6px">תיקי עובדות לפי תפקיד, ושיבוץ לגנים.</p></div>
+      <div class="card pad" style="border-color:color-mix(in srgb,var(--live) 30%,var(--border))"><div class="sec-title">★ שעות ושכר · חי</div><p class="sec-note" style="margin-top:6px">הלב של השלב הבא — עובדות מחתימות והשעות זורמות חי לשכר.</p></div>
+      <div class="card pad"><div class="sec-title">◐ מוכן להצגה</div><p class="sec-note" style="margin-top:6px">עובד בטלפון ובמחשב, עברית מלאה, מצב יום ולילה.</p></div>
+    </div>
+  </section>
+
+  <!-- ================= OVERVIEW ================= -->
+  <section class="view active" id="view-overview" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h2>סקירה לאומית</h2>
+        <div class="sub">כל הערים ברשת במבט אחד — הנתונים מתעדכנים חי. לחיצה על עיר פותחת את הגנים שלה.</div>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpiRow"></div>
+
+    <div class="grid-2">
+      <div class="card pad">
+        <div class="sec-title">ערים ברשת <span class="badge" id="cityCount"></span></div>
+        <div class="sec-note" style="margin-bottom:12px">מספרי תלמידות ופילוח חינוך לכל עיר · לחיצה לצלילה</div>
+        <div class="tbl-wrap">
+          <table id="cityTable">
+            <thead><tr><th>עיר</th><th>גנים</th><th>תלמידות</th><th>חינוך (רגיל / מיוחד)</th><th>עובדות</th><th>נוכחות חיה</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card pad">
+        <div class="sec-title">פעילות חיה <span class="pill live" style="margin-inline-start:auto"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> זורם</span></div>
+        <div class="sec-note" style="margin-bottom:6px">אירועים מכל הערים בזמן אמת</div>
+        <div class="feed" id="feed"></div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="grid-template-columns:1fr 1fr">
+      <div class="card pad">
+        <div class="sec-title">פילוח חינוך — כל הרשת</div>
+        <div class="sec-note" style="margin-bottom:14px">חלוקת התלמידות בין חינוך רגיל לחינוך מיוחד</div>
+        <div class="donut-wrap">
+          <div class="donut" id="eduDonut"><div class="din"><b id="eduPct">—</b><span>רגיל</span></div></div>
+          <div class="legend" id="eduLegend"></div>
+        </div>
+      </div>
+      <div class="card pad">
+        <div class="sec-title">פילוח לפי גיל — כל הרשת</div>
+        <div class="sec-note" style="margin-bottom:14px">מספר גנים ותלמידות לכל שכבת גיל</div>
+        <div id="ageBars"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CITIES ================= -->
+  <section class="view" id="view-cities" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h2>ערים וגנים</h2>
+        <div class="sub">בחרו עיר כדי לראות את כל הגנים בה, ואז לחצו על גן לצלילה מלאה — תלמידות, פילוח חינוך וצוות.</div>
+      </div>
+    </div>
+    <div class="filters">
+      <label>עיר:</label>
+      <select id="citySel"></select>
+      <label style="margin-inline-start:8px">חינוך:</label>
+      <div class="chips" id="eduChips">
+        <button class="chipbtn" aria-pressed="true" data-edu="all">הכל</button>
+        <button class="chipbtn" aria-pressed="false" data-edu="reg">רגיל</button>
+        <button class="chipbtn" aria-pressed="false" data-edu="spc">מיוחד</button>
+      </div>
+    </div>
+    <div id="cityDetail"></div>
+    <div id="ganDetail" class="detail-panel"></div>
+  </section>
+
+  <!-- ================= REPORTS ================= -->
+  <section class="view" id="view-reports" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h2>דוחות ואחוזים</h2>
+        <div class="sub">אחוז מלאות לכל גן ברשת, ממוצע כללי, וסינון לפי עיר, סוג חינוך וגיל — הבסיס לתחזיות ולהחלטות.</div>
+      </div>
+    </div>
+    <div class="filters">
+      <label>עיר:</label><select id="rCity"></select>
+      <label style="margin-inline-start:8px">חינוך:</label><select id="rEdu"><option value="all">הכל</option><option value="reg">רגיל</option><option value="spc">מיוחד</option></select>
+      <label style="margin-inline-start:8px">גיל:</label><select id="rAge"><option value="all">הכל</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+    </div>
+    <div class="kpis" id="rKpis" style="margin-bottom:14px"></div>
+    <div class="card pad">
+      <div class="sec-title">אחוז מלאות לכל גן <span class="sec-note" id="rCount" style="margin-inline-start:auto"></span></div>
+      <div class="sec-note" style="margin-bottom:12px">ממוין מהמלא לפנוי · אדום = מעל 92% (קרוב לקיבולת)</div>
+      <div id="reportBars"></div>
+    </div>
+  </section>
+
+  <!-- ================= STAFF ================= -->
+  <section class="view" id="view-staff" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h2>עובדות ושיבוץ</h2>
+        <div class="sub">מאגר העובדות בכל הרשת לפי תפקיד, עם השיבוץ לגן. בשלב הבא כל שורה תתחבר לשעות ולשכר החיים.</div>
+      </div>
+    </div>
+    <div class="filters">
+      <label>עיר:</label><select id="sCity"></select>
+      <label style="margin-inline-start:8px">תפקיד:</label><select id="sRole"><option value="all">הכל</option></select>
+    </div>
+    <div class="kpis" id="sKpis" style="margin-bottom:14px"></div>
+    <div class="card pad">
+      <div class="sec-title">תיקי עובדות <span class="sec-note" id="sCount" style="margin-inline-start:auto"></span></div>
+      <div class="tbl-wrap" style="margin-top:10px">
+        <table id="staffTable">
+          <thead><tr><th>שם</th><th>תפקיד</th><th>ת״ז</th><th>עיר</th><th>שיבוץ (גן)</th><th>סטטוס</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= HOURS (LIVE) ================= -->
+  <section class="view" id="view-hours" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h2>שעות ושכר · חי <span class="pill live">★ הלב של השלב הבא</span></h2>
+        <div class="sub">כל עובדת מחתימה כניסה/יציאה — מהטלפון האוטומטי או מהמכשיר בגן. השעות זורמות חי, מצטברות, ומתורגמות מיד לשכר. זו הדמיה חיה: המונים רצים באמת.</div>
+      </div>
+    </div>
+
+    <div class="hero-live" style="margin-bottom:16px">
+      <div class="board-head" style="position:relative;z-index:1">
+        <div class="sec-title" style="font-size:1.05rem">לוח שעות חי — כל הרשת <span class="pill live"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> LIVE</span></div>
+        <div class="note-demo">הדמיה · מקורות: 📞 טלפון אוטומטי · 🖥️ מכשיר בגן</div>
+      </div>
+      <div class="hl-grid">
+        <div class="hl-stat"><div class="l"><span class="minidot" style="width:7px;height:7px;border-radius:50%;background:var(--live);display:inline-block"></span> עובדות מחוברות כעת</div><div class="v livec" id="hlOn">—</div><div class="s">מתוך <span id="hlTotal">—</span> ברשת</div></div>
+        <div class="hl-stat"><div class="l">שעות שנצברו היום</div><div class="v" id="hlHours">—</div><div class="s">מצטבר חי מכל העובדות</div></div>
+        <div class="hl-stat"><div class="l">שכר שנצבר היום</div><div class="v livec" id="hlPay">—</div><div class="s">תרגום אוטומטי לפי תעריף</div></div>
+        <div class="hl-stat"><div class="l">החתמות היום</div><div class="v" id="hlPunch">—</div><div class="s">כניסות ויציאות</div></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card pad">
+        <div class="sec-title">עובדות פעילות עכשיו <span class="sec-note" id="wCount" style="margin-inline-start:auto"></span></div>
+        <div class="sec-note" style="margin-bottom:12px">שעון רץ חי · שכר מתעדכן בכל שנייה</div>
+        <div id="workerList" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+      <div class="card pad">
+        <div class="sec-title">החתמות אחרונות <span class="pill live" style="margin-inline-start:auto"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> זורם</span></div>
+        <div class="sec-note" style="margin-bottom:6px">כל כניסה/יציאה מהטלפון או מהמכשיר בגן</div>
+        <div class="feed" id="punchFeed"></div>
+        <div class="ask" style="margin-top:14px">
+          <span class="ic">🔗</span>
+          <span class="t"><b>בשלב הביצוע:</b> מחברים את מקור השעות הקיים בכל עיר (הטלפון האוטומטי או המכשיר בגן) — ומכאן הכל אוטומטי: שעות → שכר, בלי הקלדה ידנית.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <span>מרכז ניהול ארצי · <b>תוכנית חיה</b> · הדמיה עם נתוני דוגמה</span>
+  <span>רשת גני הילדות · שלב תכנון</span>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(s,r){return (r||document).querySelector(s)};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+  var he=function(n){return (n==null?0:n).toLocaleString('he-IL')};
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- DEMO DATA ---------- */
+  var CITIES=[
+    {name:'ירושלים', gan:34, students:812, special:96, staff:118, region:'מרכז'},
+    {name:'בני ברק', gan:29, students:701, special:74, staff:101, region:'מרכז'},
+    {name:'מודיעין עילית', gan:26, students:648, special:55, staff:92, region:'מרכז'},
+    {name:'ביתר עילית', gan:24, students:590, special:61, staff:86, region:'ירושלים'},
+    {name:'בית שמש', gan:19, students:452, special:48, staff:69, region:'ירושלים'},
+    {name:'אשדוד', gan:17, students:398, special:39, staff:60, region:'דרום'},
+    {name:'אלעד', gan:13, students:305, special:27, staff:46, region:'מרכז'},
+    {name:'צפת', gan:9, students:198, special:22, staff:31, region:'צפון'}
+  ];
+  var GAN_NAMES=['רימון','כלנית','תמר','נורית','אגוז','יסמין','סביון','ורד','הדס','שקד','גפן','חבצלת','אלון','דקל','ברוש','זית','רקפת','לוטם','מרווה','נרקיס','אירוס','דובדבן','תפוח','ליבנה','אשל','ציפורן','שושן','חמנית','דגנית','אודם'];
+  var TEACHER_F=['מרים','רבקה','שרה','לאה','חנה','אסתר','דבורה','רחל','יהודית','בתיה','גיטל','פייגא','חיה','טובה','נחמה','ברכה','מלכה','שיינדל','רייזל','פערל'];
+  var TEACHER_L=['כהן','לוי','פרידמן','רוזנברג','שטרן','גרוס','וייס','הורוביץ','פוגל','מנדל','אקשטיין','ברגר','נוישטט','זילבר','גולד','שוורץ','אונגר','ריכטר','לנדאו','שפירא'];
+  var ROLES=['גננת','סייעת','סייעת ב׳','סייעת רפואית','סייעת צמודה','גננת משלימה'];
+  var RATE={'גננת':58,'סייעת':38,'סייעת ב׳':36,'סייעת רפואית':46,'סייעת צמודה':44,'גננת משלימה':50};
+
+  /* seeded RNG for stable-ish demo */
+  var seed=20260816;
+  function rnd(){seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff;}
+  function pick(a){return a[Math.floor(rnd()*a.length)];}
+  function ri(a,b){return a+Math.floor(rnd()*(b-a+1));}
+  function fullName(){return pick(TEACHER_F)+' '+pick(TEACHER_L);}
+  function tz(){var s='';for(var i=0;i<9;i++)s+=Math.floor(rnd()*10);return s;}
+
+  /* build gan list per city */
+  CITIES.forEach(function(c,ci){
+    c.gans=[]; var reg=c.students-c.special; var usedNames={};
+    var regLeft=reg, spcLeft=c.special;
+    for(var g=0; g<c.gan; g++){
+      var isSpc = spcLeft>0 && (g%6===5 || (g===c.gan-1 && spcLeft>0));
+      var age=pick([3,3,4,4,4,5,5]);
+      var cap=ri(24,32);
+      var enrolled;
+      if(isSpc){ enrolled=Math.min(cap, Math.max(6, Math.round(spcLeft/Math.max(1,Math.ceil((c.gan-g)/6))))); spcLeft-=enrolled; }
+      else { var rem=c.gan-g - Math.ceil(spcLeft/8); enrolled=Math.min(cap, Math.max(14, Math.round(regLeft/Math.max(1,rem)))); regLeft-=enrolled; }
+      if(enrolled<1) enrolled=ri(8,cap);
+      var nm; do{ nm=pick(GAN_NAMES);}while(usedNames[nm]&&Object.keys(usedNames).length<GAN_NAMES.length); usedNames[nm]=1;
+      c.gans.push({
+        name:'גן '+nm, sym:''+ri(410000,499999), age:age, edu:isSpc?'spc':'reg',
+        cap:cap, enrolled:Math.max(1,enrolled), teacher:pick(TEACHER_F)+' '+pick(TEACHER_L),
+        region:c.region, on: rnd()>0.06
+      });
+    }
+    /* reconcile enrolled totals roughly to city.students */
+    var sum=c.gans.reduce(function(a,x){return a+x.enrolled},0);
+    var diff=c.students-sum, i=0;
+    while(diff!==0 && i<c.gans.length*4){ var gg=c.gans[i%c.gans.length]; if(diff>0){gg.enrolled++;diff--;} else if(gg.enrolled>5){gg.enrolled--;diff++;} i++; }
+  });
+
+  var TOT;
+  function computeTotals(){
+    TOT={gan:0,students:0,special:0,staff:0};
+    CITIES.forEach(function(c){TOT.gan+=c.gan;TOT.students+=c.students;TOT.special+=c.special;TOT.staff+=c.staff;});
+    TOT.reg=TOT.students-TOT.special;
+  }
+  computeTotals();
+
+  /* staff pool per city (sample, not full count) */
+  var STAFF=[];
+  CITIES.forEach(function(c){
+    var n=Math.max(6, Math.round(c.staff*0.14));
+    for(var i=0;i<n;i++){
+      var role=pick(ROLES);
+      STAFF.push({name:fullName(), role:role, tz:tz(), city:c.name, gan:pick(c.gans).name, on: rnd()>0.28});
+    }
+  });
+
+  /* live workers currently clocked-in */
+  var now=Date.now();
+  var LIVE=[];
+  (function(){
+    var pool=STAFF.filter(function(s){return s.on;});
+    var count=Math.min(16, pool.length);
+    for(var i=0;i<count;i++){
+      var s=pool[i];
+      var startedMin=ri(35, 250); // minutes ago
+      LIVE.push({
+        name:s.name, role:s.role, city:s.city, gan:s.gan,
+        rate:RATE[s.role]||38,
+        start: now - startedMin*60000,
+        src: rnd()>0.5?'phone':'device'
+      });
+    }
+  })();
+
+  /* running counters */
+  var punchesToday=ri(180,240);
+  var baseHoursDone= LIVE.length*0; // computed live
+
+  /* ---------- HELPERS ---------- */
+  function splitBar(reg,spc){
+    var t=reg+spc||1; var rp=Math.round(reg/t*100);
+    return '<span class="split" title="רגיל '+reg+' · מיוחד '+spc+'"><i class="reg" style="width:'+rp+'%"></i><i class="spc" style="width:'+(100-rp)+'%"></i></span>';
+  }
+  function fill(enr,cap){
+    var p=Math.min(100,Math.round(enr/cap*100));
+    return '<span class="fillbar"><i class="'+(p>=92?'hot':'')+'" style="width:'+p+'%"></i></span>';
+  }
+
+  /* ---------- OVERVIEW ---------- */
+  function renderKpis(){
+    var onNow=LIVE.length + ri(-1,1);
+    var rows=[
+      {l:'ערים ברשת',v:CITIES.length,s:'משודרות למרכז',cls:'kaccent'},
+      {l:'גנים',v:he(TOT.gan),s:'בכל הערים'},
+      {l:'תלמידות',v:he(TOT.students),s:'סה״כ רשומות'},
+      {l:'עובדות',v:he(TOT.staff),s:'בכל התפקידים'},
+      {l:'חינוך מיוחד',v:he(TOT.special),s:Math.round(TOT.special/TOT.students*100)+'% מהתלמידות',cls:'kaccent'},
+      {live:true,l:'נוכחות חיה',v:he(Math.max(0,onNow)),s:'עובדות מחוברות כעת'}
+    ];
+    $('#kpiRow').innerHTML=rows.map(function(r){
+      return '<div class="card kpi'+(r.live?' live-kpi':'')+'">'+
+        '<div class="kl">'+(r.live?'<span class="minidot"></span> ':'')+r.l+'</div>'+
+        '<div class="kv '+(r.cls||'')+'">'+r.v+'</div>'+
+        '<div class="ks">'+r.s+'</div></div>';
+    }).join('');
+    $('#cityCount').textContent=CITIES.length+' ערים';
+  }
+
+  function renderCityTable(){
+    var tb=$('#cityTable tbody');
+    tb.innerHTML=CITIES.map(function(c,i){
+      var reg=c.students-c.special;
+      var onc=Math.round(c.staff*0.62)+ri(-3,4);
+      return '<tr class="clickable" data-ci="'+i+'">'+
+        '<td><span class="strong">'+c.name+'</span><div style="font-size:.74rem;color:var(--muted)">'+c.region+'</div></td>'+
+        '<td class="n">'+c.gan+'</td>'+
+        '<td class="n"><span class="strong">'+he(c.students)+'</span></td>'+
+        '<td>'+splitBar(reg,c.special)+' <span style="font-size:.75rem;color:var(--muted)">'+he(reg)+' / '+he(c.special)+'</span></td>'+
+        '<td class="n">'+c.staff+'</td>'+
+        '<td><span class="pill live"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> '+Math.max(0,onc)+'</span></td>'+
+        '</tr>';
+    }).join('');
+    $$('#cityTable tbody tr').forEach(function(tr){
+      tr.addEventListener('click',function(){ openCity(+tr.dataset.ci); switchTab('cities'); });
+    });
+  }
+
+  function renderEduDonut(){
+    var reg=TOT.reg, spc=TOT.special, t=reg+spc;
+    var rp=Math.round(reg/t*100);
+    var d=$('#eduDonut');
+    var cReg=getComputedStyle(document.documentElement).getPropertyValue('--accent')||'#0e7c86';
+    var cSpc=getComputedStyle(document.documentElement).getPropertyValue('--brass')||'#a9781f';
+    d.style.background='conic-gradient('+cReg+' 0 '+rp+'%, '+cSpc+' '+rp+'% 100%)';
+    $('#eduPct').textContent=rp+'%';
+    $('#eduLegend').innerHTML=
+      '<div class="li"><span class="sw" style="background:var(--accent)"></span> חינוך רגיל — <b>&nbsp;'+he(reg)+'</b>&nbsp;('+rp+'%)</div>'+
+      '<div class="li"><span class="sw" style="background:var(--brass)"></span> חינוך מיוחד — <b>&nbsp;'+he(spc)+'</b>&nbsp;('+(100-rp)+'%)</div>'+
+      '<div class="li" style="color:var(--muted);font-size:.8rem;margin-top:2px">סה״כ '+he(t)+' תלמידות ב-'+CITIES.length+' ערים</div>';
+  }
+
+  function renderAgeBars(){
+    var ages={3:{g:0,s:0},4:{g:0,s:0},5:{g:0,s:0}};
+    CITIES.forEach(function(c){c.gans.forEach(function(g){ if(ages[g.age]){ages[g.age].g++; ages[g.age].s+=g.enrolled;}});});
+    var max=Math.max(ages[3].s,ages[4].s,ages[5].s)||1;
+    var html='';
+    [3,4,5].forEach(function(a){
+      var o=ages[a]; var w=Math.round(o.s/max*100);
+      html+='<div style="margin-top:14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700">גיל '+a+' <span style="color:var(--muted);font-weight:600;font-size:.8rem">· '+o.g+' גנים</span></span><span class="num strong">'+he(o.s)+'</span></div>'+
+        '<div class="track" style="height:14px;background:var(--surface-3);border-radius:999px;overflow:hidden;border:1px solid var(--border)"><i style="display:block;height:100%;width:'+w+'%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-strong))"></i></div></div>';
+    });
+    $('#ageBars').innerHTML=html;
+  }
+
+  /* ---------- ACTIVITY FEED ---------- */
+  var feedEl, feedTypes=[
+    {c:'enter',ic:'📞',t:function(){return '<b>'+fullName()+'</b> החתימה כניסה מהטלפון';}},
+    {c:'enter',ic:'🖥️',t:function(){return '<b>'+fullName()+'</b> החתימה כניסה מהמכשיר בגן';}},
+    {c:'exit',ic:'🕒',t:function(){return '<b>'+fullName()+'</b> החתימה יציאה · '+(ri(4,8))+':'+(ri(10,59))+' שעות היום';}},
+    {c:'reg',ic:'✅',t:function(){return 'נרשמה תלמידה חדשה';}},
+    {c:'reg',ic:'📄',t:function(){return 'הושלם תיק מסמכים';}},
+    {c:'reg',ic:'👥',t:function(){return 'עודכן שיבוץ צוות';}}
+  ];
+  function feedEvent(){
+    var ty=pick(feedTypes);
+    var c=pick(CITIES); var g=pick(c.gans);
+    return {c:ty.c,ic:ty.ic,tx:ty.t(),mt:g.name+' · '+c.name+' · עכשיו'};
+  }
+  function pushFeed(el,ev,cap){
+    var d=document.createElement('div');
+    d.className='ev '+ev.c;
+    d.innerHTML='<div class="ic">'+ev.ic+'</div><div><div class="tx">'+ev.tx+'</div><div class="mt">'+ev.mt+'</div></div>';
+    el.insertBefore(d, el.firstChild);
+    while(el.children.length>(cap||14)) el.removeChild(el.lastChild);
+  }
+  function seedFeed(el,n){
+    for(var i=0;i<n;i++){ var ev=feedEvent(); ev.mt=ev.mt.replace('עכשיו', 'לפני '+ri(1,40)+' דק׳'); pushFeed(el,ev,14); }
+  }
+
+  /* ---------- CITIES VIEW ---------- */
+  var curCity=0, curEdu='all', curGan=null;
+  function fillCitySelects(){
+    var opts=CITIES.map(function(c,i){return '<option value="'+i+'">'+c.name+'</option>';}).join('');
+    ['#citySel','#rCity','#sCity'].forEach(function(sel){
+      var extra = sel==='#citySel'?'':'<option value="all">כל הערים</option>';
+      $(sel).innerHTML=extra+opts;
+    });
+    $('#rCity').value='all'; $('#sCity').value='all';
+  }
+  function openCity(i){ curCity=i; curGan=null; $('#citySel').value=i; renderCityDetail(); }
+  function renderCityDetail(){
+    var c=CITIES[curCity];
+    var gans=c.gans.filter(function(g){return curEdu==='all'||g.edu===curEdu;});
+    var reg=c.gans.filter(function(g){return g.edu==='reg';}).length;
+    var spc=c.gans.filter(function(g){return g.edu==='spc';}).length;
+    var enr=c.gans.reduce(function(a,g){return a+g.enrolled},0);
+    var html='<div class="card pad">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">'+
+        '<div><div class="sec-title" style="font-size:1.15rem">'+c.name+'</div><div class="sec-note">אזור '+c.region+' · משודרת למרכז</div></div>'+
+        '<div class="stat-row">'+
+          '<div class="st"><b>'+c.gan+'</b><span>גנים</span></div>'+
+          '<div class="st"><b>'+he(c.students)+'</b><span>תלמידות</span></div>'+
+          '<div class="st"><b>'+reg+' / '+spc+'</b><span>גני רגיל / מיוחד</span></div>'+
+          '<div class="st"><b>'+c.staff+'</b><span>עובדות</span></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="tbl-wrap" style="margin-top:16px"><table><thead><tr><th>גן</th><th>גיל</th><th>חינוך</th><th>תלמידות</th><th>קיבולת</th><th>מלאות</th><th>גננת</th><th>סטטוס</th></tr></thead><tbody>'+
+      gans.map(function(g,gi){
+        var realIdx=c.gans.indexOf(g);
+        return '<tr class="clickable" data-gi="'+realIdx+'">'+
+          '<td><span class="strong">'+g.name+'</span><div style="font-size:.72rem;color:var(--muted)">סמל '+g.sym+'</div></td>'+
+          '<td class="n">'+g.age+'</td>'+
+          '<td><span class="pill '+(g.edu==='reg'?'reg':'spc')+'">'+(g.edu==='reg'?'רגיל':'מיוחד')+'</span></td>'+
+          '<td class="n strong">'+g.enrolled+'</td>'+
+          '<td class="n">'+g.cap+'</td>'+
+          '<td>'+fill(g.enrolled,g.cap)+' <span style="font-size:.74rem;color:var(--muted)">'+Math.round(g.enrolled/g.cap*100)+'%</span></td>'+
+          '<td>'+g.teacher+'</td>'+
+          '<td>'+(g.on?'<span class="pill ok">פעיל</span>':'<span class="pill off">כבוי</span>')+'</td>'+
+        '</tr>';
+      }).join('')+
+      '</tbody></table></div></div>';
+    $('#cityDetail').innerHTML=html;
+    $$('#cityDetail tbody tr').forEach(function(tr){ tr.addEventListener('click',function(){ openGan(+tr.dataset.gi); }); });
+    if(curGan!=null) renderGanDetail(); else $('#ganDetail').innerHTML='';
+  }
+  function openGan(idx){ curGan=idx; renderGanDetail(); $('#ganDetail').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'}); }
+  function renderGanDetail(){
+    var c=CITIES[curCity]; var g=c.gans[curGan];
+    if(!g){$('#ganDetail').innerHTML='';return;}
+    /* sample students */
+    var names=[]; for(var i=0;i<Math.min(8,g.enrolled);i++) names.push(pick(TEACHER_F)+' '+pick(TEACHER_L));
+    var roster=[{r:'גננת',n:g.teacher},{r:'סייעת',n:fullName()},{r:'סייעת ב׳',n:fullName()}];
+    if(g.edu==='spc'){roster.push({r:'סייעת רפואית',n:fullName()});roster.push({r:'סייעת צמודה',n:fullName()});}
+    var html='<div class="card pad" style="border-color:color-mix(in srgb,var(--accent) 30%,var(--border))">'+
+      '<button class="backlink" id="ganBack">↩ חזרה לרשימת הגנים</button>'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-top:8px">'+
+        '<div><div class="sec-title" style="font-size:1.2rem">'+g.name+' <span class="pill '+(g.edu==='reg'?'reg':'spc')+'">'+(g.edu==='reg'?'חינוך רגיל':'חינוך מיוחד')+'</span></div>'+
+        '<div class="sec-note">'+c.name+' · אזור '+g.region+' · סמל '+g.sym+'</div></div>'+
+        '<div class="stat-row">'+
+          '<div class="st"><b>'+g.enrolled+'</b><span>תלמידות</span></div>'+
+          '<div class="st"><b>'+g.cap+'</b><span>קיבולת</span></div>'+
+          '<div class="st"><b>'+Math.round(g.enrolled/g.cap*100)+'%</b><span>מלאות</span></div>'+
+          '<div class="st"><b>גיל '+g.age+'</b><span>שכבה</span></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="grid-2" style="margin-top:16px">'+
+        '<div><div class="sec-title" style="font-size:.96rem">צוות הגן</div>'+
+          '<div class="tbl-wrap" style="margin-top:8px"><table style="min-width:auto"><tbody>'+
+          roster.map(function(m){return '<tr><td><span class="pill reg">'+m.r+'</span></td><td class="strong">'+m.n+'</td></tr>';}).join('')+
+          '</tbody></table></div></div>'+
+        '<div><div class="sec-title" style="font-size:.96rem">תלמידות (מדגם)</div>'+
+          '<div class="tbl-wrap" style="margin-top:8px"><table style="min-width:auto"><tbody>'+
+          names.map(function(n){return '<tr><td class="strong">'+n+'</td><td style="color:var(--muted);font-size:.8rem">גיל '+g.age+'</td></tr>';}).join('')+
+          '</tbody></table></div>'+
+          '<div class="sec-note" style="margin-top:8px">מציג 8 מתוך '+g.enrolled+' — בהדמיה. במערכת האמת: כל התיקים.</div>'+
+        '</div>'+
+      '</div></div>';
+    $('#ganDetail').innerHTML=html;
+    $('#ganBack').addEventListener('click',function(){ curGan=null; renderGanDetail(); $('#cityDetail').scrollIntoView({behavior:reduce?'auto':'smooth'}); });
+  }
+
+  /* ---------- REPORTS ---------- */
+  function allGans(){
+    var arr=[]; CITIES.forEach(function(c){c.gans.forEach(function(g){arr.push({g:g,city:c.name});});}); return arr;
+  }
+  function renderReports(){
+    var ci=$('#rCity').value, edu=$('#rEdu').value, age=$('#rAge').value;
+    var list=allGans().filter(function(o){
+      if(ci!=='all' && o.city!==CITIES[+ci].name) return false;
+      if(edu!=='all' && o.g.edu!==edu) return false;
+      if(age!=='all' && o.g.age!=+age) return false;
+      return true;
+    });
+    list.sort(function(a,b){return (b.g.enrolled/b.g.cap)-(a.g.enrolled/a.g.cap);});
+    var totS=list.reduce(function(a,o){return a+o.g.enrolled},0);
+    var totC=list.reduce(function(a,o){return a+o.g.cap},0);
+    var avg=list.length?Math.round(totS/list.length):0;
+    var occ=totC?Math.round(totS/totC*100):0;
+    var full=list.filter(function(o){return o.g.enrolled/o.g.cap>=0.92;}).length;
+    $('#rKpis').innerHTML=[
+      {l:'גנים בסינון',v:list.length},
+      {l:'תלמידות',v:he(totS)},
+      {l:'ממוצע לגן',v:avg,cls:'kaccent'},
+      {l:'אחוז מלאות כללי',v:occ+'%',cls:'kaccent'},
+      {l:'גנים מלאים (92%+)',v:full}
+    ].map(function(r){return '<div class="card kpi"><div class="kl">'+r.l+'</div><div class="kv '+(r.cls||'')+'">'+r.v+'</div></div>';}).join('');
+    $('#rCount').textContent=list.length+' גנים';
+    var max=1; list.forEach(function(o){max=Math.max(max,o.g.enrolled/o.g.cap);});
+    $('#reportBars').innerHTML=list.map(function(o){
+      var p=Math.round(o.g.enrolled/o.g.cap*100);
+      var hot=p>=92;
+      return '<div style="display:grid;grid-template-columns:190px 1fr 110px;gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">'+
+        '<div style="min-width:0"><span class="strong" style="font-size:.9rem">'+o.g.name+'</span> <span style="font-size:.74rem;color:var(--muted)">'+o.city+'</span></div>'+
+        '<div class="fillbar" style="height:13px"><i class="'+(hot?'hot':'')+'" style="width:'+Math.min(100,p)+'%"></i></div>'+
+        '<div style="text-align:left;font-size:.84rem"><span class="strong num">'+p+'%</span> <span style="color:var(--muted)">'+o.g.enrolled+'/'+o.g.cap+'</span></div>'+
+        '</div>';
+    }).join('') || '<div class="sec-note">אין גנים בסינון זה.</div>';
+  }
+
+  /* ---------- STAFF ---------- */
+  function fillRoleSel(){
+    $('#sRole').innerHTML='<option value="all">הכל</option>'+ROLES.map(function(r){return '<option>'+r+'</option>';}).join('');
+  }
+  function renderStaff(){
+    var ci=$('#sCity').value, role=$('#sRole').value;
+    var list=STAFF.filter(function(s){
+      if(ci!=='all' && s.city!==CITIES[+ci].name) return false;
+      if(role!=='all' && s.role!==role) return false;
+      return true;
+    });
+    var byRole={}; list.forEach(function(s){byRole[s.role]=(byRole[s.role]||0)+1;});
+    var onNow=list.filter(function(s){return s.on;}).length;
+    $('#sKpis').innerHTML=[
+      {l:'עובדות בסינון',v:list.length},
+      {l:'מחוברות כעת',v:onNow,cls:'kaccent',live:true},
+      {l:'גננות',v:byRole['גננת']||0},
+      {l:'סייעות',v:(byRole['סייעת']||0)+(byRole['סייעת ב׳']||0)},
+      {l:'תפקידים מיוחדים',v:(byRole['סייעת רפואית']||0)+(byRole['סייעת צמודה']||0)}
+    ].map(function(r){return '<div class="card kpi'+(r.live?' live-kpi':'')+'"><div class="kl">'+(r.live?'<span class="minidot"></span> ':'')+r.l+'</div><div class="kv '+(r.cls||'')+'">'+r.v+'</div></div>';}).join('');
+    $('#sCount').textContent=list.length+' עובדות';
+    $('#staffTable tbody').innerHTML=list.map(function(s){
+      return '<tr><td class="strong">'+s.name+'</td><td><span class="pill reg">'+s.role+'</span></td><td class="num">'+s.tz+'</td><td>'+s.city+'</td><td>'+s.gan+'</td>'+
+        '<td>'+(s.on?'<span class="pill live"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> מחוברת</span>':'<span class="pill off">לא פעילה</span>')+'</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="color:var(--muted)">אין עובדות בסינון זה.</td></tr>';
+  }
+
+  /* ---------- LIVE HOURS ---------- */
+  function hoursOf(w){ return (Date.now()-w.start)/3600000; }
+  function fmtHM(h){ var hh=Math.floor(h); var mm=Math.floor((h-hh)*60); return hh+':'+(mm<10?'0':'')+mm; }
+  function renderWorkers(){
+    $('#wCount').textContent=LIVE.length+' פעילות';
+    $('#workerList').innerHTML=LIVE.map(function(w,i){
+      var h=hoursOf(w); var pay=h*w.rate;
+      return '<div class="worker on" data-wi="'+i+'">'+
+        '<div><div class="wn">'+w.name+'</div><div class="wm"><span class="pill reg" style="font-size:.68rem;padding:2px 7px">'+w.role+'</span> · '+w.gan+' · '+w.city+' · <span class="src">'+(w.src==='phone'?'📞 טלפון':'🖥️ מכשיר בגן')+'</span></div></div>'+
+        '<div><div class="wh" data-h="'+i+'">'+fmtHM(h)+'</div><div class="ws wsal" data-p="'+i+'">₪'+Math.round(pay)+' · '+w.rate+'₪/ש׳</div></div>'+
+        '</div>';
+    }).join('');
+  }
+  function tickWorkers(){
+    LIVE.forEach(function(w,i){
+      var h=hoursOf(w), pay=h*w.rate;
+      var he_=$('.wh[data-h="'+i+'"]'); var pe=$('.ws[data-p="'+i+'"]');
+      if(he_) he_.textContent=fmtHM(h);
+      if(pe) pe.innerHTML='₪'+Math.round(pay)+' · '+w.rate+'₪/ש׳';
+    });
+    /* headline stats */
+    var totH=0, totP=0; LIVE.forEach(function(w){var h=hoursOf(w); totH+=h; totP+=h*w.rate;});
+    /* add "already left today" baseline so numbers feel network-wide */
+    var baseH= LIVE.length*4.2, baseP=baseH*42;
+    $('#hlOn').textContent=he(LIVE.length);
+    $('#hlTotal').textContent=he(TOT.staff);
+    $('#hlHours').textContent=he(Math.round(totH+baseH));
+    $('#hlPay').textContent='₪'+he(Math.round(totP+baseP));
+    $('#hlPunch').textContent=he(punchesToday);
+  }
+  var punchTypes=[
+    {c:'enter',ic:'📞',v:'כניסה · טלפון אוטומטי'},
+    {c:'enter',ic:'🖥️',v:'כניסה · מכשיר בגן'},
+    {c:'exit',ic:'🚪',v:'יציאה · טלפון אוטומטי'},
+    {c:'exit',ic:'🚪',v:'יציאה · מכשיר בגן'}
+  ];
+  function punchEvent(){
+    var ty=pick(punchTypes); var c=pick(CITIES); var g=pick(c.gans); var role=pick(ROLES);
+    var extra = ty.c==='exit' ? (' · '+ri(4,8)+':'+(ri(10,59))+' ש׳ · ₪'+ri(150,340)) : '';
+    return {c:ty.c,ic:ty.ic,tx:'<b>'+fullName()+'</b> · '+ty.v, mt:role+' · '+g.name+' · '+c.name+extra};
+  }
+
+  /* ---------- TABS ---------- */
+  function switchTab(v){
+    $$('.tab').forEach(function(t){var on=t.dataset.view===v; t.setAttribute('aria-selected',on?'true':'false');});
+    $$('.view').forEach(function(s){s.classList.toggle('active', s.id==='view-'+v);});
+    if(v==='reports') renderReports();
+    if(v==='staff') renderStaff();
+    if(v==='cities') renderCityDetail();
+    if(v==='hours') renderWorkers();
+    window.scrollTo({top:0,behavior:reduce?'auto':'smooth'});
+  }
+  $('#tabs').addEventListener('click',function(e){var b=e.target.closest('.tab'); if(b) switchTab(b.dataset.view);});
+
+  /* ---------- FILTER EVENTS ---------- */
+  $('#citySel').addEventListener('change',function(){curCity=+this.value;curGan=null;renderCityDetail();});
+  $('#eduChips').addEventListener('click',function(e){var b=e.target.closest('.chipbtn'); if(!b)return;
+    $$('#eduChips .chipbtn').forEach(function(x){x.setAttribute('aria-pressed','false');});
+    b.setAttribute('aria-pressed','true'); curEdu=b.dataset.edu; curGan=null; renderCityDetail();});
+  ['#rCity','#rEdu','#rAge'].forEach(function(s){$(s).addEventListener('change',renderReports);});
+  ['#sCity','#sRole'].forEach(function(s){$(s).addEventListener('change',renderStaff);});
+
+  /* ---------- THEME ---------- */
+  $('#themeBtn').addEventListener('click',function(){
+    var root=document.documentElement;
+    var cur=root.getAttribute('data-theme');
+    var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var next = cur? (cur==='dark'?'light':'dark') : (sysDark?'light':'dark');
+    root.setAttribute('data-theme',next);
+    renderEduDonut();
+  });
+
+  /* ---------- CLOCK ---------- */
+  var WD=['יום ראשון','יום שני','יום שלישי','יום רביעי','יום חמישי','יום שישי','שבת'];
+  function tickClock(){
+    var d=new Date();
+    var t=d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    $('#clock').firstChild.nodeValue=t;
+    $('#datewd').textContent=' · '+WD[d.getDay()];
+  }
+
+  /* ---------- INIT ---------- */
+  fillCitySelects(); fillRoleSel();
+  renderKpis(); renderCityTable(); renderEduDonut(); renderAgeBars();
+  renderCityDetail(); renderReports(); renderStaff(); renderWorkers();
+  feedEl=$('#feed'); seedFeed(feedEl,7);
+  var pf=$('#punchFeed'); (function(){ for(var i=0;i<7;i++){var e=punchEvent(); e.mt=e.mt+' · לפני '+ri(1,25)+' דק׳'; pushFeed(pf,e,12);} })();
+  tickWorkers(); tickClock();
+
+  /* ---------- LIVE LOOPS ---------- */
+  setInterval(tickClock,1000);
+  setInterval(tickWorkers,1000);
+  if(!reduce){
+    setInterval(function(){ pushFeed(feedEl,feedEvent(),14); },4200);
+    setInterval(function(){ pushFeed($('#punchFeed'),punchEvent(),12); punchesToday++; },5200);
+    setInterval(function(){ renderKpis(); },9000);
+  } else {
+    setInterval(function(){ pushFeed(feedEl,feedEvent(),14); },9000);
+    setInterval(function(){ pushFeed($('#punchFeed'),punchEvent(),12); punchesToday++; },11000);
+  }
+})();
+</script>
+</body>
+</html>
