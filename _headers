@@ -1,0 +1,18 @@
+# Cloudflare Pages headers
+# Applied automatically when the site is served from Cloudflare Pages.
+# Note: no Content-Security-Policy is set here on purpose, so the
+# Firebase / Google Apps Script connections keep working untouched.
+
+# Baseline security headers for every response
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Service worker must always be revalidated so PWA updates reach users immediately
+/sw.js
+  Cache-Control: no-cache
+
+# App manifest should revalidate too
+/manifest.webmanifest
+  Cache-Control: no-cache
