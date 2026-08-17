@@ -1193,7 +1193,7 @@ function setActiveEdu(v){ activeEdu=v; eduPicked=true; setEduPref(v); }
 /* ---------- תבניות רשומות ---------- */
 function makeStudent(){ return {
   id:uid(), year:DB.activeYear, tz:"", firstName:"", lastName:"", dob:"",
-  motherName:"", fatherName:"", phone:"", mobile:"", street:"", building:"", city:"",
+  motherName:"", fatherName:"", phone:"", mobile:"", dadMobile:"", momMobile:"", email:"", street:"", building:"", city:"",
   campus:"", // קמפוס גנים (סעיף 1)
   ganId:"", age:"", period:"א", education:"רגיל",
   registeredByUs:true, absorbedMunicipality:false, finished:false,
@@ -2152,8 +2152,8 @@ function driveErrHe(e){
 const SHEET_TITLE = "רשת הגנים מודיעין עילית — נתונים (שיקוף)";
 function buildSheetPayload(){
   const yn=v=>v?"כן":"לא";
-  const stuHeaders=["שנה","שם משפחה","שם פרטי",'ת"ז',"גן","קמפוס","גיל","מועד","חינוך","משובצת","קלוט בעירייה","נרשמה על ידינו","ביטוח שולם","טלפון","נייד","רחוב","בניין","עיר","סטטוס","הערות"];
-  const stuRows=DB.students.map(s=>[s.year,s.lastName,s.firstName,s.tz,ganName(s.ganId),ganCampus(s.ganId)||s.campus||"",s.age,s.period,eduLabel(s),yn(s.placed!==false),yn(s.absorbedMunicipality),yn(s.registeredByUs),yn(s.insurancePaid),s.phone,s.mobile,s.street,s.building,s.city,(s.finished?"סיימה":"פעילה"),s.notes]);
+  const stuHeaders=["שנה","שם משפחה","שם פרטי",'ת"ז',"גן","קמפוס","גיל","מועד","חינוך","משובצת","קלוט בעירייה","נרשמה על ידינו","ביטוח שולם","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","בניין","עיר","סטטוס","הערות"];
+  const stuRows=DB.students.map(s=>[s.year,s.lastName,s.firstName,s.tz,ganName(s.ganId),ganCampus(s.ganId)||s.campus||"",s.age,s.period,eduLabel(s),yn(s.placed!==false),yn(s.absorbedMunicipality),yn(s.registeredByUs),yn(s.insurancePaid),s.phone,s.dadMobile||"",s.momMobile||s.mobile||"",s.email||"",s.street,s.building,s.city,(s.finished?"סיימה":"פעילה"),s.notes]);
   const ganHeaders=["שם הגן","סמל פנימי","סמל גן","גיל","חינוך","גננת","קמפוס","כתובת","בניין","אזור","טל' גן","נייד גננת","קיבולת","רשומות (שנה פעילה)","פעיל"];
   const ganRows=DB.gans.map(g=>[g.ganName,g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.teacherName,g.campus,g.address,g.building,g.zone,g.phoneGan,g.teacherMobile,g.capacity,studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length,yn(g.active)]);
   const staffHeaders=["שם משפחה","שם פרטי",'ת"ז',"תפקיד","חינוך","טלפון","נייד","מייל","עיר","הערות"];
@@ -2731,8 +2731,10 @@ function openStudent(s){
       <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
-      <div><label>טלפון</label><input id="s-phone" value="${esc(s.phone)}" inputmode="tel"></div>
-      <div><label>נייד</label><input id="s-mobile" value="${esc(s.mobile)}" inputmode="tel"></div>
+      <div><label>טלפון בית</label><input id="s-phone" value="${esc(s.phone)}" inputmode="tel"></div>
+      <div><label>נייד אב</label><input id="s-dadMobile" value="${esc(s.dadMobile)}" inputmode="tel"></div>
+      <div><label>נייד אם</label><input id="s-momMobile" value="${esc(s.momMobile || ((!s.dadMobile && !s.momMobile) ? (s.mobile||"") : ""))}" inputmode="tel"></div>
+      <div><label>דוא"ל</label><input id="s-email" value="${esc(s.email)}" inputmode="email" dir="ltr" style="text-align:right"></div>
     </div>
   </fieldset>
   <fieldset><legend>כתובת</legend>
@@ -3001,7 +3003,9 @@ function openStudent(s){
       dob: val("s-dob") || (isISODate(normDateVal(s.dob))?"":String(s.dob||"")), // אל תאבד ערך גולמי שלא זוהה כתאריך
 
       motherName:val("s-motherName"), fatherName:val("s-fatherName"),
-      phone:val("s-phone"), mobile:val("s-mobile"),
+      phone:val("s-phone"), dadMobile:val("s-dadMobile"), momMobile:val("s-momMobile"),
+      email:val("s-email"),
+      mobile:(val("s-momMobile")||val("s-dadMobile")||""),   // נייד ראשי (תאימות לתצוגות/יצוא/שיקוף קיימים)
       street:val("s-street"), building:val("s-building"), city:val("s-city"),
       campus: (ganCampus(val("s-ganId")) || val("s-campus")),   // קמפוס נגזר מהגן
       ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
@@ -5335,8 +5339,11 @@ const EXPORT_FIELDS = [
   ["dob","תאריך לידה",s=>fmtDate(s.dob)],
   ["motherName","שם האם",s=>s.motherName],
   ["fatherName","שם האב",s=>s.fatherName],
-  ["phone","טלפון",s=>s.phone],
+  ["phone","טלפון בית",s=>s.phone],
   ["mobile","נייד",s=>s.mobile],
+  ["dadMobile","נייד אב",s=>s.dadMobile],
+  ["momMobile","נייד אם",s=>s.momMobile],
+  ["email",'דוא"ל',s=>s.email],
   ["street","רחוב",s=>s.street],
   ["building","בניין",s=>s.building],
   ["city","עיר",s=>s.city],
@@ -5711,6 +5718,7 @@ async function approveReg(rec, after){
   const s=makeStudent(); s.year=year;
   const nmWords=String(d.childName||"").trim().split(/\s+/); s.lastName=nmWords[0]||""; s.firstName=nmWords.slice(1).join(" ")||"";
   s.tz=digits(d.childTz||""); s.dob=d.dob||"";
+  s.dadMobile=d.dadMobile||""; s.momMobile=d.momMobile||"";
   s.mobile=d.momMobile||d.dadMobile||""; s.phone=d.homePhone||"";
   s.street=d.address||""; s.email=d.email||"";
   if(g){ s.ganId=g.id; s.campus=ganCampus(g.id)||""; s.education=eduLabel(g); }
