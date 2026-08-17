@@ -1661,7 +1661,8 @@ function guideContent(){
       `<p>כשמצרפים קובץ בתיק ילדה, המערכת יוצרת לה <b>תיקייה משלה ב-Google Drive</b> ושומרת בה את הקבצים בשמות ברורים — כך שקל למצוא כל מסמך.</p>`+
       illTree+
       `<ul>
-        <li><b>תיקייה לכל ילדה</b> — נוצרת אוטומטית בשם <b>"שם משפחה שם פרטי · ת"ז"</b> (למשל: אבו מיכל · 123456789), תחת חלוקה לפי <b>חינוך</b> (רגיל/מיוחד) ולפי <b>שנה</b>.</li>
+        <li><b>תיקייה לכל ילדה</b> — נוצרת אוטומטית בשם <b>"שם משפחה שם פרטי · ת"ז"</b> (למשל: אבו מיכל · 123456789), במבנה <b>חינוך (רגיל/מיוחד) → שנה → גן → ילדה</b>.</li>
+        <li><b>🗂️ ארגון לפי גן</b> — בהגדרות → דרייב יש כפתור "ארגן תיקיות תלמידות לפי גן" שמעביר תיקיות קיימות אל תוך תיקיית הגן שלהן (למי שנוצרו לפני שהמבנה עודכן).</li>
         <li><b>מסמך מזוהה</b> (נספח / צילום ת"ז / תקנון) — נשמר בשם <b>"שם המסמך · שם הילדה · ת"ז"</b> עם סיומת הקובץ המקורית. לדוגמה: <span class="gd-mut">צילום תעודת זהות · אבו מיכל · <span dir="ltr">123456789.pdf</span></span></li>
         <li><b>קבצים כלליים</b> (העלאה מרובה מאזור הדרייב שבתיק) — נשמרים בשם הקובץ המקורי + שם הילדה + ת"ז.</li>
         <li><b>פתיחה וצפייה</b> — כפתור בתיק פותח את תיקיית הילדה; אפשר לצפות ולהוריד כל קובץ.</li>
@@ -1954,7 +1955,8 @@ async function drivePing(){ const res=await driveCall("ping",{}); if(res.rootLin
 async function driveEnsureChildFolder(student){
   if(student.driveFolderId) return student.driveFolderId; // תיקייה קיימת — לא ליצור מחדש (שומר על מבנה קודם)
   const nm=([student.lastName,student.firstName].filter(Boolean).join(" ")+(student.tz?(" · "+student.tz):"")) || ("ילדה "+student.id);
-  const res=await driveCall("childFolder", { year:String(student.year), name:nm, edu:eduLabel(student) }); // חלוקה לפי חינוך (סעיף 12)
+  const gan=student.ganId?ganName(student.ganId):""; // תיקיית גן בתוך השנה (מבנה: חינוך → שנה → גן → ילדה)
+  const res=await driveCall("childFolder", { year:String(student.year), name:nm, edu:eduLabel(student), gan }); // חלוקה לפי חינוך (סעיף 12)
   student.driveFolderId=res.folderId; student.driveFolder=res.folderLink;
   const i=DB.students.findIndex(x=>x.id===student.id); if(i>=0){ DB.students[i].driveFolderId=res.folderId; DB.students[i].driveFolder=res.folderLink; }
   DB.settings.drive=DB.settings.drive||{}; if(res.rootLink) DB.settings.drive.rootLink=res.rootLink;
@@ -1962,6 +1964,32 @@ async function driveEnsureChildFolder(student){
   return res.folderId;
 }
 async function driveListFolder(folderId){ const res=await driveCall("list", { folderId }); return res.files||[]; }
+/* ארגון מחדש: העברת תיקיות התלמידות הקיימות אל תוך תיקיית הגן שלהן (מבנה חדש: חינוך → שנה → גן → ילדה).
+   דורש גשר מעודכן (פעולת childMove). התיקיות מזוהות לפי driveFolderId ומועברות לפי הגן הנוכחי. */
+function openReorgFolders(){
+  if(!DRIVE_READY){ toast("חיבור הדרייב אינו מוגדר"); return; }
+  const list=DB.students.filter(s=>s.driveFolderId);
+  modal(`<h3>ארגון תיקיות התלמידות לפי גן</h3>
+    <div class="sub">מעביר את תיקיות התלמידות הקיימות אל תוך תיקיית הגן שלהן, לפי המבנה: חינוך → שנה → <b>גן</b> → ילדה. פעולה בטוחה וניתנת לחזרה (הקבצים בתוך התיקיות נשארים).</div>
+    <div class="note" style="margin-top:8px">נמצאו <b>${list.length}</b> תיקיות תלמידות. הפעולה דורשת <b>גשר מעודכן</b> (ראה ההנחיות). ניתן להריץ שוב בכל עת.</div>
+    <div id="reorg-out" style="margin-top:10px"></div>
+    <div class="foot"><button class="btn" id="reorg-go" style="margin-inline-start:auto">🗂️ ארגן עכשיו</button><button class="btn ghost" id="reorg-close">סגירה</button></div>`);
+  $("#reorg-close").onclick=closeModal;
+  $("#reorg-go").onclick=async ()=>{
+    const out=$("#reorg-out"); const go=$("#reorg-go"); go.disabled=true;
+    if(!list.length){ out.innerHTML=`<div class="hint">אין תיקיות להעביר.</div>`; return; }
+    let ok=0, fail=0;
+    for(let i=0;i<list.length;i++){ const s=list[i];
+      out.innerHTML=`<div class="hint">מארגן ${i+1} מתוך ${list.length}…</div>`;
+      try{ await driveCall("childMove", { folderId:s.driveFolderId, year:String(s.year), edu:eduLabel(s), gan:(s.ganId?ganName(s.ganId):"") }); ok++; }
+      catch(e){ console.error("reorg",e); fail++;
+        if(String(e&&e.message||e).indexOf("unknown-action")>=0){ out.innerHTML=`<div class="note" style="background:var(--bad-soft);color:var(--bad);border-color:var(--bad)">הגשר עדיין לא עודכן (חסרה פעולת childMove). יש לעדכן את ה-Apps Script ולפרוס מחדש, ואז לנסות שוב.</div>`; go.disabled=false; return; } }
+    }
+    save();
+    out.innerHTML=`<div class="note" style="background:var(--good-soft);color:var(--good);border-color:var(--good)">✅ אורגנו ${ok} תיקיות לפי גן.${fail?` · ${fail} נכשלו.`:""}</div>`;
+    toast(`אורגנו ${ok} תיקיות${fail?` · ${fail} נכשלו`:""}`); go.disabled=false;
+  };
+}
 
 /* ============================================================
    ייבוא מרוכז של מסמכים מהדרייב לפי גן (נספח / תקנון / צילום ת"ז / אחר)
@@ -2168,9 +2196,10 @@ function renderDriveBox(){
   const auto=!!DB.settings.sheetAuto;
   box.innerHTML=`
     <div class="note">✅ חיבור הדרייב פעיל דרך הגשר. כל משתמש בתוכנה יכול ליצור תיקיות, להעלות ולצפות במסמכים — מהמייל שלו, בלי חיבור Google אישי.</div>
-    <div class="row" style="margin-top:10px">
+    <div class="row" style="margin-top:10px;flex-wrap:wrap">
       <button class="btn ghost" id="drive-ping" type="button">🔄 בדיקת חיבור</button>
       ${d.rootLink?`<a class="btn ghost" href="${esc(d.rootLink)}" target="_blank">📂 פתח תיקיית האב בדרייב</a>`:''}
+      <button class="btn ghost" id="drive-reorg" type="button" title="מבנה: חינוך → שנה → גן → ילדה">🗂️ ארגן תיקיות תלמידות לפי גן</button>
     </div>
     <div style="margin-top:16px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)">
       <div class="row" style="align-items:center;gap:8px;margin-bottom:6px"><b>📊 שיקוף ל-Google Sheets</b></div>
@@ -2199,6 +2228,7 @@ function renderDriveBox(){
       <div id="drive-shares" style="margin-top:8px"></div>
     </div>`;
   $("#drive-ping").onclick=async ()=>{ try{ await drivePing(); toast("החיבור לגשר תקין ✓"); renderDriveBox(); }catch(e){ toast(driveErrHe(e)); } };
+  { const rb=$("#drive-reorg"); if(rb) rb.onclick=openReorgFolders; }
   const sheetBtn=$("#sheet-sync"); if(sheetBtn) sheetBtn.onclick=()=>syncToSheets(false);
   const sheetAuto=$("#sheet-auto"); if(sheetAuto) sheetAuto.onchange=()=>{ DB.settings=DB.settings||{}; DB.settings.sheetAuto=sheetAuto.checked; save(); toast(sheetAuto.checked?"שיקוף אוטומטי הופעל":"שיקוף אוטומטי כובה"); };
   let lastShares=[];
