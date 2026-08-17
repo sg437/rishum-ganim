@@ -1,0 +1,231 @@
+<!doctype html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>רישום לגני ילדים</title>
+<style>
+  :root{--bg:#f6f2e9;--card:#fffdf7;--ink:#182b20;--muted:#6a8072;--line:#d8ccb0;--accent:#2c6a4c;--accent2:#1f4d37;--bad:#a5342b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Assistant","Heebo",Arial,sans-serif;direction:rtl;padding:14px}
+  .wrap{max-width:820px;margin:0 auto}
+  .doc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 8px 30px rgba(24,43,32,.08)}
+  .hd{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--accent);padding-bottom:10px;margin-bottom:8px}
+  .hd .lg{width:64px;height:64px;object-fit:contain;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;font-size:40px;background:#111;color:#fff}
+  .hd .t .t1{font-weight:800;font-size:16px}
+  .hd .t .t2{color:var(--muted);font-weight:700;font-size:12px;margin-top:2px}
+  h1{font-size:20px;text-align:center;margin:12px 0 2px}
+  .sub-title{text-align:center;font-weight:800;color:var(--accent2);margin-bottom:14px}
+  fieldset{border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 14px}
+  legend{font-weight:800;padding:0 8px;color:var(--accent2)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  .grid.g1{grid-template-columns:1fr}
+  label{display:block;font-weight:700;font-size:.86rem;margin-bottom:4px}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit;color:inherit}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+  input[readonly]{background:#f0ece2;color:var(--muted)}
+  .fixed{background:#f3efe6;border-radius:10px;padding:10px 12px;font-size:.92rem;line-height:1.7}
+  .fixed b{color:var(--accent2)}
+  .pledge{line-height:1.9;font-size:.95rem}
+  .sign-wrap{border:1px dashed var(--accent);border-radius:10px;background:#fff;position:relative}
+  canvas{width:100%;height:150px;display:block;touch-action:none;border-radius:10px}
+  .sign-clear{position:absolute;top:6px;inset-inline-start:6px;font-size:.8rem;padding:4px 10px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer}
+  .btn{background:var(--accent);color:#fff;border:none;padding:12px 20px;border-radius:12px;font-weight:800;font-size:1rem;cursor:pointer}
+  .btn:hover{background:var(--accent2)}
+  .btn:disabled{opacity:.6;cursor:default}
+  .note{background:#eef6ef;border:1px solid #cfe6d5;border-radius:10px;padding:10px 12px;color:var(--accent2);margin-top:10px}
+  .note.bad{background:#f7e2df;border-color:#e6b8b1;color:var(--bad)}
+  .up-row{display:flex;flex-direction:column;gap:8px}
+  .file-lbl{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:#fff;font-weight:700}
+  .hint{color:var(--muted);font-size:.82rem}
+  .center{text-align:center}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="doc" id="formCard" style="display:none">
+    <div class="hd">
+      <div class="lg" id="logo">🎒</div>
+      <div class="t"><div class="t1" id="ownName">רשת גני ילדים</div><div class="t2" id="ownAddr"></div></div>
+    </div>
+    <h1 id="mainTitle">רישום לגני ילדים</h1>
+    <div class="sub-title">נספח ד'</div>
+
+    <fieldset>
+      <legend id="boxTitle">אישור בקשה לרישום לגן מוכר שאינו רשמי</legend>
+      <div class="fixed" id="ownerBlock"></div>
+
+      <div class="grid" style="margin-top:12px">
+        <div><label>שם התלמיד/ה</label><input id="childName" autocomplete="off"></div>
+        <div><label>מספר תעודת זהות</label><input id="childTz" inputmode="numeric" autocomplete="off"></div>
+        <div><label>תאריך הלידה</label><input id="dob" type="date"></div>
+        <div><label>טלפון בית</label><input id="homePhone" inputmode="tel"></div>
+        <div><label>נייד אב</label><input id="dadMobile" inputmode="tel"></div>
+        <div><label>נייד אם</label><input id="momMobile" inputmode="tel"></div>
+        <div class="g1" style="grid-column:1 / -1"><label>כתובת</label><input id="address"></div>
+        <div class="g1" style="grid-column:1 / -1"><label>דוא"ל</label><input id="email" type="email" inputmode="email"></div>
+      </div>
+
+      <div class="grid" style="margin-top:6px">
+        <div><label>שם הגן המבוקש</label><input id="ganName" list="ganList" autocomplete="off" placeholder="הקלד/י לחיפוש גן…"><datalist id="ganList"></datalist></div>
+        <div><label>סמל הגן</label><input id="ganSymbol" readonly placeholder="יתמלא אוטומטית"></div>
+        <div class="g1" style="grid-column:1 / -1"><label>כתובת הגן</label><input id="ganAddress" readonly></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>הצהרת הורה</legend>
+      <div class="pledge">
+        אני (שם ההורה) <input id="parentName" style="width:auto;display:inline-block;min-width:180px" autocomplete="off"> ת.ז. <input id="parentTz" style="width:auto;display:inline-block;min-width:140px" inputmode="numeric" autocomplete="off"><br>
+        מצהיר/ה בזאת כי אני מבצע/ת את הרישום לגני (שם המוסד) <b id="instName">—</b>,
+        סמל המוסד <b id="declSymbol">—</b> ולא רשמתי את הילד/ה לגן אחר.
+      </div>
+      <div class="grid" style="margin-top:12px">
+        <div><label>תאריך</label><input id="declDate" readonly></div>
+        <div>
+          <label>חתימה</label>
+          <div class="sign-wrap"><button type="button" class="sign-clear" id="signClear">נקה</button><canvas id="sign" width="600" height="150"></canvas></div>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>העלאת מסמכים</legend>
+      <div class="hint" style="margin-bottom:8px">יש לצרף צילום <b>תעודת זהות</b> ו<b>ספח</b> של ההורים (אפשר כמה קבצים).</div>
+      <div class="up-row">
+        <label class="file-lbl">📎 צילום תעודת זהות<input id="fileId" type="file" accept="image/*,.pdf" multiple hidden></label>
+        <div class="hint" id="fileIdList"></div>
+        <label class="file-lbl">📎 ספח<input id="fileSefach" type="file" accept="image/*,.pdf" multiple hidden></label>
+        <div class="hint" id="fileSefachList"></div>
+      </div>
+    </fieldset>
+
+    <div class="center">
+      <button class="btn" id="submitBtn">📤 שליחת הרישום</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="doc" id="loading"><div class="center" style="padding:24px;color:var(--muted)">טוען טופס…</div></div>
+  <div class="doc" id="errCard" style="display:none"><div class="note bad" id="errText"></div></div>
+</div>
+
+<script>
+const BRIDGE = "https://script.google.com/macros/s/AKfycbxC0ywjZFGGb1IOCRhscp5dO9FSv4rEX3_bWV2wEgY05dIq3_OHTqFwU7UveV27KXm1/exec";
+const $ = s => document.querySelector(s);
+async function bridge(action, payload){
+  const json = JSON.stringify(Object.assign({action}, payload||{}));
+  let url = BRIDGE, opts;
+  if(json.length < 6000){ url = BRIDGE + "?data=" + encodeURIComponent(json); opts = { method:"POST" }; }
+  else { opts = { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:json }; }
+  const r = await fetch(url, opts);
+  const data = await r.json();
+  if(data && data.ok === false) throw new Error(data.error || "error");
+  return data;
+}
+function esc(s){ return String(s==null?"":s); }
+function fileToB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]||""); r.onerror=rej; r.readAsDataURL(file); }); }
+function todayStr(){ const d=new Date(); const p=n=>String(n).padStart(2,"0"); return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear(); }
+
+let CONFIG = null, GANS = [];
+
+/* ---- signature pad ---- */
+let sigHasDrawn=false;
+(function(){
+  const cv=$("#sign"), ctx=cv.getContext("2d"); ctx.lineWidth=2.2; ctx.lineCap="round"; ctx.strokeStyle="#12251a";
+  let drawing=false;
+  const pos=e=>{ const r=cv.getBoundingClientRect(); return { x:(e.clientX-r.left)*(cv.width/r.width), y:(e.clientY-r.top)*(cv.height/r.height) }; };
+  cv.addEventListener("pointerdown",e=>{ drawing=true; sigHasDrawn=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointermove",e=>{ if(!drawing)return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); });
+  cv.addEventListener("pointerup",()=>drawing=false);
+  $("#signClear").onclick=()=>{ ctx.clearRect(0,0,cv.width,cv.height); sigHasDrawn=false; };
+})();
+function signatureDataUrl(){ return sigHasDrawn ? $("#sign").toDataURL("image/png") : ""; }
+
+/* ---- gan search → symbol / address autofill ---- */
+function wireGan(){
+  const dl=$("#ganList"); dl.innerHTML = GANS.map(g=>`<option value="${esc(g.name)}">`).join("");
+  const apply=()=>{ const v=$("#ganName").value.trim(); const g=GANS.find(x=>x.name===v)||GANS.find(x=>x.name.replace(/\s/g,"")===v.replace(/\s/g,""));
+    $("#ganSymbol").value = g? esc(g.symbol) : "";
+    $("#ganAddress").value = g? esc(g.address) : "";
+    $("#declSymbol").textContent = g? esc(g.symbol) : "—"; };
+  $("#ganName").addEventListener("input", apply); $("#ganName").addEventListener("change", apply);
+}
+
+/* ---- file lists ---- */
+function wireFiles(){
+  const show=(inp,box)=>{ inp.addEventListener("change",()=>{ box.textContent=[...inp.files].map(f=>f.name).join(" · ")||""; }); };
+  show($("#fileId"), $("#fileIdList")); show($("#fileSefach"), $("#fileSefachList"));
+}
+
+/* ---- render config into the form ---- */
+function render(){
+  const o = (CONFIG.ownership)||{};
+  if(CONFIG.logo){ const l=$("#logo"); l.textContent=""; const img=document.createElement("img"); img.src=CONFIG.logo; img.className=""; img.style.cssText="width:100%;height:100%;object-fit:contain;border-radius:10px"; l.style.background="#fff"; l.appendChild(img); }
+  $("#ownName").textContent = o.name || "רשת גני ילדים";
+  $("#ownAddr").textContent = o.address || "";
+  $("#mainTitle").textContent = "רישום לגני ילדים " + (CONFIG.year || "");
+  $("#boxTitle").textContent = "אישור בקשה לרישום לגן מוכר שאינו רשמי לשנה\"ל " + (CONFIG.year || "");
+  $("#instName").textContent = o.institutionName || o.name || "—";
+  $("#ownerBlock").innerHTML =
+    `<div>שם הבעלות: <b>${esc(o.name||"")}</b> · סמל הבעלות: <b>${esc(o.symbol||"")}</b></div>`+
+    `<div>כתובת הבעלות: <b>${esc(o.address||"")}</b>${o.recognizedFrom?` · הכרה מיום: <b>${esc(o.recognizedFrom)}</b>`:""}</div>`+
+    (o.signName?`<div style="margin-top:6px">מורשה חתימת הבעלות: <b>${esc(o.signName)}</b></div>`:"");
+  $("#declDate").value = todayStr();
+  GANS = Array.isArray(CONFIG.gans)? CONFIG.gans : [];
+  wireGan(); wireFiles();
+  $("#loading").style.display="none";
+  $("#formCard").style.display="";
+}
+
+async function load(){
+  try{
+    const res = await bridge("regConfigGet", {});
+    CONFIG = (res && res.config) || {};
+    if(!CONFIG || !Array.isArray(CONFIG.gans) || !CONFIG.gans.length){
+      throw new Error("empty-config");
+    }
+    render();
+  }catch(e){
+    $("#loading").style.display="none";
+    $("#errCard").style.display="";
+    $("#errText").innerHTML = (String(e.message).indexOf("empty-config")>=0 || String(e.message).indexOf("unknown-action")>=0)
+      ? "הטופס עדיין לא פורסם על ידי המערכת. יש לפתוח את התוכנה → הגדרות → רישום דיגיטלי → \"פרסם טופס\" ואז לרענן עמוד זה."
+      : "שגיאה בטעינת הטופס. נסה/י לרענן. ("+esc(e.message)+")";
+  }
+}
+
+$("#submitBtn").onclick = async ()=>{
+  const req=(id,name)=>{ const v=$("#"+id).value.trim(); return v; };
+  const childName=req("childName"), childTz=req("childTz"), ganName=$("#ganName").value.trim(), parentName=req("parentName");
+  if(!childName){ return fail("יש להזין שם התלמיד/ה"); }
+  if(!ganName || !$("#ganSymbol").value){ return fail("יש לבחור גן מהרשימה (כדי שהסמל יתמלא)"); }
+  if(!parentName){ return fail("יש להזין שם ההורה בהצהרה"); }
+  if(!signatureDataUrl()){ return fail("יש לחתום בחלון החתימה"); }
+  const btn=$("#submitBtn"); btn.disabled=true; msg("שולח…","");
+  try{
+    const files=[];
+    for(const [inp,kind] of [[$("#fileId"),"תעודת זהות"],[$("#fileSefach"),"ספח"]]){
+      for(const f of inp.files){ files.push({ kind, name:f.name, mimeType:f.type||"application/octet-stream", dataB64: await fileToB64(f) }); }
+    }
+    const data={
+      year: CONFIG.year||"", ganSymbol:$("#ganSymbol").value, ganName,
+      childName, childTz, dob:$("#dob").value, homePhone:$("#homePhone").value.trim(),
+      dadMobile:$("#dadMobile").value.trim(), momMobile:$("#momMobile").value.trim(),
+      address:$("#address").value.trim(), email:$("#email").value.trim(), ganAddress:$("#ganAddress").value,
+      parentName, parentTz:$("#parentTz").value.trim(), declDate:$("#declDate").value,
+      signature: signatureDataUrl(), submittedAt:new Date().toISOString()
+    };
+    await bridge("regSubmit", { data, files });
+    $("#formCard").innerHTML = `<div class="center" style="padding:30px"><div style="font-size:52px">✅</div><h1>הרישום התקבל!</h1><div class="note">הבקשה נשלחה בהצלחה וממתינה לאישור. תודה רבה 🙏</div></div>`;
+    window.scrollTo(0,0);
+  }catch(e){ btn.disabled=false; fail("שליחה נכשלה: "+esc(e.message)); }
+};
+function msg(t,cls){ const m=$("#msg"); m.innerHTML = t?`<div class="note ${cls||''}">${esc(t)}</div>`:""; }
+function fail(t){ msg(t,"bad"); window.scrollTo(0,document.body.scrollHeight); }
+
+load();
+</script>
+</body>
+</html>
