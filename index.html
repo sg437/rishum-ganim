@@ -1694,8 +1694,12 @@ function guideContent(){
 
     { icon:"📄", title:"מסמכים ותבניות", html:
       `<ul>
-        <li>לשונית <b>מסמכים ותבניות</b> → <b>📋 רשימת גן</b>: בוחרים גן ולוחצים <b>הפקה והדפסה</b> או <b>📎 שיתוף מסמך</b>.</li>
-        <li>נוצרת רשימת התלמידות בגן (שם, ת"ז, גיל, טלפונים, כתובת) עם כותרת ממותגת (הלוגו, שם הרשת ופרטי הגן) — מוכנה להדפסה או <b>שמירה כ-PDF</b>.</li>
+        <li><b>📋 רשימת גן</b>: בוחרים גן ולוחצים <b>הפקה והדפסה</b> או <b>📎 שיתוף מסמך</b>. נוצרת רשימת התלמידות בגן (שם, ת"ז, גיל, טלפונים, כתובת) עם כותרת ממותגת (הלוגו, שם הרשת ופרטי הגן).</li>
+        <li><b>🧩 מצבת שיבוץ צוות</b> — בשתי תבניות:
+          <ul>
+            <li><b>🏢 למשרד הראשי</b> — כל הגנים, מסודר לפי גן עם כל אנשי הצוות, ימים ושעות שבועיות, <b>צבע לכל תפקיד + מקרא</b>.</li>
+            <li><b>🏛️ למשרד החינוך</b> — תבנית "מצבת משרד החינוך" (שורה לכל גן, 32 עמודות) ל<b>אקסל</b> או PDF. את פרטי הרכז/ת, המנהל והמזכיר/ה ממלאים פעם אחת ב<b>"✏️ פרטי כותרת"</b> והם מופיעים אוטומטית בראש.</li>
+          </ul></li>
         <li>סימון <b>"התאם לעמוד אחד"</b> מכווץ רשימה ארוכה לעמוד יחיד.</li>
       </ul>` },
 
@@ -3628,35 +3632,17 @@ function ganPlaceLine(g){
 }
 /* בניית מסמך HTML ממותג עצמאי: לוגו הרשת + כותרת · פרטי המקום (subtitle) · טבלה.
    onePage=true → התאמת הכול לעמוד אחד (זום אוטומטי בטעינה). autoPrint=true → הדפסה מיד. */
-function buildReportHtml({ title, subtitle, headers, rows, onePage=false, landscape=false, footNote="" }, { autoPrint=false }={}){
-  const logo=appLogo(), isImg=/^(https?:|data:)/i.test(logo);
-  const logoEl = isImg ? `<img class="lg" src="${esc(logo)}">` : `<span class="lg em">${esc(logo)}</span>`;
+function buildReportHtml(opts, { autoPrint=false }={}){
+  const { onePage=false, landscape=false }=opts;
   const style=`<style>
     @page{size:A4 ${landscape?'landscape':'portrait'};margin:12mm}
-    *{box-sizing:border-box} html,body{margin:0}
-    body{font-family:"Assistant","Heebo",Arial,sans-serif;direction:rtl;color:#12251a;padding:10mm}
-    .doc-hd{display:flex;align-items:center;gap:14px;border-bottom:3px solid #2c6a4c;padding-bottom:10px;margin-bottom:6px}
-    .doc-hd .lg{width:56px;height:56px;object-fit:contain;border-radius:12px;flex:0 0 auto}
-    .doc-hd .lg.em{display:grid;place-items:center;font-size:40px}
-    .doc-hd .t1{font-weight:800;font-size:19px} .doc-hd .t2{color:#6a8072;font-weight:700;font-size:12.5px}
-    h2{font-size:17px;margin:12px 0 3px}
-    .place{color:#2c6a4c;font-weight:800;font-size:14px;margin:2px 0 10px}
-    table{border-collapse:collapse;width:100%;font-size:12.5px}
-    th,td{border:1px solid #c7ddcd;padding:5px 8px;text-align:right} th{background:#e6f3e9;font-weight:800}
-    tr{break-inside:avoid}
-    .foot-note{margin-top:10px;color:#6a8072;font-size:11px}
+    *{box-sizing:border-box} html,body{margin:0} body{background:#fff}
   </style>`;
-  const body=`<div class="doc-hd">${logoEl}<div><div class="t1">${esc(appTitle())}</div><div class="t2">${esc(appSubtitle())}</div></div></div>
-    <h2>${esc(title)}</h2>
-    ${subtitle?`<div class="place">${esc(subtitle)}</div>`:""}
-    <table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
-    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table>
-    ${footNote?`<div class="foot-note">${esc(footNote)}</div>`:""}`;
   const scr=`<script>(function(){var onePage=${onePage?'true':'false'},landscape=${landscape?'true':'false'},autoPrint=${autoPrint?'true':'false'};
     function go(){try{if(onePage){var availMm=landscape?186:273,avail=availMm*96/25.4,h=document.body.scrollHeight;if(h>avail)document.body.style.zoom=Math.max(0.4,avail/h);}}catch(e){}
     if(autoPrint){setTimeout(function(){try{window.focus();window.print();}catch(e){}},300);}}
     if(document.readyState!=='loading')go();else window.addEventListener('DOMContentLoaded',go);})();<\/script>`;
-  return `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${esc(title)}</title>${style}</head><body>${body}${scr}</body></html>`;
+  return `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${esc(opts.title)}</title>${style}</head><body>${reportInnerHtml(opts)}${scr}</body></html>`;
 }
 /* הדפסה/PDF ממותג — פותח חלון ומדפיס (התאמה לעמוד אחד מתבצעת בתוך המסמך) */
 function printReport(opts){
@@ -3665,9 +3651,12 @@ function printReport(opts){
 }
 function safeFileName(s){ return String(s||"דוח").replace(/[\\/:*?"<>|\n\r]+/g,"_").slice(0,90); }
 /* תוכן המסמך הממותג (ללא עטיפת HTML) — לשימוש ברינדור ל-PDF. סגנונות משויכים ל-.rep-doc */
-function reportInnerHtml({ title, subtitle, headers, rows, footNote="" }){
+function reportInnerHtml({ title, subtitle, headers, rows, bodyHtml, footNote="" }){
   const logo=appLogo(), isImg=/^(https?:|data:)/i.test(logo);
   const logoEl = isImg ? `<img class="lg" src="${esc(logo)}">` : `<span class="lg em">${esc(logo)}</span>`;
+  const content = (bodyHtml!=null) ? bodyHtml
+    : `<table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
+       <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
   return `<style>
     .rep-doc{font-family:"Assistant","Heebo",Arial,sans-serif;direction:rtl;color:#12251a;background:#fff;padding:20px}
     .rep-doc .doc-hd{display:flex;align-items:center;gap:14px;border-bottom:3px solid #2c6a4c;padding-bottom:10px;margin-bottom:6px}
@@ -3676,18 +3665,21 @@ function reportInnerHtml({ title, subtitle, headers, rows, footNote="" }){
     .rep-doc .doc-hd .t1{font-weight:800;font-size:19px}
     .rep-doc .doc-hd .t2{color:#6a8072;font-weight:700;font-size:12.5px}
     .rep-doc h2{font-size:17px;margin:12px 0 3px}
+    .rep-doc h3{font-size:14.5px;margin:14px 0 4px;color:#1f4d37}
     .rep-doc .place{color:#2c6a4c;font-weight:800;font-size:14px;margin:2px 0 10px}
-    .rep-doc table{border-collapse:collapse;width:100%;font-size:12.5px}
+    .rep-doc table{border-collapse:collapse;width:100%;font-size:12.5px;margin-bottom:6px}
     .rep-doc th,.rep-doc td{border:1px solid #c7ddcd;padding:5px 8px;text-align:right}
     .rep-doc th{background:#e6f3e9;font-weight:800}
+    .rep-doc .gan-block{break-inside:avoid;margin-bottom:12px}
+    .rep-doc .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid #c7ddcd;font-size:11.5px}
+    .rep-doc .legend .sw{display:inline-block;width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.15);vertical-align:-2px;margin-inline-start:5px}
     .rep-doc .foot-note{margin-top:10px;color:#6a8072;font-size:11px}
   </style>
   <div class="rep-doc">
     <div class="doc-hd">${logoEl}<div><div class="t1">${esc(appTitle())}</div><div class="t2">${esc(appSubtitle())}</div></div></div>
     <h2>${esc(title)}</h2>
     ${subtitle?`<div class="place">${esc(subtitle)}</div>`:""}
-    <table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
-    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    ${content}
     ${footNote?`<div class="foot-note">${esc(footNote)}</div>`:""}
   </div>`;
 }
@@ -3813,6 +3805,115 @@ function makeGanRoster(ganId, opts){
     headers, rows, onePage:!!opts.onePage, fileName:"רשימת גן "+ganName(ganId) };
   if(opts.share) shareReportDoc(rep); else printReport(rep);
 }
+
+/* ============================================================
+   יצוא שיבוץ למשרדים (סעיף 7)
+   ============================================================ */
+/* פרטי איש צוות המשובץ בתפקיד בגן (שם/טלפון/ימים) + רשומת הצוות המלאה */
+function asgStaffInfo(a, role){ const c=a[role]||{}; const m=c.staffId?DB.staff.find(x=>x.id===c.staffId):null;
+  return { name:c.name||(m?staffName(m):""), phone:c.phone||(m?(m.mobile||m.phone||""):"")||"", days:(c.days||[]), m }; }
+
+/* ---- 7.2 · מצבת למשרד הראשי — מסודר לפי גן, כל אנשי הצוות עם צבע לפי התפקיד ---- */
+function makeAsgMainOffice(opts){
+  opts=opts||{};
+  const gans=eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+  const rolesUsed=new Set();
+  const blocks=gans.map(g=>{
+    const a=ganAsg(g.id,'activity');
+    const rows=assignRoles().map(meta=>{
+      const c=a[meta.role]; if(!c || !(c.name||c.staffId)) return "";
+      rolesUsed.add(meta.role);
+      const info=asgStaffInfo(a,meta.role);
+      const hours=(HOURS_ROLES.includes(meta.role)&&info.m&&info.m.weeklyHours)?esc(info.m.weeklyHours):"";
+      const daysTxt=info.days.length?info.days.join(", "):asgExtraText(meta.role,c);
+      const col=roleColor(meta.role), bg=col?` style="background:${hexToRgba(col,.20)}"`:"";
+      return `<tr${bg}><td>${esc(meta.role)}</td><td><b>${esc(info.name)}</b></td><td>${esc(info.phone)}</td><td>${esc(daysTxt)}</td><td>${hours}</td></tr>`;
+    }).filter(Boolean).join("");
+    if(!rows) return "";
+    const reg=studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length;
+    const meta=[g.age?("גיל "+g.age):"", g.ganSymbol?("סמל "+g.ganSymbol):"", [g.address,g.building].filter(Boolean).join(" "), reg+" תלמידות"].filter(Boolean).join(" · ");
+    return `<div class="gan-block"><h3>${esc(ganName(g.id))}${meta?` — ${esc(meta)}`:""}</h3>
+      <table><thead><tr><th style="width:22%">תפקיד</th><th>שם</th><th style="width:15%">טלפון</th><th style="width:20%">ימים / תקופה</th><th style="width:12%">שעות שבועיות</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).filter(Boolean).join("");
+  if(!blocks){ toast("אין שיבוצים להצגה"); return; }
+  const legendRoles=[...rolesUsed].filter(r=>roleColor(r));
+  const legend=legendRoles.length?`<div class="legend"><b style="margin-inline-end:6px">מקרא תפקידים:</b>${legendRoles.map(r=>`<span><span class="sw" style="background:${roleColor(r)}"></span>${esc(r)}</span>`).join("")}</div>`:"";
+  const rep={ title:"מצבת שיבוץ צוות — משרד ראשי", subtitle:`שנת ${DB.activeYear} · ${gans.length} גנים`,
+    bodyHtml:blocks+legend, onePage:!!opts.onePage, landscape:true, fileName:"מצבת שיבוץ ראשי "+DB.activeYear };
+  if(opts.share) shareReportDoc(rep); else printReport(rep);
+}
+
+/* ---- 7.1 · מצבת למשרד החינוך — תבנית לפי קובץ "מצבת משרד החינוך" ---- */
+const MOE_HEADERS=["עיר","מחוז","שם הבעלות","שם הגן","סמל מוסד","כתובת הגן","מס' טלפון בגן","שם פרטי ומשפחה","כתובת","עיר מגורים","טלפון גננת","טלפון נוסף","דרגה","וותק","תאריך לידה","מספר ת.ז.",'כתובת דוא"ל',"גיל 3","גיל 4","גיל 5",'סה"כ',"מין","מס' בנים","מס' בנות","יום חופשי של הגננת","גננת משלימה",'גננת שי"ח',"שם סייעת","טלפון סייעת","שם סייעת נוספת","טלפון סייעת נוספת","צהרון"];
+function moeHeaderData(){ return Object.assign({ city:DB.municipality||"", district:"", ownership:appTitle()||"",
+  coordName:"",coordPhone:"",coordEmail:"", mgrName:"",mgrPhone:"",mgrEmail:"", secName:"",instPhone:"",secEmail:"" }, (DB.settings&&DB.settings.moeHeader)||{}); }
+function moeRow(g,h){
+  const a=ganAsg(g.id,'activity');
+  const gannet=asgStaffInfo(a,'גננת'), mash=asgStaffInfo(a,'גננת משלימה'), shiluv=asgStaffInfo(a,'גננת שילוב'),
+        saya=asgStaffInfo(a,'סייעת'), sayaB=asgStaffInfo(a,"סייעת ב'");
+  const t=gannet.m;
+  const inGan=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished);
+  const byAge=n=>inGan.filter(s=>String(s.age)===n).length||"";
+  return [
+    h.city, h.district, h.ownership, ganName(g.id), g.ganSymbol||g.internalSymbol||"", [g.address,g.building].filter(Boolean).join(" "), g.phoneGan||"",
+    gannet.name||g.teacherName||"", t?[t.street,t.building].filter(Boolean).join(" "):"", t?t.city||"":"", gannet.phone||(t?(t.mobile||t.phone||""):"") , t?t.phone||"":"", "", "", "", t?t.tz||"":"", t?t.email||"":"",
+    byAge('3'), byAge('4'), byAge('5'), inGan.length||"", "", "", "",
+    mash.days.join(", "), mash.name, shiluv.name, saya.name, saya.phone, sayaB.name, sayaB.phone, ""
+  ];
+}
+function moeGans(){ return eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he")); }
+function moeExport(kind){
+  const h=moeHeaderData(), gans=moeGans();
+  if(!gans.length){ toast("אין גנים פעילים"); return; }
+  if(kind==='csv'){
+    const N=32, blank=()=>new Array(N).fill("");
+    const l1=blank(); l1[3]="רכז/ת";l1[4]="טל' רכז/ת";l1[5]='דוא"ל רכז/ת';l1[6]="מנהל";l1[7]="טל' מנהל";l1[8]='דוא"ל מנהל';l1[9]="מזכיר/ה";l1[10]="טלפון מוסד";l1[11]='דוא"ל מזכיר';
+    const l2=blank(); l2[3]=h.coordName;l2[4]=h.coordPhone;l2[5]=h.coordEmail;l2[6]=h.mgrName;l2[7]=h.mgrPhone;l2[8]=h.mgrEmail;l2[9]=h.secName;l2[10]=h.instPhone;l2[11]=h.secEmail;
+    const gh=blank(); gh[0]="פרטי גן";gh[7]="פרטי גננת";gh[17]="מס' ילדים";gh[24]="פרטים מנהליים";
+    const all=[l1,l2,blank(),gh,MOE_HEADERS].concat(gans.map(g=>moeRow(g,h)));
+    const csv=all.map(r=>r.map(csvCell).join(",")).join("\r\n");
+    downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `מצבת משרד החינוך ${DB.activeYear}.csv`); toast("קובץ אקסל נוצר"); return;
+  }
+  const top=`<table style="margin-bottom:10px;font-size:11px"><tbody>
+    <tr><td><b>רכז/ת</b></td><td>${esc(h.coordName)}</td><td><b>טל'</b></td><td>${esc(h.coordPhone)}</td><td><b>דוא"ל</b></td><td>${esc(h.coordEmail)}</td></tr>
+    <tr><td><b>מנהל</b></td><td>${esc(h.mgrName)}</td><td><b>טל'</b></td><td>${esc(h.mgrPhone)}</td><td><b>דוא"ל</b></td><td>${esc(h.mgrEmail)}</td></tr>
+    <tr><td><b>מזכיר/ה</b></td><td>${esc(h.secName)}</td><td><b>טלפון מוסד</b></td><td>${esc(h.instPhone)}</td><td><b>דוא"ל</b></td><td>${esc(h.secEmail)}</td></tr></tbody></table>`;
+  const grp=`<tr><th colspan="7">פרטי גן</th><th colspan="10">פרטי גננת</th><th colspan="7">מס' ילדים</th><th colspan="8">פרטים מנהליים</th></tr>`;
+  const cols=`<tr>${MOE_HEADERS.map(x=>`<th>${esc(x)}</th>`).join("")}</tr>`;
+  const body=gans.map(g=>`<tr>${moeRow(g,h).map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("");
+  const rep={ title:"מצבת משרד החינוך", subtitle:`שנת ${DB.activeYear} · ${gans.length} גנים`,
+    bodyHtml:top+`<div style="overflow-x:auto"><table style="font-size:8.5px">${grp}${cols}${body}</table></div>`,
+    landscape:true, onePage:!!(kind==='pdfOnePage'), fileName:"מצבת משרד החינוך "+DB.activeYear };
+  if(kind==='share') shareReportDoc(rep); else printReport(rep);
+}
+function openMoeHeaderForm(){
+  const h=moeHeaderData();
+  modal(`<h3>פרטי כותרת — משרד החינוך</h3>
+   <div class="sub">הפרטים נשמרים פעם אחת ומופיעים אוטומטית בראש כל יצוא למשרד החינוך.</div>
+   <div class="grid g3">
+     <div><label>עיר</label><input id="moe-city" value="${esc(h.city)}"></div>
+     <div><label>מחוז</label><input id="moe-district" value="${esc(h.district)}"></div>
+     <div><label>שם הבעלות</label><input id="moe-ownership" value="${esc(h.ownership)}"></div>
+     <div><label>רכז/ת</label><input id="moe-coordName" value="${esc(h.coordName)}"></div>
+     <div><label>טל' רכז/ת</label><input id="moe-coordPhone" value="${esc(h.coordPhone)}"></div>
+     <div><label>דוא"ל רכז/ת</label><input id="moe-coordEmail" value="${esc(h.coordEmail)}"></div>
+     <div><label>מנהל</label><input id="moe-mgrName" value="${esc(h.mgrName)}"></div>
+     <div><label>טל' מנהל</label><input id="moe-mgrPhone" value="${esc(h.mgrPhone)}"></div>
+     <div><label>דוא"ל מנהל</label><input id="moe-mgrEmail" value="${esc(h.mgrEmail)}"></div>
+     <div><label>מזכיר/ה</label><input id="moe-secName" value="${esc(h.secName)}"></div>
+     <div><label>טלפון מוסד</label><input id="moe-instPhone" value="${esc(h.instPhone)}"></div>
+     <div><label>דוא"ל מזכיר</label><input id="moe-secEmail" value="${esc(h.secEmail)}"></div>
+   </div>
+   <div class="foot"><button class="btn" id="moe-save" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="moe-cancel">ביטול</button></div>`);
+  $("#moe-cancel").onclick=closeModal;
+  $("#moe-save").onclick=()=>{ const v=id=>$("#"+id).value.trim();
+    DB.settings=DB.settings||{};
+    DB.settings.moeHeader={ city:v("moe-city"),district:v("moe-district"),ownership:v("moe-ownership"),
+      coordName:v("moe-coordName"),coordPhone:v("moe-coordPhone"),coordEmail:v("moe-coordEmail"),
+      mgrName:v("moe-mgrName"),mgrPhone:v("moe-mgrPhone"),mgrEmail:v("moe-mgrEmail"),
+      secName:v("moe-secName"),instPhone:v("moe-instPhone"),secEmail:v("moe-secEmail") };
+    save(); closeModal(); toast("פרטי הכותרת נשמרו"); };
+}
 function viewTemplates(root){
   const gans = eduScope(DB.gans.filter(g=>g.active)).slice()
     .sort((a,b)=>(ganName(a.id)).localeCompare(ganName(b.id),"he"));
@@ -3830,10 +3931,36 @@ function viewTemplates(root){
         <label class="check" style="align-self:center"><input type="checkbox" id="tpl-roster-onepage"> התאם לעמוד אחד</label>
       </div>
     </fieldset>
+    <fieldset><legend>🧩 מצבת שיבוץ צוות</legend>
+      <div class="hint" style="margin-bottom:10px">יצוא מצבת השיבוץ (הקשר "פעילות הגן") בשתי תבניות.</div>
+      <div style="padding:10px 12px;background:var(--surface-2);border-radius:12px;margin-bottom:10px">
+        <b>🏢 למשרד הראשי</b> — כל הגנים, מסודר לפי גן עם כל אנשי הצוות, ימים ושעות שבועיות, צבע לפי התפקיד + מקרא.
+        <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn" id="tpl-hq-print">🖨️ הפקה והדפסה</button>
+          <button class="btn ghost" id="tpl-hq-share">📎 שיתוף מסמך</button>
+          <label class="check" style="align-self:center"><input type="checkbox" id="tpl-hq-onepage"> התאם לעמוד אחד</label>
+        </div>
+      </div>
+      <div style="padding:10px 12px;background:var(--surface-2);border-radius:12px">
+        <b>🏛️ למשרד החינוך</b> — תבנית "מצבת משרד החינוך" (שורה לכל גן, 32 עמודות). פרטי הרכז/ת והמנהל נשמרים ומופיעים אוטומטית בראש.
+        <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn ghost" id="tpl-moe-header">✏️ פרטי כותרת</button>
+          <button class="btn" id="tpl-moe-csv">⬇️ ייצוא לאקסל (CSV)</button>
+          <button class="btn ghost" id="tpl-moe-pdf">🖨️ הדפסה / PDF</button>
+          <button class="btn ghost" id="tpl-moe-share">📎 שיתוף מסמך</button>
+        </div>
+      </div>
+    </fieldset>
     <div class="note">💡 בחלון ההדפסה שנפתח אפשר לבחור מדפסת אמיתית או "שמירה כ-PDF" (Save as PDF) כדי לשמור קובץ.</div>
   </div>`;
   $("#tpl-roster-go").onclick=()=>{ const gid=$("#tpl-roster-gan").value; if(!gid){ toast("יש לבחור גן"); return; } makeGanRoster(gid, { onePage:$("#tpl-roster-onepage").checked }); };
   $("#tpl-roster-share").onclick=()=>{ const gid=$("#tpl-roster-gan").value; if(!gid){ toast("יש לבחור גן"); return; } makeGanRoster(gid, { onePage:$("#tpl-roster-onepage").checked, share:true }); };
+  $("#tpl-hq-print").onclick=()=>makeAsgMainOffice({ onePage:$("#tpl-hq-onepage").checked });
+  $("#tpl-hq-share").onclick=()=>makeAsgMainOffice({ onePage:$("#tpl-hq-onepage").checked, share:true });
+  $("#tpl-moe-header").onclick=openMoeHeaderForm;
+  $("#tpl-moe-csv").onclick=()=>moeExport('csv');
+  $("#tpl-moe-pdf").onclick=()=>moeExport('pdf');
+  $("#tpl-moe-share").onclick=()=>moeExport('share');
 }
 
 /* ============================================================
