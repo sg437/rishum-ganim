@@ -1609,6 +1609,7 @@ function guideContent(){
       `<ul>
         <li>שיבוץ לפי <b>שנה</b> ולפי <b>הקשר</b>: פעילות הגן · צהרונים · קייטנות.</li>
         <li>בוחרים גן, ומשבצים צוות לפי תפקיד (שם + טלפון מהמאגר). למשלימה — <b>ימים</b>; לממלאת מקום — <b>תקופה</b>.</li>
+        <li><b>שעות שבועיות</b> — לתפקידים הרפואיים/שילוב/תגבור/הכנה לכ"א/מנתחת התנהגות מזינים את מספר השעות <b>בשיבוץ</b>, והן מתעדכנות אוטומטית לתיק איש הצוות.</li>
         <li>"סייעת ב'" נפתחת רק כשהגן מגיע לסף בנות.</li>
         <li><b>🏖️ יום חופשי אוטומטי</b> — כשמשובצת <b>משלימה</b> בימים מסוימים, בעל/ת התפקיד הראשי/ת ביום חופשי באותם ימים: גננת משלימה → הגננת · סייעת משלימה → הסייעת · סייעת רפואית משלימה → הסייעת הרפואית. מופיע בלשונית השיבוץ, בתיק איש הצוות, וביצוא השיבוץ.</li>
         <li>ייצוא/הדפסה/שיתוף של השיבוץ (עם/בלי טלפונים) — <b>לכל הגנים או לגן בודד</b> לפי בחירה.</li>
@@ -3848,7 +3849,7 @@ function makeAsgMainOffice(opts){
       const c=a[meta.role]; if(!c || !(c.name||c.staffId)) return "";
       rolesUsed.add(meta.role);
       const info=asgStaffInfo(a,meta.role);
-      const hours=(HOURS_ROLES.includes(meta.role)&&info.m&&info.m.weeklyHours)?esc(info.m.weeklyHours):"";
+      const hours=HOURS_ROLES.includes(meta.role)?esc(c.hours||(info.m&&info.m.weeklyHours)||""):"";
       let daysTxt=info.days.length?info.days.join(", "):asgExtraText(meta.role,c);
       if(free[meta.role] && free[meta.role].length) daysTxt=`🏖️ יום חופשי: ${free[meta.role].join(", ")}`;
       const col=roleColor(meta.role), bg=col?` style="background:${hexToRgba(col,.20)}"`:"";
@@ -4498,7 +4499,7 @@ function openStaff(m){
       <div><label>רחוב</label><input id="st-street" value="${esc(m.street)}"></div>
       <div><label>מספר בית</label><input id="st-building" value="${esc(m.building)}"></div>
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
-      <div id="st-hours-wrap" style="display:${HOURS_ROLES.includes(m.role)?'':'none'}"><label>מספר שעות שבועיות</label><input id="st-weeklyHours" value="${esc(m.weeklyHours)}" inputmode="numeric"></div>
+      <div id="st-hours-wrap" style="display:${HOURS_ROLES.includes(m.role)?'':'none'}"><label>מספר שעות שבועיות</label><input id="st-weeklyHours" value="${esc(m.weeklyHours)}" inputmode="numeric" readonly title="מתעדכן מהשיבוץ"><div class="hint">מתעדכן אוטומטית מלשונית השיבוץ.</div></div>
     </div>
     <label class="check" style="margin-top:10px;background:var(--warn-soft);border-color:var(--warn)"><input type="checkbox" id="st-left" ${m.active===false?'checked':''}> 🚪 עזב/ה — כבר לא במערכת (מוסתר/ת מהרשימה; הנתונים נשמרים)</label>
     ${(()=>{ const fi=isNew?[]:staffFreeDays(m.id); return fi.length?`<div class="note" style="margin-top:10px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">🏖️ <b>יום חופשי</b> (נגזר אוטומטית מהמשלימות): ${esc(fi.map(f=>f.days.join(", ")+" — "+ganName(f.ganId)).join(" · "))}</div>`:""; })()}
@@ -5048,6 +5049,7 @@ function openGanAssign(ganId){
               <input type="hidden" class="asg-staffid" value="${esc(cur.staffId||'')}"></div>
             <div class="field" style="min-width:130px"><label>טלפון</label><input class="asg-phone" value="${esc(cur.phone||"")}" inputmode="tel"></div>
             ${extraHtml}
+            ${HOURS_ROLES.includes(role)?`<div class="field" style="min-width:110px"><label>שעות שבועיות</label><input class="asg-hours" value="${esc(cur.hours||"")}" inputmode="numeric"></div>`:""}
             <button class="btn ghost sm asg-clear" type="button" title="הסרת השיבוץ בשורה זו">🗑️ הסר</button>
           </div>
           ${kidsHtml}
@@ -5105,9 +5107,13 @@ function openGanAssign(ganId){
       const kids=[...box.querySelectorAll(".asg-kid:checked")].map(x=>x.value); if(kids.length) val.students=kids;
       const dt=box.querySelector(".asg-durtype");
       if(dt&&dt.value){ val.durType=dt.value; if(dt.value==='dates'){ const df=box.querySelector(".asg-durfrom"), dto=box.querySelector(".asg-durto"); if(df&&df.value) val.durFrom=df.value; if(dto&&dto.value) val.durTo=dto.value; } }
-      if(val.staffId||val.name||val.phone||val.days||val.durType||val.students) entry[role]=val;
+      const hrs=box.querySelector(".asg-hours"); if(hrs && hrs.value.trim()) val.hours=hrs.value.trim();
+      if(val.staffId||val.name||val.phone||val.days||val.durType||val.students||val.hours) entry[role]=val;
     });
     if(Object.keys(entry).length) cmap[ganId]=entry; else delete cmap[ganId];
+    /* עדכון שעות שבועיות מהשיבוץ לתיק העובדת (סעיף 9) */
+    Object.keys(entry).forEach(role=>{ const v=entry[role];
+      if(HOURS_ROLES.includes(role) && v && v.staffId && v.hours){ const st=DB.staff.find(x=>x.id===v.staffId); if(st) st.weeklyHours=v.hours; } });
     save(); closeModal(); route(); toast("השיבוץ נשמר");
   };
 }
