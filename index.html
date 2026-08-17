@@ -912,17 +912,18 @@ function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // �
 function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
 /* צבע רקע לפי גיל הגן: 3=ירוק בהיר · 4=סגול בהיר · 5=צהוב בהיר. דו-גילאי = מעבר בין שני הצבעים.
    נעשה שימוש ב-color-mix עם רקע המשטח כדי שהגוון יתאים גם למצב כהה. */
-const AGE_HUE = { "3":"#57b85a", "4":"#9b6fd4", "5":"#e6c34a" };
+const AGE_HUE = { "3":"#37b24d", "4":"#8b4fd4", "5":"#f0c000" };
+const AGE_MIX = 48; // עוצמת הגוון (אחוז מהצבע המלא) — גבוה יותר = צבע חזק יותר
 function ganAgeBg(gan){
   const ages=String(gan&&gan.age||"").split("/").map(x=>x.trim()).filter(Boolean);
   const cols=ages.map(a=>AGE_HUE[a]).filter(Boolean);
   if(!cols.length) return "";
-  const mix=c=>`color-mix(in srgb, ${c} 20%, var(--surface))`;
+  const mix=c=>`color-mix(in srgb, ${c} ${AGE_MIX}%, var(--surface))`;
   return cols.length===1 ? `background:${mix(cols[0])}` : `background:linear-gradient(135deg, ${mix(cols[0])}, ${mix(cols[1])})`;
 }
 /* מקרא צבעי הגילאים — פס קטן להצגה מתחת לרשימות/כרטיסים */
 function ageLegendHtml(){
-  const item=(a,lbl)=>`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);background:color-mix(in srgb, ${AGE_HUE[a]} 20%, var(--surface))"></span>גיל ${lbl}</span>`;
+  const item=(a,lbl)=>`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);background:color-mix(in srgb, ${AGE_HUE[a]} ${AGE_MIX}%, var(--surface))"></span>גיל ${lbl}</span>`;
   return `<div class="hint" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">${item("3","3")} ${item("4","4")} ${item("5","5")} <span style="color:var(--muted)">· גן דו-גילאי במעבר צבעים</span></div>`;
 }
 /* איתור כפילות ת"ז באותה שנה — כולל בין סוגי חינוך שונים (מניעת רישום כפול). מחזיר את הרשומה הקיימת או null */
@@ -2523,8 +2524,9 @@ function renderStuTable(){
       </tr>`).join("")}
   </tbody></table></div>
   <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק.</div>`;
-  /* פס פעולות רשימת הגן — הדפסה/שיתוף ישירות מתוך רשימת התלמידות המסוננת לגן */
+  /* פס פעולות רשימת הגן — חזרה/הדפסה/שיתוף ישירות מתוך רשימת התלמידות המסוננת לגן */
   if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
+    const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gan=""; navToTab('gans'); };
     const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
     const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
   // לחיצה על שורה (מחוץ לכפתורים/תיבות סימון) פותחת את התיק (סעיף 8.4.3)
