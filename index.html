@@ -5838,6 +5838,23 @@ function viewSettings(root){
     <div id="drive-box"></div>
   </div>
 
+  ${admin?`<div class="panel">
+    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">🔗 רישום דיגיטלי — נדרים פלוס</h2><span class="pill warn">בהכנה · לא מחובר</span></div>
+    <div class="sub">חיבור עתידי ל<b>נדרים פלוס</b>: כשהורה נרשם דרך המערכת שלהם (טאבלט בבית הכנסת / אתר), ייפָּתח אוטומטית <b>תיק ילדה</b> אצלנו, המסמכים יעלו ל<b>תיקיית הדרייב</b> שלה, ותתקבל התראה. <b>הממשק מוכן — החיבור הטכני יבוצע בהמשך.</b></div>
+    <div class="note" style="margin-top:10px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
+      <b>מה צריך לקבל מנדרים פלוס כדי לחבר</b> (אפשר להעביר להם את הרשימה):
+      <ul style="margin:6px 0 0;padding-inline-start:20px">
+        <li><b>אחת משתי דרכי העברת נתונים:</b> (א) <b>Webhook / API</b> שדוחף אלינו כל רישום חדש בזמן אמת (מומלץ); או (ב) <b>יצוא Excel</b> קבוע + הקבצים, שנייבא.</li>
+        <li><b>מבנה השדות</b> של רישום (שם, ת"ז, הורים, כתובת, גן מבוקש, וכו') — מסמך שמתאר את העמודות/השדות.</li>
+        <li><b>אופן הגעת הקבצים</b> (נספח/ת"ז) — כקישורים, כקבצים מצורפים, או בתיקיית דרייב.</li>
+        <li>אם יש <b>API</b> — כתובת ה-endpoint ואופן האימות (מפתח/טוקן). <span class="hint" style="display:inline">האישורים יוגדרו בהמשך בצורה מאובטחת בגשר, לא כאן.</span></li>
+      </ul>
+    </div>
+    <div style="margin-top:10px"><label>הערות / פרטי חיבור (לשמירה לעצמכם — למשל תשובת נדרים פלוס, כתובת endpoint)</label>
+      <textarea id="ned-notes" rows="3" placeholder="לרשום כאן פרטים שקיבלתם מנדרים פלוס…">${esc((DB.settings&&DB.settings.nedarim&&DB.settings.nedarim.notes)||"")}</textarea></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" id="ned-save">שמירת הערות</button></div>
+  </div>`:""}
+
   <div class="panel">
     <h2>גיבוי ושחזור</h2>
     <div class="sub">הנתונים נשמרים בענן ומסונכרנים אוטומטית. אפשר לייצא גיבוי JSON, ולשחזר קובץ גיבוי — כולל גיבוי מהגרסה הישנה בטלפון (כך מעבירים את הנתונים שהוזנו שם אל הענן).</div>
@@ -6013,6 +6030,9 @@ function viewSettings(root){
     fbBox.querySelectorAll("[data-fbdel]").forEach(b=> b.onclick=()=>{ if(!confirm("למחוק את הפנייה?")) return; DB.settings.feedback=list.filter(x=>x.id!==b.dataset.fbdel); save(); route(); });
     const ce=$("#contact-email-save"); if(ce) ce.onclick=()=>{ DB.settings.contactEmail=($("#contact-email").value||"").trim(); save(); toast("נשמר"); };
   }
+
+  // רישום דיגיטלי — נדרים פלוס (שמירת הערות)
+  { const ns=$("#ned-save"); if(ns) ns.onclick=()=>{ DB.settings.nedarim=Object.assign({},DB.settings.nedarim,{ notes:($("#ned-notes").value||"").trim() }); save(); toast("ההערות נשמרו"); }; }
 
   // years
   const yb=$("#years-box");
