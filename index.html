@@ -5670,13 +5670,19 @@ function openFeedback(){
     const to=contactEmail();
     const mailSubject="[פנייה מהמערכת] "+(subject||"הצעה/פנייה");
     const body=`${subject?("נושא: "+subject+"\n"):""}${text}\n\n— נשלח על ידי: ${entry.from||contact||"משתמש"}${(contact&&contact!==entry.from)?(" · ליצירת קשר: "+contact):""}`;
-    /* שליחה מהשרת (דרך הגשר) — מגיע אמין למייל; נפילה ל-mailto אם אין גשר/נכשל */
-    if(to && DRIVE_READY){
+    if(!to){ closeModal(); toast("ההודעה נשמרה. כדי לקבלה במייל — יש להגדיר כתובת מייל לפניות (הגדרות → פניות והצעות)."); return; }
+    /* שליחה מהשרת (דרך הגשר) — מגיע אמין למייל */
+    if(DRIVE_READY){
       try{ await driveCall("sendMail",{ to, subject:mailSubject, body }); closeModal(); toast("ההודעה נשלחה למייל ✓ תודה!"); return; }
-      catch(e){ console.error("feedback-mail",e); }
+      catch(e){ const raw=((e&&e.message)||String(e||""));
+        const hint = raw.indexOf("unknown-action")>=0 ? "הגשר לא נפרס מחדש (חסרה פעולת sendMail) — יש לפרוס גרסה חדשה."
+          : /authoriz|permission|scope|mail|exception/i.test(raw) ? "חסרה הרשאת שליחת מייל בגשר — יש להריץ פונקציה פעם אחת בעורך Apps Script ולאשר את הרשאת המייל."
+          : ("שגיאה: "+raw);
+        closeModal(); toast("ההודעה נשמרה, אך השליחה למייל נכשלה — "+hint); return; }
     }
-    closeModal(); toast("ההודעה נשמרה — תודה!");
-    if(to) location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(mailSubject)+"&body="+encodeURIComponent(body);
+    /* אין גשר — נפילה ל-mailto (פותח טיוטה בתוכנת המייל) */
+    closeModal(); toast("ההודעה נשמרה. פותח/ת טיוטת מייל…");
+    location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(mailSubject)+"&body="+encodeURIComponent(body);
   };
 }
 /* ---------- עוזר AI (Claude דרך הגשר) ---------- */
