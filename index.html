@@ -391,6 +391,8 @@ const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינ�
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
 const DEFAULT_STAFF_ROLES = ["גננת","סייעת","סייעת ב'","סייעת רפואית","סייעת רפואית משלימה","סייעת רפואית ממלאת מקום","סייעת צמודה","גננת משלימה","סייעת משלימה","העשרה","גננת שילוב","מנתחת התנהגות",'הכנה לכיתה א׳',"סייעת תגבור","פרא רפואי","גננת ממלאת מקום","סייעת ממלאת מקום"]; // תפקידי צוות (סעיף 2)
 const DEFAULT_CHILD_AGES = ["2","3","4","5","6"]; // גיל ילדה בודדת (סעיף 6)
+/* תפקידים שעבורם מוצג שדה "מספר שעות שבועיות" בתיק איש הצוות */
+const HOURS_ROLES = ["סייעת רפואית","סייעת רפואית ממלאת מקום","סייעת רפואית משלימה","גננת שילוב","סייעת תגבור",'הכנה לכיתה א׳',"מנתחת התנהגות"];
 /* רשימות הניתנות לעריכה בהגדרות (מגובות ב-DB.settings); מסונכרנות ב-syncSettingsLists() */
 let STAFF_ROLES = DEFAULT_STAFF_ROLES.slice();
 let CHILD_AGES = DEFAULT_CHILD_AGES.slice();
@@ -908,6 +910,21 @@ function findSiblings(ref){
 }
 function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // ברירת מחדל: חינוך רגיל
 function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
+/* צבע רקע לפי גיל הגן: 3=ירוק בהיר · 4=סגול בהיר · 5=צהוב בהיר. דו-גילאי = מעבר בין שני הצבעים.
+   נעשה שימוש ב-color-mix עם רקע המשטח כדי שהגוון יתאים גם למצב כהה. */
+const AGE_HUE = { "3":"#57b85a", "4":"#9b6fd4", "5":"#e6c34a" };
+function ganAgeBg(gan){
+  const ages=String(gan&&gan.age||"").split("/").map(x=>x.trim()).filter(Boolean);
+  const cols=ages.map(a=>AGE_HUE[a]).filter(Boolean);
+  if(!cols.length) return "";
+  const mix=c=>`color-mix(in srgb, ${c} 20%, var(--surface))`;
+  return cols.length===1 ? `background:${mix(cols[0])}` : `background:linear-gradient(135deg, ${mix(cols[0])}, ${mix(cols[1])})`;
+}
+/* מקרא צבעי הגילאים — פס קטן להצגה מתחת לרשימות/כרטיסים */
+function ageLegendHtml(){
+  const item=(a,lbl)=>`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);background:color-mix(in srgb, ${AGE_HUE[a]} 20%, var(--surface))"></span>גיל ${lbl}</span>`;
+  return `<div class="hint" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">${item("3","3")} ${item("4","4")} ${item("5","5")} <span style="color:var(--muted)">· גן דו-גילאי במעבר צבעים</span></div>`;
+}
 /* איתור כפילות ת"ז באותה שנה — כולל בין סוגי חינוך שונים (מניעת רישום כפול). מחזיר את הרשומה הקיימת או null */
 function tzClashInYear(tz, year, exceptId){
   const d=digits(tz); if(!d) return null;
@@ -1190,7 +1207,7 @@ function makeStudent(){ return {
 };}
 function makeStaff(){ return {
   id:uid(), lastName:"", firstName:"", name:"", tz:"", email:"", // ת"ז, מייל, שם משפחה/פרטי בנפרד (סעיף 1)
-  role:"סייעת", education:"רגיל", phone:"", mobile:"", city:"", notes:"",
+  role:"סייעת", education:"רגיל", phone:"", mobile:"", city:"", street:"", building:"", weeklyHours:"", notes:"",
   active:true,                       // פעיל/ה במערכת. false = עזב/ה (מוסתר/ת מהרשימה, לא נמחק)
   certificate:false,                 // תעודה (סעיף 17)
   movements:[],                      // כניסה/יציאה באמצע שנה: {type:'entry'|'exit', date, detail} (סעיף 6)
@@ -2243,7 +2260,8 @@ function viewHome(root){
     const spec = eduLabel(g)==='ח"מ';
     const metaBits=[g.ganSymbol?("סמל "+g.ganSymbol):"", g.age?("גיל "+g.age):"", (g.teacherName&&g.teacherName!==nm)?g.teacherName:""].filter(Boolean).join(" · ");
     const tag = isAll ? `<span class="edu-tag ${spec?'spec':'reg'}">${spec?'מיוחד':'רגיל'}</span>` : "";
-    return `<div class="gan-card ${spec?'spec':''}" data-gan="${esc(g.id)}">
+    const ageBg=ganAgeBg(g);
+    return `<div class="gan-card ${spec?'spec':''}" data-gan="${esc(g.id)}"${ageBg?` style="${ageBg}"`:''}>
       <div class="gc-top">
         <div><div class="gname">${esc(nm)}${tag}</div>${metaBits?`<div class="gmeta">${esc(metaBits)}</div>`:''}</div>
         <div class="gcount">${n}<small> ילדות</small></div>
@@ -2275,6 +2293,7 @@ function viewHome(root){
     </div>
     <div class="section-title"><h2 style="font-size:1.1rem">הגנים · מספר ילדות (מתעדכן אונליין)</h2></div>
     <div class="gan-grid">${ganCards}</div>
+    ${perGan.length?ageLegendHtml():""}
   `;
   root.querySelectorAll("[data-gan]").forEach(c=> c.onclick=()=>{ const g=DB.gans.find(x=>x.id===c.dataset.gan); if(g) openGan(g); });
 }
@@ -2466,6 +2485,7 @@ function renderStuTable(){
   /* כשמסוננים לגן ספציפי — פס פעולות מהיר להדפסה/שיתוף של רשימת הגן */
   const selGan = (stuFilter.gan && stuFilter.gan!=='__none__') ? ganById(stuFilter.gan) : null;
   const ganBar = selGan ? `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:10px 12px;background:var(--surface-2);border-radius:12px">
+      <button class="btn ghost sm" id="stuGanBack" type="button">→ חזרה לגנים</button>
       <b style="margin-inline-end:auto">📋 רשימת הגן: ${esc(ganName(selGan.id))}</b>
       <button class="btn ghost sm" id="stuGanPrint" type="button">🖨️ הדפסה</button>
       <button class="btn ghost sm" id="stuGanShare" type="button">📎 שיתוף מסמך</button>
@@ -2473,6 +2493,7 @@ function renderStuTable(){
     </div>` : "";
   if(!list.length){ host.innerHTML = ganBar + `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`;
     if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
+      const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gan=""; navToTab('gans'); };
       const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
       const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
     return; }
@@ -3303,7 +3324,8 @@ function renderGanTable(){
     ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("","סטטוס")}</tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
-      return `<tr data-gid="${esc(g.id)}" class="clickable">
+      const ageBg=ganAgeBg(g);
+      return `<tr data-gid="${esc(g.id)}" class="clickable"${ageBg?` style="${ageBg}"`:''}>
         <td><b>${esc(ganName(g.id))}</b></td>
         <td>${esc(g.internalSymbol)||'—'}</td>
         <td>${esc(g.ganSymbol)||'—'}</td>
@@ -3320,7 +3342,8 @@ function renderGanTable(){
         </tr>`;
     }).join("")}
   </tbody></table></div>
-  <div class="hint">מוצגים ${shownActive} מתוך ${totalActive} גנים פעילים${eduNote}. לחיצה על שורה פותחת את הגן · לחיצה על מספר הרשומות מציגה את תלמידות הגן.</div>`;
+  <div class="hint">מוצגים ${shownActive} מתוך ${totalActive} גנים פעילים${eduNote}. לחיצה על שורה פותחת את הגן · לחיצה על מספר הרשומות מציגה את תלמידות הגן.</div>
+  ${ageLegendHtml()}`;
   host.querySelectorAll(".gan-reg-open").forEach(b=> b.onclick=e=>{ e.stopPropagation(); viewGanStudents(b.dataset.gid); });
   host.querySelectorAll("tr.clickable").forEach(tr=> tr.onclick=e=>{ if(e.target.closest("button,input,a")) return; const g=DB.gans.find(x=>x.id===tr.dataset.gid); if(g) openGan(JSON.parse(JSON.stringify(g))); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(ganSort.key===k) ganSort.dir*=-1; else { ganSort.key=k; ganSort.dir=1; } renderGanTable(); });
@@ -3669,7 +3692,10 @@ function reportInnerHtml({ title, subtitle, headers, rows, footNote="" }){
 let _pdfLibs=null;
 function loadPdfLibs(){
   if(_pdfLibs) return _pdfLibs;
-  const one=src=>new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.onload=res; s.onerror=()=>rej(new Error("load-fail")); document.head.appendChild(s); });
+  const one=src=>new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src;
+    const to=setTimeout(()=>rej(new Error("timeout")), 15000); // אם ה-CDN אינו נגיש — לא נתקע
+    s.onload=()=>{ clearTimeout(to); res(); }; s.onerror=()=>{ clearTimeout(to); rej(new Error("load-fail")); };
+    document.head.appendChild(s); });
   _pdfLibs=(async()=>{
     if(!window.html2canvas) await one("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js");
     if(!(window.jspdf&&window.jspdf.jsPDF)) await one("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js");
@@ -4314,7 +4340,10 @@ function openStaff(m){
       <div><label>חינוך</label><select id="st-education">${EDU_TYPES.map(t=>`<option ${eduLabel(m)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>טלפון</label><input id="st-phone" value="${esc(m.phone)}" inputmode="tel"></div>
       <div><label>נייד</label><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
+      <div><label>רחוב</label><input id="st-street" value="${esc(m.street)}"></div>
+      <div><label>מספר בית</label><input id="st-building" value="${esc(m.building)}"></div>
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
+      <div id="st-hours-wrap" style="display:${HOURS_ROLES.includes(m.role)?'':'none'}"><label>מספר שעות שבועיות</label><input id="st-weeklyHours" value="${esc(m.weeklyHours)}" inputmode="numeric"></div>
     </div>
     <label class="check" style="margin-top:10px;background:var(--warn-soft);border-color:var(--warn)"><input type="checkbox" id="st-left" ${m.active===false?'checked':''}> 🚪 עזב/ה — כבר לא במערכת (מוסתר/ת מהרשימה; הנתונים נשמרים)</label>
     </fieldset>
@@ -4349,10 +4378,14 @@ function openStaff(m){
 
   const val=id=>$("#"+id)?.value.trim()??"";
   { const es=$("#st-email-send"); if(es) es.onclick=()=>{ const e=val("st-email"); if(e) location.href="mailto:"+encodeURIComponent(e); else toast("אין כתובת מייל רשומה"); }; }
+  /* הצגת שדה "שעות שבועיות" רק לתפקידים הרלוונטיים — מתעדכן עם שינוי התפקיד */
+  { const rs=$("#st-role"); if(rs) rs.addEventListener("change",()=>{ const w=$("#st-hours-wrap"); if(w) w.style.display=HOURS_ROLES.includes(rs.value)?"":"none"; }); }
   function readPersonal(){
     m.lastName=val("st-lastName"); m.firstName=val("st-firstName"); m.name=[m.lastName,m.firstName].filter(Boolean).join(" ");
     m.tz=digits(val("st-tz")); m.email=val("st-email"); m.role=val("st-role"); m.education=val("st-education");
     m.phone=val("st-phone"); m.mobile=val("st-mobile"); m.city=val("st-city");
+    m.street=val("st-street"); m.building=val("st-building");
+    m.weeklyHours=HOURS_ROLES.includes(m.role)?val("st-weeklyHours"):"";
     const lf=$("#st-left"); if(lf) m.active = !lf.checked;   // מסומן = עזב/ה
   }
   function persistStaff(){ readPersonal(); const i=DB.staff.findIndex(x=>x.id===m.id); if(i>=0) DB.staff[i]=Object.assign({},m); else DB.staff.push(Object.assign({},m)); save(); }
