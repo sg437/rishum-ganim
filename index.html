@@ -1667,6 +1667,7 @@ function guideContent(){
         <li><b>פתיחה וצפייה</b> — כפתור בתיק פותח את תיקיית הילדה; אפשר לצפות ולהוריד כל קובץ.</li>
         <li><b>מעבר שנה</b> — צילום ת"ז מועתק פיזית לתיקיית הילדה בשנה החדשה (שאר המסמכים עולים מחדש).</li>
         <li><b>צוות</b> — לכל איש/אשת צוות נוצרת תיקייה דומה (לפי חינוך), עם קבצים בשם "שם המסמך · שם · ת"ז".</li>
+        <li><b>📁 ייבוא מסמכים מרוכז (לפי גן)</b> — בלשונית התלמידות → <b>"ייבוא מסמכים (דרייב)"</b>: בוחרים גן ומדביקים קישור לתיקיית הגן בדרייב. המערכת מזהה כל קובץ לפי השם (משפחה ואז פרטי) ולפי הסוג (זהות/תז → צילום ת"ז · נספח · תקנון · כל השאר → "אחר"), <b>מעתיקה לתיקיית כל ילדה</b> בשם המסודר, ו<b>מסמנת בתיק</b>. בסוף מוצג דוח (כמה הותאמו / לא זוהו). כך אין צורך להעלות אחד-אחד.</li>
       </ul>
       <div class="gd-tip">💡 בגרסת הדמו חיבור הדרייב מושבת — פעיל רק בגרסה המתארחת בענן.</div>` },
 
@@ -1961,6 +1962,104 @@ async function driveEnsureChildFolder(student){
   return res.folderId;
 }
 async function driveListFolder(folderId){ const res=await driveCall("list", { folderId }); return res.files||[]; }
+
+/* ============================================================
+   ייבוא מרוכז של מסמכים מהדרייב לפי גן (נספח / תקנון / צילום ת"ז / אחר)
+   ============================================================ */
+/* סוגי מסמכים לזיהוי מתוך שם הקובץ — הסדר קובע עדיפות (ספציפי → כללי) */
+const DOC_IMPORT_TYPES = [
+  { key:"nispach", label:"נספח",              re:/נספח/ },
+  { key:"takanon", label:"תקנון",             re:/תקנון/ },
+  { key:"idCopy",  label:"צילום תעודת זהות",  re:/זהות|תעודת|צילום|ת\s*["'`.]?\s*ז/ }
+];
+function detectDocType(name){ for(const t of DOC_IMPORT_TYPES){ if(t.re.test(name)) return t; } return { key:"other", label:"אחר", re:null }; }
+/* הסרת מילות סוג-המסמך ומספרים כדי לבודד את שם הילדה */
+function stripDocWords(s){
+  return String(s||"")
+    .replace(/\.[a-z0-9]{2,5}$/i,"")                 // סיומת קובץ
+    .replace(/צילום|תעודת|זהות|נספח|תקנון/g," ")
+    .replace(/ת\s*["'`.]?\s*ז/g," ")                 // ת"ז / תז / ת.ז
+    .replace(/\d{4,}/g," ")                           // מספרי ת"ז וכד'
+    .replace(/[_\-.()#]/g," ")
+    .replace(/\s+/g," ").trim();
+}
+function heKey(s){ return String(s||"").replace(/[^א-ת]/g,""); }
+function extractFolderId(s){ s=String(s||"").trim(); const m=s.match(/[-\w]{25,}/); return m?m[0]:s; }
+/* התאמת קובץ לילדה בתוך גן נתון (לפי שם: משפחה ואז פרטי, עם נפילה לסדר הפוך/הכלה) */
+function matchStudentInGan(ganId, fileName){
+  const fk=heKey(stripDocWords(fileName)); if(!fk) return null;
+  const kids=studentsOfYear().filter(s=>s.ganId===ganId && !s.finished);
+  return kids.find(s=>heKey(s.lastName+s.firstName)===fk)
+      || kids.find(s=>heKey(s.firstName+s.lastName)===fk)
+      || kids.find(s=>{ const k=heKey(s.lastName+s.firstName); return k && (fk.indexOf(k)>=0 || k.indexOf(fk)>=0); })
+      || null;
+}
+function docImportNewName(student, label, origName){
+  const ext=(String(origName).match(/\.[a-z0-9]{2,5}$/i)||[""])[0];
+  const nm=[student.lastName,student.firstName].filter(Boolean).join(" ")||"ללא שם";
+  return `${label} · ${nm}${student.tz?(" · "+student.tz):""}${ext}`;
+}
+function openDocImport(){
+  if(!DRIVE_READY){ modal(`<h3>ייבוא מסמכים מהדרייב</h3><div class="note">החיבור לדרייב אינו מוגדר עדיין. יש להשלים את שלב "גשר Drive" בהגדרות/‏SETUP.md.</div><div class="foot"><button class="btn ghost" id="di-close" style="margin-inline-start:auto">סגירה</button></div>`); $("#di-close").onclick=closeModal; return; }
+  const gans=eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+  let scanned=[]; // [{file, type, student}]
+  modal(`<h3>ייבוא מסמכים מהדרייב — לפי גן</h3>
+    <div class="sub">בוחרים גן ומדביקים קישור לתיקיית הגן בדרייב (שבה הקבצים "משפחה פרטי זהות/נספח/תקנון"). המערכת תזהה לפי השם והסוג, תעתיק לתיקיית כל ילדה בשם מסודר ותסמן בתיק.</div>
+    <div class="row" style="align-items:end;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <div class="field" style="min-width:220px"><label>גן</label><select id="di-gan"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${esc(g.id)}">${esc(ganName(g.id))}</option>`).join("")}</select></div>
+      <div class="field grow" style="min-width:240px"><label>קישור לתיקיית הגן בדרייב</label><input id="di-folder" placeholder="הדבק/י כאן קישור לתיקייה"></div>
+      <button class="btn" id="di-scan" type="button">🔎 סריקה</button>
+    </div>
+    <div id="di-result" style="margin-top:12px"></div>
+    <div class="foot">
+      <button class="btn" id="di-run" type="button" style="margin-inline-start:auto" disabled>⬇️ ייבוא</button>
+      <button class="btn ghost" id="di-close" type="button">סגירה</button>
+    </div>`);
+  $("#di-close").onclick=closeModal;
+  const runBtn=()=>$("#di-run");
+  $("#di-scan").onclick=async ()=>{
+    const gid=$("#di-gan").value; const fid=extractFolderId($("#di-folder").value);
+    if(!gid){ toast("יש לבחור גן"); return; }
+    if(!fid){ toast("יש להדביק קישור לתיקייה"); return; }
+    const out=$("#di-result"); out.innerHTML=`<div class="hint">סורק את התיקייה…</div>`;
+    let files; try{ files=await driveListFolder(fid); }catch(e){ out.innerHTML=`<div class="note" style="background:var(--bad-soft);color:var(--bad);border-color:var(--bad)">שגיאה בקריאת התיקייה: ${esc(driveErrHe(e))}</div>`; return; }
+    if(!files.length){ out.innerHTML=`<div class="empty">אין קבצים בתיקייה זו.</div>`; runBtn().disabled=true; return; }
+    scanned=files.map(f=>{ const type=detectDocType(f.name); const student=matchStudentInGan(gid, f.name); return { file:f, type, student }; });
+    const matched=scanned.filter(x=>x.student).length;
+    out.innerHTML=`<div class="hint">נמצאו ${files.length} קבצים · הותאמו <b>${matched}</b> · לא זוהו <b>${files.length-matched}</b>.</div>
+      <div class="table-wrap" style="margin-top:6px"><table><thead><tr><th>קובץ</th><th>סוג</th><th>ילדה שזוהתה</th></tr></thead><tbody>
+      ${scanned.map(x=>`<tr>
+        <td dir="ltr" style="text-align:right">${esc(x.file.name)}</td>
+        <td><span class="pill ${x.type.key==='other'?'neutral':'ok'}">${esc(x.type.label)}</span></td>
+        <td>${x.student?`<b>${esc(x.student.lastName)} ${esc(x.student.firstName)}</b>`:'<span class="pill no">לא זוהתה</span>'}</td></tr>`).join("")}
+      </tbody></table></div>
+      ${matched<files.length?`<div class="hint" style="color:var(--warn)">קבצים שלא זוהו — כדאי לבדוק את שם הקובץ (משפחה ואז פרטי) או להעלות ידנית מתוך תיק הילדה.</div>`:""}`;
+    runBtn().disabled = matched===0;
+  };
+  $("#di-run").onclick=async ()=>{
+    const targets=scanned.filter(x=>x.student); if(!targets.length){ toast("אין התאמות לייבוא"); return; }
+    const out=$("#di-result"); runBtn().disabled=true; $("#di-scan").disabled=true;
+    let ok=0, fail=0;
+    for(let i=0;i<targets.length;i++){
+      const {file, type, student}=targets[i];
+      out.innerHTML=`<div class="hint">מייבא ${i+1} מתוך ${targets.length}… (${esc(student.lastName)} ${esc(student.firstName)})</div>`;
+      try{
+        const st=DB.students.find(x=>x.id===student.id)||student;
+        await driveEnsureChildFolder(st);
+        const res=await driveCall("copy", { fileId:file.id, folderId:st.driveFolderId, name:docImportNewName(st, type.label, file.name) });
+        st.docFiles=st.docFiles||{};
+        const dkey = type.key==='other' ? ('other_'+String(file.id).slice(-6)) : type.key;
+        st.docFiles[dkey]={ id:res.id||"", name:res.name||"", link:res.link||"" };
+        if(["nispach","idCopy","takanon"].includes(type.key)){ st.docs=st.docs||{}; st.docs[type.key]=true; }
+        ok++;
+      }catch(e){ console.error("doc-import",e); fail++; }
+    }
+    save();
+    out.innerHTML=`<div class="note" style="background:var(--good-soft);color:var(--good);border-color:var(--good)">✅ יובאו ${ok} מסמכים לתיקיות הילדות וסומנו בתיק.${fail?` · ${fail} נכשלו.`:""}</div>`;
+    $("#di-scan").disabled=false;
+    toast(`יובאו ${ok} מסמכים${fail?` · ${fail} נכשלו`:""}`);
+  };
+}
 /* תיקיית דרייב לאיש/אשת צוות — מחולקת לפי חינוך רגיל/מיוחד (סעיפים 12, 17) */
 async function driveEnsureStaffFolder(m){
   const nm=(staffName(m)+(m.tz?(" · "+m.tz):"")) || ("צוות "+m.id);
@@ -2318,6 +2417,7 @@ function viewStudents(root){
       <button class="btn ghost" id="exportStu">📤 יצוא רשימות</button>
       <button class="btn ghost" id="importUpdate">⬆️ ייבוא לעדכון (לפי ת"ז)</button>
       <button class="btn ghost" id="importStu">⬆️ ייבוא מקובץ</button>
+      <button class="btn ghost" id="importDocs">📁 ייבוא מסמכים (דרייב)</button>
       <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
     </div>
     <div id="bulkBar"></div>
@@ -2352,6 +2452,7 @@ function viewStudents(root){
   $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#exportStu").onclick = ()=> openExportModal();
   $("#importStu").onclick = ()=> openImport();
+  $("#importDocs").onclick = ()=> openDocImport();
   $("#bulkToggle").onclick = ()=>{ bulkMode=!bulkMode; bulkSel.clear(); viewStudents(root); };
   $("#importUpdate").onclick = ()=> openBulkImport();
   $("#stuFilterToggle").onclick = ()=>{ stuFiltersOpen = $("#stuFilterPanel").hasAttribute("hidden"); viewStudents(root); };
