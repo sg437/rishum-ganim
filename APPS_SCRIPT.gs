@@ -36,7 +36,9 @@ function doPost(e){
     // תומך גם בשליחה דרך שאילתת ה-URL (?data=) וגם בגוף הבקשה — כי Apps Script
     // לעיתים משמיט את גוף ה-POST החוצה-מקור, והנתונים בשאילתה שורדים הפניות.
     var req = JSON.parse((e && e.parameter && e.parameter.data) || (e && e.postData && e.postData.contents) || '{}');
-    if(!verifyToken_(req.idToken)) return json_(out, {ok:false, error:'unauthorized'});
+    // פעולות ציבוריות (טופס הרישום להורים) — ללא צורך בהתחברות
+    var PUBLIC_ACTIONS = { regConfigGet:true, regSubmit:true };
+    if(!PUBLIC_ACTIONS[req.action] && !verifyToken_(req.idToken)) return json_(out, {ok:false, error:'unauthorized'});
     // פעולות ניהול משתמשים פתוחות למנהלי מערכת בלבד.
     if(USER_ACTIONS[req.action]){
       var gate = adminGate_(req.idToken);
@@ -48,6 +50,11 @@ function doPost(e){
       case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan));
       case 'chat':           return json_(out, chat_(req.messages, req.system, req.model));
       case 'sendMail':       return json_(out, sendMail_(req.to, req.subject, req.body));
+      case 'regConfigGet':   return json_(out, regConfigGet_());
+      case 'regConfigSet':   return json_(out, regConfigSet_(req.config));
+      case 'regSubmit':      return json_(out, regSubmit_(req.data, req.files));
+      case 'regList':        return json_(out, regList_());
+      case 'regRemove':      return json_(out, regRemove_(req.id));
       case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
@@ -70,6 +77,81 @@ function doPost(e){
 }
 
 function doGet(e){ return ContentService.createTextOutput('OK'); }
+
+/* ============================================================
+   רישום דיגיטלי — טופס ציבורי להורים (קונפיג, קליטה, רשימה לאישור)
+   ============================================================ */
+function regFolder_(){ return sub_(root_(), 'רישום דיגיטלי'); }
+function putTextFile_(folder, name, content){
+  var it = folder.getFilesByName(name);
+  while(it.hasNext()){ it.next().setTrashed(true); }
+  return folder.createFile(name, content, 'application/json');
+}
+function getTextFile_(folder, name){
+  var it = folder.getFilesByName(name);
+  return it.hasNext() ? it.next().getBlob().getDataAsString() : '';
+}
+/* קונפיג הטופס — נשמר ע"י התוכנה (גנים+סמלים, שנה, פרטי בעלות, מייל התראה) */
+function regConfigSet_(config){ putTextFile_(regFolder_(), 'reg-config.json', JSON.stringify(config || {})); return { ok:true }; }
+function regConfigGet_(){ var t=getTextFile_(regFolder_(), 'reg-config.json'); var c={}; try{ c=JSON.parse(t||'{}'); }catch(e){} return { ok:true, config:c }; }
+/* רשימת הרישומים הממתינים (לתוכנה, לאחר התחברות) */
+function regList_(){ var t=getTextFile_(regFolder_(), 'registrations.json'); var a=[]; try{ a=JSON.parse(t||'[]'); }catch(e){} return { ok:true, items:a }; }
+function regRemove_(id){
+  var f=regFolder_(); var t=getTextFile_(f,'registrations.json'); var a=[]; try{ a=JSON.parse(t||'[]'); }catch(e){}
+  a = a.filter(function(x){ return x.id !== id; });
+  putTextFile_(f, 'registrations.json', JSON.stringify(a)); return { ok:true };
+}
+/* קליטת רישום מהטופס הציבורי — קבצים לדרייב, שמירה כ"ממתין", התראה במייל */
+function regSubmit_(data, files){
+  data = data || {};
+  var f = regFolder_();
+  var yearF = sub_(f, String(data.year || 'ללא שנה'));
+  var nm = (data.childName || 'ללא שם') + (data.childTz ? (' · ' + data.childTz) : '');
+  var subF = sub_(yearF, nm);
+  var links = [];
+  var formPdfBlob = null;   // מסמך הרישום הממותג (לצירוף למייל)
+  (files || []).forEach(function(file){
+    try{
+      var isForm = (file.kind === 'טופס רישום');
+      var fname = isForm ? ('טופס רישום · ' + nm + '.pdf') : ((file.kind || 'מסמך') + ' · ' + nm);
+      var blob = Utilities.newBlob(Utilities.base64Decode(file.dataB64), file.mimeType || 'application/octet-stream', fname);
+      var created = subF.createFile(blob);
+      if(isForm){ formPdfBlob = created.getBlob(); }
+      links.push({ kind:file.kind || 'מסמך', name:created.getName(), id:created.getId(), link:created.getUrl() });
+    }catch(e){}
+  });
+  if(data.signature){
+    try{
+      var b64 = String(data.signature).split(',')[1] || '';
+      var sBlob = Utilities.newBlob(Utilities.base64Decode(b64), 'image/png', ('חתימה · ' + nm + '.png'));
+      var sFile = subF.createFile(sBlob);
+      links.push({ kind:'חתימה', name:sFile.getName(), id:sFile.getId(), link:sFile.getUrl() });
+    }catch(e){}
+  }
+  delete data.signature;   // לא לשמור את ה-data-url הגדול ב-JSON (נשמר כקובץ)
+  var rec = { id: Utilities.getUuid(), status:'pending', at:new Date().toISOString(),
+              data: data, folderId: subF.getId(), folderLink: subF.getUrl(), files: links };
+  var recsT = getTextFile_(f, 'registrations.json'); var recs=[]; try{ recs=JSON.parse(recsT||'[]'); }catch(e){}
+  recs.unshift(rec);
+  putTextFile_(f, 'registrations.json', JSON.stringify(recs));
+  try{
+    var cfg = {}; try{ cfg = JSON.parse(getTextFile_(f,'reg-config.json')||'{}'); }catch(e){}
+    if(cfg.notifyEmail){
+      var body = 'התקבל רישום דיגיטלי חדש:\n\n'
+        + 'תלמיד/ה: ' + (data.childName||'') + ' · ת"ז: ' + (data.childTz||'') + '\n'
+        + 'גן מבוקש: ' + (data.ganName||'') + ' (סמל ' + (data.ganSymbol||'') + ')\n'
+        + 'הורה: ' + (data.parentName||'') + ' · נייד אם: ' + (data.momMobile||'') + ' · נייד אב: ' + (data.dadMobile||'') + '\n'
+        + 'כתובת: ' + (data.address||'') + '\n\n'
+        + 'תיקיית המסמכים: ' + subF.getUrl() + '\n\n'
+        + (formPdfBlob ? 'מצורף מסמך הרישום המלא (PDF).\n\n' : '')
+        + 'הרישום ממתין לאישור בתוכנה (רישומים דיגיטליים).';
+      var mailOpts = { name: (cfg.ownership && cfg.ownership.name) || 'רישום דיגיטלי' };
+      if(formPdfBlob){ mailOpts.attachments = [formPdfBlob]; }
+      MailApp.sendEmail(String(cfg.notifyEmail), 'רישום דיגיטלי חדש · ' + (data.childName||''), body, mailOpts);
+    }
+  }catch(e){}
+  return { ok:true };
+}
 
 /* שליחת מייל מהשרת (מחשבון הגשר) — לפניות/הצעות שמגיעות מהמערכת */
 function sendMail_(to, subject, body){
