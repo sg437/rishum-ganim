@@ -9,6 +9,12 @@
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
 
+# The app HTML must always be revalidated so updates reach installed users immediately
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+
 # Service worker must always be revalidated so PWA updates reach users immediately
 /sw.js
   Cache-Control: no-cache
