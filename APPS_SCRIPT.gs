@@ -46,6 +46,7 @@ function doPost(e){
       case 'ping':           return json_(out, ping_());
       case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu, req.gan));
       case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan));
+      case 'chat':           return json_(out, chat_(req.messages, req.system, req.model));
       case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
@@ -68,6 +69,33 @@ function doPost(e){
 }
 
 function doGet(e){ return ContentService.createTextOutput('OK'); }
+
+/* ============================================================
+   עוזר AI (Claude) — הבקשה עוברת דרך הגשר כדי שמפתח ה-API יישאר מוסתר.
+   הגדרה חד-פעמית: Project Settings → Script Properties → הוסף מפתח בשם
+   ANTHROPIC_API_KEY עם הערך של המפתח מ-console.anthropic.com.
+   ============================================================ */
+function chat_(messages, system, model){
+  var key = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if(!key) return { ok:false, error:'no-ai-key' };   // עדיין לא הוגדר מפתח
+  var payload = {
+    model: model || 'claude-haiku-4-5',
+    max_tokens: 1024,
+    system: String(system || ''),
+    messages: (messages || []).slice(-16)             // שומר את 16 ההודעות האחרונות
+  };
+  var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post', contentType: 'application/json',
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    payload: JSON.stringify(payload), muteHttpExceptions: true
+  });
+  var code = res.getResponseCode();
+  var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
+  if(code >= 400) return { ok:false, error: (data.error && data.error.message) || ('http-' + code) };
+  var text = (data.content || []).filter(function(b){ return b.type === 'text'; })
+                                 .map(function(b){ return b.text; }).join('\n');
+  return { ok:true, text: text };
+}
 
 function json_(out, obj){ out.setContent(JSON.stringify(obj)); return out; }
 

@@ -347,6 +347,9 @@ fieldset{border-radius:14px}
       <button id="themeBtn" title="מצב תצוגה">🌓 <span>מצב יום/לילה</span></button>
     </div>
     <div class="df-row">
+      <button id="aiHelpBtn" title="עוזר חכם — שאלות על התוכנה">🤖 <span>עוזר חכם</span></button>
+    </div>
+    <div class="df-row">
       <button id="feedbackBtn" title="יצירת קשר / הצעת שיפור">💡 <span>יצירת קשר / הצעה</span></button>
     </div>
     <div class="df-row">
@@ -1539,7 +1542,7 @@ function guideContent(){
             <li><b>בחירת שנה</b> — לכל שנה נתונים נפרדים (הבחירה נשמרת לכל משתמש).</li>
             <li><b>בחירת חינוך</b> — הכל / רגיל / מיוחד. מסנן את כל המערכת ונרשם בכותרת.</li>
             <li><b>ניווט</b> לכל הלשוניות, עם אייקונים.</li>
-            <li>למטה: <b>חיווי "✓ נשמר בענן"</b>, <b>מצב יום/לילה</b>, <b>💡 יצירת קשר / הצעה</b> (לשליחת בקשות ורעיונות לשיפור), ו<b>התנתקות</b>.</li>
+            <li>למטה: <b>חיווי "✓ נשמר בענן"</b>, <b>מצב יום/לילה</b>, <b>🤖 עוזר חכם</b> (צ'אט AI שעונה על שאלות "איך משתמשים"), <b>💡 יצירת קשר / הצעה</b>, ו<b>התנתקות</b>.</li>
           </ul></li>
         <li><b>חיווי סנכרון</b> — "✓ נשמר בענן" = הכול עלה; "⏳ מסנכרן…" = ממתין; "⚠️ לא מחובר" = בדוק/י חיבור.</li>
         <li><b>כותרת ופעולות קבועות</b> — בכל חלון עריכה (תיק ילדה/גן/צוות) הכותרת וכפתורי השמירה/ביטול נשארים תמיד גלויים בזמן גלילה — נוח בטלפון.</li>
@@ -5670,6 +5673,50 @@ function openFeedback(){
     if(to) location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent("[פנייה מהמערכת] "+(subject||"הצעה/פנייה"))+"&body="+encodeURIComponent(body);
   };
 }
+/* ---------- עוזר AI (Claude דרך הגשר) ---------- */
+function guidePlainText(){
+  const c=guideContent();
+  const strip=h=>String(h||"").replace(/<[^>]+>/g," ").replace(/&[a-z]+;/gi," ").replace(/\s+/g," ").trim();
+  return c.sections.map(s=>"### "+s.title+"\n"+strip(s.html)).join("\n\n");
+}
+function aiSystemPrompt(){
+  return 'אתה עוזר עברית ידידותי ומקצועי בתוך התוכנה "'+appTitle()+'" — מערכת לניהול רשת גני ילדים (רישום תלמידות, גנים, צוות, שיבוץ, מסמכים בדרייב, יצוא ודוחות).\n'
+    +'תפקידך: לעזור למשתמש להבין איך להשתמש בתוכנה — היכן כל דבר נמצא, איך לבצע פעולות, ומה המשמעות של מאפיינים. ענה בקצרה, בעברית פשוטה ומעשית, וצעד-אחר-צעד כשצריך. אם משהו לא קיים או שאינך יודע — אמור זאת בכנות, אל תמציא מאפיינים.\n\n'
+    +'להלן מבנה התוכנה והמדריך המלא:\n'+guidePlainText();
+}
+async function aiAsk(history){
+  return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model:(DB.settings&&DB.settings.aiModel)||"claude-haiku-4-5" });
+}
+function openAiHelp(){
+  if(!DRIVE_READY){ modal(`<h3>🤖 עוזר חכם</h3><div class="note">העוזר פועל דרך גשר הדרייב, שאינו מוגדר עדיין. יש להשלים את חיבור הגשר (SETUP.md).</div><div class="foot"><button class="btn ghost" id="ai-close" style="margin-inline-start:auto">סגירה</button></div>`); $("#ai-close").onclick=closeModal; return; }
+  const convo=[];
+  modal(`<h3>🤖 עוזר חכם — שאל/י כל שאלה על התוכנה</h3>
+    <div class="sub">אני יכול להסביר איך לבצע פעולות, היכן דברים נמצאים, ומה המשמעות של מאפיינים.</div>
+    <div id="ai-msgs" style="margin-top:10px;max-height:48vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:4px"></div>
+    <div class="row" style="gap:8px;margin-top:10px;align-items:flex-end">
+      <div class="field grow"><textarea id="ai-input" rows="2" placeholder="למשל: איך מוסיפים גן חדש? איך מייבאים מסמכים מהדרייב?"></textarea></div>
+      <button class="btn" id="ai-send">שליחה</button>
+    </div>
+    <div class="foot"><button class="btn ghost" id="ai-close" style="margin-inline-start:auto">סגירה</button></div>`);
+  $("#ai-close").onclick=closeModal;
+  const msgs=$("#ai-msgs");
+  const bubble=(role,text)=>{ const d=document.createElement("div");
+    d.style.cssText="max-width:85%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;line-height:1.55;"+(role==='user'?"align-self:flex-start;background:var(--accent-soft);color:var(--accent-strong)":"align-self:flex-end;background:var(--surface-2)");
+    d.textContent=text; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; };
+  bubble("assistant","שלום! 👋 איך אפשר לעזור? כתוב/י שאלה על השימוש בתוכנה.");
+  async function send(){
+    const inp=$("#ai-input"); const q=inp.value.trim(); if(!q) return;
+    inp.value=""; bubble("user",q); convo.push({role:"user",content:q});
+    const sb=$("#ai-send"); sb.disabled=true;
+    const wait=bubble("assistant","… חושב");
+    try{ const res=await aiAsk(convo); wait.textContent=res.text||"(לא התקבלה תשובה)"; convo.push({role:"assistant",content:res.text||""}); }
+    catch(e){ const raw=((e&&e.message)||String(e||""));
+      wait.textContent = raw.indexOf("no-ai-key")>=0 ? "העוזר עדיין לא הופעל — יש להגדיר מפתח Anthropic API בגשר (הגדרות → עוזר חכם / SETUP)." : ("שגיאה: "+driveErrHe(e)); }
+    finally{ sb.disabled=false; msgs.scrollTop=msgs.scrollHeight; }
+  }
+  $("#ai-send").onclick=send;
+  $("#ai-input").addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
+}
 function viewSettings(root){
   const admin=isAdmin();
   const dis = admin? "" : "disabled";
@@ -5855,6 +5902,22 @@ function viewSettings(root){
     <div class="row" style="margin-top:8px"><button class="btn ghost" id="ned-save">שמירת הערות</button></div>
   </div>`:""}
 
+  ${admin?`<div class="panel">
+    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">🤖 עוזר חכם (AI)</h2><span class="pill ${DRIVE_READY?'ok':'neutral'}">${DRIVE_READY?'פועל דרך הגשר':'דורש חיבור גשר'}</span></div>
+    <div class="sub">צ'אט עזרה שמסביר למשתמשים איך להשתמש בתוכנה (זמין מ"🤖 עוזר חכם" בתפריט). פועל דרך הגשר כדי שמפתח ה-API יישאר מוסתר.</div>
+    <div class="note" style="margin-top:8px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
+      <b>הפעלה חד-פעמית:</b>
+      <ol style="margin:6px 0 0;padding-inline-start:20px">
+        <li>יוצרים מפתח ב-<b>console.anthropic.com</b> (עם חיוב מופעל).</li>
+        <li>ב-Apps Script של הגשר: <b>Project Settings → Script Properties → Add script property</b>, בשם <b>ANTHROPIC_API_KEY</b> והערך = המפתח.</li>
+        <li>מוודאים שהקוד כולל את פעולת <code>chat</code> החדשה, ופורסים מחדש (New version).</li>
+      </ol>
+    </div>
+    <div class="row" style="margin-top:10px;max-width:360px"><div class="field grow"><label>מודל</label>
+      <select id="ai-model"><option value="claude-haiku-4-5">חסכוני (Haiku) — מומלץ</option><option value="claude-sonnet-5">מאוזן (Sonnet)</option><option value="claude-opus-5">חכם ביותר (Opus)</option></select></div>
+      <button class="btn ghost" id="ai-model-save" style="align-self:end">שמירה</button></div>
+  </div>`:""}
+
   <div class="panel">
     <h2>גיבוי ושחזור</h2>
     <div class="sub">הנתונים נשמרים בענן ומסונכרנים אוטומטית. אפשר לייצא גיבוי JSON, ולשחזר קובץ גיבוי — כולל גיבוי מהגרסה הישנה בטלפון (כך מעבירים את הנתונים שהוזנו שם אל הענן).</div>
@@ -6034,6 +6097,10 @@ function viewSettings(root){
   // רישום דיגיטלי — נדרים פלוס (שמירת הערות)
   { const ns=$("#ned-save"); if(ns) ns.onclick=()=>{ DB.settings.nedarim=Object.assign({},DB.settings.nedarim,{ notes:($("#ned-notes").value||"").trim() }); save(); toast("ההערות נשמרו"); }; }
 
+  // עוזר AI — בחירת מודל
+  { const am=$("#ai-model"); if(am){ am.value=(DB.settings&&DB.settings.aiModel)||"claude-haiku-4-5";
+      const s=$("#ai-model-save"); if(s) s.onclick=()=>{ DB.settings.aiModel=am.value; save(); toast("המודל נשמר"); }; } }
+
   // years
   const yb=$("#years-box");
   yb.innerHTML=`<div class="row" style="gap:8px">${DB.years.map(y=>`<span class="pill ${y===DB.activeYear?'ok':'neutral'}" style="padding:6px 12px">${esc(y)} ${(admin&&DB.years.length>1)?`<button class="btn ghost sm" data-dely="${esc(y)}" style="padding:0 6px;margin-inline-start:6px">✕</button>`:''}</span>`).join("")}</div>`;
@@ -6166,7 +6233,8 @@ $("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; se
 (function(){ const KEY="rg-theme"; const saved=localStorage.getItem(KEY); if(saved)document.documentElement.dataset.theme=saved;
   $("#themeBtn").onclick=()=>{ const cur=document.documentElement.dataset.theme|| (matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
     const next=cur==="dark"?"light":"dark"; document.documentElement.dataset.theme=next; localStorage.setItem(KEY,next); };
-  { const fb=$("#feedbackBtn"); if(fb) fb.onclick=()=>{ closeDrawer(); openFeedback(); }; } })();
+  { const fb=$("#feedbackBtn"); if(fb) fb.onclick=()=>{ closeDrawer(); openFeedback(); }; }
+  { const ai=$("#aiHelpBtn"); if(ai) ai.onclick=()=>{ closeDrawer(); openAiHelp(); }; } })();
 
 boot();
 </script>
