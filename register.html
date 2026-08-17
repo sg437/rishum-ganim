@@ -196,6 +196,97 @@ async function load(){
   }
 }
 
+/* ---- טעינת ספריות PDF (רק בעת שליחה) ---- */
+let _pdfLibs=null;
+function loadPdfLibs(){
+  if(_pdfLibs) return _pdfLibs;
+  const one=src=>new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src;
+    const to=setTimeout(()=>rej(new Error("timeout")),15000);
+    s.onload=()=>{ clearTimeout(to); res(); }; s.onerror=()=>{ clearTimeout(to); rej(new Error("load-fail")); };
+    document.head.appendChild(s); });
+  _pdfLibs=(async()=>{
+    if(!window.html2canvas) await one("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js");
+    if(!(window.jspdf&&window.jspdf.jsPDF)) await one("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js");
+  })().catch(e=>{ _pdfLibs=null; throw e; });
+  return _pdfLibs;
+}
+
+/* ---- בניית מסמך הרישום הממותג (כמו הטופס, עם הלוגו) ---- */
+function buildDocHtml(data, sigUrl, fileNames){
+  const o=(CONFIG.ownership)||{};
+  const e=esc, v=x=>e(x)||"—";
+  const logo = CONFIG.logo
+    ? `<img src="${e(CONFIG.logo)}" style="width:64px;height:64px;object-fit:contain;border-radius:10px">`
+    : `<div style="width:64px;height:64px;background:#111;color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:38px">🎒</div>`;
+  const row=(l,val)=>`<tr><td style="padding:5px 8px;color:#6a8072;font-weight:700;white-space:nowrap;vertical-align:top;width:150px">${e(l)}</td><td style="padding:5px 8px;font-weight:700">${v(val)}</td></tr>`;
+  const owner =
+    `<div>שם הבעלות: <b>${v(o.name)}</b> · סמל הבעלות: <b>${v(o.symbol)}</b></div>`+
+    `<div>כתובת הבעלות: <b>${v(o.address)}</b>${o.recognizedFrom?` · הכרה מיום: <b>${e(o.recognizedFrom)}</b>`:""}</div>`+
+    (o.signName?`<div style="margin-top:4px">מורשה חתימת הבעלות: <b>${e(o.signName)}</b></div>`:"");
+  const docsList = (fileNames&&fileNames.length)
+    ? `<ul style="margin:6px 0 0;padding-inline-start:20px">${fileNames.map(n=>`<li style="font-weight:700">${e(n)}</li>`).join("")}</ul>`
+    : `<div style="color:#6a8072">לא צורפו קבצים</div>`;
+  const sec=(title,inner)=>`<div style="border:1px solid #d8ccb0;border-radius:12px;padding:12px 14px;margin-top:12px">
+      <div style="font-weight:800;color:#1f4d37;margin-bottom:6px">${e(title)}</div>${inner}</div>`;
+  return `<div class="rep-doc" style="width:760px;background:#fffdf7;color:#182b20;font-family:'Assistant','Heebo',Arial,sans-serif;direction:rtl;padding:26px 30px;box-sizing:border-box">
+    <div style="display:flex;align-items:center;gap:14px;border-bottom:2px solid #2c6a4c;padding-bottom:12px">
+      ${logo}
+      <div><div style="font-weight:800;font-size:17px">${v(o.name||"רשת גני ילדים")}</div>
+        <div style="color:#6a8072;font-weight:700;font-size:12px;margin-top:2px">${e(o.address||"")}</div></div>
+    </div>
+    <h1 style="font-size:21px;text-align:center;margin:14px 0 2px">רישום לגני ילדים ${e(CONFIG.year||"")}</h1>
+    <div style="text-align:center;font-weight:800;color:#1f4d37">נספח ד'</div>
+    ${sec("אישור בקשה לרישום לגן מוכר שאינו רשמי לשנה\"ל "+e(CONFIG.year||""),
+      `<div style="background:#f3efe6;border-radius:10px;padding:10px 12px;line-height:1.8">${owner}</div>
+       <table style="width:100%;border-collapse:collapse;margin-top:8px">
+         ${row("שם התלמיד/ה",data.childName)}${row("מספר תעודת זהות",data.childTz)}${row("תאריך הלידה",data.dob)}
+         ${row("כתובת",data.address)}${row("טלפון בית",data.homePhone)}${row("נייד אב",data.dadMobile)}${row("נייד אם",data.momMobile)}${row('דוא"ל',data.email)}
+       </table>`)}
+    ${sec("הגן המבוקש",
+      `<table style="width:100%;border-collapse:collapse">${row("שם הגן",data.ganName)}${row("סמל הגן",data.ganSymbol)}${row("כתובת הגן",data.ganAddress)}</table>`)}
+    ${sec("הצהרת הורה",
+      `<div style="line-height:1.9">אני (שם ההורה) <b>${v(data.parentName)}</b> ת.ז. <b>${v(data.parentTz)}</b> מצהיר/ה בזאת כי אני מבצע/ת את הרישום לגני (שם המוסד) <b>${v(o.institutionName||o.name)}</b>, סמל המוסד <b>${v(data.ganSymbol)}</b> ולא רשמתי את הילד/ה לגן אחר.</div>
+       <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:14px;gap:20px">
+         <div style="font-weight:700">תאריך: <b>${v(data.declDate)}</b></div>
+         <div style="text-align:center"><div style="color:#6a8072;font-weight:700;font-size:12px;margin-bottom:2px">חתימת ההורה</div>
+           ${sigUrl?`<img src="${e(sigUrl)}" style="height:70px;object-fit:contain;border-bottom:1px solid #182b20">`:`<div style="width:180px;border-bottom:1px solid #182b20;height:40px"></div>`}</div>
+       </div>`)}
+    ${sec("מסמכים שצורפו",docsList)}
+    <div style="margin-top:14px;color:#6a8072;font-size:12px;text-align:left">נשלח דרך רישום דיגיטלי · ${e(new Date().toLocaleString("he-IL"))}</div>
+  </div>`;
+}
+
+/* ---- רינדור המסמך ל-PDF (base64) ---- */
+async function formToPdfBase64(data, sigUrl, fileNames){
+  await loadPdfLibs();
+  const { jsPDF }=window.jspdf;
+  const holder=document.createElement("div");
+  holder.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#fff;z-index:-1";
+  holder.innerHTML=buildDocHtml(data,sigUrl,fileNames);
+  document.body.appendChild(holder);
+  let canvas;
+  try{ canvas=await window.html2canvas(holder.querySelector(".rep-doc"),{ scale:2, backgroundColor:"#fff", useCORS:true }); }
+  finally{ document.body.removeChild(holder); }
+  const pdf=new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+  const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), margin=8;
+  const imgW=pw-margin*2, pxPerMm=canvas.width/imgW, fullH=canvas.height/pxPerMm, pageH=ph-margin*2;
+  if(fullH<=pageH){
+    pdf.addImage(canvas.toDataURL("image/jpeg",0.92),"JPEG",margin,margin,imgW,fullH);
+  } else {
+    const sliceHpx=Math.floor(pageH*pxPerMm); let y=0, first=true;
+    while(y<canvas.height){
+      const hpx=Math.min(sliceHpx,canvas.height-y);
+      const sc=document.createElement("canvas"); sc.width=canvas.width; sc.height=hpx;
+      const ctx=sc.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,sc.width,sc.height);
+      ctx.drawImage(canvas,0,y,canvas.width,hpx,0,0,canvas.width,hpx);
+      if(!first) pdf.addPage();
+      pdf.addImage(sc.toDataURL("image/jpeg",0.92),"JPEG",margin,margin,imgW,hpx/pxPerMm);
+      y+=hpx; first=false;
+    }
+  }
+  return String(pdf.output("datauristring")).split(",")[1]||"";
+}
+
 $("#submitBtn").onclick = async ()=>{
   const req=(id,name)=>{ const v=$("#"+id).value.trim(); return v; };
   const childName=req("childName"), childTz=req("childTz"), ganName=$("#ganName").value.trim(), parentName=req("parentName");
@@ -217,6 +308,13 @@ $("#submitBtn").onclick = async ()=>{
       parentName, parentTz:$("#parentTz").value.trim(), declDate:$("#declDate").value,
       signature: signatureDataUrl(), submittedAt:new Date().toISOString()
     };
+    // מסמך רישום ממותג (PDF) — נכשל בשקט אם ה-CDN חסום, ההגשה נמשכת בכל מקרה
+    try{
+      msg("מכין את מסמך הרישום…","");
+      const b64 = await formToPdfBase64(data, signatureDataUrl(), [...$("#fileId").files, ...$("#fileSefach").files].map(f=>f.name));
+      if(b64) files.push({ kind:"טופס רישום", name:"טופס רישום.pdf", mimeType:"application/pdf", dataB64:b64 });
+    }catch(e){}
+    msg("שולח…","");
     await bridge("regSubmit", { data, files });
     $("#formCard").innerHTML = `<div class="center" style="padding:30px"><div style="font-size:52px">✅</div><h1>הרישום התקבל!</h1><div class="note">הבקשה נשלחה בהצלחה וממתינה לאישור. תודה רבה 🙏</div></div>`;
     window.scrollTo(0,0);

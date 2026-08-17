@@ -109,10 +109,14 @@ function regSubmit_(data, files){
   var nm = (data.childName || 'ללא שם') + (data.childTz ? (' · ' + data.childTz) : '');
   var subF = sub_(yearF, nm);
   var links = [];
+  var formPdfBlob = null;   // מסמך הרישום הממותג (לצירוף למייל)
   (files || []).forEach(function(file){
     try{
-      var blob = Utilities.newBlob(Utilities.base64Decode(file.dataB64), file.mimeType || 'application/octet-stream', ((file.kind || 'מסמך') + ' · ' + nm));
+      var isForm = (file.kind === 'טופס רישום');
+      var fname = isForm ? ('טופס רישום · ' + nm + '.pdf') : ((file.kind || 'מסמך') + ' · ' + nm);
+      var blob = Utilities.newBlob(Utilities.base64Decode(file.dataB64), file.mimeType || 'application/octet-stream', fname);
       var created = subF.createFile(blob);
+      if(isForm){ formPdfBlob = created.getBlob(); }
       links.push({ kind:file.kind || 'מסמך', name:created.getName(), id:created.getId(), link:created.getUrl() });
     }catch(e){}
   });
@@ -139,8 +143,11 @@ function regSubmit_(data, files){
         + 'הורה: ' + (data.parentName||'') + ' · נייד אם: ' + (data.momMobile||'') + ' · נייד אב: ' + (data.dadMobile||'') + '\n'
         + 'כתובת: ' + (data.address||'') + '\n\n'
         + 'תיקיית המסמכים: ' + subF.getUrl() + '\n\n'
+        + (formPdfBlob ? 'מצורף מסמך הרישום המלא (PDF).\n\n' : '')
         + 'הרישום ממתין לאישור בתוכנה (רישומים דיגיטליים).';
-      MailApp.sendEmail(String(cfg.notifyEmail), 'רישום דיגיטלי חדש · ' + (data.childName||''), body);
+      var mailOpts = { name: (cfg.ownership && cfg.ownership.name) || 'רישום דיגיטלי' };
+      if(formPdfBlob){ mailOpts.attachments = [formPdfBlob]; }
+      MailApp.sendEmail(String(cfg.notifyEmail), 'רישום דיגיטלי חדש · ' + (data.childName||''), body, mailOpts);
     }
   }catch(e){}
   return { ok:true };
