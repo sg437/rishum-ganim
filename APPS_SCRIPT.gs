@@ -44,7 +44,8 @@ function doPost(e){
     }
     switch(req.action){
       case 'ping':           return json_(out, ping_());
-      case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu));
+      case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu, req.gan));
+      case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan));
       case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
@@ -103,12 +104,23 @@ function eduFolderName_(edu){
   if(e.indexOf('מיוחד') >= 0 || e === 'ח"מ' || e === 'חמ') return 'חינוך מיוחד';
   return 'חינוך רגיל';
 }
-function childFolder_(year, name, edu){
+function childFolder_(year, name, edu, gan){
   var r = root_();
   var e = sub_(r, eduFolderName_(edu));            // חלוקה ראשית לפי חינוך (סעיף 12)
   var y = sub_(e, String(year || 'ללא שנה'));
-  var c = sub_(y, String(name || 'ללא שם'));
+  var parent = (gan && String(gan).trim()) ? sub_(y, String(gan).trim()) : y;  // תיקיית גן בתוך השנה (חינוך → שנה → גן → ילדה)
+  var c = sub_(parent, String(name || 'ללא שם'));
   return { ok:true, folderId:c.getId(), folderLink:c.getUrl(), rootLink:r.getUrl() };
+}
+/* העברת תיקיית ילדה קיימת אל תוך תיקיית הגן שלה (ארגון מחדש של מבנה קיים) */
+function childMove_(folderId, year, edu, gan){
+  var r = root_();
+  var e = sub_(r, eduFolderName_(edu));
+  var y = sub_(e, String(year || 'ללא שנה'));
+  var parent = (gan && String(gan).trim()) ? sub_(y, String(gan).trim()) : y;
+  var f = DriveApp.getFolderById(folderId);
+  f.moveTo(parent);                                 // מעביר לתיקיית היעד (שומר על התוכן)
+  return { ok:true, folderId:f.getId(), folderLink:f.getUrl() };
 }
 /* תיקיית אנשי צוות — לפי חינוך, ובתוכה תיקייה לכל איש/אשת צוות (סעיפים 12, 17) */
 function staffFolder_(edu, name){
