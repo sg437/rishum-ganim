@@ -2022,7 +2022,17 @@ function openDocImport(){
     if(!gid){ toast("יש לבחור גן"); return; }
     if(!fid){ toast("יש להדביק קישור לתיקייה"); return; }
     const out=$("#di-result"); out.innerHTML=`<div class="hint">סורק את התיקייה…</div>`;
-    let files; try{ files=await driveListFolder(fid); }catch(e){ out.innerHTML=`<div class="note" style="background:var(--bad-soft);color:var(--bad);border-color:var(--bad)">שגיאה בקריאת התיקייה: ${esc(driveErrHe(e))}</div>`; return; }
+    let files;
+    try{ files=await driveListFolder(fid); }
+    catch(e){
+      const raw=((e&&e.message)||String(e||"")).toLowerCase();
+      const access=/permission|not found|no item|access|getfolderbyid|נמצא|הרשא/.test(raw);
+      out.innerHTML=`<div class="note" style="background:var(--bad-soft);color:var(--bad);border-color:var(--bad)">${
+        access
+        ? `אין גישה לתיקייה. סביר שהתיקייה נמצאת ב<b>חשבון גוגל אחר</b> ואינה משותפת עם חשבון הגשר. יש <b>לשתף את התיקייה</b> (או תיקיית-האב) עם החשבון שמפעיל את חיבור הדרייב — בעל תיקיית "רשת הגנים" — בהרשאת <b>מציג (Viewer)</b>, ואז לנסות שוב.`
+        : `שגיאה בקריאת התיקייה: ${esc(driveErrHe(e))}`}</div>`;
+      return;
+    }
     if(!files.length){ out.innerHTML=`<div class="empty">אין קבצים בתיקייה זו.</div>`; runBtn().disabled=true; return; }
     scanned=files.map(f=>{ const type=detectDocType(f.name); const student=matchStudentInGan(gid, f.name); return { file:f, type, student }; });
     const matched=scanned.filter(x=>x.student).length;
