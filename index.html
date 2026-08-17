@@ -5661,16 +5661,22 @@ function openFeedback(){
     </fieldset>
     <div class="foot"><button class="btn" id="fb-send" style="margin-inline-start:auto">📤 שליחה</button><button class="btn ghost" id="fb-cancel">ביטול</button></div>`);
   $("#fb-cancel").onclick=closeModal;
-  $("#fb-send").onclick=()=>{
+  $("#fb-send").onclick=async ()=>{
     const text=$("#fb-text").value.trim(); if(!text){ toast("יש לכתוב הודעה"); return; }
     const subject=$("#fb-subject").value.trim(), contact=$("#fb-contact").value.trim();
     const entry={ id:uid(), date:new Date().toISOString(), from:(currentUser&&currentUser.email)||"", subject, text, contact, done:false };
     DB.settings=DB.settings||{}; DB.settings.feedback=Array.isArray(DB.settings.feedback)?DB.settings.feedback:[];
     DB.settings.feedback.unshift(entry); save();
-    closeModal(); toast("ההודעה נשלחה — תודה!");
     const to=contactEmail();
+    const mailSubject="[פנייה מהמערכת] "+(subject||"הצעה/פנייה");
     const body=`${subject?("נושא: "+subject+"\n"):""}${text}\n\n— נשלח על ידי: ${entry.from||contact||"משתמש"}${(contact&&contact!==entry.from)?(" · ליצירת קשר: "+contact):""}`;
-    if(to) location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent("[פנייה מהמערכת] "+(subject||"הצעה/פנייה"))+"&body="+encodeURIComponent(body);
+    /* שליחה מהשרת (דרך הגשר) — מגיע אמין למייל; נפילה ל-mailto אם אין גשר/נכשל */
+    if(to && DRIVE_READY){
+      try{ await driveCall("sendMail",{ to, subject:mailSubject, body }); closeModal(); toast("ההודעה נשלחה למייל ✓ תודה!"); return; }
+      catch(e){ console.error("feedback-mail",e); }
+    }
+    closeModal(); toast("ההודעה נשמרה — תודה!");
+    if(to) location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent(mailSubject)+"&body="+encodeURIComponent(body);
   };
 }
 /* ---------- עוזר AI (Claude דרך הגשר) ---------- */

@@ -47,6 +47,7 @@ function doPost(e){
       case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu, req.gan));
       case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan));
       case 'chat':           return json_(out, chat_(req.messages, req.system, req.model));
+      case 'sendMail':       return json_(out, sendMail_(req.to, req.subject, req.body));
       case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
@@ -69,6 +70,13 @@ function doPost(e){
 }
 
 function doGet(e){ return ContentService.createTextOutput('OK'); }
+
+/* שליחת מייל מהשרת (מחשבון הגשר) — לפניות/הצעות שמגיעות מהמערכת */
+function sendMail_(to, subject, body){
+  if(!to) return { ok:false, error:'no-recipient' };
+  MailApp.sendEmail(String(to), String(subject || '(ללא נושא)'), String(body || ''));
+  return { ok:true };
+}
 
 /* ============================================================
    עוזר AI (Claude) — הבקשה עוברת דרך הגשר כדי שמפתח ה-API יישאר מוסתר.
