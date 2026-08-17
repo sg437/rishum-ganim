@@ -347,6 +347,9 @@ fieldset{border-radius:14px}
       <button id="themeBtn" title="מצב תצוגה">🌓 <span>מצב יום/לילה</span></button>
     </div>
     <div class="df-row">
+      <button id="feedbackBtn" title="יצירת קשר / הצעת שיפור">💡 <span>יצירת קשר / הצעה</span></button>
+    </div>
+    <div class="df-row">
       <button id="signOutBtn" style="display:none">⎋ <span>התנתקות</span></button>
     </div>
   </div>
@@ -1536,7 +1539,7 @@ function guideContent(){
             <li><b>בחירת שנה</b> — לכל שנה נתונים נפרדים (הבחירה נשמרת לכל משתמש).</li>
             <li><b>בחירת חינוך</b> — הכל / רגיל / מיוחד. מסנן את כל המערכת ונרשם בכותרת.</li>
             <li><b>ניווט</b> לכל הלשוניות, עם אייקונים.</li>
-            <li>למטה: <b>חיווי "✓ נשמר בענן"</b>, <b>מצב יום/לילה</b>, ו<b>התנתקות</b>.</li>
+            <li>למטה: <b>חיווי "✓ נשמר בענן"</b>, <b>מצב יום/לילה</b>, <b>💡 יצירת קשר / הצעה</b> (לשליחת בקשות ורעיונות לשיפור), ו<b>התנתקות</b>.</li>
           </ul></li>
         <li><b>חיווי סנכרון</b> — "✓ נשמר בענן" = הכול עלה; "⏳ מסנכרן…" = ממתין; "⚠️ לא מחובר" = בדוק/י חיבור.</li>
         <li><b>כותרת ופעולות קבועות</b> — בכל חלון עריכה (תיק ילדה/גן/צוות) הכותרת וכפתורי השמירה/ביטול נשארים תמיד גלויים בזמן גלילה — נוח בטלפון.</li>
@@ -5642,6 +5645,31 @@ function renderHistGans(host, admin){
 /* ============================================================
    טאב הגדרות — שנים, מעבר גיל, נתונים היסטוריים, מספר גנים, גיבוי
    ============================================================ */
+/* ---------- יצירת קשר / הצעות שיפור (סעיף חדש) ---------- */
+function contactEmail(){ const s=DB.settings||{}; return s.contactEmail || (Array.isArray(s.admins)&&s.admins[0]) || ""; }
+function openFeedback(){
+  const from=(currentUser&&currentUser.email)||"";
+  modal(`<h3>💡 יצירת קשר / הצעת שיפור</h3>
+    <div class="sub">חסר לך מאפיין? יש רעיון לשיפור? כתוב/י כאן — ההודעה תישמר במערכת ותיפתח גם כמייל להנהלה.</div>
+    <fieldset><legend>ההודעה</legend>
+      <div><label>נושא (לא חובה)</label><input id="fb-subject" placeholder="למשל: הצעה לשיפור בשיבוץ"></div>
+      <div style="margin-top:8px"><label>תוכן ההודעה</label><textarea id="fb-text" rows="5" placeholder="כתוב/י כאן…"></textarea></div>
+      <div style="margin-top:8px"><label>פרטים ליצירת קשר חזרה (מייל / טלפון)</label><input id="fb-contact" value="${esc(from)}"></div>
+    </fieldset>
+    <div class="foot"><button class="btn" id="fb-send" style="margin-inline-start:auto">📤 שליחה</button><button class="btn ghost" id="fb-cancel">ביטול</button></div>`);
+  $("#fb-cancel").onclick=closeModal;
+  $("#fb-send").onclick=()=>{
+    const text=$("#fb-text").value.trim(); if(!text){ toast("יש לכתוב הודעה"); return; }
+    const subject=$("#fb-subject").value.trim(), contact=$("#fb-contact").value.trim();
+    const entry={ id:uid(), date:new Date().toISOString(), from:(currentUser&&currentUser.email)||"", subject, text, contact, done:false };
+    DB.settings=DB.settings||{}; DB.settings.feedback=Array.isArray(DB.settings.feedback)?DB.settings.feedback:[];
+    DB.settings.feedback.unshift(entry); save();
+    closeModal(); toast("ההודעה נשלחה — תודה!");
+    const to=contactEmail();
+    const body=`${subject?("נושא: "+subject+"\n"):""}${text}\n\n— נשלח על ידי: ${entry.from||contact||"משתמש"}${(contact&&contact!==entry.from)?(" · ליצירת קשר: "+contact):""}`;
+    if(to) location.href="mailto:"+encodeURIComponent(to)+"?subject="+encodeURIComponent("[פנייה מהמערכת] "+(subject||"הצעה/פנייה"))+"&body="+encodeURIComponent(body);
+  };
+}
 function viewSettings(root){
   const admin=isAdmin();
   const dis = admin? "" : "disabled";
@@ -5772,6 +5800,16 @@ function viewSettings(root){
       <div class="field"><label>רשאי/ת לערוך</label><select id="es-edu"><option value="רגיל">רק חינוך רגיל</option><option value="ח&quot;מ">רק חינוך מיוחד</option></select></div>
       <button class="btn" id="es-add" style="align-self:end">הוסף הגבלה</button>
     </div>
+  </div>`:""}
+
+  ${admin?`<div class="panel">
+    <h2>💡 פניות והצעות שיפור</h2>
+    <div class="sub">הודעות שנשלחו דרך "יצירת קשר / הצעה" בתפריט. אפשר להגדיר כתובת מייל שאליה ייפתחו הפניות.</div>
+    <div class="row" style="margin-top:8px;max-width:460px">
+      <div class="field grow"><label>כתובת מייל לפניות</label><input id="contact-email" type="email" inputmode="email" value="${esc((DB.settings&&DB.settings.contactEmail)||"")}" placeholder="ברירת מחדל: המנהל הראשון"></div>
+      <button class="btn ghost" id="contact-email-save" style="align-self:end">שמירה</button>
+    </div>
+    <div id="feedback-box" style="margin-top:12px"></div>
   </div>`:""}
 
   <div class="panel">
@@ -5959,6 +5997,23 @@ function viewSettings(root){
     }
   }
 
+  // פניות והצעות שיפור
+  const fbBox=$("#feedback-box");
+  if(fbBox){
+    const list=Array.isArray(DB.settings.feedback)?DB.settings.feedback:[];
+    fbBox.innerHTML = list.length
+      ? `<div class="table-wrap"><table><thead><tr><th>תאריך</th><th>נושא</th><th>הודעה</th><th>מאת</th><th></th></tr></thead><tbody>${list.map(f=>`<tr${f.done?' style="opacity:.55"':''}>
+          <td style="white-space:nowrap">${esc(new Date(f.date).toLocaleDateString("he-IL"))}</td>
+          <td>${esc(f.subject)||'—'}</td>
+          <td>${esc(f.text)}</td>
+          <td style="white-space:nowrap">${esc(f.from||f.contact)||'—'}${(f.contact&&f.contact!==f.from)?`<div class="hint">${esc(f.contact)}</div>`:''}</td>
+          <td style="white-space:nowrap"><button class="btn ghost sm" data-fbdone="${esc(f.id)}">${f.done?'↩︎':'✓ טופל'}</button> <button class="btn ghost sm" data-fbdel="${esc(f.id)}">🗑️</button></td></tr>`).join("")}</tbody></table></div>`
+      : `<div class="hint">אין פניות עדיין.</div>`;
+    fbBox.querySelectorAll("[data-fbdone]").forEach(b=> b.onclick=()=>{ const f=list.find(x=>x.id===b.dataset.fbdone); if(f){ f.done=!f.done; save(); route(); } });
+    fbBox.querySelectorAll("[data-fbdel]").forEach(b=> b.onclick=()=>{ if(!confirm("למחוק את הפנייה?")) return; DB.settings.feedback=list.filter(x=>x.id!==b.dataset.fbdel); save(); route(); });
+    const ce=$("#contact-email-save"); if(ce) ce.onclick=()=>{ DB.settings.contactEmail=($("#contact-email").value||"").trim(); save(); toast("נשמר"); };
+  }
+
   // years
   const yb=$("#years-box");
   yb.innerHTML=`<div class="row" style="gap:8px">${DB.years.map(y=>`<span class="pill ${y===DB.activeYear?'ok':'neutral'}" style="padding:6px 12px">${esc(y)} ${(admin&&DB.years.length>1)?`<button class="btn ghost sm" data-dely="${esc(y)}" style="padding:0 6px;margin-inline-start:6px">✕</button>`:''}</span>`).join("")}</div>`;
@@ -6090,7 +6145,8 @@ $("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; se
 /* theme */
 (function(){ const KEY="rg-theme"; const saved=localStorage.getItem(KEY); if(saved)document.documentElement.dataset.theme=saved;
   $("#themeBtn").onclick=()=>{ const cur=document.documentElement.dataset.theme|| (matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
-    const next=cur==="dark"?"light":"dark"; document.documentElement.dataset.theme=next; localStorage.setItem(KEY,next); }; })();
+    const next=cur==="dark"?"light":"dark"; document.documentElement.dataset.theme=next; localStorage.setItem(KEY,next); };
+  { const fb=$("#feedbackBtn"); if(fb) fb.onclick=()=>{ closeDrawer(); openFeedback(); }; } })();
 
 boot();
 </script>
