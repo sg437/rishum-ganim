@@ -211,7 +211,11 @@ function chatAnthropic_(messages, system, model, key){
 /* Google Gemini — generateContent (מדרגה חינמית).
    Gemini משתמש בתפקידים "user"/"model" (assistant → model) ובהוראת מערכת נפרדת. */
 function chatGemini_(messages, system, model, key){
-  var gm = /^gemini/i.test(model) ? model : 'gemini-2.0-flash';
+  var DEFAULT_GEMINI = 'gemini-3.6-flash';   // מודל ה-Flash הנוכחי (חינם)
+  // מזהים ישנים שהוצאו משימוש — ממופים אוטומטית לנוכחי, גם אם נשמרו בהגדרות
+  var OLD_GEMINI = { 'gemini-1.5-flash':1, 'gemini-1.5-pro':1, 'gemini-2.0-flash':1,
+                     'gemini-2.0-flash-exp':1, 'gemini-2.5-flash':1, 'gemini-2.5-pro':1 };
+  var gm = (/^gemini/i.test(model) && !OLD_GEMINI[model]) ? model : DEFAULT_GEMINI;
   var contents = (messages || []).slice(-16).map(function(m){
     return { role: (m.role === 'assistant' ? 'model' : 'user'),
              parts: [{ text: String((m && m.content) || '') }] };

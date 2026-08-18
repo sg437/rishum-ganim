@@ -5792,7 +5792,7 @@ function aiSystemPrompt(){
     +'להלן מבנה התוכנה והמדריך המלא:\n'+guidePlainText();
 }
 async function aiAsk(history){
-  return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model:(DB.settings&&DB.settings.aiModel)||"gemini-2.0-flash" });
+  return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model:(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash" });
 }
 function openAiHelp(){
   if(!DRIVE_READY){ modal(`<h3>🤖 עוזר חכם</h3><div class="note">העוזר פועל דרך גשר הדרייב, שאינו מוגדר עדיין. יש להשלים את חיבור הגשר (SETUP.md).</div><div class="foot"><button class="btn ghost" id="ai-close" style="margin-inline-start:auto">סגירה</button></div>`); $("#ai-close").onclick=closeModal; return; }
@@ -6064,8 +6064,7 @@ function viewSettings(root){
     <div class="row" style="margin-top:10px;max-width:400px"><div class="field grow"><label>מודל</label>
       <select id="ai-model">
         <optgroup label="חינם — Google Gemini">
-          <option value="gemini-2.0-flash">חינם מהיר (Gemini Flash) — מומלץ</option>
-          <option value="gemini-2.5-flash">חינם, חכם יותר (Gemini 2.5 Flash)</option>
+          <option value="gemini-3.6-flash">חינם מהיר (Gemini Flash) — מומלץ</option>
         </optgroup>
         <optgroup label="בתשלום — Anthropic Claude">
           <option value="claude-haiku-4-5">חסכוני (Haiku)</option>
@@ -6280,7 +6279,7 @@ function viewSettings(root){
     } }
 
   // עוזר AI — בחירת מודל
-  { const am=$("#ai-model"); if(am){ am.value=(DB.settings&&DB.settings.aiModel)||"gemini-2.0-flash";
+  { const am=$("#ai-model"); if(am){ am.value=(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash";
       const s=$("#ai-model-save"); if(s) s.onclick=()=>{ DB.settings.aiModel=am.value; save(); toast("המודל נשמר"); }; } }
 
   // years
