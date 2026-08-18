@@ -450,6 +450,31 @@
     box-shadow:var(--shadow-lg); opacity:0; visibility:hidden; transition:.25s; max-width:88vw; text-align:center}
   .toast.show{opacity:1; visibility:visible; transform:translateX(-50%) translateY(0)}
 
+  /* wizard */
+  .wizard{border:1px solid color-mix(in srgb,var(--accent) 26%,var(--border)); border-radius:14px; overflow:hidden; background:var(--surface); animation:fade .3s ease}
+  .wsteps{display:flex; align-items:center; gap:5px; flex-wrap:wrap; padding:11px 14px; background:var(--surface-2); border-bottom:1px solid var(--border); font-size:.76rem; font-weight:700}
+  .wstep{display:flex; align-items:center; gap:6px; color:var(--muted)}
+  .wstep .wdot{width:20px; height:20px; border-radius:50%; display:grid; place-items:center; font-size:.7rem; background:var(--surface-3); color:var(--muted); flex:0 0 auto}
+  .wstep.cur{color:var(--accent-strong)} .wstep.cur .wdot{background:var(--accent); color:#fff}
+  .wstep.done{color:var(--good)} .wstep.done .wdot{background:var(--good); color:#fff}
+  .warr{color:var(--muted); opacity:.6}
+  .wbody{padding:16px}
+  .wfield{display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px dashed var(--border); font-size:.88rem}
+  .wfield:last-of-type{border-bottom:0}
+  .wprog{height:6px; border-radius:999px; background:var(--surface-3); overflow:hidden; margin-top:4px}
+  .wprog i{display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-cool)); transition:width .5s cubic-bezier(.2,.7,.2,1)}
+
+  /* comm preview + templates */
+  .tmpl{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px}
+  .sms-preview{margin-top:8px}
+  .sms-bubble{background:linear-gradient(150deg,var(--accent),var(--accent-cool)); color:#fff; border-radius:16px 16px 16px 5px; padding:12px 15px; font-size:.9rem; line-height:1.5; box-shadow:var(--shadow); white-space:pre-wrap; word-break:break-word}
+  .sms-meta{font-size:.74rem; color:var(--muted); margin-top:6px; display:flex; justify-content:space-between}
+
+  /* placement suggestion */
+  .sug{font-size:.74rem; color:var(--good); font-weight:800}
+  .sug .mx{color:var(--muted); font-weight:600}
+  .worker.placing{opacity:0; transform:translateX(-30px); transition:.4s}
+
   @media (prefers-reduced-motion:reduce){
     *{animation-duration:.001ms !important; animation-iteration-count:1 !important}
     .view{animation:none}
@@ -923,7 +948,9 @@
         <div class="sec-note" style="margin:14px 0 8px">2 · ערוצים</div>
         <div class="chips" id="commChannels"></div>
         <div class="sec-note" style="margin:14px 0 8px">3 · תוכן ההודעה</div>
+        <div class="tmpl" id="commTmpl"></div>
         <textarea id="commMsg" class="txtin" rows="3" style="width:100%; resize:vertical" placeholder="לדוגמה: שלום הורים יקרים, נזכיר כי יש להשלים מסמכי רישום עד יום חמישי…"></textarea>
+        <div class="sms-preview" id="commPreview"></div>
         <button class="btn-primary" id="commSend" style="margin-top:12px">📨 שליחה עכשיו</button>
       </div>
       <div class="card pad">
@@ -948,7 +975,8 @@
         <div class="feed" id="billFeed" style="max-height:360px"></div>
       </div>
       <div class="card pad">
-        <div class="sec-title">חייבים בתשלום <span class="sec-note" id="debtCount" style="margin-inline-start:auto"></span></div>
+        <div class="sec-title">חייבים בתשלום <button class="btn-mini" id="billRemindAll" style="margin-inline-start:auto">🔔 תזכורת לכולם</button></div>
+        <div class="sec-note" id="debtCount" style="margin-bottom:4px"></div>
         <div class="sec-note" style="margin-bottom:10px">משפחות עם יתרת חוב — לחיצה תשלח בקשת תשלום (הדמיה)</div>
         <div class="tbl-wrap" style="max-height:360px; overflow-y:auto"><table id="debtorsTable"><thead><tr><th>משפחה</th><th>עיר</th><th>חוב</th><th>פעולה</th></tr></thead><tbody></tbody></table></div>
       </div>
@@ -1635,23 +1663,63 @@
     }).join('');
   }
   function reg_(k,m){return m[k];}
+  var WIZ_STEPS=['זיהוי','פרטים','מסמכים','חתימה','אישור'];
+  var WIZ=null;
   function doLookup(val){
     var f = FAMILIES.filter(function(x){return x.tz===val;})[0];
-    var box=$('#idLookupResult');
-    if(f){
-      box.innerHTML='<div style="border:1px solid color-mix(in srgb,var(--good) 34%,var(--border));border-radius:12px;padding:14px;background:var(--good-soft)">'+
-        '<div style="font-weight:800;color:var(--good)">✓ נמצאה משפחה קיימת — נשלפו הנתונים</div>'+
-        '<div class="prow"><span>משפחה</span><b>'+f.last+' · '+f.city+'</b></div>'+
-        '<div class="prow"><span>הורים</span><span>'+f.dad+' · '+f.mom+'</span></div>'+
-        '<div class="prow"><span>ילדים ברשת</span><span>'+f.kids.length+' — '+f.kids.map(function(k){return k.name.split(" ")[0];}).join(", ")+'</span></div>'+
-        '<div class="prow"><span>מסמכים חסרים</span><span>'+(f.missingDocs?('<span class="pill warn">'+f.missingDocs+' חסרים</span>'):'<span class="pill ok">מלא</span>')+'</span></div>'+
-        '<button class="btn-mini" style="margin-top:10px" onclick="void 0">המשך לעדכון פרטים ←</button></div>';
-    } else {
-      box.innerHTML='<div style="border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));border-radius:12px;padding:14px;background:var(--accent-soft)">'+
-        '<div style="font-weight:800;color:var(--accent-strong)">הת״ז לא נמצאה — פתיחת רישום חדש</div>'+
-        '<div class="sec-note" style="margin-top:6px">המערכת תפתח כרטיס משפחה חדש, תשלח קוד אימות ב-SMS, ותאפשר צירוף מסמכים וחתימה דיגיטלית.</div>'+
-        '<button class="btn-mini" style="margin-top:10px">פתיחת רישום חדש ←</button></div>';
+    WIZ={fam:f, isNew:!f, step:1, docsDone:{}, signed:false};
+    if(f){ DOCS4.forEach(function(d){ if(f.docs[d]) WIZ.docsDone[d]=true; }); }
+    renderWiz();
+  }
+  function renderWiz(){
+    var w=WIZ, box=$('#idLookupResult'), f=w.fam;
+    var head=WIZ_STEPS.map(function(s,i){ var st=i<w.step?'done':(i===w.step?'cur':'todo');
+      return '<div class="wstep '+st+'"><span class="wdot">'+(i<w.step?'✓':(i+1))+'</span>'+s+'</div>'; }).join('<span class="warr">›</span>');
+    var body='', btn='';
+    if(w.step===1){ /* פרטים */
+      body=(w.isNew?'<div class="pill live" style="margin-bottom:10px">רישום חדש — לא נמצאה ת״ז</div>':'<div class="pill ok" style="margin-bottom:10px">✓ נשלפה משפחה קיימת</div>')+
+        '<div class="wfield"><span>שם משפחה</span><b>'+(f?f.last:'—')+'</b></div>'+
+        '<div class="wfield"><span>עיר</span><b>'+(f?f.city:'—')+'</b></div>'+
+        '<div class="wfield"><span>הורים</span><span>'+(f?f.dad+' · '+f.mom:'להשלמה')+'</span></div>'+
+        '<div class="wfield"><span>ילדים לרישום</span><span>'+(f?f.kids.length:'1')+'</span></div>';
+      btn='אישור פרטים · המשך ←';
+    } else if(w.step===2){ /* מסמכים */
+      body='<div class="sec-note" style="margin-bottom:8px">צירוף מסמכי הרישום — לחיצה מצרפת (הדמיה)</div>'+
+        DOCS4.map(function(d){var on=w.docsDone[d]; return '<div class="wfield"><span>'+d+'</span>'+(on?'<span class="pill ok">✓ צורף</span>':'<button class="btn-mini" data-doc="'+d+'">📎 צירוף</button>')+'</div>';}).join('');
+      var allDocs=DOCS4.every(function(d){return w.docsDone[d];});
+      btn=(allDocs?'כל המסמכים צורפו · המשך ←':'המשך גם ללא כל המסמכים ←');
+    } else if(w.step===3){ /* חתימה */
+      body='<div class="sec-note" style="margin-bottom:8px">חתימה דיגיטלית על תקנון וההצהרות</div>'+
+        (w.signed?'<div class="pill ok" style="font-size:.9rem;padding:8px 14px">✓ נחתם דיגיטלית · אומת ב-SMS</div>'
+          :'<button class="btn-primary" id="wizSign">✍️ חתימה דיגיטלית ואימות SMS</button>');
+      btn=w.signed?'סיום רישום ←':'';
+    } else { /* אישור */
+      var nm=f?f.last:'החדשה';
+      body='<div style="text-align:center;padding:6px 0"><div style="font-size:2.4rem">🎉</div>'+
+        '<div style="font-weight:800;font-size:1.15rem;color:var(--good);margin-top:6px">הרישום הושלם ואושר אוטומטית!</div>'+
+        '<div class="sec-note" style="margin-top:6px">אישור רישום נשלח למשפחת '+nm+' במייל וב-SMS. הילדים הועברו לשיבוץ.</div></div>';
+      btn='רישום חדש נוסף ↺';
     }
+    box.innerHTML='<div class="wizard"><div class="wsteps">'+head+'</div>'+
+      '<div class="wbody">'+body+
+      '<div class="wprog" style="margin-top:14px"><i style="width:'+(w.step/(WIZ_STEPS.length-1)*100)+'%"></i></div>'+
+      (btn?'<button class="btn-primary" id="wizNext" style="width:100%;margin-top:12px">'+btn+'</button>':'')+
+      '</div></div>';
+    var nx=$('#wizNext'); if(nx) nx.addEventListener('click',wizNext);
+    var sg=$('#wizSign'); if(sg) sg.addEventListener('click',function(){ w.signed=true; toast('✍️ נחתם דיגיטלית ואומת'); renderWiz(); });
+    $$('#idLookupResult [data-doc]').forEach(function(b){ b.addEventListener('click',function(){ w.docsDone[b.dataset.doc]=true; toast('📎 '+b.dataset.doc+' צורף'); renderWiz(); }); });
+  }
+  function wizNext(){
+    var w=WIZ;
+    if(w.step>=WIZ_STEPS.length-1){ /* was on אישור → restart */
+      var last=pick(TEACHER_L);
+      pushFeed($('#regFeed'),{c:'enter',ic:'✅',tx:'<b>משפחת '+(w.fam?w.fam.last:last)+'</b> — רישום הושלם ואושר', mt:(w.fam?w.fam.city:pick(CITIES).name)+' · עכשיו'},12);
+      $('#idLookupInput').value=''; WIZ=null; $('#idLookupResult').innerHTML='<div class="sec-note">הרישום נשמר. אפשר לזהות הורה נוסף לפי ת״ז.</div>';
+      return;
+    }
+    w.step++;
+    if(w.step===WIZ_STEPS.length-1){ toast('🎉 הרישום אושר אוטומטית'); }
+    renderWiz();
   }
 
   /* ---------- MODULE 2: CRM ---------- */
@@ -1701,12 +1769,16 @@
   }
 
   /* ---------- MODULE 3: CHILD PLACEMENT ---------- */
-  var UNPLACED=[], WAIT=[];
+  var UNPLACED=[], WAIT=[], ORIG_UNPLACED=[];
+  var REASONS=['התאמת גיל + עיר','אח/ות באותו גן','קרבה לכתובת','מסלול מבוקש','תפוסה פנויה'];
   (function(){
     FAMILIES.forEach(function(f){ f.kids.forEach(function(k){
-      if(k.status==='ממתינה לשיבוץ') UNPLACED.push({name:k.name, city:k.city, age:k.age, edu:k.edu, want:pick(CITIES.filter(function(c){return c.name===k.city;})[0].gans).name});
-      else if(k.status==='רשימת המתנה') WAIT.push({name:k.name, city:k.city, age:k.age, want:pick(CITIES.filter(function(c){return c.name===k.city;})[0].gans).name, prio:pick(['אח בגן','קרבה','רגיל'])});
+      var cty=CITIES.filter(function(c){return c.name===k.city;})[0];
+      var g=pick(cty.gans.filter(function(x){return x.edu===k.edu;}).concat(cty.gans));
+      if(k.status==='ממתינה לשיבוץ') UNPLACED.push({name:k.name, city:k.city, age:k.age, edu:k.edu, suggest:g.name, match:ri(80,98), reason:pick(REASONS)});
+      else if(k.status==='רשימת המתנה') WAIT.push({name:k.name, city:k.city, age:k.age, want:g.name, prio:pick(['אח בגן','קרבה','רגיל'])});
     });});
+    ORIG_UNPLACED=UNPLACED.map(function(u){return {name:u.name,city:u.city,age:u.age,edu:u.edu,suggest:u.suggest,match:u.match,reason:u.reason};});
   })();
   var placedCount=0;
   function renderPlace(){
@@ -1717,29 +1789,47 @@
       {l:'תפוסה ממוצעת',v:'90%'},
       {l:'שובצו כעת',v:he(placedCount),live:true}
     ].map(kpiHTML).join('');
-    $('#plUnCount').textContent=UNPLACED.length+' ממתינים';
+    $('#plUnCount').innerHTML=UNPLACED.length+' ממתינים'+(placedCount>0?' · <span class="btn-mini" id="plReset" style="cursor:pointer">↺ אפס הדגמה</span>':'');
     $('#plUnplaced').innerHTML=UNPLACED.map(function(u,i){
-      return '<div class="worker" data-ui="'+i+'"><div><div class="wn">'+u.name+'</div><div class="wm">'+u.city+' · גיל '+u.age+' · מבוקש: '+u.want+' · <span class="pill '+(u.edu==='reg'?'reg':'spc')+'">'+(u.edu==='reg'?'רגיל':'מיוחד')+'</span></div></div>'+
+      return '<div class="worker" data-ui="'+i+'"><div><div class="wn">'+u.name+'</div>'+
+        '<div class="wm">'+u.city+' · גיל '+u.age+' · <span class="pill '+(u.edu==='reg'?'reg':'spc')+'">'+(u.edu==='reg'?'רגיל':'מיוחד')+'</span></div>'+
+        '<div class="sug">הצעת המערכת: '+u.suggest+' <span class="mx">· '+u.match+'% · '+u.reason+'</span></div></div>'+
         '<button class="btn-mini" data-place="'+i+'">שבץ ←</button></div>';
-    }).join('') || '<div class="sec-note">כל הילדים שובצו! 🎉</div>';
+    }).join('') || '<div class="sec-note" style="text-align:center;padding:20px">כל הילדים שובצו! 🎉<br><span class="btn-mini" id="plReset" style="cursor:pointer;margin-top:10px;display:inline-block">↺ אפס הדגמה</span></div>';
+    var rs=$('#plReset'); if(rs) rs.addEventListener('click',function(){ UNPLACED=ORIG_UNPLACED.map(function(u){return {name:u.name,city:u.city,age:u.age,edu:u.edu,suggest:u.suggest,match:u.match,reason:u.reason};}); placedCount=0; $('#plSimResult').innerHTML=''; renderPlace(); });
     $$('#plUnplaced [data-place]').forEach(function(b){ b.addEventListener('click',function(){
       var idx=+b.dataset.place; var u=UNPLACED[idx]; if(!u) return;
-      UNPLACED.splice(idx,1); placedCount++;
-      toast('✓ '+u.name+' שובצה ל'+u.want+' · הודעה נשלחה להורה');
-      renderPlace();
+      var row=b.closest('.worker'); if(row&&!reduce){ row.classList.add('placing'); }
+      toast('✓ '+u.name+' שובצה ל'+u.suggest+' ('+u.reason+') · הודעה נשלחה להורה');
+      setTimeout(function(){ UNPLACED.splice(idx,1); placedCount++; renderPlace(); }, reduce?0:380);
     });});
     $('#plWaitlist').innerHTML=WAIT.map(function(w){
       return '<div class="worker"><div><div class="wn">'+w.name+'</div><div class="wm">'+w.city+' · גיל '+w.age+' · ממתין ל'+w.want+'</div></div>'+
         '<span class="pill '+(w.prio==='אח בגן'?'ok':(w.prio==='קרבה'?'warn':'off'))+'">'+w.prio+'</span></div>';
     }).join('') || '<div class="sec-note">אין ממתינים ברשימה.</div>';
   }
+  var simRunning=false;
   function runSim(){
-    var place=Math.round(UNPLACED.length*0.78), wl=UNPLACED.length-place, ex=ri(2,7);
-    $('#plSimResult').innerHTML='<div style="border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));border-radius:12px;padding:14px;background:var(--accent-soft)">'+
-      '<div style="font-weight:800;color:var(--accent-strong)">✓ הסימולציה הסתיימה</div>'+
-      '<div class="stat-row" style="margin-top:8px"><div class="st"><b>'+place+'</b><span>ישובצו אוטומטית</span></div><div class="st"><b>'+wl+'</b><span>לרשימת המתנה</span></div><div class="st"><b>'+ex+'</b><span>חריגים לבדיקה ידנית</span></div></div>'+
-      '<div class="sec-note" style="margin-top:8px">מבוסס על עיר, גיל, אחים בגן ותפוסה. אפשר לאשר הכל בלחיצה או לעבור ידנית על החריגים.</div></div>';
-    toast('הסימולציה הורצה על '+UNPLACED.length+' ממתינים');
+    if(simRunning) return;
+    var total=UNPLACED.length;
+    if(!total){ toast('אין ממתינים — אפס/י את ההדגמה'); return; }
+    simRunning=true;
+    var btn=$('#plSimBtn'); btn.disabled=true; btn.textContent='⏳ מריץ שיבוץ…';
+    var toWL=Math.round(total*0.14), ex=ri(1,5), placeN=total-toWL;
+    var done=0;
+    var timer=setInterval(function(){
+      if(UNPLACED.length<=toWL || done>=placeN){
+        clearInterval(timer); simRunning=false;
+        btn.disabled=false; btn.textContent='▶ הרצת סימולציה';
+        $('#plSimResult').innerHTML='<div style="border:1px solid color-mix(in srgb,var(--good) 32%,var(--border));border-radius:12px;padding:14px;background:var(--good-soft)">'+
+          '<div style="font-weight:800;color:var(--good)">✓ הסימולציה הסתיימה — '+placeN+' שובצו אוטומטית</div>'+
+          '<div class="stat-row" style="margin-top:8px"><div class="st"><b>'+placeN+'</b><span>שובצו</span></div><div class="st"><b>'+toWL+'</b><span>לרשימת המתנה</span></div><div class="st"><b>'+ex+'</b><span>חריגים לבדיקה</span></div></div>'+
+          '<div class="sec-note" style="margin-top:8px">לפי עיר, גיל, אחים בגן ותפוסה. אפשר לאשר הכל, לעבור על החריגים, או ↺ לאפס.</div></div>';
+        renderPlace(); toast('🎉 '+placeN+' ילדים שובצו בסימולציה');
+        return;
+      }
+      UNPLACED.shift(); placedCount++; done++; renderPlace();
+    }, reduce?10:90);
   }
 
   /* ---------- MODULE 4: COMMUNICATION ---------- */
@@ -1754,12 +1844,28 @@
   ];
   var CH_MSG=[{k:'sms',label:'SMS'},{k:'mail',label:'מייל'},{k:'voice',label:'הודעה קולית'},{k:'wa',label:'וואטסאפ'},{k:'sys',label:'הודעת מערכת'}];
   var segSel={all:true}, chSel={sms:true};
+  var TEMPLATES=[
+    {t:'תזכורת מסמכים',m:'שלום {שם}, נזכיר להשלים את מסמכי הרישום עד יום חמישי. ניתן להעלות בקלות דרך פורטל ההורים. תודה!'},
+    {t:'אישור שיבוץ',m:'משפחת {שם} היקרה, שמחים לבשר ששובצתם! פרטי הגן ממתינים לכם בפורטל ההורים.'},
+    {t:'תזכורת תשלום',m:'שלום {שם}, נותרה יתרה לתשלום. לתשלום מאובטח בלחיצה: קישור מצורף. תודה על שיתוף הפעולה.'},
+    {t:'ברכת שנה',m:'משפחת {שם} היקרה, מאחלים שנת לימודים מתוקה ומוצלחת! צוות הרשת.'}
+  ];
   function renderComm(){
     $('#segChips').innerHTML=SEGMENTS.map(function(s){return '<span class="chip" role="button" tabindex="0" data-seg="'+s.k+'" '+(segSel[s.k]?'data-on="1"':'')+'>'+s.label+'</span>';}).join('');
     $('#commChannels').innerHTML=CH_MSG.map(function(c){return '<span class="chip" role="button" tabindex="0" data-ch="'+c.k+'" '+(chSel[c.k]?'data-on="1"':'')+'>'+c.label+'</span>';}).join('');
+    $('#commTmpl').innerHTML=TEMPLATES.map(function(t,i){return '<button class="btn-ghost" style="font-size:.78rem;padding:6px 11px" data-tmpl="'+i+'">'+t.t+'</button>';}).join('');
     $$('#segChips .chip').forEach(function(el){ if(el.dataset.on) el.classList.add('on'); el.addEventListener('click',function(){ toggleSeg(el.dataset.seg); }); });
     $$('#commChannels .chip').forEach(function(el){ if(el.dataset.on) el.classList.add('on'); el.addEventListener('click',function(){ chSel[el.dataset.ch]=!chSel[el.dataset.ch]; el.classList.toggle('on'); }); });
-    updSegCount();
+    $$('#commTmpl [data-tmpl]').forEach(function(b){ b.addEventListener('click',function(){ $('#commMsg').value=TEMPLATES[+b.dataset.tmpl].m; commPreview(); }); });
+    updSegCount(); commPreview();
+  }
+  function commPreview(){
+    var raw=$('#commMsg').value||'';
+    var box=$('#commPreview');
+    if(!raw.trim()){ box.innerHTML=''; return; }
+    var demo=raw.replace(/\{שם\}/g,'כהן');
+    box.innerHTML='<div class="sms-bubble">'+demo.replace(/</g,'&lt;')+'</div>'+
+      '<div class="sms-meta"><span>תצוגה מקדימה · {שם} מוחלף אוטומטית</span><span>'+raw.length+' תווים'+(raw.length>160?' · '+Math.ceil(raw.length/160)+' הודעות':'')+'</span></div>';
   }
   function toggleSeg(k){
     if(k==='all'){ segSel={all:true}; } else { delete segSel.all; segSel[k]=!segSel[k]; if(!Object.keys(segSel).filter(function(x){return segSel[x];}).length) segSel={all:true}; }
@@ -1777,10 +1883,12 @@
     var n=$('#segCount').dataset.n||0;
     var chs=CH_MSG.filter(function(c){return chSel[c.k];}).map(function(c){return c.label;});
     if(!chs.length){ toast('בחר/י לפחות ערוץ אחד'); return; }
+    if(!($('#commMsg').value||'').trim()){ toast('כתוב/י תוכן הודעה'); return; }
     var seg=SEGMENTS.filter(function(s){return segSel[s.k];}).map(function(s){return s.label;}).join(', ')||'כל הרשת';
-    var ev={c:'reg',ic:'📨',tx:'<b>נשלחה הודעה ל-'+he(n)+' משפחות</b>',mt:seg+' · '+chs.join(' + ')+' · עכשיו'};
-    pushFeed($('#commLog'),ev,12);
-    toast('✓ ההודעה נשלחה ל-'+he(n)+' משפחות ב'+chs.join(', '));
+    pushFeed($('#commLog'),{c:'enter',ic:'📤',tx:'<b>שולח ל-'+he(n)+' משפחות…</b>',mt:seg+' · '+chs.join(' + ')+' · עכשיו'},12);
+    toast('📤 שולח ל-'+he(n)+' משפחות…');
+    var top=$('#commLog').firstChild;
+    setTimeout(function(){ if(top){ top.className='ev reg'; top.querySelector('.ic').textContent='✓'; top.querySelector('.tx').innerHTML='<b>נמסרה ל-'+he(n)+' משפחות</b>'; top.querySelector('.mt').textContent=seg+' · '+chs.join(' + ')+' · נמסר ✓'; } toast('✓ נמסרה ל-'+he(n)+' משפחות'); }, reduce?0:1200);
   }
 
   /* ---------- MODULE 5: BILLING ---------- */
@@ -1853,7 +1961,7 @@
       body=DOCS4.map(function(d){return '<div class="prow-line"><span>'+d+'</span>'+(f.docs[d]?'<span class="pill ok">✓ הועלה</span>':'<button class="btn-mini">⬆ העלאה</button>')+'</div>';}).join('');
     } else if(portalTab==='pay'){
       body='<div class="prow-line"><span>יתרה</span><b style="color:'+(f.debt?'var(--alert)':'var(--good)')+'">'+(f.debt?'₪'+he(f.debt)+' לתשלום':'מאוזן ✓')+'</b></div>'+
-        (f.debt?'<button class="btn-primary" style="width:100%;margin-top:12px" onclick="void 0">💳 תשלום מאובטח ₪'+he(f.debt)+'</button>':'<div class="sec-note" style="margin-top:10px">אין חוב פתוח. תודה!</div>')+
+        (f.debt?'<button class="btn-primary" id="portalPay" style="width:100%;margin-top:12px">💳 תשלום מאובטח ₪'+he(f.debt)+'</button>':'<div class="sec-note" style="margin-top:10px">אין חוב פתוח. תודה!</div>')+
         '<div class="prow-line" style="margin-top:12px"><span>הוראת קבע</span><span class="pill ok">פעילה</span></div>';
     } else if(portalTab==='act'){
       body=[{n:'צהרון',on:true},{n:'קייטנת חנוכה',on:false},{n:'קייטנת ניסן',on:false}].map(function(a){
@@ -1867,6 +1975,7 @@
       '<div class="phone-body">'+body+'</div></div>'+
       '<div class="sec-note" style="text-align:center;margin-top:12px">כך רואה ההורה את האזור האישי שלו — במובייל, בעברית מלאה.</div>';
     $$('#ptabs .ptab').forEach(function(b){b.addEventListener('click',function(){ portalTab=b.dataset.pt; renderPortal(); });});
+    var pb=$('#portalPay'); if(pb) pb.addEventListener('click',function(){ pb.textContent='✓ התשלום בוצע בהצלחה'; pb.style.background='var(--good)'; toast('✓ התשלום התקבל · קבלה נשלחה במייל'); });
   }
 
   /* ---------- SPEC / GAP VIEW ---------- */
@@ -1899,6 +2008,23 @@
 
   function kpiHTML(r){return '<div class="card kpi'+(r.live?' live-kpi':'')+'"><div class="kl">'+(r.live?'<span class="minidot"></span> ':'')+r.l+'</div><div class="kv '+(r.cls||'')+'">'+r.v+'</div>'+(r.s?'<div class="ks">'+r.s+'</div>':'')+'</div>';}
 
+  /* friendly count-up on view open */
+  function countUpView(v){
+    if(reduce) return;
+    var root=document.getElementById('view-'+v); if(!root) return;
+    root.querySelectorAll('.kv, .tk b').forEach(function(el){
+      var txt=(el.textContent||'').trim();
+      var m=txt.match(/^(₪)?([\d,]+)(%?)$/); if(!m) return;
+      var pre=m[1]||'', suf=m[3]||'', target=+m[2].replace(/,/g,'');
+      if(!isFinite(target)||target<=0||target>5000000) return;
+      var dur=680, t0=performance.now();
+      function step(t){ var p=Math.min(1,(t-t0)/dur); var e=1-Math.pow(1-p,3);
+        el.textContent=pre+Math.round(target*e).toLocaleString('he-IL')+suf;
+        if(p<1) requestAnimationFrame(step); }
+      requestAnimationFrame(step);
+    });
+  }
+
   /* ---------- NAV / DRAWER ---------- */
   function switchTab(v){
     $$('.navitem').forEach(function(t){t.setAttribute('aria-current', t.dataset.view===v?'true':'false');});
@@ -1918,6 +2044,7 @@
     if(v==='perms') renderPerms();
     if(v==='portal') renderPortal();
     if(v==='spec') renderSpec();
+    countUpView(v);
     closeDrawer();
     window.scrollTo({top:0,behavior:reduce?'auto':'smooth'});
   }
@@ -2037,7 +2164,10 @@
   $('#crmSearch').addEventListener('input',crmFilter);
   $('#plSimBtn').addEventListener('click',runSim);
   $('#commSend').addEventListener('click',doSend);
+  $('#commMsg').addEventListener('input',commPreview);
   $('#docGen').addEventListener('click',genDoc);
+  $('#billRemindAll').addEventListener('click',function(){ toast('🔔 נשלחו 1,180 תזכורות תשלום ב-SMS ובוואטסאפ'); });
+  countUpView('home');
 
   /* ---------- LIVE LOOPS ---------- */
   setInterval(tickClock,1000);
