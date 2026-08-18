@@ -395,6 +395,61 @@
   .portal.p-live .pv{color:var(--live)}
   .portal.p-star .pic{background:linear-gradient(150deg,var(--brass-soft),var(--surface-2))}
 
+  /* ===== module UI: inputs, buttons, cards ===== */
+  .txtin{border:1px solid var(--border); background:var(--surface-2); color:var(--ink); border-radius:11px;
+    padding:10px 13px; font-weight:600; font-size:.9rem; font-family:inherit}
+  .txtin:focus{outline:2px solid var(--accent); outline-offset:1px}
+  .btn-primary{border:0; border-radius:11px; padding:10px 16px; font-weight:800; font-size:.88rem; cursor:pointer; color:#fff;
+    background:linear-gradient(145deg,var(--accent),var(--accent-cool)); box-shadow:0 6px 16px -6px var(--accent); transition:.15s}
+  .btn-primary:hover{transform:translateY(-1px)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-ghost{border:1px solid var(--border); background:var(--surface-2); color:var(--ink-soft); border-radius:11px; padding:10px 14px; font-weight:700; font-size:.85rem; cursor:pointer}
+  .btn-ghost:hover{border-color:var(--accent); color:var(--ink)}
+  .btn-mini{border:1px solid var(--border); background:var(--surface-2); color:var(--accent-strong); border-radius:9px; padding:5px 11px; font-weight:800; font-size:.78rem; cursor:pointer}
+  .btn-mini:hover{background:var(--accent-soft)}
+  .chip.on, .chipbtn.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .chip[role="button"]{cursor:pointer; user-select:none}
+  .seg-count{margin-top:12px; padding:12px 14px; border-radius:12px; background:var(--accent-soft); color:var(--accent-strong); font-weight:800; font-size:.95rem}
+  .seg-count b{font-size:1.3rem}
+
+  .fam-card{border:1px solid color-mix(in srgb,var(--accent) 26%,var(--border)); border-radius:18px; background:var(--surface); box-shadow:var(--shadow); overflow:hidden}
+  .fam-top{padding:18px; background:linear-gradient(150deg,var(--accent-soft),var(--surface))}
+  .fam-top h3{font-size:1.3rem; font-weight:800}
+  .fam-body{padding:16px 18px; display:flex; flex-direction:column; gap:14px}
+  .fam-block .lbl{font-size:.72rem; letter-spacing:.08em; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:7px}
+  .prow{display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px dashed var(--border); font-size:.88rem}
+  .prow:last-child{border-bottom:0}
+  .doc-tag{display:inline-flex; align-items:center; gap:5px; font-size:.76rem; font-weight:700; padding:4px 9px; border-radius:8px; margin:3px 3px 0 0}
+  .doc-tag.ok{background:var(--good-soft); color:var(--good)}
+  .doc-tag.no{background:var(--alert-soft); color:var(--alert)}
+  .timeline{display:flex; flex-direction:column; gap:0}
+  .timeline .ti{display:flex; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:.84rem}
+  .timeline .ti:last-child{border-bottom:0}
+  .timeline .ti .d{color:var(--muted); font-size:.74rem; white-space:nowrap}
+
+  .permtbl th,.permtbl td{text-align:center}
+  .permtbl td:first-child,.permtbl th:first-child{text-align:right; font-weight:700}
+  .yes{color:var(--good); font-weight:800}
+  .view-only{color:var(--warn)}
+  .no-acc{color:var(--muted); opacity:.6}
+
+  /* parent portal phone frame */
+  .phone{max-width:390px; margin:0 auto; border-radius:34px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-lg); overflow:hidden}
+  .phone-top{background:linear-gradient(150deg,var(--accent),var(--accent-cool)); color:#fff; padding:20px 18px 16px}
+  .phone-top .hi{font-size:.8rem; opacity:.9}
+  .phone-top .nm{font-size:1.2rem; font-weight:800; margin-top:2px}
+  .phone-tabs{display:flex; gap:4px; padding:10px; overflow-x:auto; border-bottom:1px solid var(--border); scrollbar-width:none}
+  .phone-tabs::-webkit-scrollbar{display:none}
+  .ptab{border:0; background:var(--surface-2); color:var(--ink-soft); border-radius:10px; padding:8px 12px; font-weight:700; font-size:.8rem; white-space:nowrap; cursor:pointer}
+  .ptab[aria-selected="true"]{background:var(--accent); color:#fff}
+  .phone-body{padding:16px; min-height:230px}
+  .prow-line{display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border); font-size:.88rem}
+
+  .toast{position:fixed; z-index:80; bottom:26px; inset-inline-start:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:var(--surface); padding:12px 20px; border-radius:12px; font-weight:800; font-size:.9rem;
+    box-shadow:var(--shadow-lg); opacity:0; visibility:hidden; transition:.25s; max-width:88vw; text-align:center}
+  .toast.show{opacity:1; visibility:visible; transform:translateX(-50%) translateY(0)}
+
   @media (prefers-reduced-motion:reduce){
     *{animation-duration:.001ms !important; animation-iteration-count:1 !important}
     .view{animation:none}
@@ -430,14 +485,27 @@
   </div>
   <nav class="dr-nav" id="drawerNav">
     <button class="navitem" data-view="home"><span class="ni">🏠</span> דף הבית</button>
-    <div class="dr-sec">ניהול הרשת</div>
-    <button class="navitem" data-view="overview"><span class="ni">📡</span> סקירה לאומית</button>
+    <div class="dr-sec">רישום ושיבוץ</div>
+    <button class="navitem" data-view="registration"><span class="ni">📝</span> מערכת רישום</button>
+    <button class="navitem" data-view="place"><span class="ni">🧩</span> שיבוץ ילדים</button>
     <button class="navitem" data-view="cities"><span class="ni">🏙️</span> ערים וגנים</button>
-    <button class="navitem" data-view="reports"><span class="ni">📊</span> דוחות ואחוזים</button>
     <button class="navitem" data-view="activities"><span class="ni">☀️</span> פעילויות ותוכניות</button>
+    <div class="dr-sec">משפחות ושירות</div>
+    <button class="navitem" data-view="crm"><span class="ni">👨‍👩‍👧</span> כרטיסי משפחה · CRM</button>
+    <button class="navitem" data-view="comm"><span class="ni">📨</span> תקשורת עם הורים</button>
+    <button class="navitem" data-view="portal"><span class="ni">📱</span> פורטל הורים</button>
+    <div class="dr-sec">כספים ומסמכים</div>
+    <button class="navitem" data-view="billing"><span class="ni">💳</span> סליקה ותשלומים</button>
+    <button class="navitem" data-view="docs"><span class="ni">📄</span> ניהול מסמכים</button>
+    <div class="dr-sec">בקרה וארגון</div>
+    <button class="navitem" data-view="overview"><span class="ni">📡</span> סקירה ודוחות</button>
+    <button class="navitem" data-view="reports"><span class="ni">📊</span> אחוזים ותפוסות</button>
+    <button class="navitem" data-view="perms"><span class="ni">🔐</span> הרשאות עבודה</button>
+    <div class="dr-sec">תפעול והשלב הבא</div>
     <button class="navitem" data-view="staff"><span class="ni">👥</span> עובדות ושיבוץ</button>
-    <div class="dr-sec">השלב הבא</div>
     <button class="navitem star" data-view="hours"><span class="ni">★</span> שעות ושכר · חי</button>
+    <div class="dr-sec">מידע</div>
+    <button class="navitem" data-view="spec"><span class="ni">📋</span> האפיון</button>
     <button class="navitem" data-view="plan"><span class="ni">🗺️</span> התוכנית</button>
   </nav>
   <div class="theme-row">
@@ -757,6 +825,196 @@
           <span class="t"><b>בשלב הביצוע:</b> מחברים את מקור השעות הקיים בכל עיר (הטלפון האוטומטי או המכשיר בגן) — ומכאן הכל אוטומטי: שעות → שכר, בלי הקלדה ידנית.</span>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ================= REGISTRATION (module 1) ================= -->
+  <section class="view" id="view-registration" role="tabpanel">
+    <div class="view-head"><div>
+      <h2>מערכת רישום דיגיטלית <span class="pill live"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> חי</span></h2>
+      <div class="sub">רישום רב-ערוצי לכל הרשת — דפי נחיתה לכל עיר, טפסים, סנכרון נדרים, רישום טלפוני ורישום לפעילויות. זיהוי הורה לפי ת״ז, שליפת נתונים, מסמכים וחתימה דיגיטלית.</div>
+    </div></div>
+    <div class="kpis" id="regFunnel" style="margin-bottom:14px"></div>
+    <div class="grid-2">
+      <div class="card pad">
+        <div class="sec-title">זיהוי הורה לפי ת״ז <span class="badge">אינטראקטיבי</span></div>
+        <div class="sec-note" style="margin-bottom:12px">הקלד/י ת״ז (או בחר/י דוגמה) — המערכת שולפת נתונים קיימים או פותחת רישום חדש</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+          <input id="idLookupInput" inputmode="numeric" maxlength="9" placeholder="ת״ז ההורה" class="txtin" style="flex:1; min-width:150px">
+          <button class="btn-primary" id="idLookupBtn">🔎 שליפה</button>
+          <button class="btn-ghost" id="idLookupRand">דוגמה אקראית</button>
+        </div>
+        <div id="idLookupResult" style="margin-top:14px"></div>
+      </div>
+      <div class="card pad">
+        <div class="sec-title">רישומים נכנסים <span class="pill live" style="margin-inline-start:auto"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> זורם</span></div>
+        <div class="sec-note" style="margin-bottom:6px">כל רישום חדש מכל ערוץ ומכל עיר</div>
+        <div class="feed" id="regFeed" style="max-height:320px"></div>
+      </div>
+    </div>
+    <div class="subtitle-row"><h3>ערוצי רישום</h3><div class="ln"></div></div>
+    <div class="grid-3" id="regChannels"></div>
+    <div class="card pad" style="margin-top:14px">
+      <div class="sec-title">דפי נחיתה לרישום — לפי עיר</div>
+      <div class="sec-note" style="margin-bottom:10px">לכל עיר כתובת רישום ייעודית · טפסים מותאמים למסלולים</div>
+      <div class="tbl-wrap"><table id="regForms"><thead><tr><th>עיר</th><th>כתובת דף הנחיתה</th><th>נרשמו העונה</th><th>ממתינים לאישור</th><th>סטטוס</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ================= CRM (module 2) ================= -->
+  <section class="view" id="view-crm" role="tabpanel">
+    <div class="view-head"><div>
+      <h2>כרטיסי משפחה · CRM</h2>
+      <div class="sub">לכל משפחה כרטיס מלא — הורים, ילדים, אחים ברשת, שיוך עיר/גן, היסטוריית רישום, מסמכים, תשלומים וחובות, ותיעוד כל פנייה.</div>
+    </div></div>
+    <div class="kpis" id="crmKpis" style="margin-bottom:14px"></div>
+    <div class="grid-2" style="grid-template-columns:1fr 1.15fr">
+      <div class="card pad">
+        <div class="sec-title">חיפוש משפחה <span class="sec-note" id="crmCount" style="margin-inline-start:auto"></span></div>
+        <input id="crmSearch" placeholder="חיפוש לפי שם משפחה / עיר / ת״ז…" class="txtin" style="width:100%; margin:10px 0 12px">
+        <div class="tbl-wrap" style="max-height:460px; overflow-y:auto"><table id="crmTable"><thead><tr><th>משפחה</th><th>עיר</th><th>ילדים</th><th>יתרה</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div id="crmCard"></div>
+    </div>
+  </section>
+
+  <!-- ================= CHILD PLACEMENT (module 3) ================= -->
+  <section class="view" id="view-place" role="tabpanel">
+    <div class="view-head"><div>
+      <h2>שיבוץ ילדים <span class="pill reg">חכם</span></h2>
+      <div class="sub">שיבוץ לפי עיר, שכונה, גיל, מסלול, אחים בגן ותפוסה — כולל רשימות המתנה, סימולציות, ואישור/שינוי שיבוץ עם הודעה אוטומטית להורה.</div>
+    </div></div>
+    <div class="kpis" id="plStats" style="margin-bottom:14px"></div>
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">סימולציית שיבוץ <span class="badge">אינטראקטיבי</span></div>
+      <div class="sec-note" style="margin-bottom:10px">הרצת מנוע השיבוץ על הממתינים — לפי הקריטריונים</div>
+      <div class="chips" style="margin-bottom:10px">
+        <span class="chip">🏙️ עיר</span><span class="chip">📍 שכונה</span><span class="chip">🎂 גיל</span><span class="chip">🧩 מסלול</span><span class="chip">👨‍👩‍👧 אחים בגן</span><span class="chip">📊 תפוסה</span><span class="chip">⭐ קדימויות</span>
+      </div>
+      <button class="btn-primary" id="plSimBtn">▶ הרצת סימולציה</button>
+      <div id="plSimResult" style="margin-top:12px"></div>
+    </div>
+    <div class="grid-2">
+      <div class="card pad">
+        <div class="sec-title">ממתינים לשיבוץ <span class="sec-note" id="plUnCount" style="margin-inline-start:auto"></span></div>
+        <div class="sec-note" style="margin-bottom:10px">לחיצה על "שבץ" משבצת לגן המתאים ומעדכנת תפוסה</div>
+        <div id="plUnplaced" style="display:flex; flex-direction:column; gap:9px; max-height:420px; overflow-y:auto"></div>
+      </div>
+      <div class="card pad">
+        <div class="sec-title">רשימת המתנה</div>
+        <div class="sec-note" style="margin-bottom:10px">ילדים בהמתנה לגן מבוקש שמלא — לפי קדימות</div>
+        <div id="plWaitlist" style="display:flex; flex-direction:column; gap:9px; max-height:420px; overflow-y:auto"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= COMMUNICATION (module 4) ================= -->
+  <section class="view" id="view-comm" role="tabpanel">
+    <div class="view-head"><div>
+      <h2>תקשורת עם הורים</h2>
+      <div class="sub">שליחת הודעות בפילוח מדויק — עיר, גן, גיל, סטטוס רישום, חסרי מסמכים, חייבים בתשלום — בכל ערוץ: SMS, מייל, קולי, וואטסאפ והודעות מערכת.</div>
+    </div></div>
+    <div class="grid-2" style="grid-template-columns:1.1fr 1fr">
+      <div class="card pad">
+        <div class="sec-title">בניית הודעה</div>
+        <div class="sec-note" style="margin:8px 0 8px">1 · בחירת קהל היעד (פילוח)</div>
+        <div class="chips" id="segChips"></div>
+        <div class="seg-count" id="segCount"></div>
+        <div class="sec-note" style="margin:14px 0 8px">2 · ערוצים</div>
+        <div class="chips" id="commChannels"></div>
+        <div class="sec-note" style="margin:14px 0 8px">3 · תוכן ההודעה</div>
+        <textarea id="commMsg" class="txtin" rows="3" style="width:100%; resize:vertical" placeholder="לדוגמה: שלום הורים יקרים, נזכיר כי יש להשלים מסמכי רישום עד יום חמישי…"></textarea>
+        <button class="btn-primary" id="commSend" style="margin-top:12px">📨 שליחה עכשיו</button>
+      </div>
+      <div class="card pad">
+        <div class="sec-title">יומן שליחות <span class="pill live" style="margin-inline-start:auto"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> חי</span></div>
+        <div class="sec-note" style="margin-bottom:6px">קמפיינים והודעות שנשלחו</div>
+        <div class="feed" id="commLog" style="max-height:440px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BILLING (module 5) ================= -->
+  <section class="view" id="view-billing" role="tabpanel">
+    <div class="view-head"><div>
+      <h2>סליקה ותשלומים <span class="pill live"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> חי</span></h2>
+      <div class="sub">אשראי, הוראות קבע, קישורי תשלום, גבייה לפעילויות וקייטנות, הפקת קבלות וסנכרון להנהלת חשבונות — ומעקב חייבים בזמן אמת.</div>
+    </div></div>
+    <div class="kpis" id="billKpis" style="margin-bottom:14px"></div>
+    <div class="grid-2">
+      <div class="card pad">
+        <div class="sec-title">תשלומים נכנסים <span class="pill live" style="margin-inline-start:auto"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> זורם</span></div>
+        <div class="sec-note" style="margin-bottom:6px">אשראי · הוראת קבע · קישור תשלום — מכל הערים</div>
+        <div class="feed" id="billFeed" style="max-height:360px"></div>
+      </div>
+      <div class="card pad">
+        <div class="sec-title">חייבים בתשלום <span class="sec-note" id="debtCount" style="margin-inline-start:auto"></span></div>
+        <div class="sec-note" style="margin-bottom:10px">משפחות עם יתרת חוב — לחיצה תשלח בקשת תשלום (הדמיה)</div>
+        <div class="tbl-wrap" style="max-height:360px; overflow-y:auto"><table id="debtorsTable"><thead><tr><th>משפחה</th><th>עיר</th><th>חוב</th><th>פעולה</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DOCUMENTS (module 6) ================= -->
+  <section class="view" id="view-docs" role="tabpanel">
+    <div class="view-head"><div>
+      <h2>ניהול מסמכים</h2>
+      <div class="sub">הפקה אוטומטית של אישורי רישום, הצהרות, נספחים, אישורי שיבוץ, טפסים עירוניים ומסמכי רגולציה — וארכיון דיגיטלי מלא לכל משפחה.</div>
+    </div></div>
+    <div class="kpis" id="docKpis" style="margin-bottom:14px"></div>
+    <div class="grid-2" style="grid-template-columns:1fr 1.2fr">
+      <div class="card pad">
+        <div class="sec-title">הפקת מסמך <span class="badge">אינטראקטיבי</span></div>
+        <div class="sec-note" style="margin:8px 0">בחר/י סוג מסמך ומשפחה — והמערכת מפיקה אוטומטית</div>
+        <select id="docType" class="sellike" style="width:100%; margin-bottom:8px"></select>
+        <select id="docFam" class="sellike" style="width:100%; margin-bottom:12px"></select>
+        <button class="btn-primary" id="docGen">📄 הפקת מסמך</button>
+      </div>
+      <div class="card pad">
+        <div class="sec-title">מסמכים שהופקו <span class="pill live" style="margin-inline-start:auto"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> חי</span></div>
+        <div class="sec-note" style="margin-bottom:6px">ארכיון דיגיטלי — נשמר אוטומטית בכרטיס המשפחה</div>
+        <div class="feed" id="docList" style="max-height:400px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PERMISSIONS (module 7) ================= -->
+  <section class="view" id="view-perms" role="tabpanel">
+    <div class="view-head"><div>
+      <h2>הרשאות עבודה</h2>
+      <div class="sub">הרשאות לפי תפקיד — מהנהלה ארצית ועד צפייה בלבד. כל תפקיד רואה ופועל רק במה שמותר לו.</div>
+    </div></div>
+    <div class="card pad">
+      <div class="sec-title">מטריצת הרשאות</div>
+      <div class="sec-note" style="margin-bottom:10px">✓ הרשאה מלאה · 👁️ צפייה בלבד · — אין גישה</div>
+      <div class="tbl-wrap"><table id="permMatrix"></table></div>
+    </div>
+  </section>
+
+  <!-- ================= PARENT PORTAL (module 9) ================= -->
+  <section class="view" id="view-portal" role="tabpanel">
+    <div class="view-head"><div>
+      <h2>פורטל הורים</h2>
+      <div class="sub">אזור אישי להורה — עדכון פרטים, העלאת מסמכים, סטטוס רישום, תשלום, רישום לפעילויות וקבלת הודעות. כך זה נראה מצד ההורה.</div>
+    </div></div>
+    <div id="portalMock"></div>
+  </section>
+
+  <!-- ================= SPEC / GAP (explanation) ================= -->
+  <section class="view" id="view-spec" role="tabpanel">
+    <div class="view-head"><div>
+      <h2>האפיון — הבית הדיגיטלי של הרשת</h2>
+      <div class="sub">מהלך אסטרטגי: מערכת מרכזית אחת שנותנת מענה מקצה לקצה — מרישום, דרך שיבוץ ותקשורת, ועד גבייה, מסמכים, בקרה ודוחות. כאן מיפוי כל 9 המודולים ומה כבר חי בהדמיה.</div>
+    </div></div>
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="sec-title">מטרות המערכת</div>
+      <div class="grid-3" id="specGoals" style="margin-top:12px"></div>
+    </div>
+    <div class="subtitle-row"><h3>9 המודולים · מה כבר בהדמיה</h3><div class="ln"></div></div>
+    <div class="grid-3" id="specModules"></div>
+    <div class="card pad" style="margin-top:16px">
+      <div class="sec-title">דרישות טכנולוגיות</div>
+      <div class="chips" id="specTech" style="margin-top:12px"></div>
     </div>
   </section>
 
@@ -1310,6 +1568,337 @@
     return {c:ty.c,ic:ty.ic,tx:'<b>'+fullName()+'</b> · '+ty.v, mt:role+' · '+g.name+' · '+c.name+extra};
   }
 
+  /* ================= CENTRAL SPEC MODULES (families & derived) ================= */
+  function toast(msg){
+    var t=document.getElementById('toast');
+    if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t);}
+    t.textContent=msg; t.classList.add('show');
+    clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove('show');},2400);
+  }
+  var CHILD_F=['ברכי','שירי','חני','מירי','רבקי','ריקי','שרי','לאי','אסתי','דבי','טובי','נחי','מלכי','פרידי','גיטי','רוחי','חיה׳לה','בתי','שיינדי','פעסי','יוכי','דיני'];
+  var DAD_F=['משה','יוסף','אברהם','יעקב','שמעון','דוד','חיים','שלמה','אהרן','מנחם','ישראל','נפתלי','אלימלך','זלמן','בערל'];
+  var MOM_F=['מרים','רבקה','שרה','לאה','חנה','אסתר','דבורה','רחל','יהודית','בתיה','גיטל','פייגא','טובה','נחמה','ברכה'];
+  var CHANNELS=[
+    {k:'landing',ic:'🌐',name:'דף נחיתה עירוני'},
+    {k:'form',ic:'📝',name:'טופס רישום'},
+    {k:'nedarim',ic:'🔗',name:'סנכרון נדרים'},
+    {k:'phone',ic:'📞',name:'רישום טלפוני'},
+    {k:'activity',ic:'☀️',name:'רישום לפעילות'}
+  ];
+  var DOCS4=['נספח','צילום ת״ז','תקנון','הצהרת בריאות'];
+  function weightedCity(){ var r=rnd()*TOT.gan, a=0; for(var i=0;i<CITIES.length;i++){a+=CITIES[i].gan; if(r<=a) return CITIES[i];} return CITIES[0]; }
+
+  var FAMILIES=[];
+  (function(){
+    for(var i=0;i<74;i++){
+      var c=weightedCity(); var last=pick(TEACHER_L);
+      var nKids=pick([1,1,2,2,2,3,3,4]);
+      var kids=[]; for(var k=0;k<nKids;k++){ var g=pick(c.gans); kids.push({name:pick(CHILD_F)+' '+last, age:g.age, gan:g.name, edu:g.edu, city:c.name,
+        status: rnd()<0.72?'משובצת':(rnd()<0.6?'ממתינה לשיבוץ':'רשימת המתנה')}); }
+      var docs={}; DOCS4.forEach(function(d){docs[d]= rnd()>0.24;});
+      var debt = rnd()<0.32 ? ri(180,2600) : 0;
+      var ch=pick(CHANNELS);
+      var log=[]; var nl=ri(2,4);
+      var logT=['שיחת טלפון — בירור מסלול','נשלחה תזכורת מסמכים','עודכנו פרטי קשר','אישור שיבוץ נשלח','בקשת תשלום נשלחה','נקלטו מסמכים'];
+      for(var l=0;l<nl;l++){ log.push({t:pick(logT), d:'לפני '+ri(1,40)+' ימים'}); }
+      FAMILIES.push({
+        id:'F'+(1000+i), last:last, city:c.name, region:c.region,
+        dad:pick(DAD_F)+' '+last, mom:pick(MOM_F)+' '+last, tz:tz(), phone:'05'+ri(0,8)+'-'+ri(1000000,9999999),
+        email: 'family'+i+'@mail.com', kids:kids, docs:docs, debt:debt, channel:ch, regDate:'תשפ״ח', log:log,
+        missingDocs: DOCS4.filter(function(d){return !docs[d];}).length
+      });
+    }
+  })();
+  var FAM_TOTAL=6182, KIDS_TOTAL=TOT.students;
+
+  /* ---------- MODULE 1: REGISTRATION ---------- */
+  function renderRegistration(){
+    $('#regFunnel').innerHTML=[
+      {l:'התחילו רישום',v:he(10420),cls:'kaccent'},
+      {l:'השלימו רישום',v:he(KIDS_TOTAL),s:Math.round(KIDS_TOTAL/10420*100)+'% המרה'},
+      {l:'ממתינים לאישור',v:he(213),cls:'kaccent'},
+      {l:'אושרו אוטומטית',v:he(9218)},
+      {live:true,l:'נרשמו היום',v:he(ri(28,54))}
+    ].map(kpiHTML).join('');
+    var regN={landing:4120,form:2870,nedarim:1610,phone:940,activity:1344};
+    var mx=4120;
+    $('#regChannels').innerHTML=CHANNELS.map(function(ch){
+      var v=reg_(ch.k,regN); var w=Math.round(v/mx*100);
+      return '<div class="card pad"><div class="sec-title" style="font-size:.98rem">'+ch.ic+' '+ch.name+'</div>'+
+        '<div style="font-size:1.5rem;font-weight:800;margin:6px 0 8px">'+he(v)+' <span style="font-size:.5em;color:var(--muted);font-weight:700">רישומים</span></div>'+
+        '<div class="fillbar" style="height:10px"><i style="width:'+w+'%"></i></div></div>';
+    }).join('');
+    $('#regForms tbody').innerHTML=CITIES.map(function(c){
+      var slug={'ירושלים':'jerusalem','בני ברק':'bneibrak','מודיעין עילית':'modiin','ביתר עילית':'beitar','בית שמש':'bs','אשדוד':'ashdod','פתח תקווה':'pt','נתניה':'netanya','אשקלון':'ashkelon','ראשון לציון':'rishon','ראש העין':'roshhaayin','אופקים':'ofakim','טלז סטון':'telz','צפת':'tzfat'}[c.name]||'city';
+      var reg=Math.round(c.students*(0.9+rnd()*0.2)); var wait=ri(3,22);
+      return '<tr><td class="strong">'+c.name+'</td><td style="color:var(--accent-strong)">רישום/'+slug+'</td><td class="n">'+he(reg)+'</td><td class="n">'+wait+'</td><td><span class="pill ok">פעיל</span></td></tr>';
+    }).join('');
+  }
+  function reg_(k,m){return m[k];}
+  function doLookup(val){
+    var f = FAMILIES.filter(function(x){return x.tz===val;})[0];
+    var box=$('#idLookupResult');
+    if(f){
+      box.innerHTML='<div style="border:1px solid color-mix(in srgb,var(--good) 34%,var(--border));border-radius:12px;padding:14px;background:var(--good-soft)">'+
+        '<div style="font-weight:800;color:var(--good)">✓ נמצאה משפחה קיימת — נשלפו הנתונים</div>'+
+        '<div class="prow"><span>משפחה</span><b>'+f.last+' · '+f.city+'</b></div>'+
+        '<div class="prow"><span>הורים</span><span>'+f.dad+' · '+f.mom+'</span></div>'+
+        '<div class="prow"><span>ילדים ברשת</span><span>'+f.kids.length+' — '+f.kids.map(function(k){return k.name.split(" ")[0];}).join(", ")+'</span></div>'+
+        '<div class="prow"><span>מסמכים חסרים</span><span>'+(f.missingDocs?('<span class="pill warn">'+f.missingDocs+' חסרים</span>'):'<span class="pill ok">מלא</span>')+'</span></div>'+
+        '<button class="btn-mini" style="margin-top:10px" onclick="void 0">המשך לעדכון פרטים ←</button></div>';
+    } else {
+      box.innerHTML='<div style="border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));border-radius:12px;padding:14px;background:var(--accent-soft)">'+
+        '<div style="font-weight:800;color:var(--accent-strong)">הת״ז לא נמצאה — פתיחת רישום חדש</div>'+
+        '<div class="sec-note" style="margin-top:6px">המערכת תפתח כרטיס משפחה חדש, תשלח קוד אימות ב-SMS, ותאפשר צירוף מסמכים וחתימה דיגיטלית.</div>'+
+        '<button class="btn-mini" style="margin-top:10px">פתיחת רישום חדש ←</button></div>';
+    }
+  }
+
+  /* ---------- MODULE 2: CRM ---------- */
+  var crmSel=null;
+  function renderCRM(){
+    var kids=FAM_TOTAL*1.6|0;
+    $('#crmKpis').innerHTML=[
+      {l:'משפחות ברשת',v:he(FAM_TOTAL),cls:'kaccent'},
+      {l:'ילדים',v:he(KIDS_TOTAL)},
+      {l:'משפחות עם אחים',v:he(2140)},
+      {l:'חסרי מסמכים',v:he(410),cls:'kaccent'},
+      {l:'חייבים',v:he(1180)}
+    ].map(kpiHTML).join('');
+    crmFilter();
+  }
+  function crmFilter(){
+    var q=($('#crmSearch').value||'').trim();
+    var list=FAMILIES.filter(function(f){ return !q || f.last.indexOf(q)>=0 || f.city.indexOf(q)>=0 || f.tz.indexOf(q)>=0; });
+    $('#crmCount').textContent=he(FAM_TOTAL)+' משפחות · מוצג מדגם';
+    $('#crmTable tbody').innerHTML=list.slice(0,40).map(function(f,i){
+      return '<tr class="clickable" data-fi="'+FAMILIES.indexOf(f)+'"><td class="strong">משפ׳ '+f.last+'</td><td>'+f.city+'</td><td class="n">'+f.kids.length+'</td><td>'+(f.debt?'<span class="pill warn">₪'+he(f.debt)+'</span>':'<span class="pill ok">מאוזן</span>')+'</td></tr>';
+    }).join('') || '<tr><td colspan="4" style="color:var(--muted)">לא נמצאו משפחות.</td></tr>';
+    $$('#crmTable tbody tr').forEach(function(tr){ tr.addEventListener('click',function(){ crmSel=+tr.dataset.fi; renderFamCard(); }); });
+    if(crmSel==null && FAMILIES.length) crmSel=0;
+    renderFamCard();
+  }
+  function renderFamCard(){
+    var f=FAMILIES[crmSel]; if(!f){$('#crmCard').innerHTML='';return;}
+    var docs=DOCS4.map(function(d){return '<span class="doc-tag '+(f.docs[d]?'ok':'no')+'">'+(f.docs[d]?'✓':'✕')+' '+d+'</span>';}).join('');
+    $('#crmCard').innerHTML='<div class="fam-card">'+
+      '<div class="fam-top"><h3>משפחת '+f.last+'</h3><div class="sec-note">'+f.city+' · אזור '+f.region+' · מס׳ כרטיס '+f.id+' · נרשמו '+f.regDate+'</div>'+
+        (f.debt?'<span class="pill warn" style="margin-top:8px">יתרת חוב ₪'+he(f.debt)+'</span>':'<span class="pill ok" style="margin-top:8px">חשבון מאוזן</span>')+'</div>'+
+      '<div class="fam-body">'+
+        '<div class="fam-block"><div class="lbl">הורים</div>'+
+          '<div class="prow"><span>אב</span><b>'+f.dad+'</b></div><div class="prow"><span>אם</span><b>'+f.mom+'</b></div>'+
+          '<div class="prow"><span>טלפון</span><span>'+f.phone+'</span></div><div class="prow"><span>ת״ז</span><span class="num">'+f.tz+'</span></div></div>'+
+        '<div class="fam-block"><div class="lbl">ילדים ('+f.kids.length+')'+(f.kids.length>1?' · אחים':'')+'</div>'+
+          f.kids.map(function(k){return '<div class="prow"><b>'+k.name+'</b><span>'+k.gan+' · גיל '+k.age+' · <span class="pill '+(k.status==='משובצת'?'ok':(k.status==='ממתינה לשיבוץ'?'warn':'off'))+'">'+k.status+'</span></span></div>';}).join('')+'</div>'+
+        '<div class="fam-block"><div class="lbl">מסמכים</div><div>'+docs+'</div></div>'+
+        '<div class="fam-block"><div class="lbl">תיעוד קשר</div><div class="timeline">'+
+          f.log.map(function(e){return '<div class="ti"><span class="d">'+e.d+'</span><span>'+e.t+'</span></div>';}).join('')+'</div></div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-mini" data-act="msg">📨 שליחת הודעה</button><button class="btn-mini" data-act="doc">📄 הפקת מסמך</button>'+(f.debt?'<button class="btn-mini" data-act="pay">💳 בקשת תשלום</button>':'')+'</div>'+
+      '</div></div>';
+    $$('#crmCard [data-act]').forEach(function(b){b.addEventListener('click',function(){
+      var a=b.dataset.act; toast(a==='msg'?'הודעה נשלחה למשפחת '+f.last:(a==='doc'?'הופק מסמך למשפחת '+f.last:'בקשת תשלום נשלחה למשפחת '+f.last));
+    });});
+  }
+
+  /* ---------- MODULE 3: CHILD PLACEMENT ---------- */
+  var UNPLACED=[], WAIT=[];
+  (function(){
+    FAMILIES.forEach(function(f){ f.kids.forEach(function(k){
+      if(k.status==='ממתינה לשיבוץ') UNPLACED.push({name:k.name, city:k.city, age:k.age, edu:k.edu, want:pick(CITIES.filter(function(c){return c.name===k.city;})[0].gans).name});
+      else if(k.status==='רשימת המתנה') WAIT.push({name:k.name, city:k.city, age:k.age, want:pick(CITIES.filter(function(c){return c.name===k.city;})[0].gans).name, prio:pick(['אח בגן','קרבה','רגיל'])});
+    });});
+  })();
+  var placedCount=0;
+  function renderPlace(){
+    $('#plStats').innerHTML=[
+      {l:'שובצו העונה',v:he(KIDS_TOTAL-320),cls:'kaccent'},
+      {l:'ממתינים לשיבוץ',v:he(UNPLACED.length),cls:'kaccent'},
+      {l:'רשימות המתנה',v:he(WAIT.length)},
+      {l:'תפוסה ממוצעת',v:'90%'},
+      {l:'שובצו כעת',v:he(placedCount),live:true}
+    ].map(kpiHTML).join('');
+    $('#plUnCount').textContent=UNPLACED.length+' ממתינים';
+    $('#plUnplaced').innerHTML=UNPLACED.map(function(u,i){
+      return '<div class="worker" data-ui="'+i+'"><div><div class="wn">'+u.name+'</div><div class="wm">'+u.city+' · גיל '+u.age+' · מבוקש: '+u.want+' · <span class="pill '+(u.edu==='reg'?'reg':'spc')+'">'+(u.edu==='reg'?'רגיל':'מיוחד')+'</span></div></div>'+
+        '<button class="btn-mini" data-place="'+i+'">שבץ ←</button></div>';
+    }).join('') || '<div class="sec-note">כל הילדים שובצו! 🎉</div>';
+    $$('#plUnplaced [data-place]').forEach(function(b){ b.addEventListener('click',function(){
+      var idx=+b.dataset.place; var u=UNPLACED[idx]; if(!u) return;
+      UNPLACED.splice(idx,1); placedCount++;
+      toast('✓ '+u.name+' שובצה ל'+u.want+' · הודעה נשלחה להורה');
+      renderPlace();
+    });});
+    $('#plWaitlist').innerHTML=WAIT.map(function(w){
+      return '<div class="worker"><div><div class="wn">'+w.name+'</div><div class="wm">'+w.city+' · גיל '+w.age+' · ממתין ל'+w.want+'</div></div>'+
+        '<span class="pill '+(w.prio==='אח בגן'?'ok':(w.prio==='קרבה'?'warn':'off'))+'">'+w.prio+'</span></div>';
+    }).join('') || '<div class="sec-note">אין ממתינים ברשימה.</div>';
+  }
+  function runSim(){
+    var place=Math.round(UNPLACED.length*0.78), wl=UNPLACED.length-place, ex=ri(2,7);
+    $('#plSimResult').innerHTML='<div style="border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));border-radius:12px;padding:14px;background:var(--accent-soft)">'+
+      '<div style="font-weight:800;color:var(--accent-strong)">✓ הסימולציה הסתיימה</div>'+
+      '<div class="stat-row" style="margin-top:8px"><div class="st"><b>'+place+'</b><span>ישובצו אוטומטית</span></div><div class="st"><b>'+wl+'</b><span>לרשימת המתנה</span></div><div class="st"><b>'+ex+'</b><span>חריגים לבדיקה ידנית</span></div></div>'+
+      '<div class="sec-note" style="margin-top:8px">מבוסס על עיר, גיל, אחים בגן ותפוסה. אפשר לאשר הכל בלחיצה או לעבור ידנית על החריגים.</div></div>';
+    toast('הסימולציה הורצה על '+UNPLACED.length+' ממתינים');
+  }
+
+  /* ---------- MODULE 4: COMMUNICATION ---------- */
+  var SEGMENTS=[
+    {k:'all',label:'כל הרשת',base:FAM_TOTAL},
+    {k:'jlm',label:'עיר: ירושלים',base:1310},
+    {k:'age3',label:'גיל 3',base:2680},
+    {k:'reg',label:'נרשמו העונה',base:5900},
+    {k:'wait',label:'ממתינים לשיבוץ',base:320},
+    {k:'missing',label:'חסרי מסמכים',base:410},
+    {k:'debt',label:'חייבים בתשלום',base:1180}
+  ];
+  var CH_MSG=[{k:'sms',label:'SMS'},{k:'mail',label:'מייל'},{k:'voice',label:'הודעה קולית'},{k:'wa',label:'וואטסאפ'},{k:'sys',label:'הודעת מערכת'}];
+  var segSel={all:true}, chSel={sms:true};
+  function renderComm(){
+    $('#segChips').innerHTML=SEGMENTS.map(function(s){return '<span class="chip" role="button" tabindex="0" data-seg="'+s.k+'" '+(segSel[s.k]?'data-on="1"':'')+'>'+s.label+'</span>';}).join('');
+    $('#commChannels').innerHTML=CH_MSG.map(function(c){return '<span class="chip" role="button" tabindex="0" data-ch="'+c.k+'" '+(chSel[c.k]?'data-on="1"':'')+'>'+c.label+'</span>';}).join('');
+    $$('#segChips .chip').forEach(function(el){ if(el.dataset.on) el.classList.add('on'); el.addEventListener('click',function(){ toggleSeg(el.dataset.seg); }); });
+    $$('#commChannels .chip').forEach(function(el){ if(el.dataset.on) el.classList.add('on'); el.addEventListener('click',function(){ chSel[el.dataset.ch]=!chSel[el.dataset.ch]; el.classList.toggle('on'); }); });
+    updSegCount();
+  }
+  function toggleSeg(k){
+    if(k==='all'){ segSel={all:true}; } else { delete segSel.all; segSel[k]=!segSel[k]; if(!Object.keys(segSel).filter(function(x){return segSel[x];}).length) segSel={all:true}; }
+    renderComm();
+  }
+  function updSegCount(){
+    var keys=Object.keys(segSel).filter(function(k){return segSel[k];});
+    var n;
+    if(segSel.all||!keys.length){ n=FAM_TOTAL; }
+    else { n=Math.min.apply(null, keys.map(function(k){return (SEGMENTS.filter(function(s){return s.k===k;})[0]||{base:FAM_TOTAL}).base;})); n=Math.round(n*(0.72+keys.length*0.02)); }
+    $('#segCount').innerHTML='קהל היעד: <b>'+he(n)+'</b> משפחות';
+    $('#segCount').dataset.n=n;
+  }
+  function doSend(){
+    var n=$('#segCount').dataset.n||0;
+    var chs=CH_MSG.filter(function(c){return chSel[c.k];}).map(function(c){return c.label;});
+    if(!chs.length){ toast('בחר/י לפחות ערוץ אחד'); return; }
+    var seg=SEGMENTS.filter(function(s){return segSel[s.k];}).map(function(s){return s.label;}).join(', ')||'כל הרשת';
+    var ev={c:'reg',ic:'📨',tx:'<b>נשלחה הודעה ל-'+he(n)+' משפחות</b>',mt:seg+' · '+chs.join(' + ')+' · עכשיו'};
+    pushFeed($('#commLog'),ev,12);
+    toast('✓ ההודעה נשלחה ל-'+he(n)+' משפחות ב'+chs.join(', '));
+  }
+
+  /* ---------- MODULE 5: BILLING ---------- */
+  function renderBilling(){
+    $('#billKpis').innerHTML=[
+      {l:'נגבה החודש',v:'₪'+he(1284000),cls:'kaccent'},
+      {l:'יתרות פתוחות',v:'₪'+he(842000)},
+      {l:'חייבים',v:he(1180),cls:'kaccent'},
+      {l:'הוראות קבע פעילות',v:he(3940)},
+      {l:'נגבה היום',v:'₪'+he(ri(18000,42000)),live:true}
+    ].map(kpiHTML).join('');
+    var debtors=FAMILIES.filter(function(f){return f.debt;}).sort(function(a,b){return b.debt-a.debt;});
+    $('#debtCount').textContent=he(1180)+' חייבים · מדגם';
+    $('#debtorsTable tbody').innerHTML=debtors.map(function(f,i){
+      return '<tr><td class="strong">משפ׳ '+f.last+'</td><td>'+f.city+'</td><td class="n"><span class="pill warn">₪'+he(f.debt)+'</span></td>'+
+        '<td><button class="btn-mini" data-pay="'+i+'">💳 בקשת תשלום</button></td></tr>';
+    }).join('');
+    $$('#debtorsTable [data-pay]').forEach(function(b){b.addEventListener('click',function(){ toast('💳 קישור תשלום נשלח ב-SMS ובוואטסאפ'); });});
+  }
+  var PAY_METHODS=[{ic:'💳',t:'אשראי'},{ic:'🔁',t:'הוראת קבע'},{ic:'🔗',t:'קישור תשלום'},{ic:'☀️',t:'תשלום קייטנה'}];
+  function payEvent(){ var m=pick(PAY_METHODS); var c=pick(CITIES); var f=pick(FAMILIES); var amt=ri(120,1800);
+    return {c:'enter',ic:m.ic,tx:'<b>₪'+he(amt)+'</b> · '+m.t+' · משפ׳ '+f.last, mt:c.name+' · קבלה הופקה · עכשיו'}; }
+
+  /* ---------- MODULE 6: DOCUMENTS ---------- */
+  var DOCTYPES=['אישור רישום','מסמך הצהרה','נספח','אישור שיבוץ','טופס עירוני','מסמך רגולציה'];
+  function renderDocs(){
+    $('#docKpis').innerHTML=[
+      {l:'מסמכים בארכיון',v:he(48200),cls:'kaccent'},
+      {l:'הופקו החודש',v:he(3120)},
+      {l:'ממתינים לחתימה',v:he(286),cls:'kaccent'},
+      {l:'חסרים בתיקים',v:he(410)}
+    ].map(kpiHTML).join('');
+    $('#docType').innerHTML=DOCTYPES.map(function(d){return '<option>'+d+'</option>';}).join('');
+    $('#docFam').innerHTML=FAMILIES.slice(0,30).map(function(f,i){return '<option value="'+FAMILIES.indexOf(f)+'">משפחת '+f.last+' · '+f.city+'</option>';}).join('');
+  }
+  function genDoc(){
+    var t=$('#docType').value; var f=FAMILIES[+$('#docFam').value]||FAMILIES[0];
+    pushFeed($('#docList'),{c:'reg',ic:'📄',tx:'<b>'+t+'</b> · משפחת '+f.last, mt:f.city+' · נשמר בכרטיס המשפחה · עכשיו'},12);
+    toast('✓ '+t+' הופק ונשמר בארכיון של משפחת '+f.last);
+  }
+
+  /* ---------- MODULE 7: PERMISSIONS ---------- */
+  function renderPerms(){
+    var roles=['הנהלה ארצית','מנהל מחלקה','רכז עירוני','מנהלת גן','מוקד שירות','הנה״ח','צפייה בלבד'];
+    var caps=[
+      ['רישום ושיבוץ',      [2,2,2,1,2,0,1]],
+      ['כרטיסי משפחה (CRM)', [2,2,2,1,2,1,1]],
+      ['תקשורת עם הורים',    [2,2,2,1,2,0,0]],
+      ['סליקה ותשלומים',     [2,2,1,0,1,2,1]],
+      ['ניהול מסמכים',       [2,2,2,1,1,1,1]],
+      ['דוחות ובקרה',        [2,2,1,1,1,1,1]],
+      ['ניהול הרשאות',       [2,0,0,0,0,0,0]]
+    ];
+    var mk=function(v){return v===2?'<span class="yes">✓</span>':(v===1?'<span class="view-only">👁️</span>':'<span class="no-acc">—</span>');};
+    $('#permMatrix').className='permtbl';
+    $('#permMatrix').innerHTML='<thead><tr><th>יכולת \\ תפקיד</th>'+roles.map(function(r){return '<th style="font-size:.72rem">'+r+'</th>';}).join('')+'</tr></thead><tbody>'+
+      caps.map(function(row){return '<tr><td>'+row[0]+'</td>'+row[1].map(function(v){return '<td>'+mk(v)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody>';
+  }
+
+  /* ---------- MODULE 9: PARENT PORTAL ---------- */
+  var portalTab='status';
+  function renderPortal(){
+    var f=FAMILIES[0]; var k=f.kids[0];
+    var tabs=[{k:'status',t:'סטטוס'},{k:'docs',t:'מסמכים'},{k:'pay',t:'תשלום'},{k:'act',t:'פעילויות'},{k:'msg',t:'הודעות'}];
+    var body='';
+    if(portalTab==='status'){
+      body=f.kids.map(function(kk){return '<div class="prow-line"><b>'+kk.name+'</b><span class="pill '+(kk.status==='משובצת'?'ok':'warn')+'">'+kk.status+'</span></div>';}).join('')+
+        '<div class="prow-line"><span>גן משובץ</span><b>'+k.gan+'</b></div><div class="prow-line"><span>שנת רישום</span><b>'+f.regDate+'</b></div>';
+    } else if(portalTab==='docs'){
+      body=DOCS4.map(function(d){return '<div class="prow-line"><span>'+d+'</span>'+(f.docs[d]?'<span class="pill ok">✓ הועלה</span>':'<button class="btn-mini">⬆ העלאה</button>')+'</div>';}).join('');
+    } else if(portalTab==='pay'){
+      body='<div class="prow-line"><span>יתרה</span><b style="color:'+(f.debt?'var(--alert)':'var(--good)')+'">'+(f.debt?'₪'+he(f.debt)+' לתשלום':'מאוזן ✓')+'</b></div>'+
+        (f.debt?'<button class="btn-primary" style="width:100%;margin-top:12px" onclick="void 0">💳 תשלום מאובטח ₪'+he(f.debt)+'</button>':'<div class="sec-note" style="margin-top:10px">אין חוב פתוח. תודה!</div>')+
+        '<div class="prow-line" style="margin-top:12px"><span>הוראת קבע</span><span class="pill ok">פעילה</span></div>';
+    } else if(portalTab==='act'){
+      body=[{n:'צהרון',on:true},{n:'קייטנת חנוכה',on:false},{n:'קייטנת ניסן',on:false}].map(function(a){
+        return '<div class="prow-line"><span>'+a.n+'</span>'+(a.on?'<span class="pill ok">רשום ✓</span>':'<button class="btn-mini">+ הרשמה</button>')+'</div>';}).join('');
+    } else {
+      body='<div class="timeline">'+['אישור שיבוץ ל'+k.gan,'תזכורת: השלמת מסמכים','ברכה לתחילת שנה'].map(function(m,i){return '<div class="ti"><span class="d">לפני '+((i+1)*3)+' ימים</span><span>'+m+'</span></div>';}).join('')+'</div>';
+    }
+    $('#portalMock').innerHTML='<div class="phone">'+
+      '<div class="phone-top"><div class="hi">שלום,</div><div class="nm">'+f.mom+'</div><div class="hi" style="margin-top:4px">משפחת '+f.last+' · '+f.city+'</div></div>'+
+      '<div class="phone-tabs" id="ptabs">'+tabs.map(function(t){return '<button class="ptab" data-pt="'+t.k+'" aria-selected="'+(t.k===portalTab)+'">'+t.t+'</button>';}).join('')+'</div>'+
+      '<div class="phone-body">'+body+'</div></div>'+
+      '<div class="sec-note" style="text-align:center;margin-top:12px">כך רואה ההורה את האזור האישי שלו — במובייל, בעברית מלאה.</div>';
+    $$('#ptabs .ptab').forEach(function(b){b.addEventListener('click',function(){ portalTab=b.dataset.pt; renderPortal(); });});
+  }
+
+  /* ---------- SPEC / GAP VIEW ---------- */
+  function renderSpec(){
+    var goals=['ריכוז כל נתוני ההורים והילדים','ייעול רישום ושיבוץ','קיצור תהליכים והפחתת עבודה ידנית','שיפור השירות להורים','תקשורת חכמה ורב-ערוצית','מסמכים ודוחות אוטומטיים','ניהול הרשאות מסודר','תשתית ארגונית לטווח ארוך'];
+    $('#specGoals').innerHTML=goals.map(function(g){return '<div style="display:flex;gap:9px;font-size:.9rem;color:var(--ink-soft)"><span style="color:var(--good);font-weight:800">✓</span> '+g+'</div>';}).join('');
+    var mods=[
+      {n:'1 · רישום דיגיטלי',v:'registration',s:'new',d:'רב-ערוצי, זיהוי ת״ז, סנכרון נדרים, חתימה דיגיטלית'},
+      {n:'2 · CRM כרטיס משפחה',v:'crm',s:'new',d:'הורים, ילדים, אחים, מסמכים, חובות, יומן קשר'},
+      {n:'3 · שיבוץ ילדים',v:'place',s:'new',d:'שיבוץ חכם, רשימות המתנה, סימולציה'},
+      {n:'4 · תקשורת עם הורים',v:'comm',s:'new',d:'פילוח מדויק, SMS/מייל/קולי/וואטסאפ'},
+      {n:'5 · סליקה ותשלומים',v:'billing',s:'new',d:'אשראי, הוראות קבע, קבלות, חייבים'},
+      {n:'6 · ניהול מסמכים',v:'docs',s:'new',d:'הפקה אוטומטית + ארכיון דיגיטלי'},
+      {n:'7 · הרשאות עבודה',v:'perms',s:'new',d:'מטריצת תפקידים והרשאות'},
+      {n:'8 · דוחות ובקרה',v:'overview',s:'have',d:'סקירה, ערים, אחוזים, מגמות — כבר בנוי'},
+      {n:'9 · פורטל הורים',v:'portal',s:'new',d:'אזור אישי: סטטוס, מסמכים, תשלום, פעילויות'}
+    ];
+    var pill=function(s){return s==='have'?'<span class="pill ok">✅ קיים</span>':'<span class="pill live">🟢 חדש בהדמיה</span>';};
+    $('#specModules').innerHTML=mods.map(function(m){
+      return '<button class="card pad" data-view="'+m.v+'" style="text-align:right;border:1px solid var(--border);cursor:pointer">'+
+        '<div class="sec-title" style="font-size:1rem">'+m.n+'</div>'+
+        '<div style="margin:6px 0 8px">'+pill(m.s)+'</div>'+
+        '<div class="sec-note">'+m.d+'</div>'+
+        '<div class="pv" style="color:var(--accent);font-weight:800;font-size:.82rem;margin-top:8px">פתיחת המסך ←</div></button>';
+    }).join('');
+    $$('#specModules [data-view]').forEach(function(b){b.addEventListener('click',function(){ switchTab(b.dataset.view); });});
+    var tech=['מערכת ענן מאובטחת','מותאם מובייל','עברית מלאה','API פתוח','גמישות לפיתוח עתידי','ממשק ידידותי','הטמעה רחבה ותמיכה'];
+    $('#specTech').innerHTML=tech.map(function(t){return '<span class="chip">'+t+'</span>';}).join('');
+  }
+
+  function kpiHTML(r){return '<div class="card kpi'+(r.live?' live-kpi':'')+'"><div class="kl">'+(r.live?'<span class="minidot"></span> ':'')+r.l+'</div><div class="kv '+(r.cls||'')+'">'+r.v+'</div>'+(r.s?'<div class="ks">'+r.s+'</div>':'')+'</div>';}
+
   /* ---------- NAV / DRAWER ---------- */
   function switchTab(v){
     $$('.navitem').forEach(function(t){t.setAttribute('aria-current', t.dataset.view===v?'true':'false');});
@@ -1320,6 +1909,15 @@
     if(v==='staff') renderStaff();
     if(v==='cities') renderCityDetail();
     if(v==='hours') renderWorkers();
+    if(v==='registration') renderRegistration();
+    if(v==='crm') renderCRM();
+    if(v==='place') renderPlace();
+    if(v==='comm') renderComm();
+    if(v==='billing') renderBilling();
+    if(v==='docs') renderDocs();
+    if(v==='perms') renderPerms();
+    if(v==='portal') renderPortal();
+    if(v==='spec') renderSpec();
     closeDrawer();
     window.scrollTo({top:0,behavior:reduce?'auto':'smooth'});
   }
@@ -1335,13 +1933,16 @@
 
   /* ---------- HOME ---------- */
   var PORTALS=[
-    {v:'overview',ic:'📡',h:'סקירה לאומית',d:'כל הערים במבט אחד, נתונים חיים ופיד פעילות.',stat:function(){return CITIES.length+' ערים · '+he(TOT.gan)+' גנים';}},
-    {v:'cities',ic:'🏙️',h:'ערים וגנים',d:'צלילה מעיר לגן בודד — תלמידות, חינוך וצוות.',stat:function(){return he(TOT.students)+' תלמידות';}},
-    {v:'reports',ic:'📊',h:'דוחות ואחוזים',d:'אחוז מלאות לכל גן, ממוצע, פילוחים ומסננים.',stat:function(){return he(TOT.gan)+' גנים · אחוזים'}},
-    {v:'activities',ic:'☀️',h:'פעילויות ותוכניות',d:'צהרון וקייטנות — השתתפות בכל הרשת.',stat:function(){return '4 תוכניות'}},
-    {v:'staff',ic:'👥',h:'עובדות ושיבוץ',d:'תיקי עובדות לפי תפקיד ושיבוץ לגנים.',stat:function(){return he(TOT.staff)+' עובדות'}},
+    {v:'registration',ic:'📝',h:'מערכת רישום',d:'רישום רב-ערוצי, זיהוי ת״ז, סנכרון נדרים.',cls:'p-live',live:true,stat:function(){return 'רישומים חיים'}},
+    {v:'crm',ic:'👨‍👩‍👧',h:'כרטיסי משפחה',d:'כרטיס מלא לכל משפחה — הורים, ילדים, מסמכים, חובות.',stat:function(){return he(FAM_TOTAL)+' משפחות'}},
+    {v:'place',ic:'🧩',h:'שיבוץ ילדים',d:'שיבוץ חכם, רשימות המתנה וסימולציה.',stat:function(){return he(UNPLACED.length)+' ממתינים'}},
+    {v:'comm',ic:'📨',h:'תקשורת עם הורים',d:'פילוח מדויק ושליחה ב-SMS/מייל/וואטסאפ.',stat:function(){return '5 ערוצים'}},
+    {v:'billing',ic:'💳',h:'סליקה ותשלומים',d:'גבייה, הוראות קבע, קבלות ומעקב חייבים.',cls:'p-live',live:true,stat:function(){return 'תשלומים חיים'}},
+    {v:'docs',ic:'📄',h:'ניהול מסמכים',d:'הפקה אוטומטית וארכיון דיגיטלי לכל משפחה.',stat:function(){return he(48200)+' בארכיון'}},
+    {v:'overview',ic:'📡',h:'סקירה ודוחות',d:'כל הערים חי — תפוסות, פילוחים ומגמות.',stat:function(){return CITIES.length+' ערים · '+he(TOT.gan)+' גנים'}},
+    {v:'portal',ic:'📱',h:'פורטל הורים',d:'האזור האישי של ההורה — סטטוס, מסמכים, תשלום.',stat:function(){return 'תצוגת הורה'}},
     {v:'hours',ic:'★',h:'שעות ושכר · חי',d:'שעות זורמות חי מכל עובדת → שכר אוטומטי.',cls:'p-live p-star',live:true,stat:function(){return LIVE.length+' מחוברות כעת'}},
-    {v:'plan',ic:'🗺️',h:'התוכנית',d:'החזון, שלושת השלבים ואיך הכל מחובר.',stat:function(){return '3 שלבים'}}
+    {v:'spec',ic:'📋',h:'האפיון',d:'9 המודולים, מטרות המערכת ומה כבר חי בהדמיה.',cls:'p-star',stat:function(){return '9 מודולים'}}
   ];
   function renderHome(){
     var hr=new Date().getHours();
@@ -1421,6 +2022,23 @@
   tickWorkers(); tickClock();
   var rsz; window.addEventListener('resize',function(){ clearTimeout(rsz); rsz=setTimeout(spawnWindows,400); });
 
+  /* ---- central-spec modules: pre-render + wiring ---- */
+  renderRegistration(); renderCRM(); renderPlace(); renderComm(); renderBilling(); renderDocs(); renderPerms(); renderPortal(); renderSpec();
+  function regEvent(){ var ch=pick(CHANNELS); var c=pick(CITIES); var last=pick(TEACHER_L);
+    return {c:'enter',ic:ch.ic,tx:'<b>משפחת '+last+'</b> נרשמה · '+ch.name, mt:c.name+' · '+pick(['מסלול רגיל','חינוך מיוחד','צהרון','קייטנה'])+' · עכשיו'}; }
+  var rf=$('#regFeed'); (function(){ for(var i=0;i<7;i++){var e=regEvent(); e.mt=e.mt.replace('עכשיו','לפני '+ri(1,28)+' דק׳'); pushFeed(rf,e,12);} })();
+  var bf=$('#billFeed'); (function(){ for(var i=0;i<6;i++){var e=payEvent(); e.mt=e.mt.replace('עכשיו','לפני '+ri(1,20)+' דק׳'); pushFeed(bf,e,12);} })();
+  var cl=$('#commLog'); pushFeed(cl,{c:'reg',ic:'📨',tx:'<b>נשלחה הודעה ל-410 משפחות</b>',mt:'חסרי מסמכים · SMS + וואטסאפ · לפני 12 דק׳'},12);
+  pushFeed(cl,{c:'reg',ic:'📨',tx:'<b>נשלחה הודעה ל-1,180 משפחות</b>',mt:'חייבים בתשלום · SMS · לפני 40 דק׳'},12);
+  var dl=$('#docList'); ['אישור שיבוץ','אישור רישום','טופס עירוני'].forEach(function(t,i){ pushFeed(dl,{c:'reg',ic:'📄',tx:'<b>'+t+'</b> · משפחת '+pick(TEACHER_L),mt:pick(CITIES).name+' · לפני '+((i+1)*8)+' דק׳'},12); });
+  $('#idLookupBtn').addEventListener('click',function(){ doLookup(($('#idLookupInput').value||'').trim()); });
+  $('#idLookupRand').addEventListener('click',function(){ var f=pick(FAMILIES); $('#idLookupInput').value=f.tz; doLookup(f.tz); });
+  $('#idLookupInput').addEventListener('keydown',function(e){ if(e.key==='Enter') doLookup((this.value||'').trim()); });
+  $('#crmSearch').addEventListener('input',crmFilter);
+  $('#plSimBtn').addEventListener('click',runSim);
+  $('#commSend').addEventListener('click',doSend);
+  $('#docGen').addEventListener('click',genDoc);
+
   /* ---------- LIVE LOOPS ---------- */
   setInterval(tickClock,1000);
   setInterval(tickWorkers,1000);
@@ -1428,11 +2046,15 @@
     setInterval(function(){ pushFeed(feedEl,feedEvent(),14); },4200);
     setInterval(function(){ pushFeed($('#punchFeed'),punchEvent(),12); punchesToday++; },5200);
     setInterval(function(){ pushFeed($('#aFeed'),actFeedEvent(),10); },6400);
+    setInterval(function(){ pushFeed($('#regFeed'),regEvent(),12); },5600);
+    setInterval(function(){ pushFeed($('#billFeed'),payEvent(),12); },7000);
     setInterval(function(){ renderKpis(); },9000);
   } else {
     setInterval(function(){ pushFeed(feedEl,feedEvent(),14); },9000);
     setInterval(function(){ pushFeed($('#punchFeed'),punchEvent(),12); punchesToday++; },11000);
     setInterval(function(){ pushFeed($('#aFeed'),actFeedEvent(),10); },13000);
+    setInterval(function(){ pushFeed($('#regFeed'),regEvent(),12); },12000);
+    setInterval(function(){ pushFeed($('#billFeed'),payEvent(),12); },14000);
   }
 })();
 </script>
