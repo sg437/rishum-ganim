@@ -50,6 +50,7 @@ function doPost(e){
       case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan));
       case 'chat':           return json_(out, chat_(req.messages, req.system, req.model));
       case 'geocode':        return json_(out, geocode_(req.q, req.city));
+      case 'walk':           return json_(out, walk_(req.origin, req.dests));
       case 'sendMail':       return json_(out, sendMail_(req.to, req.subject, req.body));
       case 'regConfigGet':   return json_(out, regConfigGet_());
       case 'regConfigSet':   return json_(out, regConfigSet_(req.config));
@@ -269,6 +270,28 @@ function geocodeGoogleCall_(q, city, key){
   }
   if(data.status === 'ZERO_RESULTS') return { zero:true, out:{ ok:false, error:'geo-not-found' } };
   return { out:{ ok:false, error:(data.error_message || data.status || 'geo-failed') } };
+}
+
+/* מרחק/זמן הליכה אמיתי דרך Google Distance Matrix (מצב הליכה).
+   origin = {lat,lng}; dests = [{lat,lng},...] (עד 25). מחזיר results[] מקביל
+   ל-dests, כל אחד {m, sec} או null. דורש GOOGLE_MAPS_API_KEY + Distance Matrix API. */
+function walk_(origin, dests){
+  var key = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
+  if(!key) return { ok:false, error:'no-geo-key' };
+  if(!origin || origin.lat==null || !dests || !dests.length) return { ok:false, error:'bad-args' };
+  var o = origin.lat + ',' + origin.lng;
+  var d = dests.map(function(x){ return x.lat + ',' + x.lng; }).join('|');
+  var url = 'https://maps.googleapis.com/maps/api/distancematrix/json?mode=walking&language=he&origins='
+            + encodeURIComponent(o) + '&destinations=' + encodeURIComponent(d) + '&key=' + encodeURIComponent(key);
+  var res = UrlFetchApp.fetch(url, { muteHttpExceptions:true });
+  var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
+  if(data.status !== 'OK') return { ok:false, error:(data.error_message || data.status || 'walk-failed') };
+  var els = (data.rows && data.rows[0] && data.rows[0].elements) || [];
+  var results = els.map(function(el){
+    if(!el || el.status !== 'OK') return null;
+    return { m: (el.distance && el.distance.value), sec: (el.duration && el.duration.value) };
+  });
+  return { ok:true, results:results };
 }
 
 function json_(out, obj){ out.setContent(JSON.stringify(obj)); return out; }
