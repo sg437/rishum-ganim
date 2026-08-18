@@ -3514,7 +3514,7 @@ async function geocodeGoogleBridge(q, city){
   if(!DRIVE_READY){ _geoGoogle=false; return null; }
   try{
     const res=await driveCall("geocode",{ q, city:city||"" });
-    if(res && res.lat!=null && res.lng!=null){ _geoGoogle=true; return { lat:res.lat, lng:res.lng }; }
+    if(res && res.lat!=null && res.lng!=null){ _geoGoogle=true; return { lat:res.lat, lng:res.lng, partial:!!res.partial, locType:res.locType||"" }; }
     return null;
   }catch(e){
     const m=String((e&&e.message)||e||"");
@@ -3527,7 +3527,7 @@ async function geocodeGoogleBridge(q, city){
 function geocodeOnce(q, city){
   const run=async()=>{
     const g=await geocodeGoogleBridge(q, city);
-    if(g) return { lat:g.lat, lng:g.lng, source:"google" };
+    if(g) return { lat:g.lat, lng:g.lng, source:"google", partial:g.partial, locType:g.locType };
     await new Promise(r=>setTimeout(r,1100));   // כיבוד מדיניות Nominatim (≤1/שנייה)
     const url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=il&accept-language=he&q="+encodeURIComponent(q);
     const r=await fetch(url,{ headers:{ "Accept":"application/json" } });
@@ -3548,7 +3548,9 @@ async function ensureGeo(ent, q, force, city){
   if(ent.geo && ent.geo.q===q && ent.geo.lat!=null) return ent.geo;
   if(!force && ent.geo && ent.geo.q===q && ent.geo.tried) return null;   // ניסינו וקיבלנו ריק (אלא אם force)
   let pt=null; try{ pt=await geocodeOnce(q, city); }catch(e){ pt=null; }
-  ent.geo = pt ? { lat:pt.lat, lng:pt.lng, q, source:pt.source } : { lat:null, lng:null, q, tried:true };
+  // מיקום "משוער" = לא נמצאה כתובת מדויקת (התאמה חלקית או מרכז אזור/רחוב)
+  const approx = pt ? (!!pt.partial || pt.locType==="APPROXIMATE" || pt.locType==="GEOMETRIC_CENTER") : false;
+  ent.geo = pt ? { lat:pt.lat, lng:pt.lng, q, source:pt.source, approx } : { lat:null, lng:null, q, tried:true };
   return ent.geo.lat!=null ? ent.geo : null;
 }
 function mapProviderSuffix(){ return _geoGoogle===true?" · דיוק Google":(_geoGoogle===false?" · OpenStreetMap":""); }
@@ -3583,9 +3585,20 @@ function mapNearestSelKm(s){
 }
 /* צבע לפי מרחק: ירוק=קרוב → אדום=רחוק */
 function mapDistColor(km){ if(!isFinite(km)) return "#8894a0"; if(km<=0.3) return "#1a7f37"; if(km<=0.7) return "#5cb85c"; if(km<=1.2) return "#f0c000"; if(km<=2) return "#e8710a"; return "#d1342b"; }
-/* מרכז העיר הנבחרת (גאוקוד חד-פעמי) — לסינון נקודות שהתגאוקדו לעיר אחרת בטעות */
-const MAP_CITY_RADIUS_KM=15;
+/* מרכז העיר הנבחרת — לסינון נקודות שהתגאוקדו לעיר אחרת בטעות.
+   עדיף לחשב מ*חציון* מיקומי התלמידות/גנים (חסין לחריגים), ורק כגיבוי — גאוקוד שם העיר. */
+const MAP_CITY_RADIUS_KM=8;
+function _median(arr){ if(!arr.length) return null; const a=arr.slice().sort((x,y)=>x-y); return a[Math.floor(a.length/2)]; }
+function mapComputeCenter(){
+  const lats=[], lngs=[];
+  mapShownStudents().forEach(s=>{ if(s.geo&&s.geo.lat!=null){ lats.push(s.geo.lat); lngs.push(s.geo.lng); } });
+  mapSelectedGans().forEach(g=>{ if(g.geo&&g.geo.lat!=null){ lats.push(g.geo.lat); lngs.push(g.geo.lng); } });
+  if(lats.length<3) return null;
+  return { lat:_median(lats), lng:_median(lngs) };
+}
 async function mapEnsureCityCenter(city){
+  const med=mapComputeCenter();
+  if(med){ _cityCenter={ city, lat:med.lat, lng:med.lng }; return _cityCenter; }   // חציון — הכי אמין
   if(_cityCenter && _cityCenter.city===city && _cityCenter.lat!=null) return _cityCenter;
   let pt=null; try{ pt=await geocodeOnce(city+", ישראל"); }catch(e){ pt=null; }
   _cityCenter = pt ? { city, lat:pt.lat, lng:pt.lng } : { city, lat:null, lng:null };
@@ -3828,6 +3841,9 @@ function mapStudentPopup(s){
   box.innerHTML=`<div style="font-weight:700">🎒 ${esc(nm)}</div>`
     +(addr?`<div style="color:#666">${esc(addr)}</div>`:"")
     +`<div style="margin:4px 0">גן נוכחי: <b>${esc(cur)}</b></div>`;
+  if(s.geo&&s.geo.approx){ const w=document.createElement("div");
+    w.style.cssText="color:#b26a00;font-size:.85em;margin:2px 0";
+    w.textContent="⚠ מיקום הכתובת משוער — ודא/י רחוב+מספר לדיוק המרחקים"; box.appendChild(w); }
   const mkBtn=(label,disabled,bg,fg,fn)=>{ const b=document.createElement("button");
     b.textContent=label; b.disabled=disabled;
     b.style.cssText="border:0;border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;"+(disabled?"background:#e6e6e6;color:#888":("background:"+bg+";color:"+fg));
@@ -3865,7 +3881,8 @@ function mapStudentPopup(s){
     if(c.walk===undefined){ distTxt="🚶 …"; colorKm=c.km; }
     else if(c.walk){ distTxt="🚶 "+(c.walk.m/1000).toFixed(1)+" ק\"מ · "+Math.round(c.walk.sec/60)+" דק'"; colorKm=c.walk.m/1000; }
     else { distTxt=c.km.toFixed(1)+" ק\"מ אווירי"; colorKm=c.km; }
-    row.innerHTML=`<span><b style="color:${mapDistColor(colorKm)}">●</b> ${esc(ganName(g.id))} · <span style="color:#666">${distTxt}</span></span>`;
+    const warn=(g.geo&&g.geo.approx)?' <span title="מיקום הגן משוער — ודא/י כתובת">⚠</span>':'';
+    row.innerHTML=`<span><b style="color:${mapDistColor(colorKm)}">●</b> ${esc(ganName(g.id))}${warn} · <span style="color:#666">${distTxt}</span></span>`;
     row.appendChild(mkBtn(isCur?"משובצת":"שבץ", isCur, "#1a7f37", "#fff", ()=>mapAssign(s,g)));
     return row;
   };
@@ -3910,6 +3927,7 @@ async function mapLoadStudents(){
     if(r) mapPlotStudents();
   }
   try{ save(); }catch(e){}
+  if(_mapState.city){ const med=mapComputeCenter(); if(med) _cityCenter={ city:_mapState.city, lat:med.lat, lng:med.lng }; }
   mapPlotStudents(); mapFit();
   let extra="";
   if(fail && _geoGoogle!==true) extra=" — הרבה כתובות לא נמצאו ב-OpenStreetMap; חיבור מפתח Google (הגדרות → דיוק מפה) ישפר משמעותית";

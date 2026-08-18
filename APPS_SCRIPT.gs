@@ -252,24 +252,19 @@ function geocode_(q, city){
   if(!key) return { ok:false, error:'no-geo-key' };      // אין מפתח → נפילה ל-OSM
   q = String(q || '').trim();
   if(!q) return { ok:false, error:'geo-not-found' };
-  city = String(city || '').trim();
-  // ניסיון ראשון: נעילת התוצאה לעיר (locality) כדי למנוע תוצאה בעיר אחרת
-  var r = geocodeGoogleCall_(q, city, key);
-  if(r.zero && city){ r = geocodeGoogleCall_(q, '', key); }   // נפילה: בלי הגבלת עיר
-  return r.out;
-}
-function geocodeGoogleCall_(q, city, key){
+  // גאוקוד מדויק לפי הכתובת המלאה (העיר כבר בתוך המחרוזת). לא משתמשים ב-locality
+  // כדי לא לקבל תוצאה משוערת (מרכז רחוב/עיר); סינון תוצאות בעיר אחרת נעשה בצד הלקוח.
   var url = 'https://maps.googleapis.com/maps/api/geocode/json?region=il&language=he&address='
             + encodeURIComponent(q) + '&key=' + encodeURIComponent(key);
-  if(city) url += '&components=' + encodeURIComponent('locality:' + city + '|country:IL');
   var res = UrlFetchApp.fetch(url, { muteHttpExceptions:true });
   var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
   if(data.status === 'OK' && data.results && data.results.length){
-    var loc = data.results[0].geometry.location;
-    return { out:{ ok:true, lat:loc.lat, lng:loc.lng, formatted:data.results[0].formatted_address } };
+    var r0 = data.results[0], loc = r0.geometry.location;
+    return { ok:true, lat:loc.lat, lng:loc.lng, formatted:r0.formatted_address,
+             locType:(r0.geometry && r0.geometry.location_type) || '', partial:!!r0.partial_match };
   }
-  if(data.status === 'ZERO_RESULTS') return { zero:true, out:{ ok:false, error:'geo-not-found' } };
-  return { out:{ ok:false, error:(data.error_message || data.status || 'geo-failed') } };
+  if(data.status === 'ZERO_RESULTS') return { ok:false, error:'geo-not-found' };
+  return { ok:false, error:(data.error_message || data.status || 'geo-failed') };
 }
 
 /* מרחק/זמן הליכה אמיתי דרך Google Distance Matrix (מצב הליכה).
