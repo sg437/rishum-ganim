@@ -3514,9 +3514,10 @@ async function geocodeGoogleBridge(q){
     return null;
   }catch(e){
     const m=String((e&&e.message)||e||"");
-    if(m.indexOf("no-geo-key")>=0){ _geoGoogle=false; return null; }   // אין מפתח → OSM
-    if(m.indexOf("geo-not-found")>=0){ _geoGoogle=true; return null; } // Google פעיל אך ללא תוצאה
-    return null;                                                        // רשת/אחר → נפילה ל-OSM
+    if(m.indexOf("no-geo-key")>=0){ _geoGoogle=false; return null; }        // אין מפתח → OSM
+    if(m.indexOf("unknown-action")>=0){ _geoGoogle=false; return null; }    // גשר עדיין לא עודכן → OSM
+    if(m.indexOf("geo-not-found")>=0){ _geoGoogle=true; return null; }      // Google פעיל אך ללא תוצאה
+    return null;                                                             // רשת/אחר → נפילה ל-OSM
   }
 }
 function geocodeOnce(q){
@@ -3538,10 +3539,10 @@ function geocodeOnce(q){
 }
 /* מוודא שלישות (גן/תלמידה) יש קואורדינטות במטמון עבור השאילתה הנוכחית.
    מחזיר {lat,lng} או null. מסמן ניסיון גם בכישלון (מונע גאוקוד חוזר אינסופי). */
-async function ensureGeo(ent, q){
+async function ensureGeo(ent, q, force){
   if(!q) return null;
   if(ent.geo && ent.geo.q===q && ent.geo.lat!=null) return ent.geo;
-  if(ent.geo && ent.geo.q===q && ent.geo.tried) return null;   // ניסינו וקיבלנו ריק
+  if(!force && ent.geo && ent.geo.q===q && ent.geo.tried) return null;   // ניסינו וקיבלנו ריק (אלא אם force)
   let pt=null; try{ pt=await geocodeOnce(q); }catch(e){ pt=null; }
   ent.geo = pt ? { lat:pt.lat, lng:pt.lng, q, source:pt.source } : { lat:null, lng:null, q, tried:true };
   return ent.geo.lat!=null ? ent.geo : null;
@@ -3635,15 +3636,31 @@ function mapRenderGanList(){
     if(cb.checked) _mapState.ganIds.add(cb.dataset.gid); else _mapState.ganIds.delete(cb.dataset.gid);
   }; });
 }
+function stuNeedsGeo(s){ const q=studentAddrQuery(s); return !!q && !(s.geo&&s.geo.q===q&&s.geo.lat!=null); }
+/* ספירת מצב לאבחון: גנים ותלמידות — ממוקמים / נכשלו / ללא כתובת */
+function mapCounts(){
+  const gans=mapSelectedGans(), stu=mapShownStudents();
+  const c={ ganAddr:0, ganLoc:0, ganFail:0, stuAddr:0, stuLoc:0, stuFail:0, stuNoAddr:0 };
+  gans.forEach(g=>{ const q=ganAddrQuery(g); if(!q) return; c.ganAddr++;
+    if(g.geo&&g.geo.lat!=null) c.ganLoc++; else if(g.geo&&g.geo.q===q&&g.geo.tried) c.ganFail++; });
+  stu.forEach(s=>{ const q=studentAddrQuery(s); if(!q){ c.stuNoAddr++; return; } c.stuAddr++;
+    if(s.geo&&s.geo.lat!=null) c.stuLoc++; else if(s.geo&&s.geo.q===q&&s.geo.tried) c.stuFail++; });
+  return c;
+}
+function mapStatusReport(){
+  const c=mapCounts();
+  let t="גנים "+c.ganLoc+"/"+c.ganAddr+" · תלמידות "+c.stuLoc+" ממוקמות";
+  if(c.stuFail) t+=" · "+c.stuFail+" נכשלו";
+  if(c.stuNoAddr) t+=" · "+c.stuNoAddr+" ללא כתובת";
+  return t+mapProviderSuffix();
+}
 async function mapApply(){
   if(!_map) return;
   mapStatus("מאתר מיקומי גנים…");
   await mapGeocodeSelectedGans();
   mapPlotGans(); mapPlotStudents(); mapFit();
-  const shown=mapShownStudents();
-  const withGeo=shown.filter(s=>s.geo&&s.geo.lat!=null).length;
-  const miss=shown.length-withGeo;
-  mapStatus("מוצגות "+withGeo+" תלמידות"+(miss?(" · "+miss+" ללא מיקום — לחצ/י \"טעינת מיקומי תלמידות\""):"")+mapProviderSuffix());
+  const need=mapShownStudents().filter(stuNeedsGeo).length;
+  mapStatus(mapStatusReport()+(need?" — לחצ/י \"טעינת מיקומי תלמידות\"":""));
 }
 function mapInit(L){
   _mapL=L;
@@ -3661,7 +3678,8 @@ function mapInit(L){
 async function mapGeocodeSelectedGans(){
   let changed=false;
   for(const g of mapSelectedGans()){ const q=ganAddrQuery(g); if(!q) continue;
-    const had=g.geo&&g.geo.q===q; await ensureGeo(g,q); if(!had){ changed=true; mapPlotGans(); }
+    const before=g.geo&&g.geo.lat; await ensureGeo(g,q,true);   // force: מנסה שוב גם כתובות שנכשלו
+    if((g.geo&&g.geo.lat)!==before){ changed=true; mapPlotGans(); }
   }
   if(changed){ try{ save(); }catch(e){} }
 }
@@ -3752,17 +3770,25 @@ function mapAssign(s, g){
 }
 async function mapLoadStudents(){
   const btn=$("#map-load-students"); if(btn) btn.disabled=true;
-  const list=mapShownStudents().filter(s=>{ const q=studentAddrQuery(s); return q && !(s.geo&&s.geo.q===q); });
-  if(!list.length){ mapPlotStudents(); mapFit(); mapStatus("כל התלמידות עם כתובת כבר ממוקמות"); if(btn) btn.disabled=false; return; }
-  let done=0, ok=0;
+  const c0=mapCounts();
+  const list=mapShownStudents().filter(stuNeedsGeo);   // כולל כתובות שנכשלו — ניסיון חוזר
+  if(!list.length){
+    mapPlotStudents(); mapFit();
+    let msg = c0.stuAddr===0 ? "אין לתלמידות המוצגות כתובת (רחוב/מספר) להצגה על המפה"
+            : ("כל התלמידות עם כתובת כבר ממוקמות ("+c0.stuLoc+")");
+    mapStatus(msg); if(btn) btn.disabled=false; return;
+  }
+  let done=0, ok=0, fail=0;
   for(const s of list){ const q=studentAddrQuery(s);
-    const r=await ensureGeo(s,q); done++; if(r) ok++;
-    mapStatus("ממקם תלמידות… "+done+"/"+list.length);
+    const r=await ensureGeo(s,q,true); done++; if(r) ok++; else fail++;
+    mapStatus("ממקם תלמידות… "+done+"/"+list.length+(fail?(" · "+fail+" ללא תוצאה"):""));
     if(r) mapPlotStudents();
   }
   try{ save(); }catch(e){}
   mapPlotStudents(); mapFit();
-  mapStatus("מוצגות "+mapShownStudents().filter(s=>s.geo&&s.geo.lat!=null).length+" תלמידות (נוספו "+ok+")");
+  let extra="";
+  if(fail && _geoGoogle!==true) extra=" — הרבה כתובות לא נמצאו ב-OpenStreetMap; חיבור מפתח Google (הגדרות → דיוק מפה) ישפר משמעותית";
+  mapStatus(mapStatusReport()+extra);
   if(btn) btn.disabled=false;
 }
 function mapRefreshGeo(){
