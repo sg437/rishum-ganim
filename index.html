@@ -2479,6 +2479,20 @@ function viewHome(root){
   root.querySelectorAll("[data-gan]").forEach(c=> c.onclick=()=>{ const g=DB.gans.find(x=>x.id===c.dataset.gan); if(g) openGan(g); });
   startHomeClock();
 }
+/* המרת מספר (1..999) לגימטריה עברית עם גרש/גרשיים, כולל ט״ו/ט״ז */
+function hebGematria(n){
+  n=n%1000; if(n<=0) return "";
+  const ones=["","א","ב","ג","ד","ה","ו","ז","ח","ט"];
+  const tens=["","י","כ","ל","מ","נ","ס","ע","פ","צ"];
+  const huns=["","ק","ר","ש","ת","תק","תר","תש","תת","תתק"];
+  let s=huns[Math.floor(n/100)];
+  const r=n%100;
+  if(r===15) s+="טו";        // נמנעים מ-יה (שם ה')
+  else if(r===16) s+="טז";   // נמנעים מ-יו
+  else { s+=tens[Math.floor(r/10)]+ones[r%10]; }
+  if(s.length===1) return s+"׳";               // גרש לאות בודדת
+  return s.slice(0,-1)+"״"+s.slice(-1);         // גרשיים לפני האות האחרונה
+}
 /* שעון חי לעמוד הבית — תאריך עברי + לועזי + שעה, מתעדכן כל שנייה.
    מנקה את עצמו אוטומטית כשעוזבים את עמוד הבית (האלמנט נעלם). */
 let _clockTimer=null;
@@ -2488,7 +2502,17 @@ function startHomeClock(){
     const el=$("#homeClock");
     if(!el){ if(_clockTimer){ clearInterval(_clockTimer); _clockTimer=null; } return; }
     const now=new Date();
-    let heb=""; try{ heb=now.toLocaleDateString("he-IL-u-ca-hebrew",{ weekday:"long", day:"numeric", month:"long", year:"numeric" }); }catch(e){}
+    // תאריך עברי בגימטריה (ה׳ באלול תשפ״ו) — ממירים בעצמנו (Intl לא אמין לספרות עבריות)
+    let heb="";
+    try{
+      const parts=new Intl.DateTimeFormat("he-IL-u-ca-hebrew",{ weekday:"long", day:"numeric", month:"long", year:"numeric" }).formatToParts(now);
+      const get=t=>{ const p=parts.find(x=>x.type===t); return p?p.value:""; };
+      const wd=get("weekday"), month=get("month");
+      const day=parseInt(get("day"),10), year=parseInt(get("year"),10);
+      const dG=hebGematria(day), yG=hebGematria(year%1000);   // שנה בלי האלפים (5786 → 786 → תשפ״ו)
+      if(wd && dG && month && yG) heb=`${wd}, ${dG} ${month} ${yG}`;
+    }catch(e){}
+    if(!heb){ try{ heb=now.toLocaleDateString("he-IL-u-ca-hebrew",{ weekday:"long", day:"numeric", month:"long", year:"numeric" }); }catch(e){} }
     const greg=now.toLocaleDateString("he-IL",{ day:"2-digit", month:"2-digit", year:"numeric" });
     const time=now.toLocaleTimeString("he-IL",{ hour:"2-digit", minute:"2-digit", second:"2-digit" });
     el.textContent=`📅 ${heb?heb+" · ":""}${greg} · 🕐 ${time}`;
