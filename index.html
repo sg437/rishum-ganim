@@ -311,7 +311,11 @@ fieldset{border-radius:14px}
 .map-side-kid:hover{background:var(--accent-soft);color:var(--accent-strong)}
 #leaflet-map.map-full{position:fixed;inset:0;z-index:9999;height:100dvh !important;min-height:100dvh !important;width:100vw !important;margin:0 !important;border-radius:0 !important;border:0 !important}
 #leaflet-map:fullscreen{width:100%;height:100%;border-radius:0;border:0;background:#e9eef2}
-/* מסך מלא לבמה (מפה + רשימת הצד יחד) — Fullscreen API */
+/* מסך מלא לבמה (מפה + רשימת הצד יחד) — מחלקה מפורשת (חסינה לקידומות :fullscreen) */
+#map-stage.map-full-native{width:100%;height:100%;background:var(--surface);padding:10px;box-sizing:border-box;gap:10px;flex-wrap:nowrap}
+#map-stage.map-full-native #leaflet-map{height:100% !important;min-height:0 !important;flex:1 1 auto}
+#map-stage.map-full-native #map-side{max-height:100% !important;flex:0 0 280px}
+/* מסך מלא לבמה — Fullscreen API (גיבוי אם המחלקה לא הוחלה) */
 #map-stage:fullscreen{width:100%;height:100%;background:var(--surface);padding:10px;box-sizing:border-box;gap:10px;flex-wrap:nowrap}
 #map-stage:fullscreen #leaflet-map{height:100% !important;min-height:0 !important;flex:1 1 auto}
 #map-stage:fullscreen #map-side{max-height:100% !important;flex:0 0 280px}
@@ -320,9 +324,8 @@ fieldset{border-radius:14px}
 #map-stage.map-full #leaflet-map{height:auto !important;min-height:0 !important;flex:1 1 auto;border-radius:8px}
 #map-stage.map-full #map-side{max-height:100% !important;flex:0 0 280px}
 @media (max-width:640px){
-  #map-stage:fullscreen{flex-wrap:wrap}
-  #map-stage:fullscreen #map-side,#map-stage.map-full #map-side{flex-basis:100%;max-height:34% !important}
-  #map-stage.map-full{flex-wrap:wrap}
+  #map-stage:fullscreen,#map-stage.map-full-native,#map-stage.map-full{flex-wrap:wrap}
+  #map-stage:fullscreen #map-side,#map-stage.map-full-native #map-side,#map-stage.map-full #map-side{flex-basis:100%;max-height:34% !important}
 }
 .leaflet-container{font:inherit}
 .map-fold{margin-top:10px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
@@ -3590,13 +3593,14 @@ function ganAddrQuery(g){
   if(!streetName) return "";                          // אין שם רחוב (אותיות) → לא ניתן לגאוקד
   const num=String(g.building||"").trim();
   const base = /\d/.test(streetName) ? streetName : (streetName + (num?(" "+num):""));
-  const city=geoDefaultCity();
+  const city=(_mapState&&_mapState.city)||geoDefaultCity();   // העיר הנבחרת במפה מנצחת
   return base+(city?(", "+city):"")+", ישראל";
 }
 function studentAddrQuery(s){
   const base=[s.street,s.building].filter(Boolean).join(" ").trim();
   if(!base) return "";
-  const city=(s.city||"").trim()||geoDefaultCity();
+  // אם נבחרה עיר במפה — היא הקובעת (כולם באותה עיר), אחרת עיר התלמידה
+  const city=(_mapState&&_mapState.city)||(s.city||"").trim()||geoDefaultCity();
   return base+(city?(", "+city):"")+", ישראל";
 }
 /* גאוקוד: קודם Google דרך הגשר (דיוק גבוה, המפתח מוסתר); אם אין מפתח
@@ -3624,7 +3628,10 @@ function geocodeOnce(q, city, bias){
     const g=await geocodeGoogleBridge(q, city, bias);
     if(g) return { lat:g.lat, lng:g.lng, source:"google", partial:g.partial, locType:g.locType };
     await new Promise(r=>setTimeout(r,1100));   // כיבוד מדיניות Nominatim (≤1/שנייה)
-    const url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=il&accept-language=he&q="+encodeURIComponent(q);
+    let url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=il&accept-language=he&q="+encodeURIComponent(q);
+    // הגבלה לתיבת העיר הנבחרת — מונע התאמה לרחוב באותו שם בעיר רחוקה
+    if(bias&&bias.lat!=null){ const dLat=0.06, dLng=0.07;
+      url+="&bounded=1&viewbox="+(bias.lng-dLng)+","+(bias.lat+dLat)+","+(bias.lng+dLng)+","+(bias.lat-dLat); }
     const r=await fetch(url,{ headers:{ "Accept":"application/json" } });
     if(!r.ok) throw new Error("geocode-http-"+r.status);
     const arr=await r.json();
@@ -3643,6 +3650,12 @@ async function ensureGeo(ent, q, force, city, bias){
   if(ent.geo && ent.geo.q===q && ent.geo.lat!=null) return ent.geo;
   if(!force && ent.geo && ent.geo.q===q && ent.geo.tried) return null;   // ניסינו וקיבלנו ריק (אלא אם force)
   let pt=null; try{ pt=await geocodeOnce(q, city, bias); }catch(e){ pt=null; }
+  // דחיית תוצאה שנפלה מחוץ לרדיוס העיר הנבחרת — עדיף "לא נמצא בעיר" מאשר
+  // מיקום שגוי במרחק (רחוב באותו שם בעיר אחרת). כך "אם בחרנו עיר — כולם בעיר".
+  if(pt && bias && bias.lat!=null && haversineKm(pt,bias) > MAP_CITY_RADIUS_KM){
+    ent.geo = { lat:null, lng:null, q, tried:true, outCity:true };
+    return null;
+  }
   const locType = pt ? (pt.locType||"") : "";
   const partial = pt ? !!pt.partial : false;
   // "משוער" רך (סימון ⚠) = מרכז רחוב/אזור או התאמה חלקית
@@ -3880,6 +3893,7 @@ function viewMap(root){
   // ניקוי שאריות מצב "מסך מלא" אם עזבו את המפה בזמן שהיה פתוח
   document.body.style.overflow=""; const _x=document.getElementById("map-full-exit"); if(_x) _x.remove();
   document.querySelectorAll("body > #map-stage.map-full, body > #leaflet-map.map-full").forEach(e=>e.remove()); _mapFullReturn=null;
+  try{ const _st=$("#map-stage"); if(_st) _st.classList.remove("map-full-native"); }catch(e){}
   const cities=mapCityOptions();
   if(!_mapState.inited){ _mapState.inited=true; _mapState.edu=activeEdu||null; _mapState.ganIds=null; _mapState.allStudents=false;
     _mapState.city=cities[0]||null; }   // ברירת מחדל: העיר הנפוצה ביותר (מצמצם בלבול מערים אחרות)
@@ -3992,7 +4006,9 @@ function mapToggleFull(){
   if(req && exit){                       // Fullscreen API זמין — הדרך האמינה
     if(_fsElement()){ try{ exit.call(document); }catch(e){} }
     else {
-      if(!_mapFsBound){ _mapFsBound=()=>{ const on=!!_fsElement();
+      if(!_mapFsBound){ _mapFsBound=()=>{ const fs=_fsElement(); const on=!!fs;
+        const stage=$("#map-stage");   // מחלקה מפורשת — לא תלוי בתמיכת :fullscreen עם קידומות
+        if(stage){ if(fs===stage) stage.classList.add("map-full-native"); else stage.classList.remove("map-full-native"); }
         const b=$("#map-full-btn"); if(b) b.textContent=on?"⛶ יציאה ממסך מלא":"⛶ מסך מלא";
         setTimeout(()=>{ try{ _map.invalidateSize(); mapFit(); }catch(e){} }, 120); };
         document.addEventListener("fullscreenchange",_mapFsBound);
@@ -4103,12 +4119,16 @@ async function mapFindChild(name){
   if(!s){ toast("לא נמצאה תלמידה בשם זה"); return; }
   const cq=studentAddrQuery(s);
   if(!cq){ toast("לתלמידה אין כתובת (רחוב/מספר) למיקוד"); return; }
-  if(!(s.geo&&s.geo.q===cq&&s.geo.lat!=null)){
+  if(_mapState.city) await mapEnsureCityCenter(_mapState.city);   // מרכז העיר — לסינון תוצאה מחוץ לעיר
+  if(!(s.geo&&s.geo.q===cq&&s.geo.lat!=null&&mapInCity(s.geo))){
     mapStatus("ממקם את "+([s.lastName,s.firstName].filter(Boolean).join(" "))+"…");
-    await ensureGeo(s,cq,true,(s.city||"").trim()||_mapState.city||geoDefaultCity(),(_cityCenter&&_cityCenter.lat!=null)?_cityCenter:null);
+    await ensureGeo(s,cq,true,_mapState.city||(s.city||"").trim()||geoDefaultCity(),(_cityCenter&&_cityCenter.lat!=null)?_cityCenter:null);
     try{ save(); }catch(e){}
   }
-  if(!(s.geo&&s.geo.lat!=null)){ toast("לא נמצא מיקום לתלמידה (כתובת חסרה/שגויה)"); return; }
+  if(!(s.geo&&s.geo.lat!=null&&mapInCity(s.geo))){   // לא נמצאה בתוך העיר הנבחרת — לא "עפים" למרחק
+    toast(_mapState.city ? ("הכתובת לא אותרה בתוך "+_mapState.city+" — בדוק/י רחוב+מספר בתיק התלמידה") : "לא נמצא מיקום לתלמידה (כתובת חסרה/שגויה)");
+    return;
+  }
   mapPlotStudents(); mapRenderSide();   // רענון רשימת הצד — כדי שהתלמידה שמוקמה תסומן כמוקמת (לא ○)
   try{ _map.setView([s.geo.lat,s.geo.lng], 16); }catch(e){}
   try{ _mapL.popup({ offset:[0,-4] }).setLatLng([s.geo.lat,s.geo.lng]).setContent(mapStudentPopup(s)).openOn(_map); }catch(e){}
@@ -4279,6 +4299,7 @@ function mapAssign(s, g){
 }
 async function mapLoadStudents(){
   const btn=$("#map-load-students"); if(btn) btn.disabled=true;
+  if(_mapState.city) await mapEnsureCityCenter(_mapState.city);   // מרכז העיר — לדחיית תוצאות מחוץ לעיר
   const c0=mapCounts();
   const list=mapShownStudents().filter(stuNeedsGeo);   // כולל כתובות שנכשלו — ניסיון חוזר
   if(!list.length){
