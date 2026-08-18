@@ -49,6 +49,7 @@ function doPost(e){
       case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu, req.gan));
       case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan));
       case 'chat':           return json_(out, chat_(req.messages, req.system, req.model));
+      case 'geocode':        return json_(out, geocode_(req.q));
       case 'sendMail':       return json_(out, sendMail_(req.to, req.subject, req.body));
       case 'regConfigGet':   return json_(out, regConfigGet_());
       case 'regConfigSet':   return json_(out, regConfigSet_(req.config));
@@ -236,6 +237,30 @@ function chatGemini_(messages, system, model, key){
                .map(function(p){ return p.text || ''; }).join('\n').replace(/^\n+|\n+$/g,'');
   if(!text && cand.finishReason && cand.finishReason !== 'STOP') text = '(אין תשובה — ' + cand.finishReason + ')';
   return { ok:true, text: text };
+}
+
+/* ============================================================
+   גאוקוד מדויק דרך Google (משדרג דיוק) — הבקשה עוברת בגשר כדי שמפתח
+   ה-API יישאר מוסתר. אם המפתח לא הוגדר → מוחזר 'no-geo-key', והאפליקציה
+   נופלת חזרה ל-OpenStreetMap (חינמי) אוטומטית.
+   הגדרה חד-פעמית: Project Settings → Script Properties → הוסף מפתח בשם
+   GOOGLE_MAPS_API_KEY עם מפתח מ-console.cloud.google.com (Geocoding API).
+   ============================================================ */
+function geocode_(q){
+  var key = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
+  if(!key) return { ok:false, error:'no-geo-key' };      // אין מפתח → נפילה ל-OSM
+  q = String(q || '').trim();
+  if(!q) return { ok:false, error:'geo-not-found' };
+  var url = 'https://maps.googleapis.com/maps/api/geocode/json?region=il&language=he&address='
+            + encodeURIComponent(q) + '&key=' + encodeURIComponent(key);
+  var res = UrlFetchApp.fetch(url, { muteHttpExceptions:true });
+  var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
+  if(data.status === 'OK' && data.results && data.results.length){
+    var loc = data.results[0].geometry.location;
+    return { ok:true, lat:loc.lat, lng:loc.lng, formatted:data.results[0].formatted_address };
+  }
+  if(data.status === 'ZERO_RESULTS') return { ok:false, error:'geo-not-found' };
+  return { ok:false, error: (data.error_message || data.status || 'geo-failed') };
 }
 
 function json_(out, obj){ out.setContent(JSON.stringify(obj)); return out; }
