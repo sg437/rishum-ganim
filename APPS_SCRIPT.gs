@@ -49,7 +49,7 @@ function doPost(e){
       case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu, req.gan));
       case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan));
       case 'chat':           return json_(out, chat_(req.messages, req.system, req.model));
-      case 'geocode':        return json_(out, geocode_(req.q, req.city));
+      case 'geocode':        return json_(out, geocode_(req.q, req.city, req.bias));
       case 'walk':           return json_(out, walk_(req.origin, req.dests));
       case 'sendMail':       return json_(out, sendMail_(req.to, req.subject, req.body));
       case 'regConfigGet':   return json_(out, regConfigGet_());
@@ -247,24 +247,39 @@ function chatGemini_(messages, system, model, key){
    הגדרה חד-פעמית: Project Settings → Script Properties → הוסף מפתח בשם
    GOOGLE_MAPS_API_KEY עם מפתח מ-console.cloud.google.com (Geocoding API).
    ============================================================ */
-function geocode_(q, city){
+function geocode_(q, city, bias){
   var key = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
   if(!key) return { ok:false, error:'no-geo-key' };      // אין מפתח → נפילה ל-OSM
   q = String(q || '').trim();
   if(!q) return { ok:false, error:'geo-not-found' };
-  // גאוקוד מדויק לפי הכתובת המלאה (העיר כבר בתוך המחרוזת). לא משתמשים ב-locality
-  // כדי לא לקבל תוצאה משוערת (מרכז רחוב/עיר); סינון תוצאות בעיר אחרת נעשה בצד הלקוח.
+  city = String(city || '').trim();
+  // 1) נעילה לעיר (components=locality) — מבטיחה שכל תוצאה תהיה בעיר הנבחרת,
+  //    יחד עם הטיה (bounds) שבוחרת את ההתאמה המדויקת בתוך העיר.
+  var r = geocodeGoogleCall_(q, city, bias, key);
+  // 2) נפילה אם שם העיר לא זוהה (ZERO_RESULTS) — בלי נעילה אך עם הטיה, כדי
+  //    שעדיין נעדיף את אזור העיר (ולא ניפול לעיר אחרת).
+  if(r.zero && city){ r = geocodeGoogleCall_(q, '', bias, key); }
+  return r.out;
+}
+function geocodeGoogleCall_(q, city, bias, key){
   var url = 'https://maps.googleapis.com/maps/api/geocode/json?region=il&language=he&address='
             + encodeURIComponent(q) + '&key=' + encodeURIComponent(key);
+  if(city) url += '&components=' + encodeURIComponent('locality:' + city + '|country:IL');
+  if(bias && bias.lat != null && bias.lng != null){
+    var dLat = 0.06, dLng = 0.07;   // ~6-8 ק"מ סביב מרכז העיר
+    var sw = (bias.lat - dLat) + ',' + (bias.lng - dLng);
+    var ne = (bias.lat + dLat) + ',' + (bias.lng + dLng);
+    url += '&bounds=' + encodeURIComponent(sw + '|' + ne);
+  }
   var res = UrlFetchApp.fetch(url, { muteHttpExceptions:true });
   var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
   if(data.status === 'OK' && data.results && data.results.length){
     var r0 = data.results[0], loc = r0.geometry.location;
-    return { ok:true, lat:loc.lat, lng:loc.lng, formatted:r0.formatted_address,
-             locType:(r0.geometry && r0.geometry.location_type) || '', partial:!!r0.partial_match };
+    return { out:{ ok:true, lat:loc.lat, lng:loc.lng, formatted:r0.formatted_address,
+             locType:(r0.geometry && r0.geometry.location_type) || '', partial:!!r0.partial_match } };
   }
-  if(data.status === 'ZERO_RESULTS') return { ok:false, error:'geo-not-found' };
-  return { ok:false, error:(data.error_message || data.status || 'geo-failed') };
+  if(data.status === 'ZERO_RESULTS') return { zero:true, out:{ ok:false, error:'geo-not-found' } };
+  return { out:{ ok:false, error:(data.error_message || data.status || 'geo-failed') } };
 }
 
 /* מרחק/זמן הליכה אמיתי דרך Google Distance Matrix (מצב הליכה).
