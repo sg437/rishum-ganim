@@ -49,7 +49,7 @@ function doPost(e){
       case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu, req.gan));
       case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan));
       case 'chat':           return json_(out, chat_(req.messages, req.system, req.model));
-      case 'geocode':        return json_(out, geocode_(req.q, req.city));
+      case 'geocode':        return json_(out, geocode_(req.q, req.city, req.bias));
       case 'walk':           return json_(out, walk_(req.origin, req.dests));
       case 'sendMail':       return json_(out, sendMail_(req.to, req.subject, req.body));
       case 'regConfigGet':   return json_(out, regConfigGet_());
@@ -247,15 +247,21 @@ function chatGemini_(messages, system, model, key){
    הגדרה חד-פעמית: Project Settings → Script Properties → הוסף מפתח בשם
    GOOGLE_MAPS_API_KEY עם מפתח מ-console.cloud.google.com (Geocoding API).
    ============================================================ */
-function geocode_(q, city){
+function geocode_(q, city, bias){
   var key = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
   if(!key) return { ok:false, error:'no-geo-key' };      // אין מפתח → נפילה ל-OSM
   q = String(q || '').trim();
   if(!q) return { ok:false, error:'geo-not-found' };
-  // גאוקוד מדויק לפי הכתובת המלאה (העיר כבר בתוך המחרוזת). לא משתמשים ב-locality
-  // כדי לא לקבל תוצאה משוערת (מרכז רחוב/עיר); סינון תוצאות בעיר אחרת נעשה בצד הלקוח.
+  // גאוקוד מדויק לפי הכתובת המלאה. הטיה (bounds) סביב מרכז העיר מושכת תוצאות
+  // עמומות לעיר הנכונה, בלי לאבד דיוק (בניגוד ל-locality שמחזיר תוצאה משוערת).
   var url = 'https://maps.googleapis.com/maps/api/geocode/json?region=il&language=he&address='
             + encodeURIComponent(q) + '&key=' + encodeURIComponent(key);
+  if(bias && bias.lat != null && bias.lng != null){
+    var dLat = 0.06, dLng = 0.07;   // ~6-8 ק"מ סביב מרכז העיר
+    var sw = (bias.lat - dLat) + ',' + (bias.lng - dLng);
+    var ne = (bias.lat + dLat) + ',' + (bias.lng + dLng);
+    url += '&bounds=' + encodeURIComponent(sw + '|' + ne);
+  }
   var res = UrlFetchApp.fetch(url, { muteHttpExceptions:true });
   var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
   if(data.status === 'OK' && data.results && data.results.length){
