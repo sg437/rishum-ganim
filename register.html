@@ -57,20 +57,35 @@
       <div class="fixed" id="ownerBlock"></div>
 
       <div class="grid" style="margin-top:12px">
-        <div><label>שם התלמיד/ה</label><input id="childName" autocomplete="off"></div>
+        <div><label>שם פרטי</label><input id="childFirst" autocomplete="off"></div>
+        <div><label>שם משפחה</label><input id="childLast" autocomplete="off"></div>
         <div><label>מספר תעודת זהות</label><input id="childTz" inputmode="numeric" autocomplete="off"></div>
         <div><label>תאריך הלידה</label><input id="dob" type="date"></div>
+        <div><label>רחוב</label><input id="street" list="streetList" autocomplete="off"><datalist id="streetList"></datalist></div>
+        <div><label>מספר בניין</label><input id="building" autocomplete="off"></div>
+        <div><label>עיר</label><input id="city" list="cityList" autocomplete="off"><datalist id="cityList"></datalist></div>
         <div><label>טלפון בית</label><input id="homePhone" inputmode="tel"></div>
         <div><label>נייד אב</label><input id="dadMobile" inputmode="tel"></div>
         <div><label>נייד אם</label><input id="momMobile" inputmode="tel"></div>
-        <div class="g1" style="grid-column:1 / -1"><label>כתובת</label><input id="address"></div>
-        <div class="g1" style="grid-column:1 / -1"><label>דוא"ל</label><input id="email" type="email" inputmode="email"></div>
+        <div class="g1" style="grid-column:1 / -1"><label>דוא"ל</label><input id="email" type="email" inputmode="email" dir="ltr" style="text-align:right"></div>
       </div>
 
       <div class="grid" style="margin-top:6px">
         <div><label>שם הגן המבוקש</label><input id="ganName" list="ganList" autocomplete="off" placeholder="הקלד/י לחיפוש גן…"><datalist id="ganList"></datalist></div>
         <div><label>סמל הגן</label><input id="ganSymbol" readonly placeholder="יתמלא אוטומטית"></div>
         <div class="g1" style="grid-column:1 / -1"><label>כתובת הגן</label><input id="ganAddress" readonly></div>
+      </div>
+
+      <div class="pledge" style="margin-top:16px">אני מתחייב לקבל את התלמיד לגן רק אם אקבל את ההכרה עד תחילת שנת הלימודים</div>
+      <div style="display:flex;justify-content:space-between;gap:24px;margin-top:18px;align-items:flex-end">
+        <div style="flex:1;text-align:center">
+          <div id="ownSignName" style="min-height:56px;display:flex;align-items:flex-end;justify-content:center;font-weight:700;font-size:1.05rem"></div>
+          <div style="border-top:1px solid #182b20;margin-top:4px;padding-top:5px;font-weight:800">שם מורשה חתימת הבעלות</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div id="ownStamp" style="min-height:56px;display:flex;align-items:flex-end;justify-content:center"></div>
+          <div style="border-top:1px solid #182b20;margin-top:4px;padding-top:5px;font-weight:800">חתימה וחותמת הבעלות</div>
+        </div>
       </div>
     </fieldset>
 
@@ -170,8 +185,13 @@ function render(){
   $("#instName").textContent = o.institutionName || o.name || "—";
   $("#ownerBlock").innerHTML =
     `<div>שם הבעלות: <b>${esc(o.name||"")}</b> · סמל הבעלות: <b>${esc(o.symbol||"")}</b></div>`+
-    `<div>כתובת הבעלות: <b>${esc(o.address||"")}</b>${o.recognizedFrom?` · הכרה מיום: <b>${esc(o.recognizedFrom)}</b>`:""}</div>`+
-    (o.signName?`<div style="margin-top:6px">מורשה חתימת הבעלות: <b>${esc(o.signName)}</b></div>`:"");
+    `<div>כתובת הבעלות: <b>${esc(o.address||"")}</b>${o.recognizedFrom?` · הכרה מיום: <b>${esc(o.recognizedFrom)}</b>`:""}</div>`;
+  // הצהרת בעלות — שם מורשה חתימה + חתימה וחותמת
+  $("#ownSignName").textContent = o.signName || "";
+  if(o.stampImage){ const st=$("#ownStamp"); const img=document.createElement("img"); img.src=o.stampImage; img.style.cssText="max-height:96px;max-width:100%;object-fit:contain"; st.appendChild(img); }
+  // רשימות ערים לרחוב (השלמה אוטומטית)
+  const cities = Array.isArray(CONFIG.cities)? CONFIG.cities : [];
+  $("#cityList").innerHTML = cities.map(c=>`<option value="${esc(c)}">`).join("");
   $("#declDate").value = todayStr();
   GANS = Array.isArray(CONFIG.gans)? CONFIG.gans : [];
   wireGan(); wireFiles();
@@ -221,8 +241,17 @@ function buildDocHtml(data, sigUrl, fileNames){
   const row=(l,val)=>`<tr><td style="padding:5px 8px;color:#6a8072;font-weight:700;white-space:nowrap;vertical-align:top;width:150px">${e(l)}</td><td style="padding:5px 8px;font-weight:700">${v(val)}</td></tr>`;
   const owner =
     `<div>שם הבעלות: <b>${v(o.name)}</b> · סמל הבעלות: <b>${v(o.symbol)}</b></div>`+
-    `<div>כתובת הבעלות: <b>${v(o.address)}</b>${o.recognizedFrom?` · הכרה מיום: <b>${e(o.recognizedFrom)}</b>`:""}</div>`+
-    (o.signName?`<div style="margin-top:4px">מורשה חתימת הבעלות: <b>${e(o.signName)}</b></div>`:"");
+    `<div>כתובת הבעלות: <b>${v(o.address)}</b>${o.recognizedFrom?` · הכרה מיום: <b>${e(o.recognizedFrom)}</b>`:""}</div>`;
+  const ownerDecl =
+    `<div style="line-height:1.7;margin-top:10px">אני מתחייב לקבל את התלמיד לגן רק אם אקבל את ההכרה עד תחילת שנת הלימודים</div>
+     <div style="display:flex;justify-content:space-between;gap:24px;margin-top:16px;align-items:flex-end">
+       <div style="flex:1;text-align:center">
+         <div style="min-height:50px;display:flex;align-items:flex-end;justify-content:center;font-weight:700">${e(o.signName||"")}</div>
+         <div style="border-top:1px solid #182b20;margin-top:4px;padding-top:4px;font-weight:800">שם מורשה חתימת הבעלות</div></div>
+       <div style="flex:1;text-align:center">
+         <div style="min-height:50px;display:flex;align-items:flex-end;justify-content:center">${o.stampImage?`<img src="${e(o.stampImage)}" style="max-height:90px;max-width:100%;object-fit:contain">`:""}</div>
+         <div style="border-top:1px solid #182b20;margin-top:4px;padding-top:4px;font-weight:800">חתימה וחותמת הבעלות</div></div>
+     </div>`;
   const docsList = (fileNames&&fileNames.length)
     ? `<ul style="margin:6px 0 0;padding-inline-start:20px">${fileNames.map(n=>`<li style="font-weight:700">${e(n)}</li>`).join("")}</ul>`
     : `<div style="color:#6a8072">לא צורפו קבצים</div>`;
@@ -239,11 +268,13 @@ function buildDocHtml(data, sigUrl, fileNames){
     ${sec("אישור בקשה לרישום לגן מוכר שאינו רשמי לשנה\"ל "+e(CONFIG.year||""),
       `<div style="background:#f3efe6;border-radius:10px;padding:10px 12px;line-height:1.8">${owner}</div>
        <table style="width:100%;border-collapse:collapse;margin-top:8px">
-         ${row("שם התלמיד/ה",data.childName)}${row("מספר תעודת זהות",data.childTz)}${row("תאריך הלידה",data.dob)}
-         ${row("כתובת",data.address)}${row("טלפון בית",data.homePhone)}${row("נייד אב",data.dadMobile)}${row("נייד אם",data.momMobile)}${row('דוא"ל',data.email)}
+         ${row("שם פרטי",data.childFirst)}${row("שם משפחה",data.childLast)}${row("מספר תעודת זהות",data.childTz)}${row("תאריך הלידה",data.dob)}
+         ${row("רחוב",data.street)}${row("מספר בניין",data.building)}${row("עיר",data.city)}
+         ${row("טלפון בית",data.homePhone)}${row("נייד אב",data.dadMobile)}${row("נייד אם",data.momMobile)}${row('דוא"ל',data.email)}
        </table>`)}
     ${sec("הגן המבוקש",
-      `<table style="width:100%;border-collapse:collapse">${row("שם הגן",data.ganName)}${row("סמל הגן",data.ganSymbol)}${row("כתובת הגן",data.ganAddress)}</table>`)}
+      `<table style="width:100%;border-collapse:collapse">${row("שם הגן",data.ganName)}${row("סמל הגן",data.ganSymbol)}${row("כתובת הגן",data.ganAddress)}</table>
+       ${ownerDecl}`)}
     ${sec("הצהרת הורה",
       `<div style="line-height:1.9">אני (שם ההורה) <b>${v(data.parentName)}</b> ת.ז. <b>${v(data.parentTz)}</b> מצהיר/ה בזאת כי אני מבצע/ת את הרישום לגני (שם המוסד) <b>${v(o.institutionName||o.name)}</b>, סמל המוסד <b>${v(data.ganSymbol)}</b> ולא רשמתי את הילד/ה לגן אחר.</div>
        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:14px;gap:20px">
@@ -288,9 +319,10 @@ async function formToPdfBase64(data, sigUrl, fileNames){
 }
 
 $("#submitBtn").onclick = async ()=>{
-  const req=(id,name)=>{ const v=$("#"+id).value.trim(); return v; };
-  const childName=req("childName"), childTz=req("childTz"), ganName=$("#ganName").value.trim(), parentName=req("parentName");
-  if(!childName){ return fail("יש להזין שם התלמיד/ה"); }
+  const req=id=>$("#"+id).value.trim();
+  const childFirst=req("childFirst"), childLast=req("childLast"), childTz=req("childTz"), ganName=$("#ganName").value.trim(), parentName=req("parentName");
+  const childName=[childLast,childFirst].filter(Boolean).join(" ");
+  if(!childFirst || !childLast){ return fail("יש להזין שם פרטי ושם משפחה של התלמיד/ה"); }
   if(!ganName || !$("#ganSymbol").value){ return fail("יש לבחור גן מהרשימה (כדי שהסמל יתמלא)"); }
   if(!parentName){ return fail("יש להזין שם ההורה בהצהרה"); }
   if(!signatureDataUrl()){ return fail("יש לחתום בחלון החתימה"); }
@@ -302,9 +334,11 @@ $("#submitBtn").onclick = async ()=>{
     }
     const data={
       year: CONFIG.year||"", ganSymbol:$("#ganSymbol").value, ganName,
-      childName, childTz, dob:$("#dob").value, homePhone:$("#homePhone").value.trim(),
+      childName, childFirst, childLast, childTz, dob:$("#dob").value, homePhone:$("#homePhone").value.trim(),
       dadMobile:$("#dadMobile").value.trim(), momMobile:$("#momMobile").value.trim(),
-      address:$("#address").value.trim(), email:$("#email").value.trim(), ganAddress:$("#ganAddress").value,
+      street:$("#street").value.trim(), building:$("#building").value.trim(), city:$("#city").value.trim(),
+      address:[$("#street").value.trim(),$("#building").value.trim(),$("#city").value.trim()].filter(Boolean).join(" "),
+      email:$("#email").value.trim(), ganAddress:$("#ganAddress").value,
       parentName, parentTz:$("#parentTz").value.trim(), declDate:$("#declDate").value,
       signature: signatureDataUrl(), submittedAt:new Date().toISOString()
     };

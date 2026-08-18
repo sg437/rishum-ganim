@@ -1727,7 +1727,7 @@ function guideContent(){
         <li><b>שנים</b> — הוספה/מחיקה, ו<b>מעבר שנה</b>.</li>
         <li><b>רשימות</b> — גילי ילדים, תפקידי צוות (צבע + שיוך חינוך), קמפוסים.</li>
         <li><b>מנהלים ומשתמשים</b> — מי משנה הגדרות, והוספת משתמשי התחברות.</li>
-        <li><b>📝 רישום דיגיטלי — טופס להורים</b> — טופס רישום ציבורי שהורים ממלאים אונליין (עם <b>חתימה דיגיטלית</b> והעלאת ת"ז + ספח). ממלאים את פרטי הבעלות (שם, סמל, כתובת, שם החותם, שם המוסד לההצהרה) ולוחצים <b>"שמירה ופרסום הטופס"</b> — ואז מעתיקים את הקישור ומעבירים להורים (בוואטסאפ/באתר). הטופס מציג אוטומטית את <b>הגנים הפעילים</b> שבתחום ההרשאה; בבחירת גן <b>הסמל והכתובת מתמלאים אוטומטית</b>, וגם הסמל בהצהרת ההורה. כל רישום נכנס ל<b>"רישומים ממתינים"</b> — לחיצה על <b>"צור תיק"</b> פותחת תיק ילדה עם הקבצים שנשמרו בדרייב, ומגיעה <b>התראה למייל עם מסמך הרישום המלא כ-PDF ממותג</b> (הטופס המלא עם הלוגו, החתימה והמסמכים שצורפו). לאחר עדכון פרטים או הוספת גנים — לוחצים שוב "פרסום" כדי לרענן. דורש חיבור לגשר (דרייב).</li>
+        <li><b>📝 רישום דיגיטלי — טופס להורים</b> — טופס רישום ציבורי שהורים ממלאים אונליין (עם <b>חתימה דיגיטלית</b> והעלאת ת"ז + ספח). ממלאים את פרטי הבעלות (שם, סמל, כתובת, שם מורשה החתימה, שם המוסד להצהרה) ו<b>מעלים תמונת חתימה+חותמת של הבעלות</b> (מופיעה בהצהרת הבעלות בטופס ובמסמך), ולוחצים <b>"שמירה ופרסום הטופס"</b> — ואז מעתיקים את הקישור ומעבירים להורים (בוואטסאפ/באתר). הטופס מציג אוטומטית את <b>הגנים הפעילים</b> שבתחום ההרשאה; בבחירת גן <b>הסמל והכתובת מתמלאים אוטומטית</b>, וגם הסמל בהצהרת ההורה. כל רישום נכנס ל<b>"רישומים ממתינים"</b> — לחיצה על <b>"צור תיק"</b> פותחת תיק ילדה עם כל הפרטים (שם, כתובת, ניידי הורים, מייל), <b>גיל אוטומטי לפי הגן</b>, סימון המסמכים (ת"ז/ספח) שצורפו, והתיקייה מועברת אוטומטית למבנה הרגיל (חינוך → שנה → גן). מגיעה גם <b>התראה למייל עם מסמך הרישום המלא כ-PDF ממותג</b> (הטופס המלא עם הלוגו, החתימה והמסמכים שצורפו). לאחר עדכון פרטים או הוספת גנים — לוחצים שוב "פרסום" כדי לרענן. דורש חיבור לגשר (דרייב).</li>
         <li><b>הרשאות עריכה לפי חינוך</b> — מגבילים משתמש/ת ל<b>עריכת חינוך אחד בלבד</b> (רגיל או מיוחד): רואה את כל הנתונים, אך תיק תלמידה/גן/צוות בחינוך שאינו מורשה נפתח <b>לקריאה בלבד</b> (🔒), וכן שיבוץ / עדכון קבוצתי / כפתור "משובצת" חסומים. עדיין אפשר <b>להעביר</b> ילדה מהחינוך המורשה לחינוך השני (שם היא נרשמת כללית, לא-משובצת). ההגבלה היא ברמת הממשק (מונעת עריכה מהמסך) ולא חסימת שרת. למנהל מערכת בלבד.</li>
       </ul>` }
   ];
@@ -2939,6 +2939,13 @@ function openStudent(s){
     else if(ages.length>=2){ if(!ages.includes(ageSel.value)) ageSel.value=""; if(hint) hint.textContent="גן דו-גילאי — בחר/י גיל: "+ages.join(" / "); }
   }
   const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; applyGanAge(); };
+  /* עיר אוטומטית לפי רחוב — נלמד מתיקים קיימים; העיר מתמלאת רק אם ריקה, וניתן לתקן ידנית */
+  { const streetCity={};
+    DB.students.forEach(st=>{ const k=(st.street||"").trim(); if(k&&st.city){ (streetCity[k]=streetCity[k]||{})[st.city]=(streetCity[k][st.city]||0)+1; } });
+    const cityFor=str=>{ const m=streetCity[(str||"").trim()]; return m? (Object.keys(m).sort((a,b)=>m[b]-m[a])[0]||"") : ""; };
+    const se=$("#s-street"), ce=$("#s-city");
+    if(se&&ce){ const apply=()=>{ const c=cityFor(se.value); if(c && !ce.value.trim()) ce.value=c; };
+      se.addEventListener("change",apply); se.addEventListener("input",apply); } }
   $("#copyFolder").onclick=()=>{ navigator.clipboard?.writeText($("#s-folderSuggest").value).then(()=>toast("שם התיקייה הועתק"),()=>{}); };
 
   function persistCurrent(){ const data=collect(); const i=DB.students.findIndex(x=>x.id===s.id); if(i>=0) DB.students[i]=data; else DB.students.push(data); Object.assign(s,data); return data; }
@@ -5701,12 +5708,15 @@ async function regFormPublish(){
   const gans=eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"))
     .map(g=>({ name:ganName(g.id), symbol:g.ganSymbol||g.internalSymbol||"", address:[g.address,g.building].filter(Boolean).join(" ") }));
   const logo=appLogo(); const isImg=/^(https?:|data:)/i.test(logo);
+  const cities=[...new Set(DB.students.map(s=>s.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
   const config={
     year: rf.year || DB.activeYear || "",
     logo: isImg? logo : "",
     notifyEmail: rf.notifyEmail || contactEmail() || "",
     ownership: { name:rf.ownName||"", symbol:rf.ownSymbol||"", address:rf.ownAddress||"",
-      recognizedFrom:rf.recognizedFrom||"", signName:rf.signName||"", institutionName:rf.institutionName||rf.ownName||"" },
+      recognizedFrom:rf.recognizedFrom||"", signName:rf.signName||"", institutionName:rf.institutionName||rf.ownName||"",
+      stampImage:rf.stampImage||"" },
+    cities,
     gans
   };
   return driveCall("regConfigSet", { config });
@@ -5716,18 +5726,33 @@ async function approveReg(rec, after){
   const g=DB.gans.find(x=>String(x.ganSymbol||x.internalSymbol||"")===String(d.ganSymbol)) || DB.gans.find(x=>ganName(x.id)===d.ganName);
   const year=(Array.isArray(DB.years)&&DB.years.includes(d.year))? d.year : DB.activeYear;
   const s=makeStudent(); s.year=year;
-  const nmWords=String(d.childName||"").trim().split(/\s+/); s.lastName=nmWords[0]||""; s.firstName=nmWords.slice(1).join(" ")||"";
+  // שם פרטי/משפחה מהטופס; לרישומים ישנים — פיצול שם מלא (מילה ראשונה=משפחה)
+  if(d.childFirst||d.childLast){ s.firstName=d.childFirst||""; s.lastName=d.childLast||""; }
+  else { const w=String(d.childName||"").trim().split(/\s+/); s.lastName=w[0]||""; s.firstName=w.slice(1).join(" ")||""; }
   s.tz=digits(d.childTz||""); s.dob=d.dob||"";
   s.dadMobile=d.dadMobile||""; s.momMobile=d.momMobile||"";
   s.mobile=d.momMobile||d.dadMobile||""; s.phone=d.homePhone||"";
-  s.street=d.address||""; s.email=d.email||"";
-  if(g){ s.ganId=g.id; s.campus=ganCampus(g.id)||""; s.education=eduLabel(g); }
+  s.street=d.street||d.address||""; s.building=d.building||""; s.city=d.city||""; s.email=d.email||"";
+  if(g){ s.ganId=g.id; s.campus=ganCampus(g.id)||""; s.education=eduLabel(g);
+    // גיל אוטומטי לפי הגן (גן חד-גילאי → נקבע; דו-גילאי → נשאר לבחירה)
+    const ages=String(g.age||"").split("/").map(x=>x.trim()).filter(Boolean); if(ages.length===1) s.age=ages[0];
+  }
   s.placed=false; s.registeredByUs=true;
+  // סימון המסמכים שצורפו בטופס (ת"ז / ספח) + קישור לקבצים
+  (rec.files||[]).forEach(f=>{ const k=String(f.kind||"");
+    if(k.indexOf("תעודת זהות")>=0){ s.docs.idCopy=true; s.docFiles.idCopy={id:f.id,name:f.name,link:f.link}; }
+    else if(k.indexOf("ספח")>=0){ s.docs.nispach=true; s.docFiles.nispach={id:f.id,name:f.name,link:f.link}; }
+  });
   s.driveFolderId=rec.folderId||""; s.driveFolder=rec.folderLink||"";
   s.notes="נרשמה דרך טופס דיגיטלי · הורה: "+(d.parentName||"")+(d.parentTz?(" ("+d.parentTz+")"):"");
+  // העברת תיקיית הרישום אל המבנה הרגיל: חינוך → שנה → גן → ילדה
+  if(g && rec.folderId){
+    try{ const mv=await driveCall("childMove",{ folderId:rec.folderId, year:String(year), edu:eduLabel(g), gan:ganName(g.id) });
+      if(mv&&mv.folderLink) s.driveFolder=mv.folderLink; }catch(e){}
+  }
   DB.students.push(s); save();
   try{ await driveCall("regRemove",{ id:rec.id }); }catch(e){}
-  toast("נפתח תיק ל"+(d.childName||"תלמידה"));
+  toast("נפתח תיק ל"+[s.lastName,s.firstName].filter(Boolean).join(" "));
   if(after) after();
 }
 function openRegReview(){
@@ -5745,7 +5770,7 @@ function openRegReview(){
     if(!items.length){ b.innerHTML=`<div class="empty">אין רישומים ממתינים.</div>`; return; }
     b.innerHTML=`<div class="table-wrap"><table><thead><tr><th>תאריך</th><th>תלמיד/ה</th><th>גן מבוקש</th><th>הורה</th><th>מסמכים</th><th></th></tr></thead><tbody>${items.map(r=>`<tr>
       <td style="white-space:nowrap">${esc(new Date(r.at).toLocaleDateString("he-IL"))}</td>
-      <td><b>${esc(r.data.childName||"")}</b>${r.data.childTz?`<div class="hint">${esc(r.data.childTz)}</div>`:''}</td>
+      <td><b>${esc([r.data.childLast,r.data.childFirst].filter(Boolean).join(" ")||r.data.childName||"")}</b>${r.data.childTz?`<div class="hint">${esc(r.data.childTz)}</div>`:''}</td>
       <td>${esc(r.data.ganName||"")} ${r.data.ganSymbol?`<span class="hint">(${esc(r.data.ganSymbol)})</span>`:''}</td>
       <td>${esc(r.data.parentName||"")}${(r.data.momMobile||r.data.dadMobile)?`<div class="hint">${esc(r.data.momMobile||r.data.dadMobile)}</div>`:''}</td>
       <td><a class="btn ghost sm" href="${esc(r.folderLink||'#')}" target="_blank">📂 ${(r.files||[]).length} קבצים</a></td>
@@ -5994,8 +6019,17 @@ function viewSettings(root){
       <div><label>סמל הבעלות</label><input id="rf-ownSymbol" value="${esc(rf.ownSymbol||"")}" placeholder="מספר סמל"></div>
       <div><label>כתובת הבעלות</label><input id="rf-ownAddress" value="${esc(rf.ownAddress||"")}" placeholder="כתובת"></div>
       <div><label>מוכר משנת</label><input id="rf-recognizedFrom" value="${esc(rf.recognizedFrom||"")}" placeholder="למשל תש&quot;פ"></div>
-      <div><label>שם החותם (הצהרת בעלות)</label><input id="rf-signName" value="${esc(rf.signName||"")}" placeholder="שם ותפקיד"></div>
+      <div><label>שם מורשה חתימת הבעלות</label><input id="rf-signName" value="${esc(rf.signName||"")}" placeholder="שם החותם מטעם הבעלות"></div>
       <div><label>שם המוסד (הצהרת הורה)</label><input id="rf-institutionName" value="${esc(rf.institutionName||"")}" placeholder="ברירת מחדל: שם הבעלות"></div>
+    </div>
+    <div style="margin-top:12px">
+      <label>חתימה וחותמת הבעלות (תמונה)</label>
+      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+        <img id="rf-stamp-preview" src="${esc(rf.stampImage||"")}" alt="" style="height:64px;max-width:240px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#fff;${rf.stampImage?'':'display:none'}">
+        <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">📎 העלאת תמונה<input type="file" id="rf-stamp-file" accept="image/*" hidden></label>
+        <button class="btn ghost sm" type="button" id="rf-stamp-clear" ${rf.stampImage?'':'style="display:none"'}>הסרה</button>
+      </div>
+      <div class="hint" style="margin-top:4px">התמונה (חתימה + חותמת הבעלות) תופיע בהצהרת הבעלות בטופס ובמסמך ה-PDF — בדיוק כפי שתעלו אותה. מומלץ צילום/סריקה נקי על רקע לבן.</div>
     </div>
     <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
       <button class="btn" id="rf-publish">💾 שמירה ופרסום הטופס</button>
@@ -6207,9 +6241,15 @@ function viewSettings(root){
   // רישום דיגיטלי — טופס להורים
   { const pub=$("#rf-publish");
     if(pub){
+      let stampVal=(regFormCfg().stampImage)||"";
+      const stImg=$("#rf-stamp-preview"), stClr=$("#rf-stamp-clear"), stFile=$("#rf-stamp-file");
+      if(stFile) stFile.onchange=()=>{ const f=stFile.files&&stFile.files[0]; if(!f)return;
+        const r=new FileReader(); r.onload=()=>{ stampVal=String(r.result||""); if(stImg){ stImg.src=stampVal; stImg.style.display=""; } if(stClr) stClr.style.display=""; }; r.readAsDataURL(f); };
+      if(stClr) stClr.onclick=()=>{ stampVal=""; if(stImg){ stImg.src=""; stImg.style.display="none"; } stClr.style.display="none"; if(stFile) stFile.value=""; };
       const collect=()=>({ year:($("#rf-year").value||"").trim(), notifyEmail:($("#rf-notify").value||"").trim(),
         ownName:($("#rf-ownName").value||"").trim(), ownSymbol:($("#rf-ownSymbol").value||"").trim(), ownAddress:($("#rf-ownAddress").value||"").trim(),
-        recognizedFrom:($("#rf-recognizedFrom").value||"").trim(), signName:($("#rf-signName").value||"").trim(), institutionName:($("#rf-institutionName").value||"").trim() });
+        recognizedFrom:($("#rf-recognizedFrom").value||"").trim(), signName:($("#rf-signName").value||"").trim(), institutionName:($("#rf-institutionName").value||"").trim(),
+        stampImage:stampVal });
       pub.onclick=async ()=>{
         DB.settings.regForm=Object.assign({},DB.settings.regForm,collect()); save();
         if(!DRIVE_READY){ toast("נשמר. לפרסום הטופס להורים יש להגדיר חיבור גשר (דרייב)."); return; }
