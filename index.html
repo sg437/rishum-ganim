@@ -5780,7 +5780,7 @@ function openRegReview(){
   };
   $("#rr-refresh").onclick=load; load();
 }
-/* ---------- עוזר AI (Claude דרך הגשר) ---------- */
+/* ---------- עוזר AI (Gemini החינמי / Claude — דרך הגשר) ---------- */
 function guidePlainText(){
   const c=guideContent();
   const strip=h=>String(h||"").replace(/<[^>]+>/g," ").replace(/&[a-z]+;/gi," ").replace(/\s+/g," ").trim();
@@ -5792,7 +5792,7 @@ function aiSystemPrompt(){
     +'להלן מבנה התוכנה והמדריך המלא:\n'+guidePlainText();
 }
 async function aiAsk(history){
-  return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model:(DB.settings&&DB.settings.aiModel)||"claude-haiku-4-5" });
+  return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model:(DB.settings&&DB.settings.aiModel)||"gemini-2.0-flash" });
 }
 function openAiHelp(){
   if(!DRIVE_READY){ modal(`<h3>🤖 עוזר חכם</h3><div class="note">העוזר פועל דרך גשר הדרייב, שאינו מוגדר עדיין. יש להשלים את חיבור הגשר (SETUP.md).</div><div class="foot"><button class="btn ghost" id="ai-close" style="margin-inline-start:auto">סגירה</button></div>`); $("#ai-close").onclick=closeModal; return; }
@@ -5818,7 +5818,7 @@ function openAiHelp(){
     const wait=bubble("assistant","… חושב");
     try{ const res=await aiAsk(convo); wait.textContent=res.text||"(לא התקבלה תשובה)"; convo.push({role:"assistant",content:res.text||""}); }
     catch(e){ const raw=((e&&e.message)||String(e||""));
-      wait.textContent = raw.indexOf("no-ai-key")>=0 ? "העוזר עדיין לא הופעל — יש להגדיר מפתח Anthropic API בגשר (הגדרות → עוזר חכם / SETUP)." : ("שגיאה: "+driveErrHe(e)); }
+      wait.textContent = raw.indexOf("no-ai-key")>=0 ? "העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini, ראה הגדרות → עוזר חכם)." : ("שגיאה: "+driveErrHe(e)); }
     finally{ sb.disabled=false; msgs.scrollTop=msgs.scrollHeight; }
   }
   $("#ai-send").onclick=send;
@@ -6046,16 +6046,29 @@ function viewSettings(root){
   ${admin?`<div class="panel">
     <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">🤖 עוזר חכם (AI)</h2><span class="pill ${DRIVE_READY?'ok':'neutral'}">${DRIVE_READY?'פועל דרך הגשר':'דורש חיבור גשר'}</span></div>
     <div class="sub">צ'אט עזרה שמסביר למשתמשים איך להשתמש בתוכנה (זמין מ"🤖 עוזר חכם" בתפריט). פועל דרך הגשר כדי שמפתח ה-API יישאר מוסתר.</div>
-    <div class="note" style="margin-top:8px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
-      <b>הפעלה חד-פעמית:</b>
+    <div class="note" style="margin-top:8px;background:var(--good-soft);color:var(--good);border-color:transparent">
+      <b>הפעלה חינם (מומלץ) — Google Gemini:</b>
       <ol style="margin:6px 0 0;padding-inline-start:20px">
-        <li>יוצרים מפתח ב-<b>console.anthropic.com</b> (עם חיוב מופעל).</li>
-        <li>ב-Apps Script של הגשר: <b>Project Settings → Script Properties → Add script property</b>, בשם <b>ANTHROPIC_API_KEY</b> והערך = המפתח.</li>
-        <li>מוודאים שהקוד כולל את פעולת <code>chat</code> החדשה, ופורסים מחדש (New version).</li>
+        <li>נכנסים ל-<b>aistudio.google.com/apikey</b>, "Create API key" — <b>ללא חיוב</b>, מפתח חינמי.</li>
+        <li>ב-Apps Script של הגשר: <b>Project Settings → Script Properties → Add script property</b>, בשם <b>GEMINI_API_KEY</b> והערך = המפתח.</li>
+        <li>מוודאים שהקוד כולל את פעולת <code>chat</code> המעודכנת, ופורסים מחדש (New version).</li>
       </ol>
     </div>
-    <div class="row" style="margin-top:10px;max-width:360px"><div class="field grow"><label>מודל</label>
-      <select id="ai-model"><option value="claude-haiku-4-5">חסכוני (Haiku) — מומלץ</option><option value="claude-sonnet-5">מאוזן (Sonnet)</option><option value="claude-opus-5">חכם ביותר (Opus)</option></select></div>
+    <div class="note" style="margin-top:8px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
+      <b>חלופה בתשלום — Anthropic Claude:</b> יוצרים מפתח ב-<b>console.anthropic.com</b> (עם חיוב מופעל) ומגדירים אותו ב-Script Properties בשם <b>ANTHROPIC_API_KEY</b>. אם מוגדרים שני המפתחות — הבחירה נקבעת לפי המודל שנבחר למטה.
+    </div>
+    <div class="row" style="margin-top:10px;max-width:400px"><div class="field grow"><label>מודל</label>
+      <select id="ai-model">
+        <optgroup label="חינם — Google Gemini">
+          <option value="gemini-2.0-flash">חינם מהיר (Gemini Flash) — מומלץ</option>
+          <option value="gemini-2.5-flash">חינם, חכם יותר (Gemini 2.5 Flash)</option>
+        </optgroup>
+        <optgroup label="בתשלום — Anthropic Claude">
+          <option value="claude-haiku-4-5">חסכוני (Haiku)</option>
+          <option value="claude-sonnet-5">מאוזן (Sonnet)</option>
+          <option value="claude-opus-5">חכם ביותר (Opus)</option>
+        </optgroup>
+      </select></div>
       <button class="btn ghost" id="ai-model-save" style="align-self:end">שמירה</button></div>
   </div>`:""}
 
@@ -6263,7 +6276,7 @@ function viewSettings(root){
     } }
 
   // עוזר AI — בחירת מודל
-  { const am=$("#ai-model"); if(am){ am.value=(DB.settings&&DB.settings.aiModel)||"claude-haiku-4-5";
+  { const am=$("#ai-model"); if(am){ am.value=(DB.settings&&DB.settings.aiModel)||"gemini-2.0-flash";
       const s=$("#ai-model-save"); if(s) s.onclick=()=>{ DB.settings.aiModel=am.value; save(); toast("המודל נשמר"); }; } }
 
   // years
