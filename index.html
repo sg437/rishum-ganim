@@ -3673,6 +3673,14 @@ function mapFocusStudent(s){
   try{ _map.setView([s.geo.lat,s.geo.lng], 16); }catch(e){}
   try{ _mapL.popup({ offset:[0,-4] }).setLatLng([s.geo.lat,s.geo.lng]).setContent(mapStudentPopup(s)).openOn(_map); }catch(e){}
 }
+/* סיבה שגן נבחר אינו מוצג — לאבחון (null = מוצג) */
+function mapGanIssue(g){
+  const q=ganAddrQuery(g);
+  if(!q) return "אין כתובת בכרטיס הגן";
+  if(!(g.geo&&g.geo.lat!=null)) return "לא נמצא מיקום (גאוקוד נכשל)";
+  if(!mapInCity(g.geo)) return "מחוץ לרדיוס העיר הנבחרת";
+  return null;
+}
 /* רשימת צד — התלמידות המוצגות מקובצות לפי גן (בצבע הגן), לחיצה ממקדת על המפה */
 function mapRenderSide(){
   const box=$("#map-side"); if(!box) return;
@@ -3681,7 +3689,15 @@ function mapRenderSide(){
   const byGan=new Map(); shown.forEach(s=>{ const k=s.ganId||"__none__"; (byGan.get(k)||byGan.set(k,[]).get(k)).push(s); });
   const sortKids=a=>a.sort((x,y)=>([x.lastName,x.firstName].filter(Boolean).join(" ")).localeCompare([y.lastName,y.firstName].filter(Boolean).join(" "),"he"));
   const kidRow=s=>`<div class="map-side-kid" data-sid="${esc(s.id)}" style="cursor:pointer;padding:3px 4px;border-radius:6px;font-size:13px">${esc([s.lastName,s.firstName].filter(Boolean).join(" ")||"תלמידה")}</div>`;
-  let html=`<div style="font-weight:700;margin-bottom:6px">רשומות (${shown.length})</div>`;
+  // אבחון: גנים שנבחרו אך אינם מוצגים, עם הסיבה
+  const hidden=mapSelectedGans().map(g=>({g,why:mapGanIssue(g)})).filter(x=>x.why);
+  let html="";
+  if(hidden.length){
+    html+=`<div style="margin-bottom:8px;padding:6px 8px;border-radius:8px;background:var(--bad-soft,#fbeaea);border:1px solid var(--bad,#d1342b);color:var(--bad,#a5342b);font-size:12px">
+      <b>⚠ ${hidden.length} גנים לא מוצגים:</b>${hidden.map(x=>`<div>• ${esc(ganName(x.g.id))} — ${esc(x.why)}</div>`).join("")}
+      <div class="hint" style="margin-top:4px">אם "לא נמצא מיקום" — לחצ/י "רענון מיקומים". אם "מחוץ לרדיוס" — כתובת הגן כנראה מתגאוקדת לעיר/אזור אחר.</div></div>`;
+  }
+  html+=`<div style="font-weight:700;margin-bottom:6px">רשומות (${shown.length})</div>`;
   gans.forEach(g=>{
     const list=sortKids(byGan.get(g.id)||[]); const col=ganColor(g.id);
     html+=`<div style="margin-bottom:8px">
