@@ -311,6 +311,19 @@ fieldset{border-radius:14px}
 .map-side-kid:hover{background:var(--accent-soft);color:var(--accent-strong)}
 #leaflet-map.map-full{position:fixed;inset:0;z-index:9999;height:100dvh !important;min-height:100dvh !important;width:100vw !important;margin:0 !important;border-radius:0 !important;border:0 !important}
 #leaflet-map:fullscreen{width:100%;height:100%;border-radius:0;border:0;background:#e9eef2}
+/* מסך מלא לבמה (מפה + רשימת הצד יחד) — Fullscreen API */
+#map-stage:fullscreen{width:100%;height:100%;background:var(--surface);padding:10px;box-sizing:border-box;gap:10px;flex-wrap:nowrap}
+#map-stage:fullscreen #leaflet-map{height:100% !important;min-height:0 !important;flex:1 1 auto}
+#map-stage:fullscreen #map-side{max-height:100% !important;flex:0 0 280px}
+/* מסך מלא לבמה — גיבוי (ללא Fullscreen API) */
+#map-stage.map-full{position:fixed;inset:0;z-index:9999;height:100dvh !important;width:100vw !important;margin:0 !important;background:var(--surface);padding:10px;box-sizing:border-box;gap:10px;flex-wrap:nowrap;overflow:hidden}
+#map-stage.map-full #leaflet-map{height:auto !important;min-height:0 !important;flex:1 1 auto;border-radius:8px}
+#map-stage.map-full #map-side{max-height:100% !important;flex:0 0 280px}
+@media (max-width:640px){
+  #map-stage:fullscreen{flex-wrap:wrap}
+  #map-stage:fullscreen #map-side,#map-stage.map-full #map-side{flex-basis:100%;max-height:34% !important}
+  #map-stage.map-full{flex-wrap:wrap}
+}
 .leaflet-container{font:inherit}
 .map-fold{margin-top:10px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .map-fold>summary{cursor:pointer;padding:10px 14px;font-weight:700;list-style:none;user-select:none;display:flex;align-items:center;gap:8px}
@@ -1638,7 +1651,7 @@ function guideContent(){
         <li>לשונית <b>מפת שיבוץ</b> מציגה מפה חינמית (OpenStreetMap) עם מיקומי הגנים והתלמידות לפי הכתובת — <b>ללא צורך במפתח או חיוב</b>.</li>
         <li><b>מבנה העמוד (מסודר במקטעים מתקפלים):</b> בראש — כפתורי <b>"הצג על המפה"</b> ו<b>"מסך מלא"</b>. מתחת שני מקטעים: <b>⚙️ "סינון וגנים"</b> (פתוח) לבחירת עיר/חינוך/גנים, ו<b>🔧 "כלים נוספים"</b> (מקופל) לחיפוש תלמידה, מיקום ידני לגן, וטעינה/רענון מיקומים. לחיצה על כותרת מקטע פותחת/סוגרת אותו.</li>
         <li><b>סינון (חשוב):</b> בוחרים <b>עיר</b> (ברירת מחדל: העיר הראשית — מונע בלבול מערים אחרות), <b>חינוך</b>, ומסמנים אילו <b>גנים</b> להציג — הרשימה מקובצת <b>לפי קמפוס</b> (סימון קמפוס בוחר את כל הגנים שבו), או "בחר הכל" לכל הגנים. כברירת מחדל מוצגות רק התלמידות <b>הרשומות</b> לגנים שנבחרו (מתאים לתחילת רישום, כשעדיין לא שובצו) — או מסמנים <b>"כל התלמידות"</b>. לוחצים <b>"הצג על המפה"</b>.</li>
-        <li><b>ניווט:</b> גרירה להזזה, גלגלת או צביטה בשתי אצבעות לזום, וכפתור <b>"⛶ מסך מלא"</b> שמגדיל את המפה ל<b>כל המסך</b> (יציאה ב-Esc או בכפתור החזרה מהמסך המלא).</li>
+        <li><b>ניווט:</b> גרירה להזזה, גלגלת או צביטה בשתי אצבעות לזום, וכפתור <b>"⛶ מסך מלא"</b> שמגדיל את המפה <b>יחד עם רשימת התלמידות בצד</b> ל<b>כל המסך</b> (יציאה ב-Esc או בכפתור החזרה מהמסך המלא).</li>
         <li><b>צבע לפי מרחק:</b> כל תלמידה נצבעת לפי המרחק לגן הנבחר הקרוב — ירוק (קרוב) עד אדום (רחוק). <b>סגול</b> = גן.</li>
         <li><b>אח/ות:</b> תלמידה שיש לה אח/ות רשומ/ה מסומנת בטבעת זהב — <b>גם אם היא רחוקה</b>. בלחיצה עליה מופיע כפתור <b>"שבץ יחד"</b> לגן של האח/ות.</li>
         <li><b>שיבוץ בקליק:</b> לחיצה על תלמידה מציגה את הגנים הנבחרים הקרובים (מאותו חינוך) עם <b>מרחק וזמן הליכה אמיתיים</b> (Google), ממוינים לפי הליכה, עם כפתור <b>"שבץ"</b>. אם אין מפתח Google — מוצג מרחק אווירי.</li>
@@ -3725,7 +3738,9 @@ function mapRenderSide(){
       <b>⚠ ${hidden.length} גנים לא מוצגים:</b>${hidden.map(x=>{ const parts=[x.g.address,x.g.street,x.g.building].map(v=>String(v||"").trim()).filter(Boolean); return `<div style="margin-top:3px">• <b>${esc(ganName(x.g.id))}</b> — ${esc(x.why)}<div class="hint" style="margin-inline-start:10px">שדות כתובת: ${parts.length?esc(parts.join(" · ")):"— ריק —"}</div><button type="button" class="btn ghost sm" data-place="${esc(x.g.id)}" style="margin:3px 0 0 10px;padding:1px 8px">📍 מקם ידנית</button></div>`; }).join("")}
       <div class="hint" style="margin-top:4px">אפשר לתקן כתובת בלשונית <b>גנים</b>, או ללחוץ <b>"📍 מקם ידנית"</b> ולסמן את הגן ישירות על המפה.</div></div>`;
   }
-  html+=`<div style="font-weight:700;margin-bottom:6px">רשומות (${located.size}/${registered.length} על המפה)</div>`;
+  html+=`<div style="font-weight:700;margin-bottom:2px">רשומות (${located.size}/${registered.length} על המפה)</div>`;
+  if(registered.length-located.size>0) html+=`<div class="hint" style="margin-bottom:6px">○ = טרם מוקמה על המפה — לחצ/י "טעינת מיקומי תלמידות"</div>`;
+  else html+=`<div style="height:4px"></div>`;
   mapSelectedGans().forEach(g=>{
     const list=sortKids(byGan.get(g.id)||[]);
     if(!list.length) return;                        // דלג על גן ללא תלמידות רשומות
@@ -3864,7 +3879,7 @@ function mapInCity(geo){
 function viewMap(root){
   // ניקוי שאריות מצב "מסך מלא" אם עזבו את המפה בזמן שהיה פתוח
   document.body.style.overflow=""; const _x=document.getElementById("map-full-exit"); if(_x) _x.remove();
-  document.querySelectorAll("body > #leaflet-map.map-full").forEach(e=>e.remove()); _mapFullReturn=null;
+  document.querySelectorAll("body > #map-stage.map-full, body > #leaflet-map.map-full").forEach(e=>e.remove()); _mapFullReturn=null;
   const cities=mapCityOptions();
   if(!_mapState.inited){ _mapState.inited=true; _mapState.edu=activeEdu||null; _mapState.ganIds=null; _mapState.allStudents=false;
     _mapState.city=cities[0]||null; }   // ברירת מחדל: העיר הנפוצה ביותר (מצמצם בלבול מערים אחרות)
@@ -3934,7 +3949,7 @@ function viewMap(root){
       <span id="map-legend-txt"></span>
       <span class="hint">📍 דגל = גן · לחיצה על שם ברשימה שמימין ממקדת על המפה.</span>
     </div>
-    <div style="display:flex;gap:12px;margin-top:10px;align-items:stretch;flex-wrap:wrap">
+    <div id="map-stage" style="display:flex;gap:12px;margin-top:10px;align-items:stretch;flex-wrap:wrap">
       <div id="leaflet-map" style="flex:1 1 460px;height:70vh;min-height:420px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#e9eef2"></div>
       <div id="map-side" style="flex:0 1 260px;min-width:200px;max-height:70vh;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--surface)"><div class="hint">בחר/י גנים ולחצ/י "הצג על המפה" — כאן תופיע רשימת התלמידות הרשומות, מקובצת לפי גן.</div></div>
     </div>
@@ -3968,8 +3983,10 @@ function viewMap(root){
 /* מסך מלא למפה — עדיפות ל-Fullscreen API של הדפדפן (מכסה באמת את כל המסך,
    חסין למבנה העמוד); אם אינו נתמך — נפילה להעברת האלמנט ל-body עם מיקום קבוע. */
 function _fsElement(){ return document.fullscreenElement||document.webkitFullscreenElement||null; }
+/* אלמנט המסך-מלא = הבמה (מפה + רשימת הצד יחד), כדי שגם הרשימה תוצג במסך מלא */
+function mapFullEl(){ return $("#map-stage")||$("#leaflet-map"); }
 function mapToggleFull(){
-  const el=$("#leaflet-map"); if(!el) return;
+  const el=mapFullEl(); if(!el) return;
   const req=el.requestFullscreen||el.webkitRequestFullscreen;
   const exit=document.exitFullscreen||document.webkitExitFullscreen;
   if(req && exit){                       // Fullscreen API זמין — הדרך האמינה
@@ -3987,9 +4004,9 @@ function mapToggleFull(){
   }
   mapToggleFullFallback();               // דפדפן ללא Fullscreen API
 }
-/* גיבוי: העברת אלמנט המפה ל-body עם position:fixed (כשאין Fullscreen API) */
+/* גיבוי: העברת הבמה ל-body עם position:fixed (כשאין Fullscreen API) */
 function mapToggleFullFallback(){
-  const el=$("#leaflet-map"); if(!el) return;
+  const el=mapFullEl(); if(!el) return;
   const on=!el.classList.contains("map-full");
   const b=$("#map-full-btn"); if(b) b.textContent=on?"⛶ יציאה ממסך מלא":"⛶ מסך מלא";
   let x=document.getElementById("map-full-exit");
@@ -4001,7 +4018,7 @@ function mapToggleFullFallback(){
     if(!x){ x=document.createElement("button"); x.id="map-full-exit"; x.type="button"; x.textContent="✕ סגירה";
       x.style.cssText="position:fixed;top:10px;inset-inline-end:10px;z-index:10000;background:#12251a;color:#fff;border:0;border-radius:10px;padding:8px 14px;font:inherit;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)";
       x.onclick=mapToggleFull; document.body.appendChild(x); }
-    if(!_mapEscBound){ _mapEscBound=e=>{ if(e.key==="Escape"){ const m=document.getElementById("leaflet-map"); if(m&&m.classList.contains("map-full")) mapToggleFull(); } };
+    if(!_mapEscBound){ _mapEscBound=e=>{ if(e.key==="Escape"){ const m=mapFullEl(); if(m&&m.classList.contains("map-full")) mapToggleFull(); } };
       document.addEventListener("keydown",_mapEscBound); }
   } else {
     el.classList.remove("map-full");
@@ -4092,7 +4109,7 @@ async function mapFindChild(name){
     try{ save(); }catch(e){}
   }
   if(!(s.geo&&s.geo.lat!=null)){ toast("לא נמצא מיקום לתלמידה (כתובת חסרה/שגויה)"); return; }
-  mapPlotStudents();
+  mapPlotStudents(); mapRenderSide();   // רענון רשימת הצד — כדי שהתלמידה שמוקמה תסומן כמוקמת (לא ○)
   try{ _map.setView([s.geo.lat,s.geo.lng], 16); }catch(e){}
   try{ _mapL.popup({ offset:[0,-4] }).setLatLng([s.geo.lat,s.geo.lng]).setContent(mapStudentPopup(s)).openOn(_map); }catch(e){}
   mapStatus(mapStatusReport());
