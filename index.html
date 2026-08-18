@@ -1613,11 +1613,12 @@ function guideContent(){
 
     { icon:"🗺️", title:"מפת שיבוץ", html:
       `<ul>
-        <li>לשונית <b>מפת שיבוץ</b> מציגה מפה חינמית (OpenStreetMap) עם מיקומי הגנים והתלמידות לפי הכתובת שהוזנה — <b>ללא צורך במפתח או חיוב</b>.</li>
-        <li>סימון: <b>ירוק</b> = גן · <b>כחול</b> = תלמידה משובצת · <b>כתום</b> = תלמידה ללא שיבוץ.</li>
-        <li><b>שיבוץ לפי קרבה</b> — לחיצה על תלמידה מציגה את הגנים הקרובים אליה (מאותו חינוך), ממוינים לפי מרחק, עם כפתור <b>"שבץ"</b> שמשייך אותה לגן בקליק אחד.</li>
-        <li>הכתובות מומרות למיקום פעם אחת ונשמרות, כך שהטעינה הבאה מהירה. הגנים ממוקמים אוטומטית; לתלמידות לוחצים <b>"טעינת מיקומי תלמידות"</b> (עשוי לקחת זמן בפעם הראשונה). <b>"רענון מיקומים"</b> ממיר מחדש את כל הכתובות.</li>
-        <li>דיוק המיקום תלוי בכתובת שהוזנה (רחוב+בניין+עיר). אם מיקום שגוי — כדאי לוודא/לתקן את הכתובת בתיק ואז לרענן.</li>
+        <li>לשונית <b>מפת שיבוץ</b> מציגה מפה חינמית (OpenStreetMap) עם מיקומי הגנים והתלמידות לפי הכתובת — <b>ללא צורך במפתח או חיוב</b>.</li>
+        <li><b>סינון (חשוב):</b> בוחרים <b>חינוך</b> ומסמנים אילו <b>גנים</b> להציג (או "בחר הכל" לכל הגנים בעיר). כברירת מחדל מוצגות רק התלמידות <b>הרשומות</b> לגנים שנבחרו (מתאים לתחילת רישום, כשעדיין לא שובצו) — או מסמנים <b>"כל התלמידות"</b>. לוחצים <b>"הצג על המפה"</b>.</li>
+        <li><b>צבע לפי מרחק:</b> כל תלמידה נצבעת לפי המרחק לגן הנבחר הקרוב — ירוק (קרוב) עד אדום (רחוק). <b>סגול</b> = גן.</li>
+        <li><b>אח/ות:</b> תלמידה שיש לה אח/ות רשומ/ה מסומנת בטבעת זהב — <b>גם אם היא רחוקה</b>. בלחיצה עליה מופיע כפתור <b>"שבץ יחד"</b> לגן של האח/ות.</li>
+        <li><b>שיבוץ בקליק:</b> לחיצה על תלמידה מציגה את הגנים הנבחרים הקרובים (מאותו חינוך), ממוינים לפי מרחק, עם כפתור <b>"שבץ"</b>.</li>
+        <li>הכתובות מומרות למיקום פעם אחת ונשמרות (טעינה הבאה מהירה). הגנים ממוקמים אוטומטית; לתלמידות לוחצים <b>"טעינת מיקומי תלמידות"</b>. <b>"רענון מיקומים"</b> ממיר מחדש. דיוק המיקום תלוי בכתובת — אם שגוי, כדאי לתקן בתיק ואז לרענן.</li>
       </ul>` },
 
     { icon:"👩‍🏫", title:"שיבוץ צוות", html:
@@ -3527,30 +3528,101 @@ async function ensureGeo(ent, q){
 }
 
 let _map=null, _mapL=null, _ganLayer=null, _stuLayer=null;
-function mapShownGans(){ return eduScope(DB.gans.filter(g=>g.active)); }
-function mapShownStudents(){ return eduScope(studentsOfYear().filter(s=>!s.finished)); }
+let _mapState={ inited:false, edu:null, ganIds:null, allStudents:false }; // ganIds=null → כל הגנים
 function mapStatus(t){ const el=$("#map-status"); if(el) el.textContent=t; }
+/* ערכי חינוך קיימים (לגנים+תלמידות) — למסנן החינוך במפה */
+function mapEduOptions(){ const set=new Set(); DB.gans.forEach(g=>set.add(eduLabel(g))); DB.students.forEach(s=>set.add(eduLabel(s))); return [...set].filter(Boolean); }
+/* גנים פעילים לפי מסנן החינוך של המפה */
+function mapGansForEdu(){ return DB.gans.filter(g=>g.active && (!_mapState.edu || eduLabel(g)===_mapState.edu)); }
+/* הגנים שנבחרו להצגה (מתוך אלה שבמסנן החינוך). null = כולם */
+function mapSelectedGans(){ const ids=_mapState.ganIds; return mapGansForEdu().filter(g=> ids ? ids.has(g.id) : true); }
+/* התלמידות להצגה: לפי חינוך; ואם לא "כל התלמידות" — רק הרשומות לגנים שנבחרו */
+function mapShownStudents(){
+  let list=studentsOfYear().filter(s=>!s.finished);
+  if(_mapState.edu) list=list.filter(s=>eduLabel(s)===_mapState.edu);
+  if(!_mapState.allStudents){ const ids=new Set(mapSelectedGans().map(g=>g.id)); list=list.filter(s=>s.ganId && ids.has(s.ganId)); }
+  return list;
+}
+/* מרחק אווירי לגן הנבחר הקרוב ביותר (לצביעה) */
+function mapNearestSelKm(s){
+  if(!(s.geo&&s.geo.lat!=null)) return Infinity;
+  let best=Infinity;
+  mapSelectedGans().forEach(g=>{ if(g.geo&&g.geo.lat!=null){ const d=haversineKm(s.geo,g.geo); if(d<best) best=d; } });
+  return best;
+}
+/* צבע לפי מרחק: ירוק=קרוב → אדום=רחוק */
+function mapDistColor(km){ if(!isFinite(km)) return "#8894a0"; if(km<=0.3) return "#1a7f37"; if(km<=0.7) return "#5cb85c"; if(km<=1.2) return "#f0c000"; if(km<=2) return "#e8710a"; return "#d1342b"; }
 
 function viewMap(root){
+  if(!_mapState.inited){ _mapState.inited=true; _mapState.edu=activeEdu||null; _mapState.ganIds=null; _mapState.allStudents=false; }
+  const edus=mapEduOptions();
   root.innerHTML=`
   <div class="panel">
     <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
       <h2 style="margin:0">🗺️ מפת שיבוץ</h2>
-      <span class="pill neutral" id="map-status">טוען מפה…</span>
+      <span class="pill neutral" id="map-status">טוען…</span>
       <div style="margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn ghost" id="map-load-students">📍 טעינת מיקומי תלמידות</button>
         <button class="btn ghost" id="map-refresh">🔄 רענון מיקומים</button>
       </div>
     </div>
-    <div class="sub">מפה חינמית מבוססת OpenStreetMap. <b style="color:#1a7f37">●</b> גן · <b style="color:#1f6feb">●</b> תלמידה משובצת · <b style="color:#e8710a">●</b> ללא שיבוץ. לחיצה על תלמידה מציגה את הגנים הקרובים אליה עם שיבוץ בקליק. הקואורדינטות נשמרות — הטעינה הבאה מהירה. גאוקוד לכתובת אורך כשנייה, לכן טעינת כל התלמידות עשויה לקחת זמן בפעם הראשונה.</div>
-    <div id="leaflet-map" style="height:64vh;min-height:400px;border-radius:12px;overflow:hidden;margin-top:10px;border:1px solid var(--border);background:var(--surface-2)"></div>
+    <div class="grid g2" style="margin-top:10px;gap:12px">
+      <div class="field"><label>חינוך</label>
+        <select id="map-edu"><option value="">הכל</option>${edus.map(e=>`<option value="${esc(e)}" ${_mapState.edu===e?'selected':''}>${esc(e)}</option>`).join("")}</select></div>
+      <div class="field"><label>תלמידות להצגה</label>
+        <label class="check" style="margin:0"><input type="checkbox" id="map-all-students" ${_mapState.allStudents?'checked':''}> כל התלמידות (גם שאינן רשומות לגנים שנבחרו)</label></div>
+    </div>
+    <div style="margin-top:8px">
+      <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+        <b>גנים להצגה</b>
+        <button class="btn ghost sm" id="map-gan-all" type="button">בחר הכל</button>
+        <button class="btn ghost sm" id="map-gan-none" type="button">נקה</button>
+        <button class="btn sm" id="map-apply" type="button" style="margin-inline-start:auto">🗺️ הצג על המפה</button>
+      </div>
+      <div id="map-gan-list" style="display:flex;flex-wrap:wrap;gap:6px 14px;max-height:120px;overflow:auto;margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:10px"></div>
+    </div>
+    <div class="sub" style="margin-top:8px">
+      <b style="color:#6f42c1">●</b> גן · צבע התלמידה = מרחק לגן הנבחר הקרוב:
+      <b style="color:#1a7f37">●</b> עד 300מ' ·
+      <b style="color:#5cb85c">●</b> עד 700מ' ·
+      <b style="color:#f0c000">●</b> עד 1.2ק"מ ·
+      <b style="color:#e8710a">●</b> עד 2ק"מ ·
+      <b style="color:#d1342b">●</b> מעל 2ק"מ ·
+      <span style="outline:2px solid #e0b000;border-radius:50%;padding:0 5px">◯</span> = יש אח/ות רשומ/ה (מסומן גם אם רחוק).
+    </div>
+    <div id="leaflet-map" style="height:60vh;min-height:380px;border-radius:12px;overflow:hidden;margin-top:10px;border:1px solid var(--border);background:var(--surface-2)"></div>
   </div>`;
-  const btnStu=$("#map-load-students"), btnRef=$("#map-refresh");
-  if(btnStu) btnStu.onclick=mapLoadStudents;
-  if(btnRef) btnRef.onclick=mapRefreshGeo;
+  mapRenderGanList();
+  const eduSel=$("#map-edu"); if(eduSel) eduSel.onchange=e=>{ _mapState.edu=e.target.value||null; _mapState.ganIds=null; mapRenderGanList(); };
+  const allCb=$("#map-all-students"); if(allCb) allCb.onchange=e=>{ _mapState.allStudents=e.target.checked; };
+  const gAll=$("#map-gan-all"); if(gAll) gAll.onclick=()=>{ _mapState.ganIds=new Set(mapGansForEdu().map(g=>g.id)); mapRenderGanList(); };
+  const gNone=$("#map-gan-none"); if(gNone) gNone.onclick=()=>{ _mapState.ganIds=new Set(); mapRenderGanList(); };
+  const apply=$("#map-apply"); if(apply) apply.onclick=mapApply;
+  const btnStu=$("#map-load-students"); if(btnStu) btnStu.onclick=mapLoadStudents;
+  const btnRef=$("#map-refresh"); if(btnRef) btnRef.onclick=mapRefreshGeo;
   ensureLeaflet().then(L=>mapInit(L)).catch(()=>{
     mapStatus("שגיאה בטעינת המפה — בדוק/י חיבור לאינטרנט");
   });
+}
+function mapRenderGanList(){
+  const box=$("#map-gan-list"); if(!box) return;
+  const gans=mapGansForEdu(); const sel=_mapState.ganIds; const isSel=id=> sel? sel.has(id): true;
+  if(!gans.length){ box.innerHTML=`<span class="hint">אין גנים פעילים בחינוך זה.</span>`; return; }
+  box.innerHTML=gans.map(g=>`<label class="check" style="margin:0;white-space:nowrap"><input type="checkbox" data-gid="${esc(g.id)}" ${isSel(g.id)?'checked':''}> ${esc(ganName(g.id))}</label>`).join("");
+  box.querySelectorAll("input[type=checkbox]").forEach(cb=>{ cb.onchange=()=>{
+    if(!_mapState.ganIds) _mapState.ganIds=new Set(mapGansForEdu().map(g=>g.id));
+    if(cb.checked) _mapState.ganIds.add(cb.dataset.gid); else _mapState.ganIds.delete(cb.dataset.gid);
+  }; });
+}
+async function mapApply(){
+  if(!_map) return;
+  mapStatus("מאתר מיקומי גנים…");
+  await mapGeocodeSelectedGans();
+  mapPlotGans(); mapPlotStudents(); mapFit();
+  const shown=mapShownStudents();
+  const withGeo=shown.filter(s=>s.geo&&s.geo.lat!=null).length;
+  const miss=shown.length-withGeo;
+  mapStatus("מוצגות "+withGeo+" תלמידות"+(miss?(" · "+miss+" ללא מיקום — לחצ/י \"טעינת מיקומי תלמידות\""):""));
 }
 function mapInit(L){
   _mapL=L;
@@ -3563,35 +3635,31 @@ function mapInit(L){
   _ganLayer=L.layerGroup().addTo(_map);
   _stuLayer=L.layerGroup().addTo(_map);
   setTimeout(()=>{ try{ _map.invalidateSize(); }catch(e){} }, 60);
-  mapStatus("מאתר מיקומי גנים…");
-  mapGeocodeGans().then(()=>{
-    mapPlotGans(); mapPlotStudents(); mapFit();
-    const withGeo=mapShownStudents().filter(s=>s.geo&&s.geo.lat!=null).length;
-    mapStatus(withGeo? ("מוצגות "+withGeo+" תלמידות") : "מוכן — הפעל/י \"טעינת מיקומי תלמידות\"");
-  });
+  mapApply();
 }
-async function mapGeocodeGans(){
-  const gans=mapShownGans(); let changed=false;
-  for(const g of gans){ const q=ganAddrQuery(g); if(!q) continue;
-    const had=g.geo&&g.geo.q===q; await ensureGeo(g,q); if(!had) changed=true;
-    mapPlotGans();
+async function mapGeocodeSelectedGans(){
+  let changed=false;
+  for(const g of mapSelectedGans()){ const q=ganAddrQuery(g); if(!q) continue;
+    const had=g.geo&&g.geo.q===q; await ensureGeo(g,q); if(!had){ changed=true; mapPlotGans(); }
   }
   if(changed){ try{ save(); }catch(e){} }
 }
-function mapMarker(L, pt, color){
-  return L.circleMarker([pt.lat,pt.lng],{ radius:8, color:"#fff", weight:1.5,
-    fillColor:color, fillOpacity:0.95 });
+function mapMarker(L, pt, opts){
+  opts=opts||{};
+  return L.circleMarker([pt.lat,pt.lng],{ radius:opts.radius||8, color:opts.border||"#fff",
+    weight:opts.weight!=null?opts.weight:1.5, fillColor:opts.fill, fillOpacity:opts.opacity!=null?opts.opacity:0.95 });
 }
 function mapPlotGans(){
   if(!_ganLayer) return; _ganLayer.clearLayers();
-  mapShownGans().forEach(g=>{
+  mapSelectedGans().forEach(g=>{
     if(!(g.geo&&g.geo.lat!=null)) return;
     const cnt=mapShownStudents().filter(s=>s.ganId===g.id).length;
-    const m=mapMarker(_mapL,g.geo,"#1a7f37");
+    const m=mapMarker(_mapL,g.geo,{ radius:11, fill:"#6f42c1", border:"#fff", weight:2 });
+    m.bindTooltip("🏫 "+ganName(g.id), { direction:"top" });
     m.bindPopup(`<div style="font-weight:700;margin-bottom:2px">🏫 ${esc(ganName(g.id))}</div>`
       +(g.teacherName?`<div>גננת: ${esc(g.teacherName)}</div>`:"")
       +(g.campus?`<div>קמפוס: ${esc(g.campus)}</div>`:"")
-      +`<div>משובצות: ${cnt}${g.capacity?(" / "+esc(g.capacity)):""}</div>`);
+      +`<div>רשומות/משובצות: ${cnt}${g.capacity?(" / "+esc(g.capacity)):""}</div>`);
     m.addTo(_ganLayer);
   });
 }
@@ -3599,38 +3667,56 @@ function mapPlotStudents(){
   if(!_stuLayer) return; _stuLayer.clearLayers();
   mapShownStudents().forEach(s=>{
     if(!(s.geo&&s.geo.lat!=null)) return;
-    const placed=!!s.ganId;
-    const m=mapMarker(_mapL,s.geo, placed?"#1f6feb":"#e8710a");
+    const km=mapNearestSelKm(s);
+    const sib=findSiblings(s); const hasSib=!!(sib && sib.list && sib.list.length);
+    const m=mapMarker(_mapL,s.geo,{ radius:hasSib?8:7, fill:mapDistColor(km),
+      border:hasSib?"#e0b000":"#fff", weight:hasSib?3:1.4 });
     m.bindPopup(()=>mapStudentPopup(s));
     m.addTo(_stuLayer);
   });
 }
 function mapStudentPopup(s){
-  const box=document.createElement("div"); box.style.minWidth="210px";
+  const box=document.createElement("div"); box.style.minWidth="240px";
   const nm=[s.lastName,s.firstName].filter(Boolean).join(" ")||"תלמידה";
   const addr=[s.street,s.building].filter(Boolean).join(" ");
   const cur=s.ganId?ganName(s.ganId):"— ללא שיבוץ —";
-  // גנים מתאימים לפי חינוך, עם מיקום, ממוינים לפי מרחק
-  const gans=mapShownGans().filter(g=>g.geo&&g.geo.lat!=null && eduLabel(g)===eduLabel(s))
-    .map(g=>({ g, km:haversineKm(s.geo,g.geo) })).sort((a,b)=>a.km-b.km).slice(0,5);
-  let html=`<div style="font-weight:700">🎒 ${esc(nm)}</div>`
+  box.innerHTML=`<div style="font-weight:700">🎒 ${esc(nm)}</div>`
     +(addr?`<div style="color:#666">${esc(addr)}</div>`:"")
     +`<div style="margin:4px 0">גן נוכחי: <b>${esc(cur)}</b></div>`;
-  if(!gans.length){ html+=`<div style="color:#666">אין גנים עם מיקום מתאימים להצגה.</div>`; box.innerHTML=html; return box; }
-  html+=`<div style="font-weight:600;margin-top:4px">הגנים הקרובים:</div><div id="map-near"></div>`;
-  box.innerHTML=html;
-  const near=box.querySelector("#map-near");
+  const mkBtn=(label,disabled,bg,fg,fn)=>{ const b=document.createElement("button");
+    b.textContent=label; b.disabled=disabled;
+    b.style.cssText="border:0;border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;"+(disabled?"background:#e6e6e6;color:#888":("background:"+bg+";color:"+fg));
+    if(!disabled) b.onclick=fn; return b; };
+  // אח/ות במערכת — מסומן גם אם רחוק, לאפשר שיבוץ יחד
+  const sib=findSiblings(s); const sibsWithGan=((sib&&sib.list)||[]).filter(x=>x.ganId);
+  if(sibsWithGan.length){
+    const seen=new Set();
+    const sb=document.createElement("div");
+    sb.style.cssText="margin:6px 0;padding:6px 8px;border-radius:8px;background:#fff8e1;border:1px solid #e0b000";
+    sb.innerHTML=`<div style="font-weight:600">👭 אח/ות במערכת:</div>`;
+    sibsWithGan.forEach(sx=>{ if(seen.has(sx.ganId)) return; seen.add(sx.ganId);
+      const g=ganById(sx.ganId); if(!g) return;
+      const km=(g.geo&&g.geo.lat!=null && s.geo&&s.geo.lat!=null)? haversineKm(s.geo,g.geo):null;
+      const row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;gap:6px;justify-content:space-between;padding:3px 0";
+      row.innerHTML=`<span>${esc([sx.firstName,sx.lastName].filter(Boolean).join(" ")||"אח/ות")} · ${esc(ganName(g.id))}${km!=null?` · <span style="color:#666">${km.toFixed(1)} ק"מ</span>`:""}</span>`;
+      row.appendChild(mkBtn(g.id===s.ganId?"יחד":"שבץ יחד", g.id===s.ganId, "#e0b000", "#3a2f00", ()=>mapAssign(s,g)));
+      sb.appendChild(row);
+    });
+    box.appendChild(sb);
+  }
+  // הגנים הנבחרים הקרובים, לפי חינוך התלמידה, ממוינים לפי מרחק
+  const gans=mapSelectedGans().filter(g=>g.geo&&g.geo.lat!=null && eduLabel(g)===eduLabel(s))
+    .map(g=>({ g, km:haversineKm(s.geo,g.geo) })).sort((a,b)=>a.km-b.km).slice(0,6);
+  if(!gans.length){ const d=document.createElement("div"); d.style.color="#666"; d.textContent="אין גנים נבחרים עם מיקום מתאימים."; box.appendChild(d); return box; }
+  const t=document.createElement("div"); t.style.cssText="font-weight:600;margin-top:4px"; t.textContent="הגנים הנבחרים הקרובים:"; box.appendChild(t);
   gans.forEach(({g,km})=>{
     const row=document.createElement("div");
     row.style.cssText="display:flex;align-items:center;gap:6px;justify-content:space-between;padding:3px 0;border-top:1px solid #eee";
     const isCur=g.id===s.ganId;
-    row.innerHTML=`<span>${esc(ganName(g.id))} · <span style="color:#666">${km.toFixed(1)} ק"מ</span></span>`;
-    const b=document.createElement("button");
-    b.textContent=isCur?"משובצת":"שבץ";
-    b.disabled=isCur;
-    b.style.cssText="border:0;border-radius:8px;padding:4px 10px;cursor:pointer;font:inherit;"+(isCur?"background:#e6e6e6;color:#888":"background:#1a7f37;color:#fff");
-    b.onclick=()=>{ mapAssign(s, g); };
-    row.appendChild(b); near.appendChild(row);
+    row.innerHTML=`<span><b style="color:${mapDistColor(km)}">●</b> ${esc(ganName(g.id))} · <span style="color:#666">${km.toFixed(1)} ק"מ</span></span>`;
+    row.appendChild(mkBtn(isCur?"משובצת":"שבץ", isCur, "#1a7f37", "#fff", ()=>mapAssign(s,g)));
+    box.appendChild(row);
   });
   return box;
 }
@@ -3659,17 +3745,17 @@ async function mapLoadStudents(){
   if(btn) btn.disabled=false;
 }
 function mapRefreshGeo(){
-  if(!confirm("לרענן את כל המיקומים? הכתובות יומרו מחדש דרך המפה (עשוי לקחת זמן).")) return;
-  mapShownGans().forEach(g=>{ delete g.geo; });
+  if(!confirm("לרענן את המיקומים של הגנים והתלמידות המוצגים? הכתובות יומרו מחדש דרך המפה (עשוי לקחת זמן).")) return;
+  mapSelectedGans().forEach(g=>{ delete g.geo; });
   mapShownStudents().forEach(s=>{ delete s.geo; });
   mapStatus("מרענן מיקומי גנים…");
-  mapGeocodeGans().then(()=>{ mapPlotGans(); mapPlotStudents(); mapFit();
-    mapStatus("רענון הגנים הושלם — הפעל/י \"טעינת מיקומי תלמידות\""); });
+  mapGeocodeSelectedGans().then(()=>{ mapPlotGans(); mapPlotStudents(); mapFit();
+    mapStatus("רענון הגנים הושלם — לחצ/י \"טעינת מיקומי תלמידות\""); });
 }
 function mapFit(){
   if(!_map||!_mapL) return;
   const pts=[];
-  mapShownGans().forEach(g=>{ if(g.geo&&g.geo.lat!=null) pts.push([g.geo.lat,g.geo.lng]); });
+  mapSelectedGans().forEach(g=>{ if(g.geo&&g.geo.lat!=null) pts.push([g.geo.lat,g.geo.lng]); });
   mapShownStudents().forEach(s=>{ if(s.geo&&s.geo.lat!=null) pts.push([s.geo.lat,s.geo.lng]); });
   if(!pts.length) return;
   try{ _map.fitBounds(_mapL.latLngBounds(pts).pad(0.2), { maxZoom:16 }); }catch(e){}
