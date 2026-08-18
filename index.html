@@ -3560,9 +3560,13 @@ function geoDefaultCity(){
   let best="", n=0; for(const k in c){ if(c[k]>n){ n=c[k]; best=k; } } return best;
 }
 function ganAddrQuery(g){
-  // עדיפות לרחוב+מספר (נקי ומדויק לגאוקוד); שדה "כתובת" החופשי רק כגיבוי
-  const base=[g.street,g.building].filter(Boolean).join(" ").trim() || (g.address&&g.address.trim()) || "";
-  if(!base) return "";
+  // שם הרחוב עשוי להיות בשדה "כתובת" או בשדה "רחוב"; המספר בשדה "מספר".
+  // בוחרים כשם-רחוב את השדה שמכיל טקסט (אותיות), ומצרפים מספר אם עוד אין.
+  const cand=[String(g.address||"").trim(), String(g.street||"").trim()];
+  const streetName = cand.find(p=>p && /[א-ת]/.test(p)) || "";
+  if(!streetName) return "";                          // אין שם רחוב (אותיות) → לא ניתן לגאוקד
+  const num=String(g.building||"").trim();
+  const base = /\d/.test(streetName) ? streetName : (streetName + (num?(" "+num):""));
   const city=geoDefaultCity();
   return base+(city?(", "+city):"")+", ישראל";
 }
@@ -3702,7 +3706,7 @@ function mapRenderSide(){
   let html="";
   if(hidden.length){
     html+=`<div style="margin-bottom:8px;padding:6px 8px;border-radius:8px;background:var(--bad-soft,#fbeaea);border:1px solid var(--bad,#d1342b);color:var(--bad,#a5342b);font-size:12px">
-      <b>⚠ ${hidden.length} גנים לא מוצגים:</b>${hidden.map(x=>{ const addr=[x.g.street,x.g.building].filter(Boolean).join(" ")||(x.g.address||"—"); return `<div style="margin-top:3px">• <b>${esc(ganName(x.g.id))}</b> — ${esc(x.why)}<div class="hint" style="margin-inline-start:10px">כתובת בכרטיס: ${esc(addr)}</div></div>`; }).join("")}
+      <b>⚠ ${hidden.length} גנים לא מוצגים:</b>${hidden.map(x=>{ const parts=[x.g.address,x.g.street,x.g.building].map(v=>String(v||"").trim()).filter(Boolean); return `<div style="margin-top:3px">• <b>${esc(ganName(x.g.id))}</b> — ${esc(x.why)}<div class="hint" style="margin-inline-start:10px">שדות כתובת: ${parts.length?esc(parts.join(" · ")):"— ריק —"}</div></div>`; }).join("")}
       <div class="hint" style="margin-top:4px">כדי לתקן: לשונית <b>גנים</b> → עריכת הגן → למלא <b>רחוב + מספר</b> מדויקים → שמירה → כאן "רענון מיקומים".</div></div>`;
   }
   html+=`<div style="font-weight:700;margin-bottom:6px">רשומות (${shown.length})</div>`;
