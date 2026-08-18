@@ -5818,7 +5818,11 @@ function openAiHelp(){
     const wait=bubble("assistant","… חושב");
     try{ const res=await aiAsk(convo); wait.textContent=res.text||"(לא התקבלה תשובה)"; convo.push({role:"assistant",content:res.text||""}); }
     catch(e){ const raw=((e&&e.message)||String(e||""));
-      wait.textContent = raw.indexOf("no-ai-key")>=0 ? "העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini, ראה הגדרות → עוזר חכם)." : ("שגיאה: "+driveErrHe(e)); }
+      let msg;
+      if(raw.indexOf("no-ai-key")>=0) msg="העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini, ראה הגדרות → עוזר חכם).";
+      else if(/network|bad-response|drive-not-configured|unauthorized|token/.test(raw)) msg=driveErrHe(e);
+      else msg="שגיאה: "+raw;   // הודעת הספק המדויקת (Gemini/Claude) — לאבחון
+      wait.textContent=msg; }
     finally{ sb.disabled=false; msgs.scrollTop=msgs.scrollHeight; }
   }
   $("#ai-send").onclick=send;
