@@ -1621,7 +1621,7 @@ function guideContent(){
         <li><b>סינון (חשוב):</b> בוחרים <b>חינוך</b> ומסמנים אילו <b>גנים</b> להציג (או "בחר הכל" לכל הגנים בעיר). כברירת מחדל מוצגות רק התלמידות <b>הרשומות</b> לגנים שנבחרו (מתאים לתחילת רישום, כשעדיין לא שובצו) — או מסמנים <b>"כל התלמידות"</b>. לוחצים <b>"הצג על המפה"</b>.</li>
         <li><b>צבע לפי מרחק:</b> כל תלמידה נצבעת לפי המרחק לגן הנבחר הקרוב — ירוק (קרוב) עד אדום (רחוק). <b>סגול</b> = גן.</li>
         <li><b>אח/ות:</b> תלמידה שיש לה אח/ות רשומ/ה מסומנת בטבעת זהב — <b>גם אם היא רחוקה</b>. בלחיצה עליה מופיע כפתור <b>"שבץ יחד"</b> לגן של האח/ות.</li>
-        <li><b>שיבוץ בקליק:</b> לחיצה על תלמידה מציגה את הגנים הנבחרים הקרובים (מאותו חינוך), ממוינים לפי מרחק, עם כפתור <b>"שבץ"</b>.</li>
+        <li><b>שיבוץ בקליק:</b> לחיצה על תלמידה מציגה את הגנים הנבחרים הקרובים (מאותו חינוך) עם <b>מרחק וזמן הליכה אמיתיים</b> (Google), ממוינים לפי הליכה, עם כפתור <b>"שבץ"</b>. אם אין מפתח Google — מוצג מרחק אווירי.</li>
         <li>הכתובות מומרות למיקום פעם אחת ונשמרות (טעינה הבאה מהירה). הגנים ממוקמים אוטומטית; לתלמידות לוחצים <b>"טעינת מיקומי תלמידות"</b>. <b>"רענון מיקומים"</b> ממיר מחדש. דיוק המיקום תלוי בכתובת — אם שגוי, כדאי לתקן בתיק ואז לרענן.</li>
         <li><b>שדרוג דיוק (אופציונלי):</b> כברירת מחדל המפה חינמית (OpenStreetMap). אפשר לחבר מפתח <b>Google</b> לדיוק גבוה יותר (הגדרות → "דיוק מפה") — ואז המיקומים מומרים דרך Google, עם נפילה חזרה ל-OpenStreetMap כשאין מפתח.</li>
       </ul>` },
@@ -3801,6 +3801,25 @@ function mapPlotStudents(){
     m.addTo(_stuLayer);
   });
 }
+/* מרחק/זמן הליכה אמיתי דרך הגשר (Google Distance Matrix), עם מטמון בזיכרון.
+   מקבל origin ומערך גנים; מחזיר מערך מקביל של {m,sec} או null. נפילה לאווירי כשאין. */
+let _walkCache=new Map();
+function _walkKey(a,b){ return a.lat.toFixed(5)+","+a.lng.toFixed(5)+"|"+b.lat.toFixed(5)+","+b.lng.toFixed(5); }
+async function mapWalk(origin, gans){
+  const out=new Array(gans.length).fill(null);
+  if(_geoGoogle===false || !DRIVE_READY) return out;   // אין Google → נפילה למרחק אווירי
+  const need=[], needIdx=[];
+  gans.forEach((g,i)=>{ if(!(g.geo&&g.geo.lat!=null)) return; const k=_walkKey(origin,g.geo);
+    if(_walkCache.has(k)) out[i]=_walkCache.get(k); else { need.push({lat:g.geo.lat,lng:g.geo.lng}); needIdx.push(i); } });
+  if(need.length){
+    try{
+      const res=await driveCall("walk",{ origin:{lat:origin.lat,lng:origin.lng}, dests:need });
+      const arr=(res&&res.results)||[];
+      needIdx.forEach((gi,j)=>{ const r=arr[j]||null; out[gi]=r; _walkCache.set(_walkKey(origin,gans[gi].geo), r); });
+    }catch(e){ /* אין מפתח / Distance Matrix כבוי → נשאר null */ }
+  }
+  return out;
+}
 function mapStudentPopup(s){
   const box=document.createElement("div"); box.style.minWidth="240px";
   const nm=[s.lastName,s.firstName].filter(Boolean).join(" ")||"תלמידה";
@@ -3831,18 +3850,37 @@ function mapStudentPopup(s){
     });
     box.appendChild(sb);
   }
-  // הגנים הנבחרים הקרובים, לפי חינוך התלמידה, ממוינים לפי מרחק
-  const gans=mapSelectedGans().filter(g=>g.geo&&g.geo.lat!=null && mapInCity(g.geo) && eduLabel(g)===eduLabel(s))
-    .map(g=>({ g, km:haversineKm(s.geo,g.geo) })).sort((a,b)=>a.km-b.km).slice(0,6);
-  if(!gans.length){ const d=document.createElement("div"); d.style.color="#666"; d.textContent="אין גנים נבחרים עם מיקום מתאימים."; box.appendChild(d); return box; }
-  const t=document.createElement("div"); t.style.cssText="font-weight:600;margin-top:4px"; t.textContent="הגנים הנבחרים הקרובים:"; box.appendChild(t);
-  gans.forEach(({g,km})=>{
+  // הגנים הנבחרים הקרובים — סינון לפי חינוך, מיון ראשוני לפי מרחק אווירי,
+  // ואז עדכון ומיון מחדש לפי מרחק הליכה אמיתי (Google) כשזמין.
+  const cands=mapSelectedGans().filter(g=>g.geo&&g.geo.lat!=null && mapInCity(g.geo) && eduLabel(g)===eduLabel(s))
+    .map(g=>({ g, km:haversineKm(s.geo,g.geo) })).sort((a,b)=>a.km-b.km).slice(0,8);
+  if(!cands.length){ const d=document.createElement("div"); d.style.color="#666"; d.textContent="אין גנים נבחרים עם מיקום מתאימים."; box.appendChild(d); return box; }
+  const t=document.createElement("div"); t.style.cssText="font-weight:600;margin-top:4px"; t.textContent="הגנים הנבחרים הקרובים (מרחק הליכה):"; box.appendChild(t);
+  const listWrap=document.createElement("div"); box.appendChild(listWrap);
+  const rowFor=(c)=>{
+    const g=c.g, isCur=g.id===s.ganId;
     const row=document.createElement("div");
     row.style.cssText="display:flex;align-items:center;gap:6px;justify-content:space-between;padding:3px 0;border-top:1px solid #eee";
-    const isCur=g.id===s.ganId;
-    row.innerHTML=`<span><b style="color:${mapDistColor(km)}">●</b> ${esc(ganName(g.id))} · <span style="color:#666">${km.toFixed(1)} ק"מ</span></span>`;
+    let distTxt, colorKm;
+    if(c.walk===undefined){ distTxt="🚶 …"; colorKm=c.km; }
+    else if(c.walk){ distTxt="🚶 "+(c.walk.m/1000).toFixed(1)+" ק\"מ · "+Math.round(c.walk.sec/60)+" דק'"; colorKm=c.walk.m/1000; }
+    else { distTxt=c.km.toFixed(1)+" ק\"מ אווירי"; colorKm=c.km; }
+    row.innerHTML=`<span><b style="color:${mapDistColor(colorKm)}">●</b> ${esc(ganName(g.id))} · <span style="color:#666">${distTxt}</span></span>`;
     row.appendChild(mkBtn(isCur?"משובצת":"שבץ", isCur, "#1a7f37", "#fff", ()=>mapAssign(s,g)));
-    box.appendChild(row);
+    return row;
+  };
+  const draw=items=>{ listWrap.innerHTML=""; items.slice(0,6).forEach(c=>listWrap.appendChild(rowFor(c))); };
+  draw(cands);   // תצוגה ראשונית: אווירי + "🚶 …"
+  mapWalk(s.geo, cands.map(c=>c.g)).then(walks=>{
+    let any=false;
+    cands.forEach((c,i)=>{ c.walk=walks[i]||null; if(c.walk) any=true; });
+    const sorted=cands.slice().sort((a,b)=>{
+      const wa=a.walk?a.walk.m:(a.km*1000+1e7), wb=b.walk?b.walk.m:(b.km*1000+1e7); return wa-wb;
+    });
+    draw(sorted);
+    if(!any && _geoGoogle!==false){ const h=document.createElement("div");
+      h.style.cssText="color:#999;font-size:.85em;margin-top:4px";
+      h.textContent="מרחק הליכה לא זמין — ודא ש-Distance Matrix API מופעל בפרויקט Google."; box.appendChild(h); }
   });
   return box;
 }
@@ -6531,8 +6569,8 @@ function viewSettings(root){
     <div class="note" style="margin-top:8px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
       <b>הפעלה חד-פעמית:</b>
       <ol style="margin:6px 0 0;padding-inline-start:20px">
-        <li>נכנסים ל-<b>console.cloud.google.com</b> → יוצרים פרויקט → <b>APIs &amp; Services → Library</b> → מפעילים <b>Geocoding API</b>.</li>
-        <li><b>Credentials → Create credentials → API key</b> (מומלץ להגביל את המפתח ל-Geocoding API בלבד).</li>
+        <li>נכנסים ל-<b>console.cloud.google.com</b> → יוצרים פרויקט → <b>APIs &amp; Services → Library</b> → מפעילים <b>Geocoding API</b> (למיקום) וגם <b>Distance Matrix API</b> (למרחק הליכה בפופאפ).</li>
+        <li><b>Credentials → Create credentials → API key</b> (אם מגבילים את המפתח — יש לאשר <b>גם Geocoding API וגם Distance Matrix API</b>).</li>
         <li>מפעילים <b>Billing</b> (כרטיס אשראי) — נדרש גם לשכבה החינמית. אפשר להגדיר תקרת תקציב/מכסה למניעת חיוב. עד ~10,000 המרות בחודש — חינם.</li>
         <li>ב-Apps Script של הגשר: <b>Project Settings → Script Properties → Add script property</b>, בשם <b>GOOGLE_MAPS_API_KEY</b> והערך = המפתח, ולפרוס מחדש (New version).</li>
         <li>ב"מפת שיבוץ" לוחצים <b>"רענון מיקומים"</b> כדי להמיר מחדש בדיוק Google.</li>
