@@ -3630,8 +3630,12 @@ async function ensureGeo(ent, q, force, city, bias){
 function mapProviderSuffix(){ return _geoGoogle===true?" · דיוק Google":(_geoGoogle===false?" · OpenStreetMap":""); }
 /* מיקום "כללי מדי" — מרכז עיר/אזור (APPROXIMATE): לא לשימוש כמיקום גן (נערם על נקודה אחת) */
 function mapGeoImprecise(geo){ return !!geo && geo.locType==="APPROXIMATE"; }
-/* גן ראוי להצגה: יש מיקום, בתוך העיר, ולא "כללי מדי" */
-function mapGanShown(g){ return g.geo && g.geo.lat!=null && mapInCity(g.geo) && !mapGeoImprecise(g.geo); }
+/* גן ראוי להצגה: מיקום ידני מוצג תמיד; אחרת — יש מיקום, בעיר, ולא "כללי מדי" */
+function mapGanShown(g){
+  if(!(g.geo && g.geo.lat!=null)) return false;
+  if(g.geo.manual) return true;                                  // מיקום ידני — תמיד
+  return mapInCity(g.geo) && !mapGeoImprecise(g.geo);
+}
 
 let _map=null, _mapL=null, _ganLayer=null, _stuLayer=null, _mapEscBound=null, _mapFullReturn=null;
 let _cityCenter=null;   // {city,lat,lng} — מרכז העיר הנבחרת, לסינון חריגים גיאוגרפיים
@@ -3706,8 +3710,8 @@ function mapRenderSide(){
   let html="";
   if(hidden.length){
     html+=`<div style="margin-bottom:8px;padding:6px 8px;border-radius:8px;background:var(--bad-soft,#fbeaea);border:1px solid var(--bad,#d1342b);color:var(--bad,#a5342b);font-size:12px">
-      <b>⚠ ${hidden.length} גנים לא מוצגים:</b>${hidden.map(x=>{ const parts=[x.g.address,x.g.street,x.g.building].map(v=>String(v||"").trim()).filter(Boolean); return `<div style="margin-top:3px">• <b>${esc(ganName(x.g.id))}</b> — ${esc(x.why)}<div class="hint" style="margin-inline-start:10px">שדות כתובת: ${parts.length?esc(parts.join(" · ")):"— ריק —"}</div></div>`; }).join("")}
-      <div class="hint" style="margin-top:4px">כדי לתקן: לשונית <b>גנים</b> → עריכת הגן → למלא <b>רחוב + מספר</b> מדויקים → שמירה → כאן "רענון מיקומים".</div></div>`;
+      <b>⚠ ${hidden.length} גנים לא מוצגים:</b>${hidden.map(x=>{ const parts=[x.g.address,x.g.street,x.g.building].map(v=>String(v||"").trim()).filter(Boolean); return `<div style="margin-top:3px">• <b>${esc(ganName(x.g.id))}</b> — ${esc(x.why)}<div class="hint" style="margin-inline-start:10px">שדות כתובת: ${parts.length?esc(parts.join(" · ")):"— ריק —"}</div><button type="button" class="btn ghost sm" data-place="${esc(x.g.id)}" style="margin:3px 0 0 10px;padding:1px 8px">📍 מקם ידנית</button></div>`; }).join("")}
+      <div class="hint" style="margin-top:4px">אפשר לתקן כתובת בלשונית <b>גנים</b>, או ללחוץ <b>"📍 מקם ידנית"</b> ולסמן את הגן ישירות על המפה.</div></div>`;
   }
   html+=`<div style="font-weight:700;margin-bottom:6px">רשומות (${shown.length})</div>`;
   gans.forEach(g=>{
@@ -3722,6 +3726,97 @@ function mapRenderSide(){
   if(none.length){ html+=`<div style="margin-bottom:8px"><div style="font-weight:700;color:#666;padding:3px 6px">ללא גן / אחר <span class="hint">${none.length}</span></div>${none.map(kidRow).join("")}</div>`; }
   box.innerHTML=html;
   box.querySelectorAll(".map-side-kid").forEach(el=>{ el.onclick=()=>{ const s=DB.students.find(x=>x.id===el.dataset.sid); if(s) mapFocusStudent(s); }; });
+  // כפתור "מקם ידנית" לכל גן שאינו מוצג — בחירתו בכלי המיקום הידני והצבת סמן
+  box.querySelectorAll("[data-place]").forEach(b=>{ b.onclick=()=>{ const id=b.dataset.place;
+    const sel=$("#place-gan"); if(sel) sel.value=id; mapPlaceSelect(id);
+    const wrap=$("#place-gan"); if(wrap) wrap.scrollIntoView({behavior:"smooth",block:"center"}); }; });
+}
+
+/* ===== מיקום ידני לגן =====================================================
+   כשגן אינו מתגאוקד נכון (כתובת חלקית / הגיע למרכז העיר), מציבים לו סמן ידני:
+   בוחרים גן → קופצים לכתובת או גוררים/לוחצים על המפה → "שמור מיקום".
+   המיקום נשמר בכרטיס הגן (geo.manual=true) ואינו נדרס עוד ע"י גאוקוד אוטומטי. */
+let _placeMarker=null, _placeGanId=null;
+function mapPlaceIcon(L){
+  const html=`<div style="font-size:34px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));cursor:grab">📍</div>`;
+  return L.divIcon({ className:"map-place-divicon", html, iconSize:[34,34], iconAnchor:[17,32] });
+}
+function mapPlaceHint(t){ const el=$("#place-hint"); if(el) el.textContent=t; }
+/* אכלוס הרשימה הנפתחת: ⚠ = גן ללא מיקום תקין · 📍 = בעל מיקום ידני */
+function mapPlaceOptions(){
+  const sel=$("#place-gan"); if(!sel) return; const cur=sel.value;
+  const gans=mapGansForEdu().slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+  sel.innerHTML=`<option value="">— בחר/י גן —</option>`+gans.map(g=>{
+    const mark=(g.geo&&g.geo.manual)?"📍 ":(mapGanShown(g)?"":"⚠ ");
+    return `<option value="${esc(g.id)}">${mark}${esc(ganName(g.id))}</option>`;
+  }).join("");
+  if(cur) sel.value=cur;
+}
+function mapPlaceRemoveMarker(){
+  if(_placeMarker){ try{ _map&&_map.removeLayer(_placeMarker); }catch(e){} _placeMarker=null; }
+  if(_map){ try{ _map.off("click", mapPlaceMapClick); }catch(e){} }
+}
+function mapPlaceMapClick(e){
+  if(!_placeMarker) return;
+  _placeMarker.setLatLng(e.latlng);
+  mapPlaceHint("מיקום נבחר: "+e.latlng.lat.toFixed(5)+", "+e.latlng.lng.toFixed(5)+' — לחצ/י "שמור מיקום".');
+}
+function mapPlaceSelect(ganId){
+  mapPlaceRemoveMarker(); _placeGanId=ganId||null;
+  if(!ganId){ mapPlaceHint('בוחרים גן → כתובת ו"קפוץ" (או גרירה/לחיצה על המפה) → "שמור מיקום". המיקום נשמר לגן לתמיד.'); return; }
+  const g=DB.gans.find(x=>x.id===ganId); if(!g||!_map) return;
+  let lat, lng;
+  if(g.geo&&g.geo.lat!=null){ lat=g.geo.lat; lng=g.geo.lng; }
+  else if(_cityCenter&&_cityCenter.lat!=null){ lat=_cityCenter.lat; lng=_cityCenter.lng; }
+  else { const c=_map.getCenter(); lat=c.lat; lng=c.lng; }
+  _placeMarker=_mapL.marker([lat,lng],{ draggable:true, icon:mapPlaceIcon(_mapL), zIndexOffset:2000 }).addTo(_map);
+  _placeMarker.on("dragend",()=>{ const p=_placeMarker.getLatLng();
+    mapPlaceHint("מיקום נבחר: "+p.lat.toFixed(5)+", "+p.lng.toFixed(5)+' — לחצ/י "שמור מיקום".'); });
+  _map.on("click", mapPlaceMapClick);
+  try{ _map.setView([lat,lng], Math.max(_map.getZoom(),15)); }catch(e){}
+  const inp=$("#place-addr"); if(inp&&!inp.value.trim()){ const q=ganAddrQuery(g); if(q) inp.value=q.replace(/, ?ישראל\s*$/,""); }
+  mapPlaceHint('גוררים את 📍 למקום הגן, או מקלידים כתובת ולוחצים "קפוץ". לסיום — "שמור מיקום".');
+}
+async function mapPlaceJump(){
+  if(!_placeMarker){ toast("בחר/י גן קודם"); return; }
+  const inp=$("#place-addr"); const q=(inp?inp.value:"").trim();
+  if(!q){ toast("הקלד/י כתובת לקפיצה"); return; }
+  mapPlaceHint("מחפש כתובת…");
+  const city=_mapState.city||geoDefaultCity();
+  const bias=(_cityCenter&&_cityCenter.lat!=null)?_cityCenter:null;
+  const full=/ישראל/.test(q)?q:(q+((city&&!q.includes(city))?(", "+city):"")+", ישראל");
+  let pt=null; try{ pt=await geocodeOnce(full,city,bias); }catch(e){ pt=null; }
+  if(!pt){ mapPlaceHint("לא נמצאה כתובת — אפשר לגרור את 📍 ידנית."); toast("הכתובת לא נמצאה — גרור/י ידנית"); return; }
+  _placeMarker.setLatLng([pt.lat,pt.lng]);
+  try{ _map.setView([pt.lat,pt.lng], Math.max(_map.getZoom(),16)); }catch(e){}
+  mapPlaceHint("נמצא: "+pt.lat.toFixed(5)+", "+pt.lng.toFixed(5)+'. אפשר לתקן בגרירה ואז "שמור מיקום".');
+}
+function mapPlaceSave(){
+  if(!_placeMarker||!_placeGanId){ toast("בחר/י גן והצב/י מיקום"); return; }
+  const g=DB.gans.find(x=>x.id===_placeGanId); if(!g){ toast("הגן לא נמצא"); return; }
+  const p=_placeMarker.getLatLng();
+  g.geo={ lat:p.lat, lng:p.lng, manual:true, q:"__manual__", locType:"MANUAL", tried:true };
+  try{ save(); }catch(e){}
+  const nm=ganName(g.id);
+  mapPlaceRemoveMarker();
+  const selE=$("#place-gan"); if(selE) selE.value=""; _placeGanId=null;
+  mapBuildGanColors(); mapPlotGans(); mapPlotStudents(); mapFit(); mapRenderSide(); mapPlaceOptions();
+  mapStatus(mapStatusReport());
+  mapPlaceHint("✔ המיקום נשמר לגן "+nm+".");
+  toast("מיקום הגן נשמר");
+}
+function mapPlaceClear(){
+  const id=_placeGanId||($("#place-gan")?$("#place-gan").value:"");
+  if(!id){ toast("בחר/י גן"); return; }
+  const g=DB.gans.find(x=>x.id===id); if(!g) return;
+  if(!(g.geo&&g.geo.manual)){ toast("לגן זה אין מיקום ידני"); return; }
+  delete g.geo; try{ save(); }catch(e){}
+  mapPlaceRemoveMarker();
+  const selE=$("#place-gan"); if(selE) selE.value=""; _placeGanId=null;
+  mapPlaceOptions();
+  mapApply();
+  mapPlaceHint("המיקום הידני בוטל — הגן יאותר שוב אוטומטית בגאוקוד.");
+  toast("בוטל מיקום ידני");
 }
 /* מרכז העיר הנבחרת — לסינון נקודות שהתגאוקדו לעיר אחרת בטעות.
    עדיף לחשב מ*חציון* מיקומי התלמידות/גנים (חסין לחריגים), ורק כגיבוי — גאוקוד שם העיר. */
@@ -3794,6 +3889,15 @@ function viewMap(root){
       <datalist id="map-child-list">${studentsOfYear().filter(s=>!s.finished).map(s=>{ const nm=[s.lastName,s.firstName].filter(Boolean).join(" "); return nm?`<option value="${esc(nm)}">${s.city?esc(s.city):""}</option>`:""; }).join("")}</datalist>
       <button class="btn sm" id="map-child-go" type="button">מיקוד</button>
     </div>
+    <div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:8px">
+      <b>📍 מיקום ידני לגן</b>
+      <select id="place-gan" style="width:auto"><option value="">— בחר/י גן —</option></select>
+      <input id="place-addr" placeholder="כתובת לקפיצה (רחוב + מספר)" style="flex:1;min-width:170px">
+      <button class="btn ghost sm" id="place-jump" type="button">↗️ קפוץ לכתובת</button>
+      <button class="btn sm" id="place-save" type="button">💾 שמור מיקום</button>
+      <button class="btn ghost sm" id="place-clear" type="button">בטל ידני</button>
+      <div class="hint" id="place-hint" style="flex-basis:100%;margin:0">בוחרים גן → מקלידים כתובת ו"קפוץ" (או גוררים/לוחצים על המפה) → "שמור מיקום". המיקום נשמר לגן לתמיד.</div>
+    </div>
     <div class="sub" style="margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:6px;margin:0">צבע התלמידות:
         <select id="map-color" style="width:auto">
@@ -3822,6 +3926,13 @@ function viewMap(root){
   if(childGo) childGo.onclick=()=>mapFindChild(childInp?childInp.value:"");
   if(childInp) childInp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); mapFindChild(childInp.value); } });
   const colSel=$("#map-color"); if(colSel) colSel.onchange=e=>{ _mapState.colorMode=e.target.value; mapPlotStudents(); mapUpdateLegend(); };
+  // מיקום ידני לגן
+  mapPlaceOptions();
+  const pSel=$("#place-gan"); if(pSel) pSel.onchange=e=>mapPlaceSelect(e.target.value);
+  const pJump=$("#place-jump"); if(pJump) pJump.onclick=mapPlaceJump;
+  const pSave=$("#place-save"); if(pSave) pSave.onclick=mapPlaceSave;
+  const pClear=$("#place-clear"); if(pClear) pClear.onclick=mapPlaceClear;
+  const pAddr=$("#place-addr"); if(pAddr) pAddr.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); mapPlaceJump(); } });
   mapUpdateLegend();
   ensureLeaflet().then(L=>mapInit(L)).catch(()=>{
     mapStatus("שגיאה בטעינת המפה — בדוק/י חיבור לאינטרנט");
@@ -3912,7 +4023,7 @@ async function mapApply(){
   if(_mapState.city) await mapEnsureCityCenter(_mapState.city);   // מרכז העיר לסינון חריגים
   await mapGeocodeSelectedGans();
   mapBuildGanColors();
-  mapPlotGans(); mapPlotStudents(); mapFit(); mapRenderSide();
+  mapPlotGans(); mapPlotStudents(); mapFit(); mapRenderSide(); mapPlaceOptions();
   const need=mapShownStudents().filter(stuNeedsGeo).length;
   mapStatus(mapStatusReport()+(need?" — לחצ/י \"טעינת מיקומי תלמידות\"":""));
 }
@@ -3940,6 +4051,7 @@ async function mapFindChild(name){
 }
 function mapInit(L){
   _mapL=L;
+  _placeMarker=null; _placeGanId=null;   // המפה נבנית מחדש — איפוס מצב המיקום הידני
   try{ if(_map){ _map.remove(); _map=null; } }catch(e){}
   const el=$("#leaflet-map"); if(!el) return;
   _map=L.map(el,{ scrollWheelZoom:true }).setView([31.75,35.2], 8);
@@ -3957,7 +4069,8 @@ async function mapGeocodeSelectedGans(){
   let changed=false;
   const gcity=_mapState.city||geoDefaultCity();
   const bias=(_cityCenter&&_cityCenter.lat!=null)?_cityCenter:null;
-  for(const g of mapSelectedGans()){ const q=ganAddrQuery(g); if(!q) continue;
+  for(const g of mapSelectedGans()){ if(g.geo&&g.geo.manual) continue;   // מיקום ידני — לא לגאוקד מחדש
+    const q=ganAddrQuery(g); if(!q) continue;
     const before=g.geo&&g.geo.lat; await ensureGeo(g,q,true,gcity,bias);   // force + הטיה למרכז העיר
     if((g.geo&&g.geo.lat)!==before){ changed=true; mapPlotGans(); }
   }
@@ -4125,7 +4238,7 @@ async function mapLoadStudents(){
 }
 function mapRefreshGeo(){
   if(!confirm("לרענן את המיקומים של הגנים והתלמידות המוצגים? הכתובות יומרו מחדש (עשוי לקחת זמן). אם הוגדר מפתח Google — הרענון ישדרג לדיוק גבוה.")) return;
-  mapSelectedGans().forEach(g=>{ delete g.geo; });
+  mapSelectedGans().forEach(g=>{ if(!(g.geo&&g.geo.manual)) delete g.geo; });   // שומר מיקום ידני
   mapShownStudents().forEach(s=>{ delete s.geo; });
   mapStatus("מרענן מיקומי גנים…");
   mapGeocodeSelectedGans().then(()=>{ mapBuildGanColors(); mapPlotGans(); mapPlotStudents(); mapFit(); mapRenderSide();
