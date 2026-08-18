@@ -298,6 +298,9 @@ fieldset{border-radius:14px}
 .pie-card{transition:transform .26s,box-shadow .26s,border-color .26s}
 .pie-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:transparent}
 @media (prefers-reduced-motion:reduce){.overlay.show .modal{animation:none}.bar>i,.gan-card .gbar>i{transition:none}}
+/* מפת שיבוץ — מצב מסך מלא */
+#leaflet-map.map-full{position:fixed;inset:0;z-index:9999;height:100dvh !important;min-height:100dvh !important;width:100vw;margin:0;border-radius:0;border:0}
+.leaflet-container{font:inherit}
 </style>
 </head>
 <body>
@@ -3549,11 +3552,14 @@ async function ensureGeo(ent, q, force){
 }
 function mapProviderSuffix(){ return _geoGoogle===true?" · דיוק Google":(_geoGoogle===false?" · OpenStreetMap":""); }
 
-let _map=null, _mapL=null, _ganLayer=null, _stuLayer=null;
-let _mapState={ inited:false, edu:null, ganIds:null, allStudents:false }; // ganIds=null → כל הגנים
+let _map=null, _mapL=null, _ganLayer=null, _stuLayer=null, _mapEscBound=null;
+let _mapState={ inited:false, edu:null, city:null, ganIds:null, allStudents:false }; // ganIds=null → כל הגנים
 function mapStatus(t){ const el=$("#map-status"); if(el) el.textContent=t; }
 /* ערכי חינוך קיימים (לגנים+תלמידות) — למסנן החינוך במפה */
 function mapEduOptions(){ const set=new Set(); DB.gans.forEach(g=>set.add(eduLabel(g))); DB.students.forEach(s=>set.add(eduLabel(s))); return [...set].filter(Boolean); }
+/* ערי התלמידות הקיימות — למסנן העיר במפה (הנפוצה ביותר ראשונה) */
+function mapCityOptions(){ const c={}; DB.students.forEach(s=>{ const v=(s.city||"").trim(); if(v) c[v]=(c[v]||0)+1; });
+  return Object.keys(c).sort((a,b)=>c[b]-c[a]); }
 /* גנים פעילים לפי מסנן החינוך של המפה */
 function mapGansForEdu(){ return DB.gans.filter(g=>g.active && (!_mapState.edu || eduLabel(g)===_mapState.edu)); }
 /* הגנים שנבחרו להצגה (מתוך אלה שבמסנן החינוך). null = כולם */
@@ -3562,6 +3568,7 @@ function mapSelectedGans(){ const ids=_mapState.ganIds; return mapGansForEdu().f
 function mapShownStudents(){
   let list=studentsOfYear().filter(s=>!s.finished);
   if(_mapState.edu) list=list.filter(s=>eduLabel(s)===_mapState.edu);
+  if(_mapState.city) list=list.filter(s=>(s.city||"").trim()===_mapState.city);
   if(!_mapState.allStudents){ const ids=new Set(mapSelectedGans().map(g=>g.id)); list=list.filter(s=>s.ganId && ids.has(s.ganId)); }
   return list;
 }
@@ -3576,7 +3583,11 @@ function mapNearestSelKm(s){
 function mapDistColor(km){ if(!isFinite(km)) return "#8894a0"; if(km<=0.3) return "#1a7f37"; if(km<=0.7) return "#5cb85c"; if(km<=1.2) return "#f0c000"; if(km<=2) return "#e8710a"; return "#d1342b"; }
 
 function viewMap(root){
-  if(!_mapState.inited){ _mapState.inited=true; _mapState.edu=activeEdu||null; _mapState.ganIds=null; _mapState.allStudents=false; }
+  // ניקוי שאריות מצב "מסך מלא" אם עזבו את המפה בזמן שהיה פתוח
+  document.body.style.overflow=""; const _x=document.getElementById("map-full-exit"); if(_x) _x.remove();
+  const cities=mapCityOptions();
+  if(!_mapState.inited){ _mapState.inited=true; _mapState.edu=activeEdu||null; _mapState.ganIds=null; _mapState.allStudents=false;
+    _mapState.city=cities[0]||null; }   // ברירת מחדל: העיר הנפוצה ביותר (מצמצם בלבול מערים אחרות)
   const edus=mapEduOptions();
   root.innerHTML=`
   <div class="panel">
@@ -3584,11 +3595,14 @@ function viewMap(root){
       <h2 style="margin:0">🗺️ מפת שיבוץ</h2>
       <span class="pill neutral" id="map-status">טוען…</span>
       <div style="margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost" id="map-full-btn" type="button">⛶ מסך מלא</button>
         <button class="btn ghost" id="map-load-students">📍 טעינת מיקומי תלמידות</button>
         <button class="btn ghost" id="map-refresh">🔄 רענון מיקומים</button>
       </div>
     </div>
-    <div class="grid g2" style="margin-top:10px;gap:12px">
+    <div class="grid g3" style="margin-top:10px;gap:12px">
+      <div class="field"><label>עיר</label>
+        <select id="map-city"><option value="">כל הערים</option>${cities.map(c=>`<option value="${esc(c)}" ${_mapState.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
       <div class="field"><label>חינוך</label>
         <select id="map-edu"><option value="">הכל</option>${edus.map(e=>`<option value="${esc(e)}" ${_mapState.edu===e?'selected':''}>${esc(e)}</option>`).join("")}</select></div>
       <div class="field"><label>תלמידות להצגה</label>
@@ -3596,12 +3610,12 @@ function viewMap(root){
     </div>
     <div style="margin-top:8px">
       <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
-        <b>גנים להצגה</b>
+        <b>גנים להצגה (לפי קמפוס)</b>
         <button class="btn ghost sm" id="map-gan-all" type="button">בחר הכל</button>
         <button class="btn ghost sm" id="map-gan-none" type="button">נקה</button>
         <button class="btn sm" id="map-apply" type="button" style="margin-inline-start:auto">🗺️ הצג על המפה</button>
       </div>
-      <div id="map-gan-list" style="display:flex;flex-wrap:wrap;gap:6px 14px;max-height:120px;overflow:auto;margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:10px"></div>
+      <div id="map-gan-list" style="max-height:160px;overflow:auto;margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:10px"></div>
     </div>
     <div class="sub" style="margin-top:8px">
       <b style="color:#6f42c1">●</b> גן · צבע התלמידה = מרחק לגן הנבחר הקרוב:
@@ -3611,10 +3625,12 @@ function viewMap(root){
       <b style="color:#e8710a">●</b> עד 2ק"מ ·
       <b style="color:#d1342b">●</b> מעל 2ק"מ ·
       <span style="outline:2px solid #e0b000;border-radius:50%;padding:0 5px">◯</span> = יש אח/ות רשומ/ה (מסומן גם אם רחוק).
+      <span class="hint">גרירה להזזה · גלגלת / צביטה (2 אצבעות) לזום · +/− להגדלה.</span>
     </div>
-    <div id="leaflet-map" style="height:60vh;min-height:380px;border-radius:12px;overflow:hidden;margin-top:10px;border:1px solid var(--border);background:var(--surface-2)"></div>
+    <div id="leaflet-map" style="height:70vh;min-height:420px;border-radius:12px;overflow:hidden;margin-top:10px;border:1px solid var(--border);background:var(--surface-2)"></div>
   </div>`;
   mapRenderGanList();
+  const citySel=$("#map-city"); if(citySel) citySel.onchange=e=>{ _mapState.city=e.target.value||null; };
   const eduSel=$("#map-edu"); if(eduSel) eduSel.onchange=e=>{ _mapState.edu=e.target.value||null; _mapState.ganIds=null; mapRenderGanList(); };
   const allCb=$("#map-all-students"); if(allCb) allCb.onchange=e=>{ _mapState.allStudents=e.target.checked; };
   const gAll=$("#map-gan-all"); if(gAll) gAll.onclick=()=>{ _mapState.ganIds=new Set(mapGansForEdu().map(g=>g.id)); mapRenderGanList(); };
@@ -3622,18 +3638,57 @@ function viewMap(root){
   const apply=$("#map-apply"); if(apply) apply.onclick=mapApply;
   const btnStu=$("#map-load-students"); if(btnStu) btnStu.onclick=mapLoadStudents;
   const btnRef=$("#map-refresh"); if(btnRef) btnRef.onclick=mapRefreshGeo;
+  const btnFull=$("#map-full-btn"); if(btnFull) btnFull.onclick=mapToggleFull;
   ensureLeaflet().then(L=>mapInit(L)).catch(()=>{
     mapStatus("שגיאה בטעינת המפה — בדוק/י חיבור לאינטרנט");
   });
 }
+/* מסך מלא למפה — מרחיב את המפה לכל החלון ומרענן את גודל Leaflet */
+function mapToggleFull(){
+  const el=$("#leaflet-map"); if(!el) return;
+  const on=el.classList.toggle("map-full");
+  document.body.style.overflow=on?"hidden":"";
+  const b=$("#map-full-btn"); if(b) b.textContent=on?"⛶ יציאה ממסך מלא":"⛶ מסך מלא";
+  let x=document.getElementById("map-full-exit");
+  if(on){
+    if(!x){ x=document.createElement("button"); x.id="map-full-exit"; x.type="button"; x.textContent="✕ סגירה";
+      x.style.cssText="position:fixed;top:10px;inset-inline-end:10px;z-index:10000;background:#12251a;color:#fff;border:0;border-radius:10px;padding:8px 14px;font:inherit;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)";
+      x.onclick=mapToggleFull; document.body.appendChild(x); }
+    if(!_mapEscBound){ _mapEscBound=e=>{ if(e.key==="Escape"){ const m=$("#leaflet-map"); if(m&&m.classList.contains("map-full")) mapToggleFull(); } };
+      document.addEventListener("keydown",_mapEscBound); }
+  } else if(x){ x.remove(); }
+  setTimeout(()=>{ try{ _map.invalidateSize(); mapFit(); }catch(e){} }, 80);
+}
+function mapEnsureGanIds(){ if(!_mapState.ganIds) _mapState.ganIds=new Set(mapGansForEdu().map(g=>g.id)); }
 function mapRenderGanList(){
   const box=$("#map-gan-list"); if(!box) return;
   const gans=mapGansForEdu(); const sel=_mapState.ganIds; const isSel=id=> sel? sel.has(id): true;
   if(!gans.length){ box.innerHTML=`<span class="hint">אין גנים פעילים בחינוך זה.</span>`; return; }
-  box.innerHTML=gans.map(g=>`<label class="check" style="margin:0;white-space:nowrap"><input type="checkbox" data-gid="${esc(g.id)}" ${isSel(g.id)?'checked':''}> ${esc(ganName(g.id))}</label>`).join("");
-  box.querySelectorAll("input[type=checkbox]").forEach(cb=>{ cb.onchange=()=>{
-    if(!_mapState.ganIds) _mapState.ganIds=new Set(mapGansForEdu().map(g=>g.id));
+  // קיבוץ הגנים לפי קמפוס
+  const groups={}; gans.forEach(g=>{ const c=(g.campus&&g.campus.trim())||"— ללא קמפוס —"; (groups[c]=groups[c]||[]).push(g); });
+  const camps=Object.keys(groups).sort((a,b)=>a.localeCompare(b,"he"));
+  box.innerHTML=camps.map(c=>{
+    const list=groups[c]; const allSel=list.every(g=>isSel(g.id)); const someSel=list.some(g=>isSel(g.id));
+    return `<div style="border-top:1px dashed var(--border);padding:6px 0;margin-top:4px">
+      <label class="check" style="margin:0;font-weight:700"><input type="checkbox" data-camp="${esc(c)}" ${allSel?'checked':''}> 🏫 ${esc(c)} <span class="hint">(${list.length})</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:5px;padding-inline-start:18px">
+        ${list.map(g=>`<label class="check" style="margin:0;white-space:nowrap"><input type="checkbox" data-gid="${esc(g.id)}" ${isSel(g.id)?'checked':''}> ${esc(ganName(g.id))}</label>`).join("")}
+      </div></div>`;
+  }).join("");
+  // סימון חלקי בכותרת הקמפוס (אינו מלא ואינו ריק)
+  box.querySelectorAll("input[data-camp]").forEach(cb=>{ const list=groups[cb.dataset.camp]||[];
+    const some=list.some(g=>isSel(g.id)), all=list.every(g=>isSel(g.id)); cb.indeterminate=some&&!all; });
+  // גן בודד
+  box.querySelectorAll("input[data-gid]").forEach(cb=>{ cb.onchange=()=>{
+    mapEnsureGanIds();
     if(cb.checked) _mapState.ganIds.add(cb.dataset.gid); else _mapState.ganIds.delete(cb.dataset.gid);
+    mapRenderGanList();
+  }; });
+  // קמפוס שלם — מסמן/מנקה את כל הגנים שבו
+  box.querySelectorAll("input[data-camp]").forEach(cb=>{ cb.onchange=()=>{
+    mapEnsureGanIds();
+    (groups[cb.dataset.camp]||[]).forEach(g=>{ if(cb.checked) _mapState.ganIds.add(g.id); else _mapState.ganIds.delete(g.id); });
+    mapRenderGanList();
   }; });
 }
 function stuNeedsGeo(s){ const q=studentAddrQuery(s); return !!q && !(s.geo&&s.geo.q===q&&s.geo.lat!=null); }
