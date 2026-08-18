@@ -310,7 +310,15 @@ fieldset{border-radius:14px}
 .leaflet-tooltip.map-gan-tip::before{display:none}
 .map-side-kid:hover{background:var(--accent-soft);color:var(--accent-strong)}
 #leaflet-map.map-full{position:fixed;inset:0;z-index:9999;height:100dvh !important;min-height:100dvh !important;width:100vw !important;margin:0 !important;border-radius:0 !important;border:0 !important}
+#leaflet-map:fullscreen{width:100%;height:100%;border-radius:0;border:0;background:#e9eef2}
 .leaflet-container{font:inherit}
+.map-fold{margin-top:10px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.map-fold>summary{cursor:pointer;padding:10px 14px;font-weight:700;list-style:none;user-select:none;display:flex;align-items:center;gap:8px}
+.map-fold>summary::-webkit-details-marker{display:none}
+.map-fold>summary::before{content:"▸";color:var(--muted);transition:transform .15s}
+.map-fold[open]>summary::before{transform:rotate(90deg)}
+.map-fold>summary:hover{color:var(--accent-strong)}
+.map-fold-body{padding:0 14px 14px}
 </style>
 </head>
 <body>
@@ -3637,7 +3645,7 @@ function mapGanShown(g){
   return mapInCity(g.geo) && !mapGeoImprecise(g.geo);
 }
 
-let _map=null, _mapL=null, _ganLayer=null, _stuLayer=null, _mapEscBound=null, _mapFullReturn=null;
+let _map=null, _mapL=null, _ganLayer=null, _stuLayer=null, _mapEscBound=null, _mapFullReturn=null, _mapFsBound=null;
 let _cityCenter=null;   // {city,lat,lng} — מרכז העיר הנבחרת, לסינון חריגים גיאוגרפיים
 let _mapState={ inited:false, edu:null, city:null, ganIds:null, allStudents:false, colorMode:"gan" }; // ganIds=null → כל הגנים; colorMode: gan|dist
 function mapStatus(t){ const el=$("#map-status"); if(el) el.textContent=t; }
@@ -3700,11 +3708,13 @@ function mapGanIssue(g){
 /* רשימת צד — התלמידות המוצגות מקובצות לפי גן (בצבע הגן), לחיצה ממקדת על המפה */
 function mapRenderSide(){
   const box=$("#map-side"); if(!box) return;
-  const gans=mapSelectedGans().filter(mapGanShown);
-  const shown=mapShownStudents().filter(s=>s.geo&&s.geo.lat!=null&&mapInCity(s.geo));
-  const byGan=new Map(); shown.forEach(s=>{ const k=s.ganId||"__none__"; (byGan.get(k)||byGan.set(k,[]).get(k)).push(s); });
+  // כל התלמידות הרשומות (ללא תלות בגאוקוד) — כדי שהרשימה תופיע מיד עם בחירת הגנים
+  const registered=mapShownStudents();
+  const located=new Set(registered.filter(s=>s.geo&&s.geo.lat!=null&&mapInCity(s.geo)).map(s=>s.id));
+  const byGan=new Map(); registered.forEach(s=>{ const k=s.ganId||"__none__"; (byGan.get(k)||byGan.set(k,[]).get(k)).push(s); });
   const sortKids=a=>a.sort((x,y)=>([x.lastName,x.firstName].filter(Boolean).join(" ")).localeCompare([y.lastName,y.firstName].filter(Boolean).join(" "),"he"));
-  const kidRow=s=>`<div class="map-side-kid" data-sid="${esc(s.id)}" style="cursor:pointer;padding:3px 4px;border-radius:6px;font-size:13px">${esc([s.lastName,s.firstName].filter(Boolean).join(" ")||"תלמידה")}</div>`;
+  const kidRow=s=>{ const ok=located.has(s.id); const nm=esc([s.lastName,s.firstName].filter(Boolean).join(" ")||"תלמידה");
+    return `<div class="map-side-kid" data-sid="${esc(s.id)}" title="${ok?'':'טרם מוקמה על המפה — לחצ/י "טעינת מיקומי תלמידות"'}" style="cursor:pointer;padding:3px 4px;border-radius:6px;font-size:13px${ok?'':';opacity:.5'}">${ok?'':'○ '}${nm}</div>`; };
   // אבחון: גנים שנבחרו אך אינם מוצגים, עם הסיבה
   const hidden=mapSelectedGans().map(g=>({g,why:mapGanIssue(g)})).filter(x=>x.why);
   let html="";
@@ -3713,14 +3723,16 @@ function mapRenderSide(){
       <b>⚠ ${hidden.length} גנים לא מוצגים:</b>${hidden.map(x=>{ const parts=[x.g.address,x.g.street,x.g.building].map(v=>String(v||"").trim()).filter(Boolean); return `<div style="margin-top:3px">• <b>${esc(ganName(x.g.id))}</b> — ${esc(x.why)}<div class="hint" style="margin-inline-start:10px">שדות כתובת: ${parts.length?esc(parts.join(" · ")):"— ריק —"}</div><button type="button" class="btn ghost sm" data-place="${esc(x.g.id)}" style="margin:3px 0 0 10px;padding:1px 8px">📍 מקם ידנית</button></div>`; }).join("")}
       <div class="hint" style="margin-top:4px">אפשר לתקן כתובת בלשונית <b>גנים</b>, או ללחוץ <b>"📍 מקם ידנית"</b> ולסמן את הגן ישירות על המפה.</div></div>`;
   }
-  html+=`<div style="font-weight:700;margin-bottom:6px">רשומות (${shown.length})</div>`;
-  gans.forEach(g=>{
-    const list=sortKids(byGan.get(g.id)||[]); const col=ganColor(g.id);
+  html+=`<div style="font-weight:700;margin-bottom:6px">רשומות (${located.size}/${registered.length} על המפה)</div>`;
+  mapSelectedGans().forEach(g=>{
+    const list=sortKids(byGan.get(g.id)||[]);
+    if(!list.length) return;                        // דלג על גן ללא תלמידות רשומות
+    const col=ganColor(g.id); const locCnt=list.filter(s=>located.has(s.id)).length;
     html+=`<div style="margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:6px;font-weight:700;background:${col}22;border-inline-start:3px solid ${col};border-radius:6px;padding:3px 6px">
         <span style="width:12px;height:12px;border-radius:50%;background:${col};flex:none"></span>
-        <span style="flex:1">${esc(ganName(g.id))}</span><span class="hint">${list.length}</span></div>
-      ${list.length?list.map(kidRow).join(""):'<div class="hint" style="padding:2px 6px">— אין —</div>'}</div>`;
+        <span style="flex:1">${esc(ganName(g.id))}</span><span class="hint">${locCnt<list.length?locCnt+"/"+list.length:list.length}</span></div>
+      ${list.map(kidRow).join("")}</div>`;
   });
   const none=sortKids(byGan.get("__none__")||[]);
   if(none.length){ html+=`<div style="margin-bottom:8px"><div style="font-weight:700;color:#666;padding:3px 6px">ללא גן / אחר <span class="hint">${none.length}</span></div>${none.map(kidRow).join("")}</div>`; }
@@ -3861,44 +3873,57 @@ function viewMap(root){
       <h2 style="margin:0">🗺️ מפת שיבוץ</h2>
       <span class="pill neutral" id="map-status">טוען…</span>
       <div style="margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn ghost" id="map-full-btn" type="button">⛶ מסך מלא</button>
-        <button class="btn ghost" id="map-load-students">📍 טעינת מיקומי תלמידות</button>
-        <button class="btn ghost" id="map-refresh">🔄 רענון מיקומים</button>
+        <button class="btn sm" id="map-apply" type="button">🗺️ הצג על המפה</button>
+        <button class="btn ghost sm" id="map-full-btn" type="button">⛶ מסך מלא</button>
       </div>
     </div>
-    <div class="grid g3" style="margin-top:10px;gap:12px">
-      <div class="field"><label>עיר</label>
-        <select id="map-city"><option value="">כל הערים</option>${cities.map(c=>`<option value="${esc(c)}" ${_mapState.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
-      <div class="field"><label>חינוך</label>
-        <select id="map-edu"><option value="">הכל</option>${edus.map(e=>`<option value="${esc(e)}" ${_mapState.edu===e?'selected':''}>${esc(e)}</option>`).join("")}</select></div>
-      <div class="field"><label>תלמידות להצגה</label>
-        <label class="check" style="margin:0"><input type="checkbox" id="map-all-students" ${_mapState.allStudents?'checked':''}> כל התלמידות (גם שאינן רשומות לגנים שנבחרו)</label></div>
-    </div>
-    <div style="margin-top:8px">
-      <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
-        <b>גנים להצגה (לפי קמפוס)</b>
-        <button class="btn ghost sm" id="map-gan-all" type="button">בחר הכל</button>
-        <button class="btn ghost sm" id="map-gan-none" type="button">נקה</button>
-        <button class="btn sm" id="map-apply" type="button" style="margin-inline-start:auto">🗺️ הצג על המפה</button>
+
+    <details class="map-fold" open>
+      <summary>⚙️ סינון וגנים להצגה</summary>
+      <div class="map-fold-body">
+        <div class="grid g3" style="gap:12px">
+          <div class="field"><label>עיר</label>
+            <select id="map-city"><option value="">כל הערים</option>${cities.map(c=>`<option value="${esc(c)}" ${_mapState.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
+          <div class="field"><label>חינוך</label>
+            <select id="map-edu"><option value="">הכל</option>${edus.map(e=>`<option value="${esc(e)}" ${_mapState.edu===e?'selected':''}>${esc(e)}</option>`).join("")}</select></div>
+          <div class="field"><label>תלמידות להצגה</label>
+            <label class="check" style="margin:0"><input type="checkbox" id="map-all-students" ${_mapState.allStudents?'checked':''}> כל התלמידות (גם שאינן רשומות לגנים שנבחרו)</label></div>
+        </div>
+        <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <b>גנים (לפי קמפוס)</b>
+          <button class="btn ghost sm" id="map-gan-all" type="button">בחר הכל</button>
+          <button class="btn ghost sm" id="map-gan-none" type="button">נקה</button>
+        </div>
+        <div id="map-gan-list" style="max-height:150px;overflow:auto;margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:10px"></div>
       </div>
-      <div id="map-gan-list" style="max-height:160px;overflow:auto;margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:10px"></div>
-    </div>
-    <div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap">
-      <b>🔎 חיפוש תלמידה</b>
-      <input id="map-child-search" list="map-child-list" placeholder="שם תלמידה — מיקוד על המפה ובדיקת מרחקים לגנים שנבחרו" style="flex:1;min-width:240px">
-      <datalist id="map-child-list">${studentsOfYear().filter(s=>!s.finished).map(s=>{ const nm=[s.lastName,s.firstName].filter(Boolean).join(" "); return nm?`<option value="${esc(nm)}">${s.city?esc(s.city):""}</option>`:""; }).join("")}</datalist>
-      <button class="btn sm" id="map-child-go" type="button">מיקוד</button>
-    </div>
-    <div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:8px">
-      <b>📍 מיקום ידני לגן</b>
-      <select id="place-gan" style="width:auto"><option value="">— בחר/י גן —</option></select>
-      <input id="place-addr" placeholder="כתובת לקפיצה (רחוב + מספר)" style="flex:1;min-width:170px">
-      <button class="btn ghost sm" id="place-jump" type="button">↗️ קפוץ לכתובת</button>
-      <button class="btn sm" id="place-save" type="button">💾 שמור מיקום</button>
-      <button class="btn ghost sm" id="place-clear" type="button">בטל ידני</button>
-      <div class="hint" id="place-hint" style="flex-basis:100%;margin:0">בוחרים גן → מקלידים כתובת ו"קפוץ" (או גוררים/לוחצים על המפה) → "שמור מיקום". המיקום נשמר לגן לתמיד.</div>
-    </div>
-    <div class="sub" style="margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    </details>
+
+    <details class="map-fold">
+      <summary>🔧 כלים נוספים — חיפוש תלמידה · מיקום ידני לגן · טעינה ורענון</summary>
+      <div class="map-fold-body">
+        <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+          <b>🔎 חיפוש תלמידה</b>
+          <input id="map-child-search" list="map-child-list" placeholder="שם תלמידה — מיקוד ובדיקת מרחקים לגנים" style="flex:1;min-width:200px">
+          <datalist id="map-child-list">${studentsOfYear().filter(s=>!s.finished).map(s=>{ const nm=[s.lastName,s.firstName].filter(Boolean).join(" "); return nm?`<option value="${esc(nm)}">${s.city?esc(s.city):""}</option>`:""; }).join("")}</datalist>
+          <button class="btn sm" id="map-child-go" type="button">מיקוד</button>
+        </div>
+        <div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:8px">
+          <b>📍 מיקום ידני לגן</b>
+          <select id="place-gan" style="width:auto"><option value="">— בחר/י גן —</option></select>
+          <input id="place-addr" placeholder="כתובת לקפיצה (רחוב + מספר)" style="flex:1;min-width:160px">
+          <button class="btn ghost sm" id="place-jump" type="button">↗️ קפוץ לכתובת</button>
+          <button class="btn sm" id="place-save" type="button">💾 שמור מיקום</button>
+          <button class="btn ghost sm" id="place-clear" type="button">בטל ידני</button>
+          <div class="hint" id="place-hint" style="flex-basis:100%;margin:0">בוחרים גן → מקלידים כתובת ו"קפוץ" (או גוררים/לוחצים על המפה) → "שמור מיקום". המיקום נשמר לגן לתמיד.</div>
+        </div>
+        <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost sm" id="map-load-students" type="button">📍 טעינת מיקומי תלמידות</button>
+          <button class="btn ghost sm" id="map-refresh" type="button">🔄 רענון מיקומים</button>
+        </div>
+      </div>
+    </details>
+
+    <div class="sub" style="margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:6px;margin:0">צבע התלמידות:
         <select id="map-color" style="width:auto">
           <option value="gan" ${(_mapState.colorMode||"gan")==="gan"?"selected":""}>לפי גן (מי רשומה לאן)</option>
@@ -3938,9 +3963,30 @@ function viewMap(root){
     mapStatus("שגיאה בטעינת המפה — בדוק/י חיבור לאינטרנט");
   });
 }
-/* מסך מלא למפה — מעביר את אלמנט המפה ישירות ל-body (חסין ל-transform באבות)
-   ומרחיב לכל החלון. יציאה מחזירה את האלמנט למקומו. */
+/* מסך מלא למפה — עדיפות ל-Fullscreen API של הדפדפן (מכסה באמת את כל המסך,
+   חסין למבנה העמוד); אם אינו נתמך — נפילה להעברת האלמנט ל-body עם מיקום קבוע. */
+function _fsElement(){ return document.fullscreenElement||document.webkitFullscreenElement||null; }
 function mapToggleFull(){
+  const el=$("#leaflet-map"); if(!el) return;
+  const req=el.requestFullscreen||el.webkitRequestFullscreen;
+  const exit=document.exitFullscreen||document.webkitExitFullscreen;
+  if(req && exit){                       // Fullscreen API זמין — הדרך האמינה
+    if(_fsElement()){ try{ exit.call(document); }catch(e){} }
+    else {
+      if(!_mapFsBound){ _mapFsBound=()=>{ const on=!!_fsElement();
+        const b=$("#map-full-btn"); if(b) b.textContent=on?"⛶ יציאה ממסך מלא":"⛶ מסך מלא";
+        setTimeout(()=>{ try{ _map.invalidateSize(); mapFit(); }catch(e){} }, 120); };
+        document.addEventListener("fullscreenchange",_mapFsBound);
+        document.addEventListener("webkitfullscreenchange",_mapFsBound); }
+      try{ const p=req.call(el); if(p&&p.catch) p.catch(()=>mapToggleFullFallback()); }
+      catch(e){ mapToggleFullFallback(); }
+    }
+    return;
+  }
+  mapToggleFullFallback();               // דפדפן ללא Fullscreen API
+}
+/* גיבוי: העברת אלמנט המפה ל-body עם position:fixed (כשאין Fullscreen API) */
+function mapToggleFullFallback(){
   const el=$("#leaflet-map"); if(!el) return;
   const on=!el.classList.contains("map-full");
   const b=$("#map-full-btn"); if(b) b.textContent=on?"⛶ יציאה ממסך מלא":"⛶ מסך מלא";
