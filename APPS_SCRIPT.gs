@@ -161,15 +161,36 @@ function sendMail_(to, subject, body){
 }
 
 /* ============================================================
-   עוזר AI (Claude) — הבקשה עוברת דרך הגשר כדי שמפתח ה-API יישאר מוסתר.
-   הגדרה חד-פעמית: Project Settings → Script Properties → הוסף מפתח בשם
-   ANTHROPIC_API_KEY עם הערך של המפתח מ-console.anthropic.com.
+   עוזר AI — הבקשה עוברת דרך הגשר כדי שמפתח ה-API יישאר מוסתר.
+   נתמכים שני ספקים:
+     • Google Gemini (חלופה חינמית) — מפתח חינם מ-aistudio.google.com/apikey,
+       נשמר ב-Script Property בשם GEMINI_API_KEY. אין צורך בחיוב.
+     • Anthropic Claude (בתשלום) — מפתח מ-console.anthropic.com,
+       נשמר ב-Script Property בשם ANTHROPIC_API_KEY.
+   בחירת הספק: לפי המודל המבוקש אם המפתח שלו קיים; אחרת לפי המפתח הזמין
+   (Gemini החינמי מקבל עדיפות). כך מספיק להגדיר GEMINI_API_KEY כדי שהעוזר יעבוד.
    ============================================================ */
 function chat_(messages, system, model){
-  var key = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
-  if(!key) return { ok:false, error:'no-ai-key' };   // עדיין לא הוגדר מפתח
+  var props = PropertiesService.getScriptProperties();
+  var geminiKey    = props.getProperty('GEMINI_API_KEY');
+  var anthropicKey = props.getProperty('ANTHROPIC_API_KEY');
+  model = String(model || '');
+  var wantsGemini    = /^gemini/i.test(model);
+  var wantsAnthropic = /^claude/i.test(model);
+  var useGemini;
+  if(wantsGemini && geminiKey)          useGemini = true;
+  else if(wantsAnthropic && anthropicKey) useGemini = false;
+  else if(geminiKey)                    useGemini = true;   // חלופה חינמית — ברירת מחדל
+  else if(anthropicKey)                 useGemini = false;
+  else return { ok:false, error:'no-ai-key' };              // עדיין לא הוגדר מפתח
+  return useGemini ? chatGemini_(messages, system, model, geminiKey)
+                   : chatAnthropic_(messages, system, model, anthropicKey);
+}
+
+/* Anthropic Claude — Messages API */
+function chatAnthropic_(messages, system, model, key){
   var payload = {
-    model: model || 'claude-haiku-4-5',
+    model: /^claude/i.test(model) ? model : 'claude-haiku-4-5',
     max_tokens: 1024,
     system: String(system || ''),
     messages: (messages || []).slice(-16)             // שומר את 16 ההודעות האחרונות
@@ -184,6 +205,32 @@ function chat_(messages, system, model){
   if(code >= 400) return { ok:false, error: (data.error && data.error.message) || ('http-' + code) };
   var text = (data.content || []).filter(function(b){ return b.type === 'text'; })
                                  .map(function(b){ return b.text; }).join('\n');
+  return { ok:true, text: text };
+}
+
+/* Google Gemini — generateContent (מדרגה חינמית).
+   Gemini משתמש בתפקידים "user"/"model" (assistant → model) ובהוראת מערכת נפרדת. */
+function chatGemini_(messages, system, model, key){
+  var gm = /^gemini/i.test(model) ? model : 'gemini-2.0-flash';
+  var contents = (messages || []).slice(-16).map(function(m){
+    return { role: (m.role === 'assistant' ? 'model' : 'user'),
+             parts: [{ text: String((m && m.content) || '') }] };
+  });
+  var payload = { contents: contents, generationConfig: { maxOutputTokens: 1024 } };
+  if(system) payload.system_instruction = { parts: [{ text: String(system) }] };
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+            encodeURIComponent(gm) + ':generateContent?key=' + encodeURIComponent(key);
+  var res = UrlFetchApp.fetch(url, {
+    method: 'post', contentType: 'application/json',
+    payload: JSON.stringify(payload), muteHttpExceptions: true
+  });
+  var code = res.getResponseCode();
+  var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
+  if(code >= 400) return { ok:false, error: (data.error && data.error.message) || ('http-' + code) };
+  var cand = (data.candidates && data.candidates[0]) || {};
+  var text = ((cand.content && cand.content.parts) || [])
+               .map(function(p){ return p.text || ''; }).join('\n').replace(/^\n+|\n+$/g,'');
+  if(!text && cand.finishReason && cand.finishReason !== 'STOP') text = '(אין תשובה — ' + cand.finishReason + ')';
   return { ok:true, text: text };
 }
 
