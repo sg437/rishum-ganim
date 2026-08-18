@@ -1251,6 +1251,7 @@ const TABS = [
   {id:"reports",   label:"דוחות ואחוזים", icon:"📊"},
   {id:"municipality", label:"עירייה", icon:"🏛️"},
   {id:"management",label:"הנהלה", icon:"📞"},
+  {id:"tools",     label:"כלים ושירותים", icon:"🧰"},
   {id:"settings",  label:"הגדרות", icon:"⚙️"},
   {id:"guide",     label:"מדריך", icon:"📖"}
 ];
@@ -1618,12 +1619,13 @@ function guideContent(){
     { icon:"🗺️", title:"מפת שיבוץ", html:
       `<ul>
         <li>לשונית <b>מפת שיבוץ</b> מציגה מפה חינמית (OpenStreetMap) עם מיקומי הגנים והתלמידות לפי הכתובת — <b>ללא צורך במפתח או חיוב</b>.</li>
-        <li><b>סינון (חשוב):</b> בוחרים <b>חינוך</b> ומסמנים אילו <b>גנים</b> להציג (או "בחר הכל" לכל הגנים בעיר). כברירת מחדל מוצגות רק התלמידות <b>הרשומות</b> לגנים שנבחרו (מתאים לתחילת רישום, כשעדיין לא שובצו) — או מסמנים <b>"כל התלמידות"</b>. לוחצים <b>"הצג על המפה"</b>.</li>
+        <li><b>סינון (חשוב):</b> בוחרים <b>עיר</b> (ברירת מחדל: העיר הראשית — מונע בלבול מערים אחרות), <b>חינוך</b>, ומסמנים אילו <b>גנים</b> להציג — הרשימה מקובצת <b>לפי קמפוס</b> (סימון קמפוס בוחר את כל הגנים שבו), או "בחר הכל" לכל הגנים. כברירת מחדל מוצגות רק התלמידות <b>הרשומות</b> לגנים שנבחרו (מתאים לתחילת רישום, כשעדיין לא שובצו) — או מסמנים <b>"כל התלמידות"</b>. לוחצים <b>"הצג על המפה"</b>.</li>
+        <li><b>ניווט:</b> גרירה להזזה, גלגלת או צביטה בשתי אצבעות לזום, וכפתור <b>"⛶ מסך מלא"</b> להגדלה לכל החלון (יציאה ב-Esc או ✕).</li>
         <li><b>צבע לפי מרחק:</b> כל תלמידה נצבעת לפי המרחק לגן הנבחר הקרוב — ירוק (קרוב) עד אדום (רחוק). <b>סגול</b> = גן.</li>
         <li><b>אח/ות:</b> תלמידה שיש לה אח/ות רשומ/ה מסומנת בטבעת זהב — <b>גם אם היא רחוקה</b>. בלחיצה עליה מופיע כפתור <b>"שבץ יחד"</b> לגן של האח/ות.</li>
         <li><b>שיבוץ בקליק:</b> לחיצה על תלמידה מציגה את הגנים הנבחרים הקרובים (מאותו חינוך) עם <b>מרחק וזמן הליכה אמיתיים</b> (Google), ממוינים לפי הליכה, עם כפתור <b>"שבץ"</b>. אם אין מפתח Google — מוצג מרחק אווירי.</li>
         <li>הכתובות מומרות למיקום פעם אחת ונשמרות (טעינה הבאה מהירה). הגנים ממוקמים אוטומטית; לתלמידות לוחצים <b>"טעינת מיקומי תלמידות"</b>. <b>"רענון מיקומים"</b> ממיר מחדש. דיוק המיקום תלוי בכתובת — אם שגוי, כדאי לתקן בתיק ואז לרענן.</li>
-        <li><b>שדרוג דיוק (אופציונלי):</b> כברירת מחדל המפה חינמית (OpenStreetMap). אפשר לחבר מפתח <b>Google</b> לדיוק גבוה יותר (הגדרות → "דיוק מפה") — ואז המיקומים מומרים דרך Google, עם נפילה חזרה ל-OpenStreetMap כשאין מפתח.</li>
+        <li><b>שדרוג דיוק (אופציונלי):</b> כברירת מחדל המפה חינמית (OpenStreetMap). אפשר לחבר מפתח <b>Google</b> לדיוק גבוה יותר (כלים ושירותים → "דיוק מפה") — ואז המיקומים מומרים דרך Google, עם נפילה חזרה ל-OpenStreetMap כשאין מפתח.</li>
       </ul>` },
 
     { icon:"👩‍🏫", title:"שיבוץ צוות", html:
@@ -1684,13 +1686,13 @@ function guideContent(){
       illTree+
       `<ul>
         <li><b>תיקייה לכל ילדה</b> — נוצרת אוטומטית בשם <b>"שם משפחה שם פרטי · ת"ז"</b> (למשל: אבו מיכל · 123456789), במבנה <b>חינוך (רגיל/מיוחד) → שנה → גן → ילדה</b>.</li>
-        <li><b>🗂️ ארגון לפי גן</b> — בהגדרות → דרייב יש כפתור "ארגן תיקיות תלמידות לפי גן" שמעביר תיקיות קיימות אל תוך תיקיית הגן שלהן (למי שנוצרו לפני שהמבנה עודכן).</li>
+        <li><b>🗂️ ארגון לפי גן</b> — ב<b>כלים ושירותים → חיבור Google Drive</b> יש כפתור "ארגן תיקיות תלמידות לפי גן" שמעביר תיקיות קיימות אל תוך תיקיית הגן שלהן (למי שנוצרו לפני שהמבנה עודכן).</li>
         <li><b>מסמך מזוהה</b> (נספח / צילום ת"ז / תקנון) — נשמר בשם <b>"שם המסמך · שם הילדה · ת"ז"</b> עם סיומת הקובץ המקורית. לדוגמה: <span class="gd-mut">צילום תעודת זהות · אבו מיכל · <span dir="ltr">123456789.pdf</span></span></li>
         <li><b>קבצים כלליים</b> (העלאה מרובה מאזור הדרייב שבתיק) — נשמרים בשם הקובץ המקורי + שם הילדה + ת"ז.</li>
         <li><b>פתיחה וצפייה</b> — כפתור בתיק פותח את תיקיית הילדה; אפשר לצפות ולהוריד כל קובץ.</li>
         <li><b>מעבר שנה</b> — צילום ת"ז מועתק פיזית לתיקיית הילדה בשנה החדשה (שאר המסמכים עולים מחדש).</li>
         <li><b>צוות</b> — לכל איש/אשת צוות נוצרת תיקייה דומה (לפי חינוך), עם קבצים בשם "שם המסמך · שם · ת"ז".</li>
-        <li><b>📁 ייבוא מסמכים מרוכז (לפי גן)</b> — בלשונית התלמידות → <b>"ייבוא מסמכים (דרייב)"</b>: בוחרים גן ומדביקים קישור לתיקיית הגן בדרייב. המערכת מזהה כל קובץ לפי השם (משפחה ואז פרטי) ולפי הסוג (זהות/תז → צילום ת"ז · נספח · תקנון · כל השאר → "אחר"), <b>מעתיקה לתיקיית כל ילדה</b> בשם המסודר, ו<b>מסמנת בתיק</b>. בסוף מוצג דוח (כמה הותאמו / לא זוהו). כך אין צורך להעלות אחד-אחד.</li>
+        <li><b>📁 ייבוא מסמכים מרוכז (לפי גן)</b> — ב<b>כלים ושירותים → חיבור Google Drive → "ייבוא מסמכים (לפי גן)"</b>: בוחרים גן ומדביקים קישור לתיקיית הגן בדרייב. המערכת מזהה כל קובץ לפי השם (משפחה ואז פרטי) ולפי הסוג (זהות/תז → צילום ת"ז · נספח · תקנון · כל השאר → "אחר"), <b>מעתיקה לתיקיית כל ילדה</b> בשם המסודר, ו<b>מסמנת בתיק</b>. בסוף מוצג דוח (כמה הותאמו / לא זוהו). כך אין צורך להעלות אחד-אחד.</li>
       </ul>
       <div class="gd-tip">💡 בגרסת הדמו חיבור הדרייב מושבת — פעיל רק בגרסה המתארחת בענן.</div>` },
 
@@ -1731,20 +1733,30 @@ function guideContent(){
 
     { icon:"📊", title:"שיקוף ל-Google Sheets", html:
       `<ul>
-        <li>ב<b>הגדרות → חיבור Google Drive → 📊 שיקוף ל-Google Sheets</b>.</li>
+        <li>ב<b>כלים ושירותים → חיבור Google Drive → 📊 שיקוף ל-Google Sheets</b>.</li>
         <li><b>"שקף עכשיו"</b> יוצר/מעדכן גיליון Google בתיקיית האב עם כל הנתונים (תלמידות · גנים · צוות · שיבוץ), לשונית לכל ישות.</li>
         <li>אפשר להפעיל <b>שיקוף אוטומטי</b> שמעדכן את הגיליון אחרי שינויים. הגיליון הוא <b>מראה/גיבוי</b> — מקור האמת נשאר במערכת.</li>
       </ul>` },
 
+    { icon:"🧰", title:"כלים ושירותים", html:
+      `<p>לשונית <b>"כלים ושירותים"</b> מרכזת את החיבורים והפעולות התפעוליות (הופרדו מ"הגדרות" לנוחות):</p>
+      <ul>
+        <li><b>🔗 חיבור Google Drive</b> — בדיקת חיבור, שיתוף, <b>שיקוף ל-Google Sheets</b>, ארגון תיקיות לפי גן, ו<b>📁 ייבוא מסמכים מהדרייב (לפי גן)</b>.</li>
+        <li><b>📝 רישום דיגיטלי — טופס להורים</b> — טופס רישום ציבורי שהורים ממלאים אונליין (עם <b>חתימה דיגיטלית</b> והעלאת ת"ז + ספח). ממלאים את פרטי הבעלות (שם, סמל, כתובת, שם מורשה החתימה, שם המוסד) ו<b>מעלים תמונת חתימה+חותמת</b> (מופיעה בטופס ובמסמך ה-PDF), ולוחצים <b>"שמירה ופרסום"</b> — ומעבירים את הקישור להורים. כל רישום נכנס ל<b>"רישומים ממתינים"</b>; <b>"צור תיק"</b> פותח תיק ילדה מלא (גיל אוטומטי לפי הגן, מסמכים מסומנים, תיקיית דרייב), ומגיעה <b>התראה למייל עם ה-PDF הממותג</b>. דורש חיבור לגשר (דרייב).</li>
+        <li><b>🔗 נדרים פלוס</b> — הכנה לחיבור עתידי לרישום דרך נדרים פלוס (הממשק מוכן; החיבור הטכני בהמשך).</li>
+        <li><b>🤖 עוזר חכם (AI)</b> — הגדרת מפתח לצ'אט העזרה: <b>Google Gemini חינם</b> (מומלץ) או Anthropic Claude בתשלום.</li>
+        <li><b>🗺️ דיוק מפה (Google)</b> — חיבור מפתח Google לשדרוג דיוק מפת השיבוץ ומרחקי ההליכה (אופציונלי; בלעדיו המפה עובדת חינם דרך OpenStreetMap).</li>
+        <li><b>💾 גיבוי ושחזור</b> — ייצוא גיבוי JSON ושחזור (כולל העברת נתונים מהגרסה הישנה).</li>
+      </ul>` },
+
     { icon:"⚙️", title:"הגדרות ומיתוג", html:
-      `<ul>
+      `<div class="gd-tip">💡 חיבורי הדרייב, הטופס הדיגיטלי, עוזר ה-AI, דיוק המפה והגיבוי עברו ללשונית <b>"כלים ושירותים"</b>.</div>
+      <ul>
         <li><b>מיתוג</b> — כותרת, ו<b>העלאת קובץ לוגו</b> (מומלץ): התמונה מוטמעת במערכת ומופיעה בכותרת, בפאביקון וגם כ<b>אייקון האפליקציה</b> המותקנת.</li>
-        <li><b>חיבור Google Drive</b> — בדיקת חיבור, שיתוף, ו<b>שיקוף ל-Google Sheets</b>.</li>
         <li><b>שנים</b> — הוספה/מחיקה, ו<b>מעבר שנה</b>.</li>
         <li><b>רשימות</b> — גילי ילדים, תפקידי צוות (צבע + שיוך חינוך), קמפוסים.</li>
         <li><b>מנהלים ומשתמשים</b> — מי משנה הגדרות, והוספת משתמשי התחברות.</li>
-        <li><b>📝 רישום דיגיטלי — טופס להורים</b> — טופס רישום ציבורי שהורים ממלאים אונליין (עם <b>חתימה דיגיטלית</b> והעלאת ת"ז + ספח). ממלאים את פרטי הבעלות (שם, סמל, כתובת, שם מורשה החתימה, שם המוסד להצהרה) ו<b>מעלים תמונת חתימה+חותמת של הבעלות</b> (מופיעה בהצהרת הבעלות בטופס ובמסמך), ולוחצים <b>"שמירה ופרסום הטופס"</b> — ואז מעתיקים את הקישור ומעבירים להורים (בוואטסאפ/באתר). הטופס מציג אוטומטית את <b>הגנים הפעילים</b> שבתחום ההרשאה; בבחירת גן <b>הסמל והכתובת מתמלאים אוטומטית</b>, וגם הסמל בהצהרת ההורה. כל רישום נכנס ל<b>"רישומים ממתינים"</b> — לחיצה על <b>"צור תיק"</b> פותחת תיק ילדה עם כל הפרטים (שם, כתובת, ניידי הורים, מייל), <b>גיל אוטומטי לפי הגן</b>, סימון המסמכים (ת"ז/ספח) שצורפו, והתיקייה מועברת אוטומטית למבנה הרגיל (חינוך → שנה → גן). מגיעה גם <b>התראה למייל עם מסמך הרישום המלא כ-PDF ממותג</b> (הטופס המלא עם הלוגו, החתימה והמסמכים שצורפו). לאחר עדכון פרטים או הוספת גנים — לוחצים שוב "פרסום" כדי לרענן. דורש חיבור לגשר (דרייב).</li>
-        <li><b>הרשאות עריכה לפי חינוך</b> — מגבילים משתמש/ת ל<b>עריכת חינוך אחד בלבד</b> (רגיל או מיוחד): רואה את כל הנתונים, אך תיק תלמידה/גן/צוות בחינוך שאינו מורשה נפתח <b>לקריאה בלבד</b> (🔒), וכן שיבוץ / עדכון קבוצתי / כפתור "משובצת" חסומים. עדיין אפשר <b>להעביר</b> ילדה מהחינוך המורשה לחינוך השני (שם היא נרשמת כללית, לא-משובצת). ההגבלה היא ברמת הממשק (מונעת עריכה מהמסך) ולא חסימת שרת. למנהל מערכת בלבד.</li>
+        <li><b>הרשאות עריכה לפי חינוך</b> — מגבילים משתמש/ת ל<b>עריכת חינוך אחד בלבד</b> (רגיל או מיוחד): רואה את כל הנתונים, אך תיק תלמידה/גן/צוות בחינוך שאינו מורשה נפתח <b>לקריאה בלבד</b> (🔒), וכן שיבוץ / עדכון קבוצתי / כפתור "משובצת" חסומים. עדיין אפשר <b>להעביר</b> ילדה מהחינוך המורשה לחינוך השני. ההגבלה היא ברמת הממשק. למנהל מערכת בלבד.</li>
       </ul>` }
   ];
   return { quickstart, sections };
@@ -1806,7 +1818,7 @@ function route(){
   const so=$("#signOutBtn"); if(so) so.style.display=currentUser?"flex":"none";
   const v = $("#view");
   ({home:viewHome, students:viewStudents, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
-    municipality:viewMunicipality, export:viewExport, management:viewManagement, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
+    municipality:viewMunicipality, export:viewExport, management:viewManagement, tools:viewTools, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
 }
 
 /* ============================================================
@@ -2443,6 +2455,7 @@ function viewHome(root){
       <h2>סיכום שנת ${esc(DB.activeYear)}</h2>
       <span class="hh-edu" style="${eduTagBg}">${esc(eduName)}</span>
     </div>
+    <div id="homeClock" class="hint" style="margin:-4px 0 12px;font-variant-numeric:tabular-nums"></div>
     <div class="hcards">
       <div class="hcard acc"><span class="ic">🎒</span>
         <div class="k">מספר ילדות</div><div class="v">${total}</div>
@@ -2464,6 +2477,23 @@ function viewHome(root){
     ${perGan.length?ageLegendHtml():""}
   `;
   root.querySelectorAll("[data-gan]").forEach(c=> c.onclick=()=>{ const g=DB.gans.find(x=>x.id===c.dataset.gan); if(g) openGan(g); });
+  startHomeClock();
+}
+/* שעון חי לעמוד הבית — תאריך עברי + לועזי + שעה, מתעדכן כל שנייה.
+   מנקה את עצמו אוטומטית כשעוזבים את עמוד הבית (האלמנט נעלם). */
+let _clockTimer=null;
+function startHomeClock(){
+  if(_clockTimer){ clearInterval(_clockTimer); _clockTimer=null; }
+  const upd=()=>{
+    const el=$("#homeClock");
+    if(!el){ if(_clockTimer){ clearInterval(_clockTimer); _clockTimer=null; } return; }
+    const now=new Date();
+    let heb=""; try{ heb=now.toLocaleDateString("he-IL-u-ca-hebrew",{ weekday:"long", day:"numeric", month:"long", year:"numeric" }); }catch(e){}
+    const greg=now.toLocaleDateString("he-IL",{ day:"2-digit", month:"2-digit", year:"numeric" });
+    const time=now.toLocaleTimeString("he-IL",{ hour:"2-digit", minute:"2-digit", second:"2-digit" });
+    el.textContent=`📅 ${heb?heb+" · ":""}${greg} · 🕐 ${time}`;
+  };
+  upd(); _clockTimer=setInterval(upd,1000);
 }
 
 function viewStudents(root){
@@ -2475,13 +2505,14 @@ function viewStudents(root){
   <div class="panel">
     <div class="section-title" style="margin-bottom:10px"><h2>תיקי התלמידות</h2></div>
     <div id="stuSummary" style="margin:2px 0 12px"></div>
-    <div class="row" style="gap:8px;margin-bottom:12px">
+    <div class="row" style="gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
       <button class="btn" id="addStu">➕ הוספת ילדה</button>
-      <button class="btn ghost" id="exportStu">📤 יצוא רשימות</button>
-      <button class="btn ghost" id="importUpdate">⬆️ ייבוא לעדכון (לפי ת"ז)</button>
-      <button class="btn ghost" id="importStu">⬆️ ייבוא מקובץ</button>
-      <button class="btn ghost" id="importDocs">📁 ייבוא מסמכים (דרייב)</button>
       <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
+      <span style="flex:1;min-width:8px"></span>
+      <span class="hint" style="align-self:center">ייבוא / יצוא:</span>
+      <button class="btn ghost sm" id="exportStu">📤 יצוא</button>
+      <button class="btn ghost sm" id="importStu">⬆️ ייבוא מקובץ</button>
+      <button class="btn ghost sm" id="importUpdate">✏️ עדכון לפי ת"ז</button>
     </div>
     <div id="bulkBar"></div>
     <div class="searchbar">
@@ -2515,7 +2546,6 @@ function viewStudents(root){
   $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#exportStu").onclick = ()=> openExportModal();
   $("#importStu").onclick = ()=> openImport();
-  $("#importDocs").onclick = ()=> openDocImport();
   $("#bulkToggle").onclick = ()=>{ bulkMode=!bulkMode; bulkSel.clear(); viewStudents(root); };
   $("#importUpdate").onclick = ()=> openBulkImport();
   $("#stuFilterToggle").onclick = ()=>{ stuFiltersOpen = $("#stuFilterPanel").hasAttribute("hidden"); viewStudents(root); };
@@ -3930,7 +3960,7 @@ async function mapLoadStudents(){
   if(_mapState.city){ const med=mapComputeCenter(); if(med) _cityCenter={ city:_mapState.city, lat:med.lat, lng:med.lng }; }
   mapPlotStudents(); mapFit();
   let extra="";
-  if(fail && _geoGoogle!==true) extra=" — הרבה כתובות לא נמצאו ב-OpenStreetMap; חיבור מפתח Google (הגדרות → דיוק מפה) ישפר משמעותית";
+  if(fail && _geoGoogle!==true) extra=" — הרבה כתובות לא נמצאו ב-OpenStreetMap; חיבור מפתח Google (כלים ושירותים → דיוק מפה) ישפר משמעותית";
   mapStatus(mapStatusReport()+extra);
   if(btn) btn.disabled=false;
 }
@@ -6325,7 +6355,7 @@ function openAiHelp(){
     try{ const res=await aiAsk(convo); wait.textContent=res.text||"(לא התקבלה תשובה)"; convo.push({role:"assistant",content:res.text||""}); }
     catch(e){ const raw=((e&&e.message)||String(e||""));
       let msg;
-      if(raw.indexOf("no-ai-key")>=0) msg="העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini, ראה הגדרות → עוזר חכם).";
+      if(raw.indexOf("no-ai-key")>=0) msg="העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini, ראה כלים ושירותים → עוזר חכם).";
       else if(/network|bad-response|drive-not-configured|unauthorized|token/.test(raw)) msg=driveErrHe(e);
       else msg="שגיאה: "+raw;   // הודעת הספק המדויקת (Gemini/Claude) — לאבחון
       wait.textContent=msg; }
@@ -6334,6 +6364,166 @@ function openAiHelp(){
   $("#ai-send").onclick=send;
   $("#ai-input").addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
 }
+/* ============================================================
+   כלים ושירותים — חיבורים ופעולות תפעוליות (דרייב, טופס דיגיטלי, נדרים,
+   עוזר AI, דיוק מפה, גיבוי) — הופרדו מ"הגדרות" לניהול נוח יותר.
+   ============================================================ */
+function viewTools(root){
+  const admin=isAdmin();
+  root.innerHTML=`
+  <div class="panel">
+    <h2>🔗 חיבור Google Drive</h2>
+    <div class="sub">חיבור (פר-מכשיר) המאפשר יצירת תיקייה אוטומטית לכל ילדה והעלאת מסמכים ישירות מהתיק אל הדרייב.</div>
+    <div id="drive-box"></div>
+    ${DRIVE_READY?`<div class="row" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;align-items:end;gap:10px">
+      <div class="field grow" style="margin:0"><label>ייבוא מסמכים מהדרייב</label><div class="hint">סורק תיקיות בדרייב ומצרף מסמכים (נספח / תקנון / צילום ת"ז / אחר) לתיקי התלמידות, לפי גן.</div></div>
+      <button class="btn ghost" id="toolsImportDocs">📁 ייבוא מסמכים (לפי גן)</button></div>`:""}
+  </div>
+
+  ${admin?`<div class="panel">
+    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">🔗 רישום דיגיטלי — נדרים פלוס</h2><span class="pill warn">בהכנה · לא מחובר</span></div>
+    <div class="sub">חיבור עתידי ל<b>נדרים פלוס</b>: כשהורה נרשם דרך המערכת שלהם (טאבלט בבית הכנסת / אתר), ייפָּתח אוטומטית <b>תיק ילדה</b> אצלנו, המסמכים יעלו ל<b>תיקיית הדרייב</b> שלה, ותתקבל התראה. <b>הממשק מוכן — החיבור הטכני יבוצע בהמשך.</b></div>
+    <div class="note" style="margin-top:10px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
+      <b>מה צריך לקבל מנדרים פלוס כדי לחבר</b> (אפשר להעביר להם את הרשימה):
+      <ul style="margin:6px 0 0;padding-inline-start:20px">
+        <li><b>אחת משתי דרכי העברת נתונים:</b> (א) <b>Webhook / API</b> שדוחף אלינו כל רישום חדש בזמן אמת (מומלץ); או (ב) <b>יצוא Excel</b> קבוע + הקבצים, שנייבא.</li>
+        <li><b>מבנה השדות</b> של רישום (שם, ת"ז, הורים, כתובת, גן מבוקש, וכו') — מסמך שמתאר את העמודות/השדות.</li>
+        <li><b>אופן הגעת הקבצים</b> (נספח/ת"ז) — כקישורים, כקבצים מצורפים, או בתיקיית דרייב.</li>
+        <li>אם יש <b>API</b> — כתובת ה-endpoint ואופן האימות (מפתח/טוקן). <span class="hint" style="display:inline">האישורים יוגדרו בהמשך בצורה מאובטחת בגשר, לא כאן.</span></li>
+      </ul>
+    </div>
+    <div style="margin-top:10px"><label>הערות / פרטי חיבור (לשמירה לעצמכם — למשל תשובת נדרים פלוס, כתובת endpoint)</label>
+      <textarea id="ned-notes" rows="3" placeholder="לרשום כאן פרטים שקיבלתם מנדרים פלוס…">${esc((DB.settings&&DB.settings.nedarim&&DB.settings.nedarim.notes)||"")}</textarea></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" id="ned-save">שמירת הערות</button></div>
+  </div>`:""}
+
+  ${admin?(()=>{ const rf=regFormCfg(); return `<div class="panel">
+    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">📝 רישום דיגיטלי — טופס להורים</h2><span class="pill ${DRIVE_READY?'ok':'warn'}">${DRIVE_READY?'פעיל דרך הגשר':'דורש חיבור גשר'}</span></div>
+    <div class="sub">טופס רישום ציבורי שהורים ממלאים אונליין (עם חתימה דיגיטלית והעלאת ת"ז + ספח). כל רישום נכנס ל<b>"ממתינים לאישור"</b> — לחיצה על "צור תיק" פותחת תיק ילדה עם הקבצים בדרייב. פרטי הבעלות למטה מופיעים בכותרת הטופס ובהצהרת ההורה.</div>
+    <div class="grid g2" style="margin-top:10px">
+      <div><label>שנה"ל (כותרת הטופס)</label><input id="rf-year" value="${esc(rf.year||DB.activeYear||"")}" placeholder="למשל התשפ&quot;ז"></div>
+      <div><label>אימייל לקבלת התראות</label><input id="rf-notify" dir="ltr" style="text-align:right" value="${esc(rf.notifyEmail||contactEmail()||"")}" placeholder="mail@example.com"></div>
+      <div><label>שם הבעלות</label><input id="rf-ownName" value="${esc(rf.ownName||"")}" placeholder="שם הרשת / העמותה"></div>
+      <div><label>סמל הבעלות</label><input id="rf-ownSymbol" value="${esc(rf.ownSymbol||"")}" placeholder="מספר סמל"></div>
+      <div><label>כתובת הבעלות</label><input id="rf-ownAddress" value="${esc(rf.ownAddress||"")}" placeholder="כתובת"></div>
+      <div><label>מוכר משנת</label><input id="rf-recognizedFrom" value="${esc(rf.recognizedFrom||"")}" placeholder="למשל תש&quot;פ"></div>
+      <div><label>שם מורשה חתימת הבעלות</label><input id="rf-signName" value="${esc(rf.signName||"")}" placeholder="שם החותם מטעם הבעלות"></div>
+      <div><label>שם המוסד (הצהרת הורה)</label><input id="rf-institutionName" value="${esc(rf.institutionName||"")}" placeholder="ברירת מחדל: שם הבעלות"></div>
+    </div>
+    <div style="margin-top:12px">
+      <label>חתימה וחותמת הבעלות (תמונה)</label>
+      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+        <img id="rf-stamp-preview" src="${esc(rf.stampImage||"")}" alt="" style="height:64px;max-width:240px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#fff;${rf.stampImage?'':'display:none'}">
+        <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">📎 העלאת תמונה<input type="file" id="rf-stamp-file" accept="image/*" hidden></label>
+        <button class="btn ghost sm" type="button" id="rf-stamp-clear" ${rf.stampImage?'':'style="display:none"'}>הסרה</button>
+      </div>
+      <div class="hint" style="margin-top:4px">התמונה (חתימה + חותמת הבעלות) תופיע בהצהרת הבעלות בטופס ובמסמך ה-PDF — בדיוק כפי שתעלו אותה. מומלץ צילום/סריקה נקי על רקע לבן.</div>
+    </div>
+    <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
+      <button class="btn" id="rf-publish">💾 שמירה ופרסום הטופס</button>
+      <button class="btn ghost" id="rf-review">🗂️ רישומים ממתינים</button>
+      <a class="btn ghost" id="rf-open" href="${esc(publicFormUrl())}" target="_blank">↗️ פתיחת הטופס</a>
+    </div>
+    <div class="note" style="margin-top:10px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
+      <b>קישור הטופס להורים</b> (להעביר בוואטסאפ / להדביק באתר):
+      <div class="row" style="margin-top:6px;gap:6px"><input id="rf-link" dir="ltr" style="text-align:right;flex:1" readonly value="${esc(publicFormUrl())}"><button class="btn ghost sm" id="rf-copy">📋 העתקה</button></div>
+      <div class="hint" style="margin-top:6px">לאחר עדכון פרטים / הוספת גנים — לחצו שוב "שמירה ופרסום" כדי שהטופס יתעדכן. הטופס מציג את הגנים הפעילים שבתחום ההרשאה שלכם.</div>
+    </div>
+  </div>`; })():""}
+
+  ${admin?`<div class="panel">
+    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">🤖 עוזר חכם (AI)</h2><span class="pill ${DRIVE_READY?'ok':'neutral'}">${DRIVE_READY?'פועל דרך הגשר':'דורש חיבור גשר'}</span></div>
+    <div class="sub">צ'אט עזרה שמסביר למשתמשים איך להשתמש בתוכנה (זמין מ"🤖 עוזר חכם" בתפריט). פועל דרך הגשר כדי שמפתח ה-API יישאר מוסתר.</div>
+    <div class="note" style="margin-top:8px;background:var(--good-soft);color:var(--good);border-color:transparent">
+      <b>הפעלה חינם (מומלץ) — Google Gemini:</b>
+      <ol style="margin:6px 0 0;padding-inline-start:20px">
+        <li>נכנסים ל-<b>aistudio.google.com/apikey</b>, "Create API key" — <b>ללא חיוב</b>, מפתח חינמי.</li>
+        <li>ב-Apps Script של הגשר: <b>Project Settings → Script Properties → Add script property</b>, בשם <b>GEMINI_API_KEY</b> והערך = המפתח.</li>
+        <li>מוודאים שהקוד כולל את פעולת <code>chat</code> המעודכנת, ופורסים מחדש (New version).</li>
+      </ol>
+    </div>
+    <div class="note" style="margin-top:8px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
+      <b>חלופה בתשלום — Anthropic Claude:</b> יוצרים מפתח ב-<b>console.anthropic.com</b> (עם חיוב מופעל) ומגדירים אותו ב-Script Properties בשם <b>ANTHROPIC_API_KEY</b>. אם מוגדרים שני המפתחות — הבחירה נקבעת לפי המודל שנבחר למטה.
+    </div>
+    <div class="row" style="margin-top:10px;max-width:400px"><div class="field grow"><label>מודל</label>
+      <select id="ai-model">
+        <optgroup label="חינם — Google Gemini">
+          <option value="gemini-3.6-flash">חינם מהיר (Gemini Flash) — מומלץ</option>
+        </optgroup>
+        <optgroup label="בתשלום — Anthropic Claude">
+          <option value="claude-haiku-4-5">חסכוני (Haiku)</option>
+          <option value="claude-sonnet-5">מאוזן (Sonnet)</option>
+          <option value="claude-opus-5">חכם ביותר (Opus)</option>
+        </optgroup>
+      </select></div>
+      <button class="btn ghost" id="ai-model-save" style="align-self:end">שמירה</button></div>
+  </div>`:""}
+
+  ${admin?`<div class="panel">
+    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">🗺️ דיוק מפה (Google)</h2><span class="pill neutral">אופציונלי</span></div>
+    <div class="sub">משדרג את דיוק המיקומים ב"מפת שיבוץ". ללא הגדרה — המפה עובדת <b>חינם</b> דרך OpenStreetMap. עם מפתח Google — הכתובות ממוקמות בדיוק גבוה יותר. פועל דרך הגשר כדי שהמפתח יישאר מוסתר.</div>
+    <div class="note" style="margin-top:8px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
+      <b>הפעלה חד-פעמית:</b>
+      <ol style="margin:6px 0 0;padding-inline-start:20px">
+        <li>נכנסים ל-<b>console.cloud.google.com</b> → יוצרים פרויקט → <b>APIs &amp; Services → Library</b> → מפעילים <b>Geocoding API</b> (למיקום) וגם <b>Distance Matrix API</b> (למרחק הליכה בפופאפ).</li>
+        <li><b>Credentials → Create credentials → API key</b> (אם מגבילים את המפתח — יש לאשר <b>גם Geocoding API וגם Distance Matrix API</b>).</li>
+        <li>מפעילים <b>Billing</b> (כרטיס אשראי) — נדרש גם לשכבה החינמית. אפשר להגדיר תקרת תקציב/מכסה למניעת חיוב. עד ~10,000 המרות בחודש — חינם.</li>
+        <li>ב-Apps Script של הגשר: <b>Project Settings → Script Properties → Add script property</b>, בשם <b>GOOGLE_MAPS_API_KEY</b> והערך = המפתח, ולפרוס מחדש (New version).</li>
+        <li>ב"מפת שיבוץ" לוחצים <b>"רענון מיקומים"</b> כדי להמיר מחדש בדיוק Google.</li>
+      </ol>
+    </div>
+  </div>`:""}
+
+  <div class="panel">
+    <h2>💾 גיבוי ושחזור</h2>
+    <div class="sub">הנתונים נשמרים בענן ומסונכרנים אוטומטית. אפשר לייצא גיבוי JSON, ולשחזר קובץ גיבוי — כולל גיבוי מהגרסה הישנה בטלפון (כך מעבירים את הנתונים שהוזנו שם אל הענן).</div>
+    <div class="row">
+      <button class="btn ghost" id="exportAll">⬇️ ייצוא גיבוי (JSON)</button>
+      <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">⬆️ שחזור מגיבוי<input type="file" id="importAll" accept=".json" hidden></label>
+    </div>
+  </div>`;
+
+  renderDriveBox();
+  { const di=$("#toolsImportDocs"); if(di) di.onclick=openDocImport; }
+
+  // רישום דיגיטלי — נדרים פלוס (שמירת הערות)
+  { const ns=$("#ned-save"); if(ns) ns.onclick=()=>{ DB.settings.nedarim=Object.assign({},DB.settings.nedarim,{ notes:($("#ned-notes").value||"").trim() }); save(); toast("ההערות נשמרו"); }; }
+
+  // רישום דיגיטלי — טופס להורים
+  { const pub=$("#rf-publish");
+    if(pub){
+      let stampVal=(regFormCfg().stampImage)||"";
+      const stImg=$("#rf-stamp-preview"), stClr=$("#rf-stamp-clear"), stFile=$("#rf-stamp-file");
+      if(stFile) stFile.onchange=()=>{ const f=stFile.files&&stFile.files[0]; if(!f)return;
+        const r=new FileReader(); r.onload=()=>{ stampVal=String(r.result||""); if(stImg){ stImg.src=stampVal; stImg.style.display=""; } if(stClr) stClr.style.display=""; }; r.readAsDataURL(f); };
+      if(stClr) stClr.onclick=()=>{ stampVal=""; if(stImg){ stImg.src=""; stImg.style.display="none"; } stClr.style.display="none"; if(stFile) stFile.value=""; };
+      const collect=()=>({ year:($("#rf-year").value||"").trim(), notifyEmail:($("#rf-notify").value||"").trim(),
+        ownName:($("#rf-ownName").value||"").trim(), ownSymbol:($("#rf-ownSymbol").value||"").trim(), ownAddress:($("#rf-ownAddress").value||"").trim(),
+        recognizedFrom:($("#rf-recognizedFrom").value||"").trim(), signName:($("#rf-signName").value||"").trim(), institutionName:($("#rf-institutionName").value||"").trim(),
+        stampImage:stampVal });
+      pub.onclick=async ()=>{
+        DB.settings.regForm=Object.assign({},DB.settings.regForm,collect()); save();
+        if(!DRIVE_READY){ toast("נשמר. לפרסום הטופס להורים יש להגדיר חיבור גשר (דרייב)."); return; }
+        pub.disabled=true; const old=pub.textContent; pub.textContent="מפרסם…";
+        try{ await regFormPublish(); toast("הטופס פורסם ועודכן ✅"); }
+        catch(e){ toast(driveErrHe(e)); }
+        finally{ pub.disabled=false; pub.textContent=old; }
+      };
+      const rv=$("#rf-review"); if(rv) rv.onclick=openRegReview;
+      const cp=$("#rf-copy"); if(cp) cp.onclick=async ()=>{ const t=$("#rf-link"); try{ await navigator.clipboard.writeText(t.value); toast("הקישור הועתק"); }catch(e){ t.select(); document.execCommand&&document.execCommand("copy"); toast("הקישור הועתק"); } };
+    } }
+
+  // עוזר AI — בחירת מודל
+  { const am=$("#ai-model"); if(am){ am.value=(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash";
+      const s=$("#ai-model-save"); if(s) s.onclick=()=>{ DB.settings.aiModel=am.value; save(); toast("המודל נשמר"); }; } }
+
+  // גיבוי ושחזור
+  $("#exportAll").onclick=()=>{ downloadBlob(new Blob([JSON.stringify(DB,null,2)],{type:"application/json"}), `גיבוי-רישום-${new Date().toISOString().slice(0,10)}.json`); };
+  $("#importAll").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
+    readFileSmart(f, txt=>{ try{ const d=JSON.parse(txt); if(!d.students){throw 0;} if(confirm("שחזור יחליף את כל הנתונים הקיימים. להמשיך?")){ DB=Object.assign(blankDB(),d); save(); route(); toast("שוחזר בהצלחה"); } }catch(_){ toast("קובץ לא תקין"); } });
+  };
+}
+
 function viewSettings(root){
   const admin=isAdmin();
   const dis = admin? "" : "disabled";
@@ -6495,118 +6685,9 @@ function viewSettings(root){
     <div class="row" style="margin-top:14px"><button class="btn ghost" id="nu-refresh">🔄 רענן רשימת משתמשים</button></div>
     <div id="users-box" style="margin-top:10px"></div>
   </div>`:""}
-
-  <div class="panel">
-    <h2>חיבור Google Drive</h2>
-    <div class="sub">חיבור (פר-מכשיר) המאפשר יצירת תיקייה אוטומטית לכל ילדה והעלאת מסמכים ישירות מהתיק אל הדרייב.</div>
-    <div id="drive-box"></div>
-  </div>
-
-  ${admin?`<div class="panel">
-    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">🔗 רישום דיגיטלי — נדרים פלוס</h2><span class="pill warn">בהכנה · לא מחובר</span></div>
-    <div class="sub">חיבור עתידי ל<b>נדרים פלוס</b>: כשהורה נרשם דרך המערכת שלהם (טאבלט בבית הכנסת / אתר), ייפָּתח אוטומטית <b>תיק ילדה</b> אצלנו, המסמכים יעלו ל<b>תיקיית הדרייב</b> שלה, ותתקבל התראה. <b>הממשק מוכן — החיבור הטכני יבוצע בהמשך.</b></div>
-    <div class="note" style="margin-top:10px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
-      <b>מה צריך לקבל מנדרים פלוס כדי לחבר</b> (אפשר להעביר להם את הרשימה):
-      <ul style="margin:6px 0 0;padding-inline-start:20px">
-        <li><b>אחת משתי דרכי העברת נתונים:</b> (א) <b>Webhook / API</b> שדוחף אלינו כל רישום חדש בזמן אמת (מומלץ); או (ב) <b>יצוא Excel</b> קבוע + הקבצים, שנייבא.</li>
-        <li><b>מבנה השדות</b> של רישום (שם, ת"ז, הורים, כתובת, גן מבוקש, וכו') — מסמך שמתאר את העמודות/השדות.</li>
-        <li><b>אופן הגעת הקבצים</b> (נספח/ת"ז) — כקישורים, כקבצים מצורפים, או בתיקיית דרייב.</li>
-        <li>אם יש <b>API</b> — כתובת ה-endpoint ואופן האימות (מפתח/טוקן). <span class="hint" style="display:inline">האישורים יוגדרו בהמשך בצורה מאובטחת בגשר, לא כאן.</span></li>
-      </ul>
-    </div>
-    <div style="margin-top:10px"><label>הערות / פרטי חיבור (לשמירה לעצמכם — למשל תשובת נדרים פלוס, כתובת endpoint)</label>
-      <textarea id="ned-notes" rows="3" placeholder="לרשום כאן פרטים שקיבלתם מנדרים פלוס…">${esc((DB.settings&&DB.settings.nedarim&&DB.settings.nedarim.notes)||"")}</textarea></div>
-    <div class="row" style="margin-top:8px"><button class="btn ghost" id="ned-save">שמירת הערות</button></div>
-  </div>`:""}
-
-  ${admin?(()=>{ const rf=regFormCfg(); return `<div class="panel">
-    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">📝 רישום דיגיטלי — טופס להורים</h2><span class="pill ${DRIVE_READY?'ok':'warn'}">${DRIVE_READY?'פעיל דרך הגשר':'דורש חיבור גשר'}</span></div>
-    <div class="sub">טופס רישום ציבורי שהורים ממלאים אונליין (עם חתימה דיגיטלית והעלאת ת"ז + ספח). כל רישום נכנס ל<b>"ממתינים לאישור"</b> — לחיצה על "צור תיק" פותחת תיק ילדה עם הקבצים בדרייב. פרטי הבעלות למטה מופיעים בכותרת הטופס ובהצהרת ההורה.</div>
-    <div class="grid g2" style="margin-top:10px">
-      <div><label>שנה"ל (כותרת הטופס)</label><input id="rf-year" value="${esc(rf.year||DB.activeYear||"")}" placeholder="למשל התשפ&quot;ז"></div>
-      <div><label>אימייל לקבלת התראות</label><input id="rf-notify" dir="ltr" style="text-align:right" value="${esc(rf.notifyEmail||contactEmail()||"")}" placeholder="mail@example.com"></div>
-      <div><label>שם הבעלות</label><input id="rf-ownName" value="${esc(rf.ownName||"")}" placeholder="שם הרשת / העמותה"></div>
-      <div><label>סמל הבעלות</label><input id="rf-ownSymbol" value="${esc(rf.ownSymbol||"")}" placeholder="מספר סמל"></div>
-      <div><label>כתובת הבעלות</label><input id="rf-ownAddress" value="${esc(rf.ownAddress||"")}" placeholder="כתובת"></div>
-      <div><label>מוכר משנת</label><input id="rf-recognizedFrom" value="${esc(rf.recognizedFrom||"")}" placeholder="למשל תש&quot;פ"></div>
-      <div><label>שם מורשה חתימת הבעלות</label><input id="rf-signName" value="${esc(rf.signName||"")}" placeholder="שם החותם מטעם הבעלות"></div>
-      <div><label>שם המוסד (הצהרת הורה)</label><input id="rf-institutionName" value="${esc(rf.institutionName||"")}" placeholder="ברירת מחדל: שם הבעלות"></div>
-    </div>
-    <div style="margin-top:12px">
-      <label>חתימה וחותמת הבעלות (תמונה)</label>
-      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
-        <img id="rf-stamp-preview" src="${esc(rf.stampImage||"")}" alt="" style="height:64px;max-width:240px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#fff;${rf.stampImage?'':'display:none'}">
-        <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">📎 העלאת תמונה<input type="file" id="rf-stamp-file" accept="image/*" hidden></label>
-        <button class="btn ghost sm" type="button" id="rf-stamp-clear" ${rf.stampImage?'':'style="display:none"'}>הסרה</button>
-      </div>
-      <div class="hint" style="margin-top:4px">התמונה (חתימה + חותמת הבעלות) תופיע בהצהרת הבעלות בטופס ובמסמך ה-PDF — בדיוק כפי שתעלו אותה. מומלץ צילום/סריקה נקי על רקע לבן.</div>
-    </div>
-    <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
-      <button class="btn" id="rf-publish">💾 שמירה ופרסום הטופס</button>
-      <button class="btn ghost" id="rf-review">🗂️ רישומים ממתינים</button>
-      <a class="btn ghost" id="rf-open" href="${esc(publicFormUrl())}" target="_blank">↗️ פתיחת הטופס</a>
-    </div>
-    <div class="note" style="margin-top:10px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
-      <b>קישור הטופס להורים</b> (להעביר בוואטסאפ / להדביק באתר):
-      <div class="row" style="margin-top:6px;gap:6px"><input id="rf-link" dir="ltr" style="text-align:right;flex:1" readonly value="${esc(publicFormUrl())}"><button class="btn ghost sm" id="rf-copy">📋 העתקה</button></div>
-      <div class="hint" style="margin-top:6px">לאחר עדכון פרטים / הוספת גנים — לחצו שוב "שמירה ופרסום" כדי שהטופס יתעדכן. הטופס מציג את הגנים הפעילים שבתחום ההרשאה שלכם.</div>
-    </div>
-  </div>`; })():""}
-
-  ${admin?`<div class="panel">
-    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">🤖 עוזר חכם (AI)</h2><span class="pill ${DRIVE_READY?'ok':'neutral'}">${DRIVE_READY?'פועל דרך הגשר':'דורש חיבור גשר'}</span></div>
-    <div class="sub">צ'אט עזרה שמסביר למשתמשים איך להשתמש בתוכנה (זמין מ"🤖 עוזר חכם" בתפריט). פועל דרך הגשר כדי שמפתח ה-API יישאר מוסתר.</div>
-    <div class="note" style="margin-top:8px;background:var(--good-soft);color:var(--good);border-color:transparent">
-      <b>הפעלה חינם (מומלץ) — Google Gemini:</b>
-      <ol style="margin:6px 0 0;padding-inline-start:20px">
-        <li>נכנסים ל-<b>aistudio.google.com/apikey</b>, "Create API key" — <b>ללא חיוב</b>, מפתח חינמי.</li>
-        <li>ב-Apps Script של הגשר: <b>Project Settings → Script Properties → Add script property</b>, בשם <b>GEMINI_API_KEY</b> והערך = המפתח.</li>
-        <li>מוודאים שהקוד כולל את פעולת <code>chat</code> המעודכנת, ופורסים מחדש (New version).</li>
-      </ol>
-    </div>
-    <div class="note" style="margin-top:8px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
-      <b>חלופה בתשלום — Anthropic Claude:</b> יוצרים מפתח ב-<b>console.anthropic.com</b> (עם חיוב מופעל) ומגדירים אותו ב-Script Properties בשם <b>ANTHROPIC_API_KEY</b>. אם מוגדרים שני המפתחות — הבחירה נקבעת לפי המודל שנבחר למטה.
-    </div>
-    <div class="row" style="margin-top:10px;max-width:400px"><div class="field grow"><label>מודל</label>
-      <select id="ai-model">
-        <optgroup label="חינם — Google Gemini">
-          <option value="gemini-3.6-flash">חינם מהיר (Gemini Flash) — מומלץ</option>
-        </optgroup>
-        <optgroup label="בתשלום — Anthropic Claude">
-          <option value="claude-haiku-4-5">חסכוני (Haiku)</option>
-          <option value="claude-sonnet-5">מאוזן (Sonnet)</option>
-          <option value="claude-opus-5">חכם ביותר (Opus)</option>
-        </optgroup>
-      </select></div>
-      <button class="btn ghost" id="ai-model-save" style="align-self:end">שמירה</button></div>
-  </div>`:""}
-
-  ${admin?`<div class="panel">
-    <div class="row" style="align-items:center;gap:10px"><h2 style="margin:0">🗺️ דיוק מפה (Google)</h2><span class="pill neutral">אופציונלי</span></div>
-    <div class="sub">משדרג את דיוק המיקומים ב"מפת שיבוץ". ללא הגדרה — המפה עובדת <b>חינם</b> דרך OpenStreetMap. עם מפתח Google — הכתובות ממוקמות בדיוק גבוה יותר. פועל דרך הגשר כדי שהמפתח יישאר מוסתר.</div>
-    <div class="note" style="margin-top:8px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
-      <b>הפעלה חד-פעמית:</b>
-      <ol style="margin:6px 0 0;padding-inline-start:20px">
-        <li>נכנסים ל-<b>console.cloud.google.com</b> → יוצרים פרויקט → <b>APIs &amp; Services → Library</b> → מפעילים <b>Geocoding API</b> (למיקום) וגם <b>Distance Matrix API</b> (למרחק הליכה בפופאפ).</li>
-        <li><b>Credentials → Create credentials → API key</b> (אם מגבילים את המפתח — יש לאשר <b>גם Geocoding API וגם Distance Matrix API</b>).</li>
-        <li>מפעילים <b>Billing</b> (כרטיס אשראי) — נדרש גם לשכבה החינמית. אפשר להגדיר תקרת תקציב/מכסה למניעת חיוב. עד ~10,000 המרות בחודש — חינם.</li>
-        <li>ב-Apps Script של הגשר: <b>Project Settings → Script Properties → Add script property</b>, בשם <b>GOOGLE_MAPS_API_KEY</b> והערך = המפתח, ולפרוס מחדש (New version).</li>
-        <li>ב"מפת שיבוץ" לוחצים <b>"רענון מיקומים"</b> כדי להמיר מחדש בדיוק Google.</li>
-      </ol>
-    </div>
-  </div>`:""}
-
-  <div class="panel">
-    <h2>גיבוי ושחזור</h2>
-    <div class="sub">הנתונים נשמרים בענן ומסונכרנים אוטומטית. אפשר לייצא גיבוי JSON, ולשחזר קובץ גיבוי — כולל גיבוי מהגרסה הישנה בטלפון (כך מעבירים את הנתונים שהוזנו שם אל הענן).</div>
-    <div class="row">
-      <button class="btn ghost" id="exportAll">⬇️ ייצוא גיבוי (JSON)</button>
-      <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">⬆️ שחזור מגיבוי<input type="file" id="importAll" accept=".json" hidden></label>
-    </div>
-  </div>`;
+  `;
 
   renderAuthBox();
-  renderDriveBox();
   renderInstallBox();
 
   // ניהול משתמשים (למנהל בלבד) — דרך Cloud Function adminUsers
@@ -6772,37 +6853,6 @@ function viewSettings(root){
     const ce=$("#contact-email-save"); if(ce) ce.onclick=()=>{ DB.settings.contactEmail=($("#contact-email").value||"").trim(); save(); toast("נשמר"); };
   }
 
-  // רישום דיגיטלי — נדרים פלוס (שמירת הערות)
-  { const ns=$("#ned-save"); if(ns) ns.onclick=()=>{ DB.settings.nedarim=Object.assign({},DB.settings.nedarim,{ notes:($("#ned-notes").value||"").trim() }); save(); toast("ההערות נשמרו"); }; }
-
-  // רישום דיגיטלי — טופס להורים
-  { const pub=$("#rf-publish");
-    if(pub){
-      let stampVal=(regFormCfg().stampImage)||"";
-      const stImg=$("#rf-stamp-preview"), stClr=$("#rf-stamp-clear"), stFile=$("#rf-stamp-file");
-      if(stFile) stFile.onchange=()=>{ const f=stFile.files&&stFile.files[0]; if(!f)return;
-        const r=new FileReader(); r.onload=()=>{ stampVal=String(r.result||""); if(stImg){ stImg.src=stampVal; stImg.style.display=""; } if(stClr) stClr.style.display=""; }; r.readAsDataURL(f); };
-      if(stClr) stClr.onclick=()=>{ stampVal=""; if(stImg){ stImg.src=""; stImg.style.display="none"; } stClr.style.display="none"; if(stFile) stFile.value=""; };
-      const collect=()=>({ year:($("#rf-year").value||"").trim(), notifyEmail:($("#rf-notify").value||"").trim(),
-        ownName:($("#rf-ownName").value||"").trim(), ownSymbol:($("#rf-ownSymbol").value||"").trim(), ownAddress:($("#rf-ownAddress").value||"").trim(),
-        recognizedFrom:($("#rf-recognizedFrom").value||"").trim(), signName:($("#rf-signName").value||"").trim(), institutionName:($("#rf-institutionName").value||"").trim(),
-        stampImage:stampVal });
-      pub.onclick=async ()=>{
-        DB.settings.regForm=Object.assign({},DB.settings.regForm,collect()); save();
-        if(!DRIVE_READY){ toast("נשמר. לפרסום הטופס להורים יש להגדיר חיבור גשר (דרייב)."); return; }
-        pub.disabled=true; const old=pub.textContent; pub.textContent="מפרסם…";
-        try{ await regFormPublish(); toast("הטופס פורסם ועודכן ✅"); }
-        catch(e){ toast(driveErrHe(e)); }
-        finally{ pub.disabled=false; pub.textContent=old; }
-      };
-      const rv=$("#rf-review"); if(rv) rv.onclick=openRegReview;
-      const cp=$("#rf-copy"); if(cp) cp.onclick=async ()=>{ const t=$("#rf-link"); try{ await navigator.clipboard.writeText(t.value); toast("הקישור הועתק"); }catch(e){ t.select(); document.execCommand&&document.execCommand("copy"); toast("הקישור הועתק"); } };
-    } }
-
-  // עוזר AI — בחירת מודל
-  { const am=$("#ai-model"); if(am){ am.value=(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash";
-      const s=$("#ai-model-save"); if(s) s.onclick=()=>{ DB.settings.aiModel=am.value; save(); toast("המודל נשמר"); }; } }
-
   // years
   const yb=$("#years-box");
   yb.innerHTML=`<div class="row" style="gap:8px">${DB.years.map(y=>`<span class="pill ${y===DB.activeYear?'ok':'neutral'}" style="padding:6px 12px">${esc(y)} ${(admin&&DB.years.length>1)?`<button class="btn ghost sm" data-dely="${esc(y)}" style="padding:0 6px;margin-inline-start:6px">✕</button>`:''}</span>`).join("")}</div>`;
@@ -6892,10 +6942,6 @@ function viewSettings(root){
 
   if(admin) $("#saveTzMin").onclick=()=>{ const raw=$("#tzmin").value.trim(); const v=+raw; if(!raw){ delete DB.settings.tzaharonMin; save(); toast("נוקה"); } else if(v>=0){ DB.settings.tzaharonMin=v; save(); toast("נשמר"); } };
 
-  $("#exportAll").onclick=()=>{ downloadBlob(new Blob([JSON.stringify(DB,null,2)],{type:"application/json"}), `גיבוי-רישום-${new Date().toISOString().slice(0,10)}.json`); };
-  $("#importAll").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
-    readFileSmart(f, txt=>{ try{ const d=JSON.parse(txt); if(!d.students){throw 0;} if(confirm("שחזור יחליף את כל הנתונים הקיימים. להמשיך?")){ DB=Object.assign(blankDB(),d); save(); route(); toast("שוחזר בהצלחה"); } }catch(_){ toast("קובץ לא תקין"); } });
-  };
 }
 
 /* ============================================================
