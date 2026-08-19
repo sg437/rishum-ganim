@@ -1,9 +1,68 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // רק משתמש מחובר (שהוגדר ב-Firebase Authentication) יכול לקרוא/לכתוב
+
+    /* =====================================================================
+       אכיפת הרשאות בצד השרת (Firestore) — לא רק בדפדפן.
+       החוקים כאן משכפלים במדויק את enforceAccess() שבאפליקציה, כך שכל משתמש
+       שהמערכת מתירה לו כיום ממשיך לעבוד, אבל חשבון שאינו מורשה (למשל כניסת
+       Google של אדם אקראי) נחסם כבר בשרת — גם אם הוא פונה ישירות ל-REST
+       ועוקף את מסך התוכנה.
+
+       מודל ההרשאות (זהה לאפליקציה):
+         • רשימת המורשים = מנהלים ∪ allowedEmails ∪ מי שכבר ערך (userActivity),
+           השמורה במסמך  app/meta  תחת  settings.
+         • כל משתמש מחובר — בכל שיטת כניסה — חייב שהמייל שלו יופיע ברשימה.
+           (הכניסה למערכת היא Google בלבד; חשבונות אימייל/סיסמה בוטלו.)
+         • מערכת "טרייה" ללא הגדרות → פתוחה (איתחול), בדיוק כמו accessConfigured().
+       ===================================================================== */
+
+    function metaPath()   { return /databases/$(database)/documents/app/meta; }
+    function metaExists() { return exists(metaPath()); }
+    function metaData()   { return get(metaPath()).data; }
+    function settings()   { return ('settings' in metaData()) ? metaData().settings : {}; }
+
+    // מחזיר את הערך כרשימה, או רשימה ריקה אם המפתח חסר / אינו רשימה
+    function asList(m, k)  { return (k in m) && (m[k] is list) ? m[k] : []; }
+
+    // האם הוגדרה כלל רשימת-מורשים (אחרת המערכת במצב איתחול — פתוחה)
+    function accessConfigured() {
+      return metaExists() && (
+           asList(settings(), 'admins').size() > 0
+        || asList(settings(), 'allowedEmails').size() > 0
+        || ( ('userActivity' in settings()) && settings().userActivity.keys().size() > 0 )
+      );
+    }
+
+    function authEmail()  { return request.auth != null && request.auth.token.email != null ? request.auth.token.email : ''; }
+    function emailLower() { return authEmail().lower(); }
+
+    // בדיקת חברות ברשימה — משווה גם למקור וגם ל-lowercase (מיילים נשמרים לעיתים באותיות שונות)
+    function inList(l)    { return l.hasAny([ authEmail(), emailLower() ]); }
+
+    function isKnownEmail() {
+      return inList(asList(settings(), 'admins'))
+          || inList(asList(settings(), 'allowedEmails'))
+          || ( ('userActivity' in settings()) && (emailLower() in settings().userActivity) );
+    }
+
+    // מקביל ל-enforceAccess() בקוד: כל מחובר חייב להופיע ברשימת המורשים.
+    // מערכת שטרם הוגדרה — פתוחה (איתחול).
+    function isAllowedUser() {
+      return request.auth != null && (
+           !accessConfigured()
+        || isKnownEmail()
+      );
+    }
+
+    // נתוני האפליקציה — רק משתמש מורשה קורא/כותב
+    match /app/{docId} {
+      allow read, write: if isAllowedUser();
+    }
+
+    // כל השאר חסום כברירת מחדל
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
