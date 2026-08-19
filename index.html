@@ -1145,17 +1145,18 @@ function isAdmin(){
 }
 /* ---------- הרשאת עריכה לפי חינוך (הסתרה בממשק — סעיף 7) ----------
    DB.settings.editScopes[email] = "רגיל" | 'ח"מ' → המשתמש רשאי לערוך רק חינוך זה
-   (רואה הכל, אך אינו יכול לשמור/למחוק בחינוך השני). מנהל מערכת עורך הכל. */
+   (רואה הכל, אך אינו יכול לשמור/למחוק בחינוך השני);
+   = "צופה" → צפייה בלבד, ללא עריכה כלל. ריק/חסר = עריכה מלאה. מנהל מערכת עורך הכל. */
 function myEditScope(){
   if(isAdmin()) return "";
   const em=(currentUser&&currentUser.email||"").toLowerCase();
   const map=(DB.settings&&DB.settings.editScopes)||{};
-  for(const k in map){ if(String(k).toLowerCase()===em){ const v=map[k]; return (v==="רגיל"||v==='ח"מ')?v:""; } }
+  for(const k in map){ if(String(k).toLowerCase()===em){ const v=map[k]; return (v==="רגיל"||v==='ח"מ'||v==="צופה")?v:""; } }
   return "";
 }
-function canEditEdu(edu){ const sc=myEditScope(); if(!sc) return true; return (edu==='ח"מ'?'ח"מ':'רגיל')===sc; }
+function canEditEdu(edu){ const sc=myEditScope(); if(!sc) return true; if(sc==="צופה") return false; return (edu==='ח"מ'?'ח"מ':'רגיל')===sc; }
 function canEditRec(x){ return canEditEdu(eduLabel(x)); }
-function editScopeNote(){ const sc=myEditScope(); return sc ? ("לתצוגה בלבד — הרשאת עריכה בחינוך "+(sc==='ח"מ'?'מיוחד':'רגיל')+" בלבד.") : ""; }
+function editScopeNote(){ const sc=myEditScope(); if(sc==="צופה") return "לתצוגה בלבד — ללא הרשאת עריכה."; return sc ? ("לתצוגה בלבד — הרשאת עריכה בחינוך "+(sc==='ח"מ'?'מיוחד':'רגיל')+" בלבד.") : ""; }
 /* הפיכת מודל פתוח לקריאה-בלבד: השבתת שדות + הסתרת כפתורי שמירה/מחיקה שצוינו + הודעה */
 function makeModalReadOnly(hideIds){
   const m=$("#modal"); if(!m) return;
@@ -3155,7 +3156,7 @@ function openStudent(s){
   /* הרשאת עריכה לפי חינוך (הסתרה בממשק): רשומה קיימת בחינוך שאינו מורשה → קריאה בלבד;
      רשומה חדשה למשתמש מוגבל → נעילת שדה החינוך לחינוך המורשה */
   if(!isNew && !canEditRec(s)) makeModalReadOnly(["saveStu","delStu"]);
-  else if(isNew){ const sc=myEditScope(); if(sc){ const e=$("#s-education"); if(e){ e.value=sc; e.disabled=true; } } }
+  else if(isNew){ const sc=myEditScope(); if(sc==="צופה") makeModalReadOnly(["saveStu","delStu"]); else if(sc){ const e=$("#s-education"); if(e){ e.value=sc; e.disabled=true; } } }
 }
 function suggestFolder(s){
   const name=[s.lastName,s.firstName].filter(Boolean).join(" ")||"ללא שם";
@@ -4447,7 +4448,7 @@ function openGan(g){
   $("#cancelGan").onclick=closeModal;
   if(!isNew) $("#delGan").onclick=()=>{ if(confirm("למחוק את הגן?")){ DB.gans=DB.gans.filter(x=>x.id!==g.id); save(); closeModal(); route(); toast("הגן נמחק"); } };
   if(!isNew && !canEditRec(g)) makeModalReadOnly(["saveGan","delGan"]);
-  else if(isNew){ const sc=myEditScope(); if(sc){ const e=$("#g-education"); if(e){ e.value=sc; e.disabled=true; } } }
+  else if(isNew){ const sc=myEditScope(); if(sc==="צופה") makeModalReadOnly(["saveGan","delGan"]); else if(sc){ const e=$("#g-education"); if(e){ e.value=sc; e.disabled=true; } } }
 }
 
 /* ====== ייבוא מרוכז של גנים ======
@@ -5706,7 +5707,7 @@ function openStaff(m){
   $("#cancelSt").onclick=closeModal;
   if(!isNew)$("#delSt").onclick=()=>{ if(confirm("למחוק?")){ DB.staff=DB.staff.filter(x=>x.id!==m.id); save(); closeModal(); route(); } };
   if(!isNew && !canEditRec(m)) makeModalReadOnly(["saveSt","delSt"]);
-  else if(isNew){ const sc=myEditScope(); if(sc){ const e=$("#st-education"); if(e){ e.value=sc; e.disabled=true; } } }
+  else if(isNew){ const sc=myEditScope(); if(sc==="צופה") makeModalReadOnly(["saveSt","delSt"]); else if(sc){ const e=$("#st-education"); if(e){ e.value=sc; e.disabled=true; } } }
 }
 function openStaffImport(){
   const state={ list:[], mapped:[] };
@@ -6977,17 +6978,6 @@ function viewSettings(root){
   </div>
 
   ${admin?`<div class="panel">
-    <h2>הרשאות עריכה לפי חינוך</h2>
-    <div class="sub">אפשר להגביל משתמש/ת כך שיראה/תראה את <b>כל</b> הנתונים אך יוכל/תוכל <b>לערוך רק חינוך אחד</b> (רגיל או מיוחד). למשל מפקחת חינוך מיוחד תוכל לערוך רק חינוך מיוחד, ותראה את הרגיל בלבד. מנהל מערכת עורך תמיד הכל. <b>שים/י לב:</b> ההגבלה היא ברמת הממשק (הסתרת עריכה/שמירה) ולא חסימת שרת.</div>
-    <div id="editscopes-box"></div>
-    <div class="row" style="margin-top:10px">
-      <div class="field grow"><label>אימייל המשתמש/ת</label><input id="es-email" type="email" inputmode="email" placeholder="name@example.com"></div>
-      <div class="field"><label>רשאי/ת לערוך</label><select id="es-edu"><option value="רגיל">רק חינוך רגיל</option><option value="ח&quot;מ">רק חינוך מיוחד</option></select></div>
-      <button class="btn" id="es-add" style="align-self:end">הוסף הגבלה</button>
-    </div>
-  </div>`:""}
-
-  ${admin?`<div class="panel">
     <h2>💡 פניות והצעות שיפור</h2>
     <div class="sub">הודעות שנשלחו דרך "יצירת קשר / הצעה" בתפריט. אפשר להגדיר כתובת מייל שאליה ייפתחו הפניות.</div>
     <div class="row" style="margin-top:8px;max-width:460px">
@@ -7005,9 +6995,10 @@ function viewSettings(root){
 
   ${admin?`<div class="panel">
     <h2>ניהול משתמשים</h2>
-    <div class="sub">הכניסה למערכת היא עם חשבון <b>Google בלבד</b>. כאן מאשרים כתובות Google שיוכלו להיכנס — מזינים מייל ולוחצים "אשר משתמש". רק כתובת שמופיעה ברשימה כאן (או מנהל מערכת) תוכל להיכנס.</div>
+    <div class="sub">הכניסה למערכת היא עם חשבון <b>Google בלבד</b>. כאן מאשרים כתובות Google שיוכלו להיכנס, קובעים <b>שם</b> לכל משתמש, ומגדירים <b>מה מותר לו/ה לערוך</b>: חינוך רגיל, חינוך מיוחד, או צפייה בלבד. רק כתובת שמופיעה ברשימה כאן (או מנהל מערכת) תוכל להיכנס.</div>
     <div class="row" style="margin-top:10px">
-      <div class="field grow" style="min-width:240px"><label>אימייל Google של המשתמש</label><input id="nu-email" type="email" inputmode="email" autocomplete="off" placeholder="name@gmail.com"></div>
+      <div class="field" style="min-width:150px"><label>שם (לא חובה)</label><input id="nu-name" autocomplete="off" placeholder="שם מלא"></div>
+      <div class="field grow" style="min-width:220px"><label>אימייל Google של המשתמש</label><input id="nu-email" type="email" inputmode="email" autocomplete="off" placeholder="name@gmail.com"></div>
       <button class="btn" id="nu-add" style="align-self:end">➕ אשר משתמש</button>
     </div>
     <div id="nu-msg" class="note" style="display:none;margin-top:10px"></div>
@@ -7034,14 +7025,24 @@ function viewSettings(root){
       const adminSet=new Set((s.admins||[]).map(x=>String(x).toLowerCase()));
       const allowedSet=new Set((s.allowedEmails||[]).map(x=>String(x).toLowerCase()));
       const activity=s.userActivity||{};
+      const names=s.userNames||{};
+      const scopes=s.editScopes||{};
       const all=new Set([...adminSet, ...allowedSet, ...Object.keys(activity).map(e=>String(e).toLowerCase())]);
       const rows=[...all].sort();
       if(!rows.length){ usersBox.innerHTML=`<div class="hint">עדיין אין משתמשים מורשים. הוסף/י כתובת Google למעלה.</div>`; return; }
       const badge=em=> adminSet.has(em) ? '<span class="pill ok">מנהל</span>'
                      : allowedSet.has(em) ? '<span class="pill neutral">מורשה</span>'
                      : '<span class="pill neutral" title="נכנס/ה בעבר וטרם אושר/ה במפורש ברשימה">ערך/ה בעבר</span>';
-      usersBox.innerHTML=`<div class="table-wrap"><table style="min-width:520px"><thead><tr>
-        <th>אימייל</th><th>סטטוס</th><th>עריכה אחרונה בנתונים</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
+      const scopeCell=(em,isAdm)=>{
+        if(isAdm) return '<span class="hint">עריכה מלאה</span>';
+        const cur=(scopes[em]==='ח"מ'||scopes[em]==='רגיל'||scopes[em]==='צופה')?scopes[em]:"";
+        const opt=(v,l)=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(l)}</option>`;
+        return `<select class="nu-scope" data-em="${esc(em)}" style="min-width:170px">${
+          opt("","עריכה מלאה (רגיל + מיוחד)")+opt("רגיל","רק חינוך רגיל")+opt('ח"מ',"רק חינוך מיוחד")+opt("צופה","צופה בלבד (ללא עריכה)")
+        }</select>`;
+      };
+      usersBox.innerHTML=`<div class="table-wrap"><table style="min-width:760px"><thead><tr>
+        <th>אימייל</th><th>שם</th><th>סטטוס</th><th>הרשאת עריכה</th><th>עריכה אחרונה</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
         rows.map(em=>{
           const isMe=em===meEmail, isAdm=adminSet.has(em), isAllowed=allowedSet.has(em);
           const actions = isAdm
@@ -7051,7 +7052,9 @@ function viewSettings(root){
                 : `<button class="btn ghost sm" data-add="${esc(em)}">➕ אשר לרשימה</button>`);
           return `<tr>
             <td dir="ltr" style="text-align:right">${esc(em)}${isMe?' <span class="pill neutral">זה אני</span>':''}</td>
+            <td><input class="nu-nm" data-em="${esc(em)}" value="${esc(names[em]||"")}" placeholder="—" autocomplete="off" style="min-width:120px"></td>
             <td>${badge(em)}</td>
+            <td>${scopeCell(em,isAdm)}</td>
             <td>${fmtWhen(activity[em])}</td>
             <td style="text-align:end;white-space:nowrap">${actions}</td></tr>`;
         }).join("")}</tbody></table></div>`;
@@ -7059,21 +7062,35 @@ function viewSettings(root){
         const em=b.dataset.rm;
         if(!confirm(`להסיר את ההרשאה של ${em}? הוא/היא לא יוכל/תוכל יותר להיכנס למערכת.`)) return;
         DB.settings.allowedEmails=(DB.settings.allowedEmails||[]).filter(x=>String(x).toLowerCase()!==em);
-        save(); showNuMsg(`ההרשאה של ${em} הוסרה.`, true); renderUsers();
+        save(); toast(`ההרשאה של ${em} הוסרה`); renderUsers();
       });
       usersBox.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>addAllowed(b.dataset.add));
+      usersBox.querySelectorAll(".nu-nm").forEach(inp=>inp.onchange=()=>{
+        const em=inp.dataset.em, v=inp.value.trim();
+        DB.settings.userNames=Object.assign({}, DB.settings.userNames||{});
+        if(v) DB.settings.userNames[em]=v; else delete DB.settings.userNames[em];
+        save(); toast("השם נשמר");
+      });
+      usersBox.querySelectorAll(".nu-scope").forEach(sel=>sel.onchange=()=>{
+        const em=sel.dataset.em, v=sel.value;
+        const m=Object.assign({}, DB.settings.editScopes||{});
+        if(v) m[em]=v; else delete m[em];
+        DB.settings.editScopes=m; save(); toast("הרשאת העריכה עודכנה"); renderUsers();
+      });
     };
-    const addAllowed=raw=>{
+    const addAllowed=(raw, rawName)=>{
       const em=String(raw||"").trim().toLowerCase();
       if(!isEmail(em)){ showNuMsg("יש להזין כתובת אימייל תקינה.", false); return; }
+      const nm=String(rawName||"").trim();
+      if(nm){ DB.settings.userNames=Object.assign({}, DB.settings.userNames||{}); DB.settings.userNames[em]=nm; }
       const cur=(DB.settings.allowedEmails||[]).map(x=>String(x).toLowerCase());
       const admins=(DB.settings.admins||[]).map(x=>String(x).toLowerCase());
-      if(admins.includes(em)){ showNuMsg(`${em} כבר מנהל מערכת — מורשה ממילא.`, true); return; }
-      if(cur.includes(em)){ showNuMsg(`${em} כבר ברשימת המורשים.`, true); return; }
+      if(admins.includes(em)){ save(); showNuMsg(`${em} כבר מנהל מערכת — מורשה ממילא.`, true); renderUsers(); return; }
+      if(cur.includes(em)){ save(); showNuMsg(`${em} כבר ברשימת המורשים.`, true); renderUsers(); return; }
       DB.settings.allowedEmails=(DB.settings.allowedEmails||[]).concat(em);
       save(); showNuMsg(`${em} אושר/ה. עכשיו אפשר להיכנס עם חשבון ה-Google הזה.`, true); renderUsers();
     };
-    $("#nu-add").onclick=()=>{ addAllowed($("#nu-email").value); $("#nu-email").value=""; };
+    $("#nu-add").onclick=()=>{ addAllowed($("#nu-email").value, $("#nu-name").value); $("#nu-email").value=""; $("#nu-name").value=""; };
     $("#nu-email").addEventListener("keydown",ev=>{ if(ev.key==="Enter") $("#nu-add").click(); });
     renderUsers();
   }
@@ -7131,22 +7148,6 @@ function viewSettings(root){
     $("#addAdmin").onclick=()=>{ const e=$("#new-admin").value.trim().toLowerCase(); if(!e)return;
       if(admins.map(x=>x.toLowerCase()).includes(e)){ toast("כבר ברשימה"); return; }
       DB.settings.admins=admins.concat(e); save(); route(); toast("נוסף מנהל"); };
-  }
-
-  // הרשאות עריכה לפי חינוך
-  const esBox=$("#editscopes-box");
-  if(esBox){
-    const scopes=DB.settings.editScopes||{}; const emails=Object.keys(scopes);
-    esBox.innerHTML = emails.length
-      ? `<div class="table-wrap"><table><thead><tr><th>אימייל</th><th>רשאי/ת לערוך</th>${admin?'<th></th>':''}</tr></thead><tbody>${emails.map(e=>`<tr><td>${esc(e)}</td><td><span class="pill ${scopes[e]==='ח"מ'?'warn':'neutral'}">רק חינוך ${scopes[e]==='ח"מ'?'מיוחד':'רגיל'}</span></td>${admin?`<td><button class="btn ghost sm" data-esdel="${esc(e)}">הסר</button></td>`:''}</tr>`).join("")}</tbody></table></div>`
-      : `<div class="hint">אין הגבלות מוגדרות — כל משתמש מורשה עורך את שני סוגי החינוך.</div>`;
-    if(admin){
-      esBox.querySelectorAll("[data-esdel]").forEach(b=> b.onclick=()=>{ const e=b.dataset.esdel;
-        const m=Object.assign({},DB.settings.editScopes); delete m[e]; DB.settings.editScopes=m; save(); route(); toast("ההגבלה הוסרה"); });
-      const esa=$("#es-add"); if(esa) esa.onclick=()=>{ const e=($("#es-email").value||"").trim().toLowerCase(); const edu=$("#es-edu").value;
-        if(!e){ toast("יש להזין אימייל"); return; }
-        DB.settings.editScopes=Object.assign({},DB.settings.editScopes,{[e]:(edu==='ח"מ'?'ח"מ':'רגיל')}); save(); route(); toast("ההגבלה נשמרה"); };
-    }
   }
 
   // פניות והצעות שיפור
