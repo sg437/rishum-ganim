@@ -12,8 +12,8 @@ service cloud.firestore {
        מודל ההרשאות (זהה לאפליקציה):
          • רשימת המורשים = מנהלים ∪ allowedEmails ∪ מי שכבר ערך (userActivity),
            השמורה במסמך  app/meta  תחת  settings.
-         • כניסת Google      → מותרת רק אם המייל ברשימה.
-         • כניסת אימייל/סיסמה → מותרת (חשבונות אלה מוקצים ע"י מנהל בלבד).
+         • כל משתמש מחובר — בכל שיטת כניסה — חייב שהמייל שלו יופיע ברשימה.
+           (הכניסה למערכת היא Google בלבד; חשבונות אימייל/סיסמה בוטלו.)
          • מערכת "טרייה" ללא הגדרות → פתוחה (איתחול), בדיוק כמו accessConfigured().
        ===================================================================== */
 
@@ -46,14 +46,11 @@ service cloud.firestore {
           || ( ('userActivity' in settings()) && (emailLower() in settings().userActivity) );
     }
 
-    function provider() { return request.auth.token.firebase.sign_in_provider; }
-
-    // מקביל ל-enforceAccess() בקוד: Google חייב להיות ברשימה; אימייל/סיסמה מותר;
-    // מערכת שטרם הוגדרה — פתוחה.
+    // מקביל ל-enforceAccess() בקוד: כל מחובר חייב להופיע ברשימת המורשים.
+    // מערכת שטרם הוגדרה — פתוחה (איתחול).
     function isAllowedUser() {
       return request.auth != null && (
-           provider() != 'google.com'
-        || !accessConfigured()
+           !accessConfigured()
         || isKnownEmail()
       );
     }

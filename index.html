@@ -774,7 +774,7 @@ async function testCloudConnection(){
   if(!out) return;
   const G=t=>`<b style="color:var(--good)">${t}</b>`, R=t=>`<b style="color:var(--bad)">${t}</b>`;
   const netBlocked=/failed to fetch|networkerror|load failed|type ?error|err_|ERR_/i.test(realMsg);
-  let msg = email ? `מחובר/ת כ: <b dir="ltr">${esc(email)}</b>.<br>` : `${R("לא מחובר/ת לחשבון")} — יש להתחבר עם אימייל וסיסמה.<br>`;
+  let msg = email ? `מחובר/ת כ: <b dir="ltr">${esc(email)}</b>.<br>` : `${R("לא מחובר/ת לחשבון")} — יש להתחבר עם חשבון Google מורשה.<br>`;
   if(email){
     msg += realOk ? `בדיקת חיבור אמיתית לשרת: ${G("עברה ✓")} — החיבור תקין, אפשר לשמור.<br>`
       : `בדיקת חיבור אמיתית לשרת: ${R("נכשלה")} ${esc(realMsg)} — ${netBlocked?"הרשת/הדפדפן חוסמים כרגע את החיבור ל-Firebase. עברו ל<b>רשת סלולרית</b> (או להיפך), כבו <b>VPN/סינון תוכן</b>, או נסו <b>דפדפן/מכשיר אחר</b>":"נסו שוב מאוחר יותר"}.<br>`;
@@ -1179,11 +1179,10 @@ function knownEmails(){
 function accessConfigured(){ const s=DB.settings||{}; return !!((s.admins&&s.admins.length)||(s.allowedEmails&&s.allowedEmails.length)||(s.userActivity&&Object.keys(s.userActivity).length)); }
 function emailAllowed(email){ if(!accessConfigured()) return true; return knownEmails().has(String(email||"").toLowerCase()); }
 let _accessDenied=false;
-/* אוכף רשימת-מורשים להתחברות Google (חשבונות אימייל/סיסמה מוקצים ע"י מנהל ולכן פטורים). */
+/* אוכף רשימת-מורשים לכל משתמש מחובר. הכניסה למערכת היא Google בלבד, וכל כתובת
+   חייבת להופיע ברשימת המורשים (מנהלים ∪ allowedEmails ∪ מי שכבר ערך). */
 function enforceAccess(){
   if(!currentUser) return true;
-  const prov=(currentUser.providerData&&currentUser.providerData[0]&&currentUser.providerData[0].providerId)||"";
-  if(prov!=="google.com") return true;
   if(emailAllowed(currentUser.email)) return true;
   if(_accessDenied) return false;
   _accessDenied=true;
@@ -1566,7 +1565,7 @@ function guideContent(){
 
   const quickstart = `<b>🚀 התחלה מהירה</b>
     <ol style="margin:6px 0 0;padding-inline-start:20px">
-      <li>נכנסים למערכת עם <b>Google</b> (או אימייל/סיסמה).</li>
+      <li>נכנסים למערכת עם חשבון <b>Google</b> מורשה.</li>
       <li>פותחים את <b>☰ התפריט</b> (צד שמאל) ובוחרים <b>שנה</b> ו<b>חינוך</b> — עמוד הבית יתמלא בנתונים.</li>
       <li>בלשונית <b>תיקי התלמידות</b> לוחצים <b>➕ הוספת ילדה</b>; מוסיפים <b>גנים</b> ומשבצים כל ילדה.</li>
       <li>הכול נשמר <b>אוטומטית בענן</b> ומסתנכרן בין המכשירים — החיווי בתפריט מראה "✓ נשמר בענן".</li>
@@ -1754,8 +1753,8 @@ function guideContent(){
 
     { icon:"🔐", title:"כניסה למערכת", html:
       `<ul>
-        <li><b>התחברות עם Google</b> — לחיצה על הכפתור במסך הכניסה ובחירת החשבון. מוגבל למיילים <b>המוגדרים במערכת</b> בלבד.</li>
-        <li>לחלופין — <b>אימייל וסיסמה</b> שהוגדרו על ידי מנהל המערכת.</li>
+        <li><b>התחברות עם Google בלבד</b> — לחיצה על הכפתור במסך הכניסה ובחירת החשבון. מוגבל למיילים <b>המורשים במערכת</b> בלבד.</li>
+        <li>אישור משתמש חדש — מנהל מוסיף את כתובת ה-Google שלו בהגדרות → <b>ניהול משתמשים</b>.</li>
         <li><b>התנתקות</b> — בתחתית תפריט הצד (☰).</li>
       </ul>` },
 
@@ -1940,58 +1939,32 @@ function renderLogin(){
   $("#view").innerHTML=`
   <div class="panel login-card">
     <h2>🔒 כניסה למערכת</h2>
-    <div class="sub">התחבר/י עם חשבון Google שהוגדר לך, או עם אימייל וסיסמה.</div>
+    <div class="sub">הכניסה למערכת היא עם חשבון <b>Google המורשה</b> בלבד.</div>
     <button class="btn ghost" id="lg-google" type="button" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;font-weight:800">
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
       התחברות עם Google
     </button>
-    <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:.82rem">
-      <span style="flex:1;height:1px;background:var(--border)"></span>או<span style="flex:1;height:1px;background:var(--border)"></span>
-    </div>
-    <div class="grid" style="gap:10px">
-      <div><label>אימייל</label><input id="lg-user" type="email" autocomplete="username" inputmode="email"></div>
-      <div><label>סיסמה</label><input id="lg-pass" type="password" autocomplete="current-password"></div>
-    </div>
-    <div id="lg-err" class="note" style="display:none;margin-top:10px"></div>
-    <div class="foot"><button class="btn" id="lg-go">כניסה</button>
-      <button class="btn ghost" id="lg-reset" type="button">שכחתי סיסמה</button></div>
+    <div id="lg-err" class="note" style="display:none;margin-top:12px"></div>
+    <div class="hint" style="margin-top:12px">אין לך גישה? פנה/י למנהל המערכת כדי שיאשר את כתובת ה-Google שלך.</div>
   </div>`;
-  const go=async ()=>{
-    const u=$("#lg-user").value.trim(), p=$("#lg-pass").value, e=$("#lg-err");
-    if(!u||!p){ e.style.display="block"; e.textContent="יש להזין אימייל וסיסמה"; return; }
-    try{ await signInWithEmailAndPassword(auth,u,p); }
-    catch(err){ e.style.display="block"; e.textContent=firebaseErrHe(err.code); }
-  };
-  $("#lg-go").onclick=go;
   $("#lg-google").onclick=async ()=>{
     const e=$("#lg-err"); e.style.display="none";
     try{ const prov=new GoogleAuthProvider(); prov.setCustomParameters({ prompt:"select_account" }); await signInWithPopup(auth, prov); }
     catch(err){ if(err&&/popup-closed|cancelled|user-cancelled/i.test(err.code||"")) return;
       e.style.display="block"; e.textContent=firebaseErrHe(err.code); }
   };
-  $("#lg-reset").onclick=async ()=>{
-    const u=$("#lg-user").value.trim(), e=$("#lg-err");
-    if(!u){ e.style.display="block"; e.textContent="הזן/י אימייל ואז לחצ/י שוב על 'שכחתי סיסמה'"; return; }
-    try{ await sendPasswordResetEmail(auth,u); e.style.display="block"; e.style.background="var(--good-soft)"; e.style.color="var(--good)"; e.textContent="נשלח מייל לאיפוס סיסמה — בדוק/י את תיבת הדואר"; }
-    catch(err){ e.style.display="block"; e.textContent=firebaseErrHe(err.code); }
-  };
-  ["lg-user","lg-pass"].forEach(id=>$("#"+id).addEventListener("keydown",ev=>{ if(ev.key==="Enter") go(); }));
-  $("#lg-user").focus();
 }
 async function doSignOut(){ try{ await signOut(auth); toast("התנתקת מהמערכת"); }catch(e){} }
 function renderAuthBox(){
   const box=$("#auth-box"); if(!box) return;
   const email = currentUser? currentUser.email : "—";
   box.innerHTML=`
-    <div class="note">👤 מחובר/ת כ: <b>${esc(email)}</b></div>
+    <div class="note">👤 מחובר/ת כ: <b>${esc(email)}</b> <span class="pill neutral">Google</span></div>
     <div class="row" style="margin-top:10px">
-      <button class="btn ghost" id="au-reset" type="button">שליחת מייל לאיפוס סיסמה</button>
       <button class="btn danger" id="au-signout" type="button" style="margin-inline-start:auto">יציאה מהמערכת</button>
     </div>
-    <div class="hint">${isAdmin()?'הוספת משתמשים, איפוס סיסמה ומחיקה — בקטע "ניהול משתמשים" למטה (למנהלי מערכת). לחלופין אפשר תמיד לנהל משתמשים בקונסולת Firebase → Authentication.':'ניהול משתמשים (הוספה/הסרה/שינוי סיסמה) נעשה על-ידי מנהל מערכת, או בקונסולת Firebase → Authentication.'}</div>`;
+    <div class="hint">${isAdmin()?'אישור והסרה של משתמשים — בקטע "ניהול משתמשים" למטה (למנהלי מערכת). הכניסה למערכת היא עם חשבון Google מורשה בלבד.':'הכניסה למערכת היא עם חשבון Google מורשה בלבד. אישור משתמשים חדשים נעשה על-ידי מנהל מערכת.'}</div>`;
   $("#au-signout").onclick=doSignOut;
-  $("#au-reset").onclick=async ()=>{ if(!currentUser||!currentUser.email){ toast("אין אימייל"); return; }
-    try{ await sendPasswordResetEmail(auth,currentUser.email); toast("נשלח מייל לאיפוס סיסמה"); }catch(e){ toast("שגיאה בשליחה"); } };
 }
 
 /* ============================================================
@@ -7026,29 +6999,26 @@ function viewSettings(root){
 
   <div class="panel">
     <h2>חשבון והתחברות</h2>
-    <div class="sub">המערכת מאובטחת בכניסה עם אימייל וסיסמה (Firebase). הנתונים נשמרים בענן ומסונכרנים בין כל המכשירים.</div>
+    <div class="sub">המערכת מאובטחת בכניסה עם חשבון Google מורשה בלבד (Firebase). הנתונים נשמרים בענן ומסונכרנים בין כל המכשירים.</div>
     <div id="auth-box"></div>
   </div>
 
   ${admin?`<div class="panel">
     <h2>ניהול משתמשים</h2>
-    <div class="sub">הוספת משתמשים חדשים שיוכלו להתחבר למערכת (אימייל + סיסמה), איפוס סיסמה ומחיקה — למנהלי מערכת בלבד. פועל דרך גשר ה-Apps Script: <b>הוספת משתמש עובדת מיד</b>; רשימת המשתמשים, מחיקה ואיפוס סיסמה דורשים הגדרה חד-פעמית נוספת בגשר (ראה <b>SETUP.md</b> — "ניהול משתמשים"). תמיד אפשר גם לנהל בקונסולת Firebase → Authentication.</div>
+    <div class="sub">הכניסה למערכת היא עם חשבון <b>Google בלבד</b>. כאן מאשרים כתובות Google שיוכלו להיכנס — מזינים מייל ולוחצים "אשר משתמש". רק כתובת שמופיעה ברשימה כאן (או מנהל מערכת) תוכל להיכנס.</div>
     <div class="row" style="margin-top:10px">
-      <div class="field" style="min-width:150px"><label>שם (לא חובה)</label><input id="nu-name" autocomplete="off" placeholder="שם מלא"></div>
-      <div class="field" style="min-width:200px"><label>אימייל של המשתמש החדש</label><input id="nu-email" type="email" inputmode="email" autocomplete="off" placeholder="name@example.com"></div>
-      <div class="field" style="min-width:150px"><label>סיסמה ראשונית (6 תווים+)</label><input id="nu-pass" type="text" autocomplete="new-password" placeholder="לפחות 6 תווים"></div>
-      <button class="btn" id="nu-create" style="align-self:end">➕ צור משתמש</button>
+      <div class="field grow" style="min-width:240px"><label>אימייל Google של המשתמש</label><input id="nu-email" type="email" inputmode="email" autocomplete="off" placeholder="name@gmail.com"></div>
+      <button class="btn" id="nu-add" style="align-self:end">➕ אשר משתמש</button>
     </div>
     <div id="nu-msg" class="note" style="display:none;margin-top:10px"></div>
-    <div class="row" style="margin-top:14px"><button class="btn ghost" id="nu-refresh">🔄 רענן רשימת משתמשים</button></div>
-    <div id="users-box" style="margin-top:10px"></div>
+    <div id="users-box" style="margin-top:14px"></div>
   </div>`:""}
   `;
 
   renderAuthBox();
   renderInstallBox();
 
-  // ניהול משתמשים (למנהל בלבד) — דרך Cloud Function adminUsers
+  // ניהול משתמשים (למנהל בלבד) — אישור כתובות Google מורשות (allowedEmails)
   if(admin){
     const usersBox=$("#users-box");
     const nuMsg=$("#nu-msg");
@@ -7058,69 +7028,54 @@ function viewSettings(root){
       nuMsg.style.borderColor = ok? "var(--good)":"var(--bad)"; };
     const fmtWhen=v=>{ if(!v)return "—"; const d=new Date(v); return isNaN(d)? "—" : d.toLocaleDateString("he-IL"); };
     const meEmail=(currentUser&&currentUser.email||"").toLowerCase();
-    const activity=(DB.settings&&DB.settings.userActivity)||{};
-    const renderUsers=list=>{
-      if(!list || !list.length){ usersBox.innerHTML=`<div class="hint">אין משתמשים להצגה.</div>`; return; }
-      usersBox.innerHTML=`<div class="table-wrap"><table style="min-width:660px"><thead><tr>
-        <th>שם</th><th>אימייל</th><th>נוצר</th><th>עריכה אחרונה בנתונים</th><th>כניסה אחרונה</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
-        list.map(u=>`<tr>
-          <td>${u.name?esc(u.name):'<span style="color:var(--muted)">—</span>'}</td>
-          <td dir="ltr" style="text-align:right">${esc(u.email||"—")}${(u.email||"").toLowerCase()===meEmail?' <span class="pill neutral">זה אני</span>':''}</td>
-          <td>${fmtWhen(u.created)}</td>
-          <td>${fmtWhen(activity[(u.email||"").toLowerCase()])}</td>
-          <td>${fmtWhen(u.lastSignIn)}</td>
-          <td style="text-align:end;white-space:nowrap">
-            <button class="btn ghost sm" data-nm="${esc(u.uid)}" data-em="${esc(u.email||"")}" data-cur="${esc(u.name||"")}">✏️ שם</button>
-            <button class="btn ghost sm" data-pw="${esc(u.uid)}" data-em="${esc(u.email||"")}">🔑 סיסמה</button>
-            <button class="btn danger sm" data-del="${esc(u.uid)}" data-em="${esc(u.email||"")}" ${(u.email||"").toLowerCase()===meEmail?"disabled title=\"אי אפשר למחוק את עצמך\"":""}>🗑️ מחיקה</button>
-          </td></tr>`).join("")}</tbody></table></div>`;
-      usersBox.querySelectorAll("[data-nm]").forEach(b=>b.onclick=async ()=>{
-        const uid=b.dataset.nm, em=b.dataset.em, cur=b.dataset.cur||"";
-        const nm=prompt(`שם עבור ${em}:`, cur);
-        if(nm===null) return;
-        try{ await adminUsersCall("setName",{uid, name:String(nm).trim()}); showNuMsg(`השם של ${em} עודכן.`, true); loadUsers(); }
-        catch(e){ showNuMsg(adminUsersErrHe(e), false); }
+    const isEmail=s=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+    const renderUsers=()=>{
+      const s=DB.settings||{};
+      const adminSet=new Set((s.admins||[]).map(x=>String(x).toLowerCase()));
+      const allowedSet=new Set((s.allowedEmails||[]).map(x=>String(x).toLowerCase()));
+      const activity=s.userActivity||{};
+      const all=new Set([...adminSet, ...allowedSet, ...Object.keys(activity).map(e=>String(e).toLowerCase())]);
+      const rows=[...all].sort();
+      if(!rows.length){ usersBox.innerHTML=`<div class="hint">עדיין אין משתמשים מורשים. הוסף/י כתובת Google למעלה.</div>`; return; }
+      const badge=em=> adminSet.has(em) ? '<span class="pill ok">מנהל</span>'
+                     : allowedSet.has(em) ? '<span class="pill neutral">מורשה</span>'
+                     : '<span class="pill neutral" title="נכנס/ה בעבר וטרם אושר/ה במפורש ברשימה">ערך/ה בעבר</span>';
+      usersBox.innerHTML=`<div class="table-wrap"><table style="min-width:520px"><thead><tr>
+        <th>אימייל</th><th>סטטוס</th><th>עריכה אחרונה בנתונים</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
+        rows.map(em=>{
+          const isMe=em===meEmail, isAdm=adminSet.has(em), isAllowed=allowedSet.has(em);
+          const actions = isAdm
+            ? '<span class="hint">מנהל — מנוהל למטה</span>'
+            : (isAllowed
+                ? `<button class="btn danger sm" data-rm="${esc(em)}" ${isMe?'disabled title="אי אפשר להסיר את עצמך"':''}>✕ הסר הרשאה</button>`
+                : `<button class="btn ghost sm" data-add="${esc(em)}">➕ אשר לרשימה</button>`);
+          return `<tr>
+            <td dir="ltr" style="text-align:right">${esc(em)}${isMe?' <span class="pill neutral">זה אני</span>':''}</td>
+            <td>${badge(em)}</td>
+            <td>${fmtWhen(activity[em])}</td>
+            <td style="text-align:end;white-space:nowrap">${actions}</td></tr>`;
+        }).join("")}</tbody></table></div>`;
+      usersBox.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{
+        const em=b.dataset.rm;
+        if(!confirm(`להסיר את ההרשאה של ${em}? הוא/היא לא יוכל/תוכל יותר להיכנס למערכת.`)) return;
+        DB.settings.allowedEmails=(DB.settings.allowedEmails||[]).filter(x=>String(x).toLowerCase()!==em);
+        save(); showNuMsg(`ההרשאה של ${em} הוסרה.`, true); renderUsers();
       });
-      usersBox.querySelectorAll("[data-del]").forEach(b=>b.onclick=async ()=>{
-        const uid=b.dataset.del, em=b.dataset.em;
-        if(!confirm(`למחוק את המשתמש ${em}? הפעולה בלתי הפיכה והוא לא יוכל יותר להתחבר.`)) return;
-        b.disabled=true;
-        try{ await adminUsersCall("delete",{uid}); toast("המשתמש נמחק"); loadUsers(); }
-        catch(e){ b.disabled=false; showNuMsg(adminUsersErrHe(e), false); }
-      });
-      usersBox.querySelectorAll("[data-pw]").forEach(b=>b.onclick=async ()=>{
-        const uid=b.dataset.pw, em=b.dataset.em;
-        const p=prompt(`סיסמה חדשה עבור ${em} (6 תווים לפחות):`);
-        if(p===null) return;
-        if(String(p).length<6){ showNuMsg("הסיסמה חייבת להיות באורך 6 תווים לפחות.", false); return; }
-        try{ await adminUsersCall("setPassword",{uid, password:p}); showNuMsg(`הסיסמה של ${em} עודכנה.`, true); }
-        catch(e){ showNuMsg(adminUsersErrHe(e), false); }
-      });
+      usersBox.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>addAllowed(b.dataset.add));
     };
-    const loadUsers=async ()=>{
-      usersBox.innerHTML=`<div class="hint">טוען רשימת משתמשים…</div>`;
-      try{ const res=await adminUsersCall("list");
-        if(res && res.saConfigured===false){
-          usersBox.innerHTML=`<div class="hint">רשימת המשתמשים, מחיקה ואיפוס סיסמה יופיעו כאן לאחר הגדרת <b>Service Account</b> בגשר (ראה SETUP.md — "ניהול משתמשים"), או תמיד בקונסולת Firebase → Authentication. <b>הוספת משתמש חדש עובדת כאן כרגיל.</b></div>`;
-          return;
-        }
-        renderUsers((res&&res.users)||[]);
-      }
-      catch(e){ usersBox.innerHTML=`<div class="hint" style="color:var(--bad)">${esc(adminUsersErrHe(e))}</div>`; }
+    const addAllowed=raw=>{
+      const em=String(raw||"").trim().toLowerCase();
+      if(!isEmail(em)){ showNuMsg("יש להזין כתובת אימייל תקינה.", false); return; }
+      const cur=(DB.settings.allowedEmails||[]).map(x=>String(x).toLowerCase());
+      const admins=(DB.settings.admins||[]).map(x=>String(x).toLowerCase());
+      if(admins.includes(em)){ showNuMsg(`${em} כבר מנהל מערכת — מורשה ממילא.`, true); return; }
+      if(cur.includes(em)){ showNuMsg(`${em} כבר ברשימת המורשים.`, true); return; }
+      DB.settings.allowedEmails=(DB.settings.allowedEmails||[]).concat(em);
+      save(); showNuMsg(`${em} אושר/ה. עכשיו אפשר להיכנס עם חשבון ה-Google הזה.`, true); renderUsers();
     };
-    $("#nu-create").onclick=async ()=>{
-      const name=($("#nu-name").value||"").trim(), email=($("#nu-email").value||"").trim(), password=$("#nu-pass").value||"";
-      if(!email){ showNuMsg("יש להזין אימייל.", false); return; }
-      if(password.length<6){ showNuMsg("הסיסמה חייבת להיות באורך 6 תווים לפחות.", false); return; }
-      const btn=$("#nu-create"); btn.disabled=true;
-      try{ await adminUsersCall("create",{email, password, name});
-        showNuMsg(`נוצר משתמש ${email}${name?` (${name})`:""}. אפשר למסור לו את האימייל והסיסמה להתחברות.`, true);
-        $("#nu-name").value=""; $("#nu-email").value=""; $("#nu-pass").value=""; loadUsers();
-      }catch(e){ showNuMsg(adminUsersErrHe(e), false); }
-      finally{ btn.disabled=false; }
-    };
-    $("#nu-refresh").onclick=loadUsers;
-    loadUsers(); // טעינה ראשונית (תציג הודעה ידידותית אם הפונקציה עדיין לא פרוסה)
+    $("#nu-add").onclick=()=>{ addAllowed($("#nu-email").value); $("#nu-email").value=""; };
+    $("#nu-email").addEventListener("keydown",ev=>{ if(ev.key==="Enter") $("#nu-add").click(); });
+    renderUsers();
   }
 
   // גילי ילדים ותפקידי צוות (עריכה למנהל בלבד)
