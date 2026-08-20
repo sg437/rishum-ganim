@@ -701,7 +701,7 @@ async function loadViaRest(){
     if(!map.has("meta") && !map.size){ if(out) out.innerHTML=`<b style="color:var(--bad)">לא נמצאו נתונים במאגר.</b>`; return; }
     cloudDocs=map; serverConfirmed=true;
     knownStudentDocs.clear(); [...map.keys()].forEach(id=>{ if(id.startsWith("students_")) knownStudentDocs.add(id); });
-    enterRestMode(); rebuildDB(cloudDocs); maybeMigrateBranding();
+    enterRestMode(); rebuildDB(cloudDocs); maybeMigrateBranding(); maybeCleanupNewModel();
     if(!enforceAccess()) return; // חסימת התחברות Google לא-מורשית גם במצב חלופי
     hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced"); route();
     toast("הנתונים נטענו (מצב חלופי) — אפשר גם לערוך");
@@ -778,7 +778,8 @@ async function pushAllRest(){
    מתבצעת מהמסמכים הישנים — כך האפליקציה מתנהגת בדיוק כמו היום. שלב הפיך
    ובטוח: מכבים ע"י NEW_MODEL_SHADOW=false, ואפשר למחוק את מסמכי stu_/gan_.
    ============================================================ */
-const NEW_MODEL_SHADOW = true;                        // דגל הפעלה של כתיבת הצל
+const NEW_MODEL_SHADOW = false;                       // כבוי — כתיבת הצל בוטלה (הכבידה על הסנכרון בטלפון). ראה B1 redesign.
+const NEW_MODEL_CLEANUP = true;                       // ניקוי חד-פעמי: מחיקת מסמכי stu_/gan_ העודפים כדי להחזיר סנכרון קל
 const _shadowBase = { stu:new Map(), gan:new Map() }; // id → JSON אחרון הידוע בענן (בסיס להשוואה)
 function stuDocId(id){ return "stu_"+id; }
 function ganDocId(id){ return "gan_"+id; }
@@ -820,6 +821,35 @@ async function shadowWriteNewModel(){
       await batch.commit(); }
   }
   for(const c of changes){ const m=_shadowBase[c.coll]; if(c.data===null) m.delete(c.id); else m.set(c.id, c.j); } // עדכון הבסיס רק אחרי הצלחה
+}
+/* ניקוי חד-פעמי (rollback): מחיקת כל מסמכי stu_/gan_ העודפים דרך REST — עובד גם כשה-SDK חסום.
+   מוחזר {found,deleted}. מריצים ממכשיר עם חיבור תקין (המחשב); רץ אוטומטית פעם אחת. */
+async function cleanupNewModelDocs(){
+  if(!currentUser) return {found:0,deleted:0};
+  const token=await currentUser.getIdToken();
+  const listUrl="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app";
+  const delBase=listUrl+"/";
+  const hdr={ Authorization:"Bearer "+token };
+  const ids=[]; let pageToken="";
+  do{
+    const url=listUrl+"?pageSize=300&mask.fieldPaths=_t"+(pageToken?("&pageToken="+encodeURIComponent(pageToken)):"");
+    const res=await fetch(url,{headers:hdr}); if(!res.ok) throw new Error("list "+res.status);
+    const json=await res.json();
+    (json.documents||[]).forEach(d=>{ const id=d.name.split("/").pop(); if(id.startsWith("stu_")||id.startsWith("gan_")) ids.push(id); });
+    pageToken=json.nextPageToken||"";
+  } while(pageToken);
+  let n=0;
+  for(let i=0;i<ids.length;i+=20){
+    await Promise.all(ids.slice(i,i+20).map(id=>fetch(delBase+encodeURIComponent(id),{method:"DELETE",headers:hdr}).then(r=>{ if(r.ok) n++; }).catch(()=>{})));
+  }
+  return {found:ids.length, deleted:n};
+}
+let _cleanupDone=false;
+function maybeCleanupNewModel(){
+  if(!NEW_MODEL_CLEANUP || _cleanupDone || !serverConfirmed || !currentUser) return;
+  _cleanupDone=true;
+  cleanupNewModelDocs().then(r=>{ if(r && r.deleted) toast("ניקוי מודל-חדש הושלם: נמחקו "+r.deleted+" מסמכים"); })
+    .catch(e=>{ _cleanupDone=false; console.error("cleanup failed", e); });
 }
 /* ---------- מיתוג במסמך נפרד (app/branding) — סעיף "באג לוגו" ----------
    הלוגו/כותרת נשמרים במסמך ייעודי הנכתב *רק כשמשנים מיתוג*, ולא בכל עריכה.
@@ -2022,6 +2052,7 @@ function startDataSync(){
     if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
     rebuildDB(cloudDocs);
     maybeMigrateBranding();
+    maybeCleanupNewModel();
     if(!md.fromCache && !enforceAccess()) return; // חסימת התחברות Google לא-מורשית (רק לאחר אישור מהשרת)
     // איתחול meta רק כשהשרת אישר שהוא באמת ריק (לא ממטמון אופליין) —
     // כדי שדפדפן שאינו מצליח להגיע ל-Firestore לא ידחוף DB ריק וידרוס נתונים קיימים.
