@@ -50,12 +50,23 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .top-spacer{flex:1}
 .top-chips{display:flex;align-items:center;gap:7px}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-weight:800;font-size:.84rem;white-space:nowrap}
+/* כפתורי פעולה קטנים: ניווט (Waze/מפות), חיוג, מייל */
+.act{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);text-decoration:none;font-size:.95rem;line-height:1;margin-inline-start:4px;vertical-align:middle;flex:0 0 auto}
+.act:hover{border-color:var(--accent);background:var(--accent-soft,var(--surface))}
+.actgrp{display:inline-flex;align-items:center;gap:0}
+.fieldwrap{display:flex;gap:5px;align-items:stretch}
+.fieldwrap>input{flex:1;min-width:0}
+.fieldwrap>.act{width:38px;height:auto;cursor:pointer}
 .chip.year{background:var(--accent-soft);color:var(--accent-strong)}
 .chip.edu{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--border)}
 .chip.edu.reg{background:var(--good-soft);color:var(--good);border-color:transparent}
 .chip.edu.spec{background:var(--warn-soft);color:var(--warn);border-color:transparent}
 .hamburger{background:var(--surface-2);border:1px solid var(--border);width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto}
 .hamburger:hover{border-color:var(--accent)}
+.backbtn{background:var(--surface-2);border:1px solid var(--border);width:42px;height:42px;border-radius:12px;display:none;place-items:center;flex:0 0 auto;color:var(--ink-soft);cursor:pointer}
+.backbtn.show{display:grid}
+.backbtn:hover{border-color:var(--accent);color:var(--accent)}
+.backbtn svg{width:20px;height:20px;display:block}
 .hamburger span{display:block;width:19px;height:2px;background:var(--ink-soft);border-radius:2px;box-shadow:0 6px 0 var(--ink-soft),0 -6px 0 var(--ink-soft)}
 @media(max-width:560px){.brand .txt .t2{display:none}.brand .logo{width:38px;height:38px}.chip{padding:5px 9px;font-size:.78rem}.top-inner{gap:7px}}
 
@@ -240,7 +251,7 @@ legend{font-weight:800;color:var(--accent-strong);padding:0 6px;font-size:.9rem}
 .checks{display:grid;gap:8px;grid-template-columns:repeat(2,1fr)}
 @media(max-width:640px){.checks{grid-template-columns:1fr}}
 .hidden{display:none!important}
-body.locked .top-chips,body.locked .hamburger{display:none!important}
+body.locked .top-chips,body.locked .hamburger,body.locked .backbtn{display:none!important}
 .login-card{max-width:420px;margin:6vh auto}
 .hint{font-size:.8rem;color:var(--muted);margin-top:6px}
 .note{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);color:var(--warn);
@@ -341,6 +352,9 @@ fieldset{border-radius:14px}
 
 <header class="top">
   <div class="top-inner">
+    <button class="backbtn" id="backBtn" title="חזרה למסך הקודם" aria-label="חזרה למסך הקודם">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
     <div class="brand" id="brandBox">
       <span class="logo">🎒</span>
       <span class="txt"><span class="t1">מערכת ניהול</span><span class="t2">רשת הגנים מודיעין עילית</span></span>
@@ -687,7 +701,7 @@ async function loadViaRest(){
     if(!map.has("meta") && !map.size){ if(out) out.innerHTML=`<b style="color:var(--bad)">לא נמצאו נתונים במאגר.</b>`; return; }
     cloudDocs=map; serverConfirmed=true;
     knownStudentDocs.clear(); [...map.keys()].forEach(id=>{ if(id.startsWith("students_")) knownStudentDocs.add(id); });
-    enterRestMode(); rebuildDB(cloudDocs);
+    enterRestMode(); rebuildDB(cloudDocs); maybeMigrateBranding();
     if(!enforceAccess()) return; // חסימת התחברות Google לא-מורשית גם במצב חלופי
     hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced"); route();
     toast("הנתונים נטענו (מצב חלופי) — אפשר גם לערוך");
@@ -740,7 +754,7 @@ async function pushAllRest(){
   const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
   const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
   const put=async(id,obj)=>{ const r=await fetch(base+encodeURIComponent(id),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(obj)}) }); if(!r.ok) throw new Error("write "+id+" ("+r.status+")"); };
-  const meta={ activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, historicalGans:DB.historicalGans, settings:DB.settings, assignments:DB.assignments };
+  const meta=metaForWrite();
   await put("meta", meta);
   await put("gans", { gans:DB.gans.slice() });
   await put("management", { management:DB.management.slice() });
@@ -752,7 +766,43 @@ async function pushAllRest(){
   // עדכון עותק הענן המקומי כדי שרענון פנימי לא ישחזר מצב ישן
   const nm=new Map(); nm.set("meta",meta); nm.set("gans",{gans:DB.gans.slice()}); nm.set("management",{management:DB.management.slice()}); nm.set("staff",{staff:DB.staff.slice()});
   for(const y of Object.keys(byYear)) nm.set(safeYearId(y),{year:y,students:byYear[y]});
+  if(cloudDocs && cloudDocs.get && cloudDocs.has("branding")) nm.set("branding", cloudDocs.get("branding")); // שימור מסמך המיתוג בעותק המקומי (אינו נכתב בשמירה רגילה)
   cloudDocs=nm;
+}
+/* ---------- מיתוג במסמך נפרד (app/branding) — סעיף "באג לוגו" ----------
+   הלוגו/כותרת נשמרים במסמך ייעודי הנכתב *רק כשמשנים מיתוג*, ולא בכל עריכה.
+   כך עריכות רגילות (שכותבות meta בכל שמירה) לא דורסות עוד את הלוגו, וה-data URL
+   הכבד של הלוגו אינו מנפח את meta לכיוון תקרת ה-1MB. */
+function metaForWrite(){
+  const s=Object.assign({}, DB.settings); delete s.appLogo; // הלוגו נשמר ב-app/branding בלבד
+  return { activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, historicalGans:DB.historicalGans, settings:s, assignments:DB.assignments };
+}
+function brandingFromSettings(){
+  return { appTitle:(DB.settings&&DB.settings.appTitle)||"", appSubtitle:(DB.settings&&DB.settings.appSubtitle)||"", appLogo:(DB.settings&&DB.settings.appLogo)||"" };
+}
+/* כתיבה ממוקדת של מסמך המיתוג בלבד (בלי לגעת בשאר הנתונים) */
+async function saveBranding(){
+  if(!db || !currentUser) return;
+  const brand=brandingFromSettings();
+  if(restMode){
+    const token=await currentUser.getIdToken();
+    const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
+    const r=await fetch(base+"branding",{ method:"PATCH", headers:{ "Authorization":"Bearer "+token, "Content-Type":"application/json" }, body:JSON.stringify({fields:encFsFields(brand)}) });
+    if(!r.ok) throw new Error("write branding ("+r.status+")");
+  } else {
+    await setDoc(doc(db,"app","branding"), brand);
+  }
+  if(cloudDocs && cloudDocs.set) cloudDocs.set("branding", brand); // עדכון מיידי של העותק המקומי
+}
+/* הגירה חד-פעמית: מסמך branding עדיין לא קיים אך יש מיתוג ישן בתוך settings → נשמר פעם אחת */
+let _brandMigrated=false;
+function maybeMigrateBranding(){
+  if(_brandMigrated || !serverConfirmed) return;
+  if(cloudDocs.has("branding")){ _brandMigrated=true; return; }
+  _brandMigrated=true;
+  if(DB.settings && (DB.settings.appLogo||DB.settings.appTitle||DB.settings.appSubtitle)){
+    saveBranding().catch(e=>{ _brandMigrated=false; console.error(e); });
+  }
 }
 /* בדיקת חיבור לשרת Firestore — מבחינה בין חסימת רשת לבין בעיה אחרת (הרשאות/התחברות).
    שימוש ב-no-cors: מספיק לדעת אם הבקשה בכלל מגיעה לדומיין (resolve=נגיש, reject=חסום). */
@@ -826,7 +876,7 @@ async function pushAll(){
   if(localEmpty && !serverConfirmed) return;
   if(restMode){ await pushAllRest(); return; } // מצב חלופי: כתיבה דרך REST
   // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
-  const meta={ activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, historicalGans:DB.historicalGans, settings:DB.settings, assignments:DB.assignments };
+  const meta=metaForWrite();
   const gans=DB.gans.slice(), management=DB.management.slice(), staff=DB.staff.slice();
   const byYear={}; DB.students.forEach(s=>{ (byYear[s.year]=byYear[s.year]||[]).push(s); });
   await setDoc(doc(db,"app","meta"), meta);
@@ -856,6 +906,13 @@ function rebuildDB(docsMap){
   DB.historicalGans = meta.historicalGans||{};
   DB.settings = meta.settings||{ gansTarget:29, admins:[] };
   if(!Array.isArray(DB.settings.admins)) DB.settings.admins=[];
+  // מיתוג ממסמך ייעודי (app/branding) גובר על settings — כך הלוגו לא נדרס ע"י כתיבות meta
+  const brand=docsMap.get("branding");
+  if(brand){
+    if("appTitle" in brand)    DB.settings.appTitle    = brand.appTitle||"";
+    if("appSubtitle" in brand) DB.settings.appSubtitle = brand.appSubtitle||"";
+    if("appLogo" in brand)     DB.settings.appLogo     = brand.appLogo||"";
+  }
   DB.assignments = meta.assignments||{};
   migrateAssignments();
   DB.gans = (docsMap.get("gans")||{}).gans||[];
@@ -1071,6 +1128,20 @@ function appTitle(){ return (DB.settings && DB.settings.appTitle) || DEFAULT_TIT
 function appLogo(){ return (DB.settings && DB.settings.appLogo) || DEFAULT_LOGO; }
 function logoHtml(){ const l=appLogo(); return /^(https?:|data:)/i.test(l) ? `<img src="${esc(l)}" alt="לוגו">` : esc(l); }
 function appSubtitle(){ return (DB.settings && DB.settings.appSubtitle) || DEFAULT_SUBTITLE; }
+/* ---------- כפתורי פעולה קטנים (ניווט/חיוג/מייל) — סעיפים 8–9 ----------
+   מוחזרים כתגי <a> בלבד (ללא onclick), כדי לשמור על מדיניות הקוד; מטפלי השורות
+   שכבר קיימים מתעלמים מלחיצה על a/button/input, כך שלחיצה לא פותחת את השורה. */
+function telHref(p){ return "tel:"+String(p||"").replace(/[^\d+]/g,""); }
+function navBtns(addr){
+  const a=String(addr||"").trim(); if(!a) return "";
+  const q=encodeURIComponent(a);
+  return `<span class="actgrp">`+
+    `<a class="act" href="https://waze.com/ul?q=${q}&navigate=yes" target="_blank" rel="noopener" title="ניווט ב-Waze">🚗</a>`+
+    `<a class="act" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener" title="פתיחה במפות Google">🗺️</a>`+
+  `</span>`;
+}
+function callBtn(p){ const t=String(p||"").trim(); if(!t) return ""; return `<a class="act" href="${telHref(t)}" title="חיוג ל-${esc(t)}">📞</a>`; }
+function mailBtn(e){ const t=String(e||"").trim(); if(!t) return ""; return `<a class="act" href="mailto:${esc(t)}" title="שליחת מייל אל ${esc(t)}">✉️</a>`; }
 function applyBranding(){
   const t=appTitle(), sub=appSubtitle(); document.title=t+" · "+sub;
   const brandInner=`<span class="logo">${logoHtml()}</span><span class="txt"><span class="t1">${esc(t)}</span><span class="t2">${esc(sub)}</span></span>`;
@@ -1853,7 +1924,7 @@ function printGuide(){
 function route(){
   syncSettingsLists();
   applyBranding();
-  renderTabs(); renderYearSelect(); renderEduPick();
+  renderTabs(); renderYearSelect(); renderEduPick(); updateBackBtn();
   const so=$("#signOutBtn"); if(so) so.style.display=currentUser?"flex":"none";
   const v = $("#view");
   ({home:viewHome, students:viewStudents, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
@@ -1893,6 +1964,7 @@ function startDataSync(){
     });
     if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
     rebuildDB(cloudDocs);
+    maybeMigrateBranding();
     if(!md.fromCache && !enforceAccess()) return; // חסימת התחברות Google לא-מורשית (רק לאחר אישור מהשרת)
     // איתחול meta רק כשהשרת אישר שהוא באמת ריק (לא ממטמון אופליין) —
     // כדי שדפדפן שאינו מצליח להגיע ל-Firestore לא ידחוף DB ריק וידרוס נתונים קיימים.
@@ -2814,10 +2886,10 @@ function openStudent(s){
       <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
-      <div><label>טלפון בית</label><input id="s-phone" value="${esc(s.phone)}" inputmode="tel"></div>
-      <div><label>נייד אב</label><input id="s-dadMobile" value="${esc(s.dadMobile)}" inputmode="tel"></div>
-      <div><label>נייד אם</label><input id="s-momMobile" value="${esc(s.momMobile || ((!s.dadMobile && !s.momMobile) ? (s.mobile||"") : ""))}" inputmode="tel"></div>
-      <div><label>דוא"ל</label><input id="s-email" value="${esc(s.email)}" inputmode="email" dir="ltr" style="text-align:right"></div>
+      <div><label>טלפון בית</label><div class="fieldwrap"><input id="s-phone" value="${esc(s.phone)}" inputmode="tel"><button type="button" class="act" data-call="s-phone" title="חיוג">📞</button></div></div>
+      <div><label>נייד אב</label><div class="fieldwrap"><input id="s-dadMobile" value="${esc(s.dadMobile)}" inputmode="tel"><button type="button" class="act" data-call="s-dadMobile" title="חיוג">📞</button></div></div>
+      <div><label>נייד אם</label><div class="fieldwrap"><input id="s-momMobile" value="${esc(s.momMobile || ((!s.dadMobile && !s.momMobile) ? (s.mobile||"") : ""))}" inputmode="tel"><button type="button" class="act" data-call="s-momMobile" title="חיוג">📞</button></div></div>
+      <div><label>דוא"ל</label><div class="fieldwrap"><input id="s-email" value="${esc(s.email)}" inputmode="email" dir="ltr" style="text-align:right"><button type="button" class="act" data-mail="s-email" title="שליחת מייל">✉️</button></div></div>
     </div>
   </fieldset>
   <fieldset><legend>כתובת</legend>
@@ -4368,10 +4440,10 @@ function renderGanTable(){
         <td>${esc(g.age)||'—'}</td>
         <td>${eduBadge(g)}</td>
         <td>${esc(g.teacherName)||'—'}</td>
-        <td>${esc(g.address)||'—'}</td>
+        <td>${g.address?`${esc(g.address)} ${navBtns([g.address,g.building,g.zone].filter(Boolean).join(" "))}`:'—'}</td>
         <td>${esc(g.building)||'—'}</td>
         <td>${esc(g.zone)||'—'}</td>
-        <td>${esc(g.phoneGan)||'—'}</td>
+        <td>${g.phoneGan?`${esc(g.phoneGan)} ${callBtn(g.phoneGan)}`:'—'}</td>
         <td>${esc(g.capacity)||'—'}</td>
         <td><button type="button" class="gan-reg-open" data-gid="${esc(g.id)}" title="צפייה בתלמידות הגן" style="background:none;border:none;padding:0;cursor:pointer">${capPill(reg, g.capacity)}</button></td>
         <td>${g.active?'<span class="pill ok">פעיל</span>':'<span class="pill neutral">כבוי</span>'}</td>
@@ -4406,7 +4478,7 @@ function openGan(g){
   </fieldset>
   <fieldset><legend>כתובת ואזור</legend>
     <div class="grid g4">
-      <div><label>כתובת הגן</label><input id="g-address" list="g-addr-list" value="${esc(g.address)}"><datalist id="g-addr-list">${gAddrList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
+      <div><label>כתובת הגן</label><div class="fieldwrap"><input id="g-address" list="g-addr-list" value="${esc(g.address)}"><button type="button" class="act" data-nav="g-address" title="ניווט ב-Waze">🚗</button></div><datalist id="g-addr-list">${gAddrList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
       <div><label>מספר</label><input id="g-building" value="${esc(g.building)}" inputmode="numeric"></div>
       <div><label>רחוב</label><input id="g-street" list="g-street-list" value="${esc(g.street)}"><datalist id="g-street-list">${gStreetList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
       <div><label>אזור בעיר</label><input id="g-zone" list="g-zone-list" value="${esc(g.zone)}" placeholder="לסינון לפי אזורים"><datalist id="g-zone-list">${gZoneList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
@@ -4414,7 +4486,7 @@ function openGan(g){
   </fieldset>
   <fieldset><legend>טלפון</legend>
     <div class="grid g3">
-      <div><label>טלפון בגן</label><input id="g-phoneGan" value="${esc(g.phoneGan)}"></div>
+      <div><label>טלפון בגן</label><div class="fieldwrap"><input id="g-phoneGan" value="${esc(g.phoneGan)}" inputmode="tel"><button type="button" class="act" data-call="g-phoneGan" title="חיוג">📞</button></div></div>
     </div>
     <div class="note" style="margin-top:6px">פרטי הצוות (גננת, סייעת, ניידים) והשיבוץ נקבעים בלשונית "שיבוץ" לכל שנה בנפרד.</div>
   </fieldset>
@@ -6159,7 +6231,8 @@ function openAsgExport(){
     </fieldset>
     <label class="check" style="margin-top:8px"><input type="checkbox" id="ax-onepage"> התאם לעמוד אחד</label>
     <div class="foot">
-      <button class="btn" id="ax-csv" type="button">⬇️ ייצוא לאקסל (CSV)</button>
+      <button class="btn" id="ax-xls" type="button">🎨 אקסל צבעוני</button>
+      <button class="btn ghost" id="ax-csv" type="button">⬇️ CSV</button>
       <button class="btn ghost" id="ax-pdf" type="button">🖨️ הדפסה / PDF</button>
       <button class="btn ghost" id="ax-mail" type="button">📎 שיתוף מסמך</button>
       <button class="btn ghost" id="ax-cancel" type="button" style="margin-inline-start:auto">סגירה</button>
@@ -6171,9 +6244,12 @@ function openAsgExport(){
     let gans=eduScope(DB.gans.slice()).sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
     if(gid) gans=gans.filter(g=>g.id===gid);
     const FREE_COLS=[["יום חופשי גננת","גננת"],["יום חופשי סייעת","סייעת"],["יום חופשי סייעת רפואית","סייעת רפואית"]];
-    const headers=["שם הגן"]; if(fixed) headers.push("סמל פנימי","סמל גן","גיל","חינוך","כתובת","אזור","טל' גן","קיבולת","רשומות","סטטוס");
-    assignRoles().forEach(meta=>{ headers.push(meta.role); if(phones) headers.push(meta.role+" — טלפון"); if(meta.extra) headers.push(meta.role+" — "+asgExtraLabel(meta.role)); });
-    headers.push(...FREE_COLS.map(f=>f[0]));
+    const headers=["שם הגן"], colBg=[""]; if(fixed){ headers.push("סמל פנימי","סמל גן","גיל","חינוך","כתובת","אזור","טל' גן","קיבולת","רשומות","סטטוס"); for(let i=0;i<10;i++) colBg.push(""); }
+    assignRoles().forEach(meta=>{ const tint=tintHex(roleColor(meta.role),.74);
+      headers.push(meta.role); colBg.push(tint);
+      if(phones){ headers.push(meta.role+" — טלפון"); colBg.push(tint?tintHex(roleColor(meta.role),.85):""); }
+      if(meta.extra){ headers.push(meta.role+" — "+asgExtraLabel(meta.role)); colBg.push(tint?tintHex(roleColor(meta.role),.85):""); } });
+    headers.push(...FREE_COLS.map(f=>f[0])); FREE_COLS.forEach(()=>colBg.push(""));
     const rows=gans.map(g=>{
       const reg=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
       const a=ganAsg(g.id), free=ganFreeDays(g.id, asgContext); const row=[ganName(g.id)];
@@ -6182,13 +6258,18 @@ function openAsgExport(){
       FREE_COLS.forEach(f=>row.push((free[f[1]]||[]).join(", ")));
       return row;
     });
-    return { headers, rows };
+    return { headers, rows, colBg };
   };
   const ctxFile=ctxLabel(asgContext).replace(/\s+/g,"-");
+  const xlsSuffix=()=>`${DB.activeYear}${activeEdu==='ח"מ'?'_מיוחד':(activeEdu?'_רגיל':'')}`;
   $("#ax-csv").onclick=()=>{
     const {headers,rows}=build(); if(!rows.length){ toast("אין גנים לייצוא"); return; }
     const csv=[headers.join(",")].concat(rows.map(r=>r.map(csvCell).join(","))).join("\r\n");
-    downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `שיבוץ_${ctxFile}_${DB.activeYear}${activeEdu==='ח"מ'?'_מיוחד':(activeEdu?'_רגיל':'')}.csv`); toast("קובץ אקסל נוצר");
+    downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `שיבוץ_${ctxFile}_${xlsSuffix()}.csv`); toast("קובץ CSV נוצר");
+  };
+  $("#ax-xls").onclick=()=>{
+    const {headers,rows,colBg}=build(); if(!rows.length){ toast("אין גנים לייצוא"); return; }
+    tableToXls(`שיבוץ_${ctxFile}_${xlsSuffix()}.xls`, headers, rows, { colBg, title:asgTitle() }); toast("קובץ אקסל צבעוני נוצר ✓");
   };
   const asgTitle=()=>`שיבוץ צוות · ${DB.activeYear} · ${ctxLabel(asgContext)}${selGanId()?` · ${ganName(selGanId())}`:''}`;
   const asgSub=()=>{ const gid=selGanId(); if(gid) return ganPlaceLine(ganById(gid))||ganName(gid);
@@ -6347,6 +6428,23 @@ function viewExport(root){
 }
 function csvCell(v){ v=String(v??""); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function downloadBlob(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); }
+/* מיזוג צבע לכיוון לבן — גוון בהיר לרקע תא (p=0..1, ככל שגדול בהיר יותר) */
+function tintHex(hex, p){ hex=String(hex||"").replace('#',''); if(hex.length===3) hex=hex.split('').map(x=>x+x).join(''); if(!/^[0-9a-fA-F]{6}$/.test(hex)) return ""; const n=parseInt(hex,16); const r=(n>>16)&255,g=(n>>8)&255,b=n&255; const mix=c=>Math.round(c+(255-c)*p); const h=v=>v.toString(16).padStart(2,'0'); return "#"+h(mix(r))+h(mix(g))+h(mix(b)); }
+/* יצוא טבלה צבעונית לאקסל: HTML‏-table בסיומת .xls — נפתח באקסל וב-Google Sheets עם הצבעים.
+   opts.colBg[i] = צבע רקע לעמודה i (בגוף הטבלה) · opts.title = כותרת מעל הטבלה. */
+function tableToXls(name, headers, rows, opts){
+  opts=opts||{}; const colBg=opts.colBg||[], title=opts.title||"";
+  const td=(v,bg)=>`<td${bg?` style="background:${bg}"`:''}>${esc(String(v==null?"":v))}</td>`;
+  let h='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'+
+    '<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>שיבוץ</x:Name>'+
+    '<x:WorksheetOptions><x:DisplayRightToLeft/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'+
+    '<style>table{border-collapse:collapse}td,th{border:1px solid #b9c4bd;padding:4px 9px;font-family:Arial,sans-serif;font-size:12px;mso-number-format:"\\@";text-align:right}'+
+    'th{background:#2f6f43;color:#fff;font-weight:bold}</style></head><body dir="rtl">';
+  if(title) h+='<h3 style="font-family:Arial,sans-serif">'+esc(title)+'</h3>';
+  h+='<table><thead><tr>'+headers.map(hd=>`<th>${esc(String(hd==null?"":hd))}</th>`).join("")+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map((c,i)=>td(c,colBg[i])).join("")+'</tr>').join("")+'</tbody></table></body></html>';
+  downloadBlob(new Blob(["﻿"+h],{type:"application/vnd.ms-excel;charset=utf-8"}), name);
+}
 /* פענוח קובץ טקסט עם זיהוי קידוד — תומך UTF-8 (עם/בלי BOM) וגם Windows-1255
    (הקידוד שאקסל בעברית שומר בו כברירת מחדל, מה שמקלקל את הכותרות אם קוראים כ-UTF-8) */
 function decodeFileText(buf){
@@ -7131,8 +7229,10 @@ function viewSettings(root){
       }; img.onerror=()=>toast("לא ניתן לקרוא את התמונה"); img.src=rd.result; };
       rd.onerror=()=>toast("שגיאה בקריאת הקובץ"); rd.readAsDataURL(file);
     };
-    $("#saveBrand").onclick=()=>{ DB.settings.appTitle=$("#br-title").value.trim(); DB.settings.appLogo=$("#br-logo").value.trim(); save(); applyBranding(); logoPrevUpdate(); toast("המיתוג נשמר"); };
-    $("#resetBrand").onclick=()=>{ delete DB.settings.appTitle; delete DB.settings.appLogo; save(); route(); toast("הוחזר לברירת מחדל"); };
+    $("#saveBrand").onclick=()=>{ DB.settings.appTitle=$("#br-title").value.trim(); DB.settings.appLogo=$("#br-logo").value.trim();
+      _brandMigrated=true; saveBranding().catch(e=>{ console.error(e); toast("שגיאת שמירת מיתוג — בדוק/י חיבור"); }); save(); applyBranding(); logoPrevUpdate(); toast("המיתוג נשמר"); };
+    $("#resetBrand").onclick=()=>{ delete DB.settings.appTitle; delete DB.settings.appLogo;
+      _brandMigrated=true; saveBranding().catch(e=>console.error(e)); save(); route(); toast("הוחזר לברירת מחדל"); };
   }
 
   // מנהלי מערכת
@@ -7268,13 +7368,27 @@ let inPopstate=false;       // האם אנו כרגע בתוך טיפול ב-pop
 function modal(html){
   $("#modal").innerHTML=html; $("#overlay").classList.add("show"); document.body.style.overflow="hidden";
   if(!modalHistoryOpen){ modalHistoryOpen=true; try{ history.pushState({rgModal:true},""); }catch(_){} }
+  updateBackBtn();
 }
 function closeModal(){
   $("#overlay").classList.remove("show"); document.body.style.overflow="";
   if(modalHistoryOpen){ modalHistoryOpen=false; if(!inPopstate){ try{ history.back(); }catch(_){} } } // אזן את מחסנית ההיסטוריה שנדחפה בפתיחה
   if(pendingRender){ pendingRender=false; route(); }
+  updateBackBtn();
 }
 function navToTab(tab){ closeDrawer(); if(tab===active) return; active=tab; try{ history.pushState({rgTab:tab},""); }catch(_){} route(); window.scrollTo(0,0); }
+/* חץ חזרה גלוי בכותרת — חוזר למסך הקודם דרך מנגנון ההיסטוריה הקיים (סוגר חלון/מגירה, או חוזר ללשונית הקודמת עד לראשי) */
+function goBack(){
+  if($("#drawer").classList.contains("open")){ closeDrawer(); return; }
+  if($("#overlay").classList.contains("show")){ closeModal(); return; }
+  if(active!=="home"){ try{ history.back(); }catch(_){ active="home"; route(); } }
+}
+function updateBackBtn(){
+  const b=$("#backBtn"); if(!b) return;
+  const show = !document.body.classList.contains("locked") &&
+    ($("#overlay").classList.contains("show") || active!=="home");
+  b.classList.toggle("show", show);
+}
 window.addEventListener("popstate", e=>{
   inPopstate=true;
   if($("#drawer").classList.contains("open")){ closeDrawer(); }
@@ -7283,9 +7397,16 @@ window.addEventListener("popstate", e=>{
   inPopstate=false;
 });
 $("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeModal(); });
+/* כפתורי פעולה בתוך טפסים (חיוג/מייל/ניווט) — קוראים את הערך *הנוכחי* של השדה בעת הלחיצה */
+$("#modal").addEventListener("click",e=>{
+  const cb=e.target.closest("[data-call]"); if(cb){ const el=$("#"+cb.dataset.call); const v=el?el.value.trim():""; if(v) location.href=telHref(v); else toast("אין מספר טלפון בשדה"); return; }
+  const mb=e.target.closest("[data-mail]"); if(mb){ const el=$("#"+mb.dataset.mail); const v=el?el.value.trim():""; if(v) location.href="mailto:"+encodeURIComponent(v); else toast("אין כתובת מייל בשדה"); return; }
+  const nb=e.target.closest("[data-nav]"); if(nb){ const el=$("#"+nb.dataset.nav); const v=el?el.value.trim():""; if(v) window.open("https://waze.com/ul?q="+encodeURIComponent(v)+"&navigate=yes","_blank","noopener"); else toast("אין כתובת בשדה"); return; }
+});
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if($("#drawer").classList.contains("open")) closeDrawer(); else closeModal(); } });
 
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ navToTab(b.dataset.tab); } });
+$("#backBtn").addEventListener("click", goBack);
 $("#menuBtn").addEventListener("click",toggleDrawer);
 $("#drawerClose").addEventListener("click",closeDrawer);
 $("#scrim").addEventListener("click",closeDrawer);
