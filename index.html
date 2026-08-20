@@ -426,7 +426,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendP
          GoogleAuthProvider, signInWithPopup }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-         doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence }
+         doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* ===== הגדרות Firebase — הדבק/י כאן את 6 המפתחות מהפרויקט שלך (ראה SETUP.md) ===== */
@@ -695,7 +695,7 @@ async function loadViaRest(){
       const res=await fetch(url,{ headers:{ Authorization:"Bearer "+token } });
       if(!res.ok){ if(out) out.innerHTML=`<b style="color:var(--bad)">שגיאת טעינה (${res.status}).</b> ${res.status===403?'אין הרשאה לחשבון הזה.':'נסה/י שוב.'}`; return; }
       const json=await res.json();
-      (json.documents||[]).forEach(dnode=>{ const id=dnode.name.split("/").pop(); map.set(id, decFsFields(dnode.fields||{})); });
+      (json.documents||[]).forEach(dnode=>{ const id=dnode.name.split("/").pop(); const d=decFsFields(dnode.fields||{}); map.set(id, d); shadowSeedFromCloud(id, d, false); });
       pageToken=json.nextPageToken||"";
     } while(pageToken);
     if(!map.has("meta") && !map.size){ if(out) out.innerHTML=`<b style="color:var(--bad)">לא נמצאו נתונים במאגר.</b>`; return; }
@@ -767,7 +767,59 @@ async function pushAllRest(){
   const nm=new Map(); nm.set("meta",meta); nm.set("gans",{gans:DB.gans.slice()}); nm.set("management",{management:DB.management.slice()}); nm.set("staff",{staff:DB.staff.slice()});
   for(const y of Object.keys(byYear)) nm.set(safeYearId(y),{year:y,students:byYear[y]});
   if(cloudDocs && cloudDocs.get && cloudDocs.has("branding")) nm.set("branding", cloudDocs.get("branding")); // שימור מסמך המיתוג בעותק המקומי (אינו נכתב בשמירה רגילה)
+  if(cloudDocs && cloudDocs.forEach) cloudDocs.forEach((v,k)=>{ if(k.startsWith("stu_")||k.startsWith("gan_")) nm.set(k,v); }); // שימור מסמכי המודל החדש
   cloudDocs=nm;
+  try{ await shadowWriteNewModel(); }catch(e){ console.error("shadow write (REST) failed", e); }
+}
+/* ============================================================
+   B1 · מודל מסמך-לכל-ישות — שלב "כתיבת צל" (shadow write)
+   כל תלמידה/גן נכתבים גם כמסמך נפרד (stu_<id> / gan_<id>) באוסף app,
+   *במקביל* למסמכים הישנים, בכתיבה נקודתית (רק מה שהשתנה). הקריאה עדיין
+   מתבצעת מהמסמכים הישנים — כך האפליקציה מתנהגת בדיוק כמו היום. שלב הפיך
+   ובטוח: מכבים ע"י NEW_MODEL_SHADOW=false, ואפשר למחוק את מסמכי stu_/gan_.
+   ============================================================ */
+const NEW_MODEL_SHADOW = true;                        // דגל הפעלה של כתיבת הצל
+const _shadowBase = { stu:new Map(), gan:new Map() }; // id → JSON אחרון הידוע בענן (בסיס להשוואה)
+function stuDocId(id){ return "stu_"+id; }
+function ganDocId(id){ return "gan_"+id; }
+function _entKey(o){ return JSON.stringify(o); }
+/* עדכון בסיס-ההשוואה ממסמך שהגיע מהענן — כדי לא לכתוב מחדש רשומות שלא השתנו */
+function shadowSeedFromCloud(id, data, removed){
+  if(id.startsWith("stu_")){ const rid=id.slice(4);
+    if(removed) _shadowBase.stu.delete(rid);
+    else if(data && data.student) _shadowBase.stu.set(rid, _entKey(normStudent(data.student))); }
+  else if(id.startsWith("gan_")){ const rid=id.slice(4);
+    if(removed) _shadowBase.gan.delete(rid);
+    else if(data && data.gan) _shadowBase.gan.set(rid, _entKey(data.gan)); }
+}
+/* איסוף השינויים בלבד (diff) מול בסיס-ההשוואה */
+function _shadowChanges(){
+  const curStu=new Map(DB.students.map(s=>[s.id,s])), curGan=new Map(DB.gans.map(g=>[g.id,g]));
+  const ch=[];
+  for(const [id,s] of curStu){ const j=_entKey(s); if(_shadowBase.stu.get(id)!==j) ch.push({coll:"stu",id,data:s,j}); }
+  for(const id of _shadowBase.stu.keys()){ if(!curStu.has(id)) ch.push({coll:"stu",id,data:null}); }
+  for(const [id,g] of curGan){ const j=_entKey(g); if(_shadowBase.gan.get(id)!==j) ch.push({coll:"gan",id,data:g,j}); }
+  for(const id of _shadowBase.gan.keys()){ if(!curGan.has(id)) ch.push({coll:"gan",id,data:null}); }
+  return ch;
+}
+function _shadowRef(c){ return doc(db,"app", c.coll==="stu"?stuDocId(c.id):ganDocId(c.id)); }
+function _shadowPayload(c){ return c.coll==="stu" ? {_t:"stu", student:c.data} : {_t:"gan", gan:c.data}; }
+async function shadowWriteNewModel(){
+  if(!NEW_MODEL_SHADOW || !db || !currentUser) return;
+  const changes=_shadowChanges(); if(!changes.length) return;
+  if(restMode){
+    const token=await currentUser.getIdToken();
+    const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
+    const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
+    for(const c of changes){ const id=c.coll==="stu"?stuDocId(c.id):ganDocId(c.id);
+      if(c.data===null){ try{ await fetch(base+encodeURIComponent(id),{method:"DELETE",headers:hdr}); }catch(_){} }
+      else { const r=await fetch(base+encodeURIComponent(id),{method:"PATCH",headers:hdr,body:JSON.stringify({fields:encFsFields(_shadowPayload(c))})}); if(!r.ok) throw new Error("shadow "+id+" ("+r.status+")"); } }
+  } else {
+    for(let i=0;i<changes.length;i+=400){ const slice=changes.slice(i,i+400), batch=writeBatch(db);
+      for(const c of slice){ if(c.data===null) batch.delete(_shadowRef(c)); else batch.set(_shadowRef(c), _shadowPayload(c)); }
+      await batch.commit(); }
+  }
+  for(const c of changes){ const m=_shadowBase[c.coll]; if(c.data===null) m.delete(c.id); else m.set(c.id, c.j); } // עדכון הבסיס רק אחרי הצלחה
 }
 /* ---------- מיתוג במסמך נפרד (app/branding) — סעיף "באג לוגו" ----------
    הלוגו/כותרת נשמרים במסמך ייעודי הנכתב *רק כשמשנים מיתוג*, ולא בכל עריכה.
@@ -886,6 +938,7 @@ async function pushAll(){
   const wantIds=new Set();
   for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await setDoc(doc(db,"app",id), { year:y, students:byYear[y] }); }
   for(const id of [...knownStudentDocs]){ if(!wantIds.has(id)){ try{ await deleteDoc(doc(db,"app",id)); }catch(e){} knownStudentDocs.delete(id); } }
+  try{ await shadowWriteNewModel(); }catch(e){ console.error("shadow write (SDK) failed", e); }
 }
 /* בנייה מחדש של DB מתוך מסמכי הענן */
 /* בחירת השנה היא העדפה מקומית לכל דפדפן (לא מסונכרנת) — כדי שכל משתמש יוכל לצפות
@@ -1963,8 +2016,8 @@ function startDataSync(){
     const changes = snap.docChanges();
     if(!changes.length && cloudDocs.size) return; // שינוי מטא-דאטה בלבד (סטטוס) על נתונים שכבר נטענו — אין צורך לבנות מחדש
     changes.forEach(ch=>{
-      if(ch.type==="removed"){ cloudDocs.delete(ch.doc.id); knownStudentDocs.delete(ch.doc.id); }
-      else { cloudDocs.set(ch.doc.id, ch.doc.data()); if(ch.doc.id.startsWith("students_")) knownStudentDocs.add(ch.doc.id); }
+      if(ch.type==="removed"){ cloudDocs.delete(ch.doc.id); knownStudentDocs.delete(ch.doc.id); shadowSeedFromCloud(ch.doc.id, null, true); }
+      else { const d=ch.doc.data(); cloudDocs.set(ch.doc.id, d); if(ch.doc.id.startsWith("students_")) knownStudentDocs.add(ch.doc.id); shadowSeedFromCloud(ch.doc.id, d, false); }
     });
     if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
     rebuildDB(cloudDocs);
@@ -1979,7 +2032,7 @@ function startDataSync(){
   // מעבר אוטומטי למצב חלופי (REST) אם חיבור ה-SDK לא הצליח למשוך נתונים תוך ~12 שניות
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
 }
-function stopDataSync(){ _accessDenied=false; if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
+function stopDataSync(){ _accessDenied=false; if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
 
 function boot(){
   try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
