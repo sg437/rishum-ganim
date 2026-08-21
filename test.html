@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>סביבת בדיקה · merge-on-write</title>
+<style>
+  :root{ --bg:#f4f7f2; --card:#fff; --line:#dce6d8; --ink:#17231b; --soft:#586; --accent:#2f6f43; --accent2:#1e5233; --bad:#b0413a; --warn:#9c6b15; --good:#2f6f43; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Assistant","Segoe UI",system-ui,Arial,sans-serif;line-height:1.6}
+  .wrap{max-width:760px;margin:0 auto;padding:16px 16px 80px}
+  .testbar{background:repeating-linear-gradient(45deg,#fde8c8,#fde8c8 12px,#fbdca8 12px,#fbdca8 24px);color:#6b4b12;font-weight:800;text-align:center;padding:8px;border-radius:10px;margin-bottom:14px;font-size:.92rem}
+  h1{font-size:1.35rem;margin:.2em 0}
+  .muted{color:var(--soft);font-size:.9rem}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 8px 24px -18px rgba(20,40,25,.3)}
+  button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px}
+  button.primary{background:var(--accent);color:#fff;border-color:transparent}
+  button.primary:hover{background:var(--accent2)}
+  button.ghost:hover{border-color:var(--accent)}
+  button.danger{color:var(--bad);border-color:#e7c9c6}
+  input[type=text]{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:10px;min-width:0;width:100%}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .count{font-size:2.1rem;font-weight:900;color:var(--accent2);font-variant-numeric:tabular-nums}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:.8rem;color:var(--soft)}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:800;padding:3px 10px;border-radius:999px}
+  .pill.on{background:#e4efe2;color:var(--accent2)}
+  .pill.off{background:#f7e4e2;color:var(--bad)}
+  .status{font-size:.85rem;font-weight:700}
+  .toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+  .sw{width:46px;height:26px;border-radius:999px;background:#cbd5c9;position:relative;transition:.15s;flex:0 0 auto}
+  .sw.on{background:var(--accent)}
+  .sw i{position:absolute;top:3px;inset-inline-start:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s}
+  .sw.on i{inset-inline-start:23px}
+  .log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.8rem;background:#0e1712;color:#cfe6d5;border-radius:10px;padding:10px;max-height:160px;overflow:auto;direction:ltr;text-align:left;white-space:pre-wrap}
+  .hide{display:none}
+  a.plain{color:var(--accent2)}
+  .note-in{width:150px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="testbar">🧪 סביבת בדיקה בלבד — נתוני משחק · לא המערכת האמיתית · לא הנתונים החיים</div>
+
+  <div class="between">
+    <div>
+      <h1>בדיקת מנעול-נגד-דריסה</h1>
+      <div class="muted">פרויקט: <b>rishum-ganim-test</b></div>
+    </div>
+    <div id="authBox"></div>
+  </div>
+
+  <div class="card" id="mainCard">
+    <div class="between">
+      <div class="row">
+        <span>מנגנון שמירה:</span>
+        <label class="toggle" id="mergeToggle" title="החלפה בין שני המנגנונים">
+          <span class="sw on" id="sw"><i></i></span>
+          <b id="modeLbl">מיזוג (חדש)</b>
+        </label>
+        <span class="pill on" id="modePill">בטוח מדריסה</span>
+      </div>
+      <div class="status" id="syncStatus">—</div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+
+    <div class="between">
+      <div><span class="muted">סה"כ תלמידות</span><div class="count" id="count">0</div></div>
+      <div class="row">
+        <button class="ghost" id="seedBtn">🌱 זרע 20 תלמידות</button>
+        <button class="danger" id="clearBtn">🗑️ נקה הכל</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin:12px 0">
+      <input type="text" id="newName" placeholder="שם תלמידה חדשה…" style="flex:1">
+      <button class="primary" id="addBtn">➕ הוסף</button>
+    </div>
+
+    <div style="overflow:auto">
+      <table>
+        <thead><tr><th>#</th><th>שם</th><th>הערה (לחיצה לעריכה)</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <b>איך בודקים (2 מכשירים):</b>
+    <ol style="margin:8px 0 0;padding-inline-start:20px">
+      <li>פתח את הדף הזה גם בטלפון (או בכרטיסייה נוספת) — <b>אותה כתובת</b>, אותו חשבון.</li>
+      <li>לחץ <b>🌱 זרע 20</b> פעם אחת (רק במכשיר אחד).</li>
+      <li><b>מצב "דריסה" (כבה את המתג):</b> ערוך הערה בתלמידה A במכשיר 1, ובו-זמנית הערה בתלמידה B במכשיר 2. תראה שאחת נעלמת — <b>זו התקלה</b>.</li>
+      <li><b>מצב "מיזוג" (הדלק את המתג):</b> חזור על אותו דבר — <b>שתי ההערות נשמרות</b>. ✅</li>
+    </ol>
+    <div class="muted" style="margin-top:8px">יומן פעולות:</div>
+    <div class="log" id="log"></div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { initializeFirestore, doc, onSnapshot, runTransaction, setDoc, deleteDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAsIXD28ODmwbBZqrnJooqT1UTmFjoMOy0",
+  authDomain: "rishum-ganim-test-fe7b0.firebaseapp.com",
+  projectId: "rishum-ganim-test-fe7b0",
+  storageBucket: "rishum-ganim-test-fe7b0.firebasestorage.app",
+  messagingSenderId: "567081379539",
+  appId: "1:567081379539:web:abd216cf35749597c41626"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+let db;
+try{ db = initializeFirestore(app,{ experimentalForceLongPolling:true }); }
+catch(e){ db = initializeFirestore(app); }
+const REF = doc(db,"app","students");
+
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const jkey = o=>JSON.stringify(o);
+
+let students=[];               // {id,name,note}
+let baseline=new Map();        // id -> json (מצב השרת האחרון שראינו)
+let useMerge=true;
+let currentUser=null;
+let unsub=null;
+
+function log(msg){ const el=$("#log"); const t=new Date().toLocaleTimeString("he-IL"); el.textContent = `[${t}] ${msg}\n`+el.textContent; }
+function setBaseline(){ baseline=new Map(students.map(s=>[s.id, jkey(s)])); }
+
+/* ---------- Auth ---------- */
+function renderAuth(){
+  const b=$("#authBox");
+  if(currentUser){
+    b.innerHTML = `<span class="muted">${esc(currentUser.email)}</span> <button class="ghost" id="outBtn">התנתק</button>`;
+    $("#outBtn").onclick=()=>signOut(auth);
+    $("#mainCard").classList.remove("hide");
+  } else {
+    b.innerHTML = `<button class="primary" id="inBtn">התחבר עם Google</button>`;
+    $("#inBtn").onclick=async()=>{ try{ const p=new GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"}); await signInWithPopup(auth,p); }catch(e){ log("שגיאת התחברות: "+(e.code||e.message)); alert("שגיאת התחברות: "+(e.code||e.message)+"\n\nאם כתוב unauthorized-domain — צריך להוסיף את sg437.github.io ל-Authorized domains."); } };
+    $("#mainCard").classList.add("hide");
+  }
+}
+onAuthStateChanged(auth, user=>{
+  currentUser=user; renderAuth();
+  if(user){ startSync(); } else if(unsub){ unsub(); unsub=null; }
+});
+
+/* ---------- Sync (onSnapshot) ---------- */
+function startSync(){
+  if(unsub) return;
+  unsub = onSnapshot(REF, { includeMetadataChanges:true }, snap=>{
+    const md=snap.metadata;
+    $("#syncStatus").innerHTML = md.hasPendingWrites ? '⏳ שומר…' : (md.fromCache ? '📴 מהמטמון' : '✓ מסונכרן בענן');
+    $("#syncStatus").style.color = md.hasPendingWrites ? 'var(--warn)' : (md.fromCache ? 'var(--soft)' : 'var(--good)');
+    const data = snap.exists()? snap.data() : {students:[]};
+    students = (data.students||[]).map(s=>({...s}));
+    if(!md.hasPendingWrites) setBaseline();   // בסיס-השוואה = מצב השרת המאושר
+    render();
+  }, err=>{ log("שגיאת סנכרון: "+(err.code||err.message)); });
+}
+
+/* ---------- Save: merge-on-write או overwrite ---------- */
+async function save(reason){
+  // חישוב השינוי של המכשיר הזה מול בסיס-ההשוואה
+  const cur=new Map(students.map(s=>[s.id,s]));
+  const changed=[], deleted=[];
+  for(const [id,s] of cur){ if(baseline.get(id)!==jkey(s)) changed.push({...s}); }
+  for(const id of baseline.keys()){ if(!cur.has(id)) deleted.push(id); }
+
+  try{
+    if(useMerge){
+      // מנגנון חדש: טרנזקציה — קרא עדכני, מזג רק את השינוי שלי, כתוב
+      await runTransaction(db, async tx=>{
+        const snap=await tx.get(REF);
+        const server = snap.exists()? (snap.data().students||[]) : [];
+        const m=new Map(server.map(s=>[s.id,s]));
+        for(const s of changed) m.set(s.id, s);
+        for(const id of deleted) m.delete(id);
+        tx.set(REF, {students:[...m.values()]});
+      });
+      log(`✅ מיזוג (${reason}) — עודכנו ${changed.length}, נמחקו ${deleted.length}`);
+    } else {
+      // מנגנון ישן: דריסה מלאה של כל הרשימה (מאבד שינויים מקבילים)
+      await setDoc(REF, {students: students.map(s=>({...s}))});
+      log(`⚠️ דריסה (${reason}) — נכתבה כל הרשימה (${students.length})`);
+    }
+  }catch(e){ log("שגיאת שמירה: "+(e.code||e.message)); alert("שגיאת שמירה: "+(e.code||e.message)); }
+}
+
+/* ---------- UI actions ---------- */
+$("#addBtn").onclick=()=>{ const n=$("#newName").value.trim(); if(!n) return; students.push({id:uid(),name:n,note:""}); $("#newName").value=""; render(); save("הוספה"); };
+$("#newName").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#addBtn").click(); });
+
+$("#seedBtn").onclick=async()=>{
+  const arr=[]; for(let i=1;i<=20;i++) arr.push({id:uid(),name:"תלמידה "+i,note:""});
+  students=arr; render(); await save("זריעה"); log("נזרעו 20 תלמידות");
+};
+$("#clearBtn").onclick=async()=>{ if(!confirm("למחוק את כל נתוני הבדיקה?")) return; students=[]; render(); await save("ניקוי"); };
+
+function render(){
+  $("#count").textContent = students.length;
+  const rows=$("#rows");
+  rows.innerHTML = students.map((s,i)=>`
+    <tr data-id="${esc(s.id)}">
+      <td>${i+1}</td>
+      <td>${esc(s.name)}</td>
+      <td><input type="text" class="note-in" value="${esc(s.note)}" data-note="${esc(s.id)}" placeholder="—"></td>
+      <td><button class="danger" data-del="${esc(s.id)}">מחק</button></td>
+    </tr>`).join("");
+  rows.querySelectorAll("[data-note]").forEach(inp=>{
+    inp.addEventListener("change",()=>{ const s=students.find(x=>x.id===inp.dataset.note); if(s){ s.note=inp.value; save("עריכת הערה"); } });
+  });
+  rows.querySelectorAll("[data-del]").forEach(b=>{
+    b.onclick=()=>{ students=students.filter(x=>x.id!==b.dataset.del); render(); save("מחיקה"); };
+  });
+}
+
+/* ---------- Mode toggle ---------- */
+function setMode(on){
+  useMerge=on;
+  $("#sw").classList.toggle("on",on);
+  $("#modeLbl").textContent = on ? "מיזוג (חדש)" : "דריסה (ישן)";
+  const pill=$("#modePill");
+  pill.textContent = on ? "בטוח מדריסה" : "חשוף לדריסה!";
+  pill.className = "pill "+(on?"on":"off");
+}
+$("#mergeToggle").onclick=()=>setMode(!useMerge);
+setMode(true);
+renderAuth();
+log("סביבת בדיקה נטענה. התחבר/י כדי להתחיל.");
+</script>
+</body>
+</html>
