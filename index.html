@@ -2308,8 +2308,9 @@ function renderActivityPanel(){
       name:names[em]||((ua[em]&&typeof ua[em]==="object"&&ua[em].name)||"") }))
     .filter(r=>r.ts).sort((a,b)=>b.ts-a.ts);
   if(!rows.length){ box.innerHTML='<div class="hint">אין עדיין פעילות מתועדת.</div>'; return; }
+  const fw=v=>{ if(!v) return "—"; const d=new Date(v); return isNaN(d)?"—":(d.toLocaleDateString("he-IL")+" "+d.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})); };
   box.innerHTML=`<div class="table-wrap"><table style="min-width:520px"><thead><tr><th>משתמש</th><th>מתי</th><th>מה עשה/תה</th></tr></thead><tbody>${
-    rows.map(r=>`<tr><td>${esc(r.name||r.em)}</td><td style="white-space:nowrap">${fmtWhen(r.ts)}</td><td>${r.last?esc(r.last):'<span class="hint">—</span>'}</td></tr>`).join("")
+    rows.map(r=>`<tr><td>${esc(r.name||r.em)}</td><td style="white-space:nowrap">${fw(r.ts)}</td><td>${r.last?esc(r.last):'<span class="hint">—</span>'}</td></tr>`).join("")
   }</tbody></table></div>`;
 }
 window.addEventListener("beforeunload", ()=>{ try{ clearPresence(); }catch(_){} });
