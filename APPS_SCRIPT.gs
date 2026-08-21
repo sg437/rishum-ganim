@@ -431,6 +431,9 @@ function backupFirestore_(){
   backupPrune_(folder);
   return { ok:true, count:docs.length, link:file.getUrl() };
 }
+/* עוטף ציבורי לטריגר היומי — בחר את הפונקציה הזו ברשימת הטריגרים
+   (פונקציות שמסתיימות ב-"_" אינן מופיעות ברשימה). */
+function backupFirestoreDaily(){ return backupFirestore_(); }
 function download_(fileId){
   var file = DriveApp.getFileById(fileId);
   var blob = file.getBlob();
