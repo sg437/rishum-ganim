@@ -1246,6 +1246,16 @@ function ganOverflowMap(){
   return map;
 }
 function digits(s){ return String(s||"").replace(/\D/g,""); }
+/* בדיקת תקינות ת"ז ישראלי (ספרת ביקורת). מחזיר: true תקין · false שגוי · null ריק/קצר מכדי לבדוק */
+function isValidIsraeliId(id){
+  const d=digits(id);
+  if(!d) return null;
+  if(d.length>9) return false;
+  const s=d.padStart(9,"0");
+  let sum=0;
+  for(let i=0;i<9;i++){ let n=(+s[i])*((i%2)+1); if(n>9) n-=9; sum+=n; }
+  return sum%10===0;
+}
 /* תיקון טלפון בייבוא: מספר נייד שאיבד את ה-0 המוביל (מתחיל ב-5) — מוסיפים 0 (סעיף 4) */
 function fixPhone(v){ v=String(v||"").trim(); if(!v) return ""; const d=v.replace(/\D/g,""); if(d && d[0]==='5' && d.length===9) return "0"+d; return v; }
 /* מפתח כתובת לזיהוי אחים/אחיות (רחוב+בניין+עיר) — סעיף 2 */
@@ -3382,7 +3392,15 @@ function openStudent(s){
       ' <button type="button" id="s-tz-open" style="background:none;border:none;padding:0;cursor:pointer;color:var(--accent-strong);font-weight:800;text-decoration:underline">↩ פתיחת התיק</button>';
     const b=$("#s-tz-open"); if(b) b.onclick=()=>openStudentById(c.id);
   };
-  $("#s-tz").addEventListener("input", tzWarn); tzWarn();
+  // בדיקת ספרת ביקורת של ת"ז — התראה על טעות הקלדה כשעוזבים את השדה (בלי הבהוב תוך כדי הקלדה)
+  const tzChecksumWarn=()=>{ const el=$("#s-tz-warn"); if(!el) return;
+    if(tzClashInYear($("#s-tz").value, s.year, s.id)) return; // התראת כפילות קודמת
+    if(isValidIsraeliId($("#s-tz").value)===false) el.innerHTML="⚠️ מספר הזהות אינו תקין — ייתכן טעות בהקלדה (בדוק/י את הספרות).";
+    else if(el.textContent.indexOf("אינו תקין")>=0) el.innerHTML="";
+  };
+  $("#s-tz").addEventListener("input", tzWarn);
+  $("#s-tz").addEventListener("blur", tzChecksumWarn);
+  tzWarn(); tzChecksumWarn();
   /* בעדכון הגן — הקמפוס והגיל מתעדכנים אוטומטית לפי הגן (בלשונית גנים).
      גן חד-גילאי → הגיל נקבע אוטומטית. גן דו-גילאי (3/4, 4/5) → בחירה בין שתי האפשרויות. */
   function applyGanAge(){
