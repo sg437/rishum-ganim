@@ -452,7 +452,7 @@ try{ TEST_DB_MODE = new URLSearchParams(location.search).get("testdb")==="1"; }c
 const firebaseConfig = TEST_DB_MODE ? TEST_FIREBASE : PROD_FIREBASE;
 /* מנעול נגד דריסה (merge-on-write): כבוי בייצור עד לאישור פריסה; דלוק אוטומטית במצב בדיקה.
    כשכבוי — התנהגות זהה לחלוטין לקוד הישן (דריסה). ההדלקה לייצור = שינוי הערך הזה בלבד. */
-const MERGE_WRITE = TEST_DB_MODE ? true : false;
+const MERGE_WRITE = true; /* מנעול נגד דריסה — פעיל בייצור (הופעל לאחר בדיקות). לחזרה מהירה: החזר ל-`TEST_DB_MODE ? true : false`. */
 const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
 /* באנר ברור במצב בדיקה — כדי שלא יתבלבלו בין סביבת הבדיקה למערכת האמיתית */
 if(TEST_DB_MODE){ try{
