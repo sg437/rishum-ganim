@@ -1044,7 +1044,41 @@ function save(){ if(!db) return; recordUserActivity(); setSyncStatus("pending");
 function recordUserActivity(){
   const em=(currentUser&&currentUser.email||"").toLowerCase(); if(!em) return;
   DB.settings=DB.settings||{}; DB.settings.userActivity=DB.settings.userActivity||{};
-  DB.settings.userActivity[em]=Date.now();
+  const prev=DB.settings.userActivity[em];
+  const rec=(prev && typeof prev==="object") ? Object.assign({}, prev) : {};
+  rec.ts=Date.now();
+  const nm=(DB.settings.userNames&&DB.settings.userNames[em])||""; if(nm) rec.name=nm;
+  let summary=""; try{ summary=buildChangeSummary(); }catch(_){}
+  if(summary) rec.last=summary; // תיאור העדכון האחרון (רק כשהיה שינוי נתונים)
+  DB.settings.userActivity[em]=rec;
+}
+/* קורא ערך userActivity שיכול להיות מספר (ישן) או אובייקט {ts,last,name} (חדש) */
+function uaTs(v){ return (v && typeof v==="object") ? v.ts : v; }
+function uaLast(v){ return (v && typeof v==="object") ? (v.last||"") : ""; }
+/* תיאור קצר בעברית של השינוי הנוכחי (הפרש מול בסיס-ההשוואה של המיזוג) */
+function _recName(o,type){
+  if(type==="stu")  return [o.lastName,o.firstName].filter(Boolean).join(" ")||"תלמידה";
+  if(type==="gan")  return o.ganName||o.teacherName||"גן";
+  if(type==="staff")return o.name||[o.lastName,o.firstName].filter(Boolean).join(" ")||"איש צוות";
+  return o.name||"רשומה";
+}
+function buildChangeSummary(){
+  const groups=[["stu","תלמידה","תלמידות","תיק",_mergeBase.stu,DB.students],
+                ["gan","גן","גנים","גן",_mergeBase.gan,DB.gans],
+                ["staff","איש צוות","אנשי צוות","איש צוות",_mergeBase.staff,DB.staff],
+                ["mgmt","איש הנהלה","אנשי הנהלה","רשומה",_mergeBase.mgmt,DB.management]];
+  const events=[]; let total=0, single=null;
+  for(const [type,sing,plur,unit,base,list] of groups){
+    if(!base || !base.size && !list.length) continue;
+    const {changed,deleted}=_diffList(list, base);
+    const adds=changed.filter(o=>!base.has(o.id)), edits=changed.filter(o=>base.has(o.id));
+    if(adds.length){ total+=adds.length; if(adds.length===1) single={verb:"הוסיף",unit,name:_recName(adds[0],type)}; events.push("הוסיף "+adds.length+" "+(adds.length===1?sing:plur)); }
+    if(edits.length){ total+=edits.length; if(edits.length===1) single={verb:"עדכן",unit,name:_recName(edits[0],type)}; events.push("עדכן "+edits.length+" "+(edits.length===1?sing:plur)); }
+    if(deleted.length){ total+=deleted.length; events.push("מחק "+deleted.length+" "+(deleted.length===1?sing:plur)); }
+  }
+  if(!events.length) return "";
+  if(total===1 && single) return single.verb+" "+single.unit+": "+single.name;
+  return events.join(", ");
 }
 async function runPush(){
   try{ await pushAll(); if(restMode) setSyncStatus("synced"); }
@@ -2265,6 +2299,18 @@ function refreshPresenceWidget(){
     ? `<div class="row" style="flex-wrap:wrap;gap:6px">${list.map(p=>`<span class="pill ${p.email===meLC?'ok':'neutral'}" style="padding:5px 11px">🟢 ${esc(p.name||p.email)}${p.email===meLC?' (את/ה)':''} · <span class="hint" style="display:inline">${presenceAgo(p.ts)}</span></span>`).join("")}</div>`
     : `<div class="hint">אף אחד לא מחובר כרגע (מלבד רענון תצוגה זה).</div>`;
   const c=$("#presenceCount"); if(c) c.textContent=list.length;
+}
+/* יומן פעילות — העריכה האחרונה של כל משתמש (מתי + מה) */
+function renderActivityPanel(){
+  const box=$("#activityBox"); if(!box) return;
+  const ua=(DB.settings&&DB.settings.userActivity)||{}, names=(DB.settings&&DB.settings.userNames)||{};
+  const rows=Object.keys(ua).map(em=>({ em, ts:uaTs(ua[em])||0, last:uaLast(ua[em]),
+      name:names[em]||((ua[em]&&typeof ua[em]==="object"&&ua[em].name)||"") }))
+    .filter(r=>r.ts).sort((a,b)=>b.ts-a.ts);
+  if(!rows.length){ box.innerHTML='<div class="hint">אין עדיין פעילות מתועדת.</div>'; return; }
+  box.innerHTML=`<div class="table-wrap"><table style="min-width:520px"><thead><tr><th>משתמש</th><th>מתי</th><th>מה עשה/תה</th></tr></thead><tbody>${
+    rows.map(r=>`<tr><td>${esc(r.name||r.em)}</td><td style="white-space:nowrap">${fmtWhen(r.ts)}</td><td>${r.last?esc(r.last):'<span class="hint">—</span>'}</td></tr>`).join("")
+  }</tbody></table></div>`;
 }
 window.addEventListener("beforeunload", ()=>{ try{ clearPresence(); }catch(_){} });
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState!=="hidden") writePresence(); });
@@ -7315,6 +7361,12 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
+    <h2>יומן פעילות — מי ערך מה ומתי</h2>
+    <div class="sub">העריכה האחרונה של כל משתמש: מתי, ומה הוא עשה (עדכון תיק / הוספת גן וכו').</div>
+    <div id="activityBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
+  </div>
+
+  <div class="panel">
     <h2>מיתוג — כותרת ולוגו</h2>
     <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר <b>להעלות קובץ תמונה</b> (מומלץ), או להזין אימוג'י (למשל 🎒).</div>
     <div class="grid g2">
@@ -7460,7 +7512,7 @@ function viewSettings(root){
 
   renderAuthBox();
   renderInstallBox();
-  writePresence(); refreshPresenceWidget(); // עדכן ורענן את "מי מחובר עכשיו"
+  writePresence(); refreshPresenceWidget(); renderActivityPanel(); // "מי מחובר עכשיו" + "יומן פעילות"
 
   // ניהול משתמשים (למנהל בלבד) — אישור כתובות Google מורשות (allowedEmails)
   if(admin){
@@ -7508,7 +7560,7 @@ function viewSettings(root){
             <td><input class="nu-nm" data-em="${esc(em)}" value="${esc(names[em]||"")}" placeholder="—" autocomplete="off" style="min-width:120px"></td>
             <td>${badge(em)}</td>
             <td>${scopeCell(em,isAdm)}</td>
-            <td>${fmtWhen(activity[em])}</td>
+            <td>${fmtWhen(uaTs(activity[em]))}${uaLast(activity[em])?`<div class="hint">${esc(uaLast(activity[em]))}</div>`:''}</td>
             <td style="text-align:end;white-space:nowrap">${actions}</td></tr>`;
         }).join("")}</tbody></table></div>`;
       usersBox.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{
