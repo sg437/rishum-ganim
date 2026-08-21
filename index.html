@@ -2201,6 +2201,47 @@ function firebaseErrHe(code){
   };
   return m[code]||("שגיאה בהתחברות ("+code+")");
 }
+/* ---------- נוכחות: מי מחובר עכשיו ----------
+   כל מכשיר כותב *רק* את מסמך הנוכחות שלו (presence_<מייל>) עם חותמת-זמן, כל
+   כמה דקות. אין דריסה (כל אחד וה-doc שלו). מסמכי נוכחות אינם נתוני מערכת —
+   rebuildDB מתעלם מהם, והם אינם עוברים דרך השמירה הרגילה. */
+const PRESENCE_BEAT_MS = 120000;    // דופק כל 2 דקות
+const PRESENCE_ACTIVE_MS = 300000;  // "פעיל" = נראה ב-5 הדקות האחרונות
+let _presenceTimer=null;
+function presenceKey(email){ return "presence_"+String(email||"").toLowerCase().replace(/[^a-z0-9]/g,"_"); }
+function myEmail(){ return ((currentUser&&currentUser.email)||"").toLowerCase(); }
+async function writePresence(){
+  if(!db || !currentUser || restMode) return; // ב-REST אין דופק (חוסך עומס)
+  try{
+    const em=myEmail();
+    const nm=(DB.settings&&DB.settings.userNames&&DB.settings.userNames[em])||"";
+    await setDoc(doc(db,"app",presenceKey(em)), { _t:"presence", email:em, name:nm, ts:Date.now() });
+  }catch(_){}
+}
+async function clearPresence(){
+  if(!db || !currentUser) return;
+  try{ await deleteDoc(doc(db,"app",presenceKey(myEmail()))); }catch(_){}
+}
+function startPresence(){ stopPresence(); const beat=()=>{ if(document.visibilityState!=="hidden") writePresence(); }; beat(); _presenceTimer=setInterval(beat, PRESENCE_BEAT_MS); }
+function stopPresence(){ if(_presenceTimer){ clearInterval(_presenceTimer); _presenceTimer=null; } }
+function activePresence(){
+  const now=Date.now(), out=[];
+  if(cloudDocs && cloudDocs.forEach) cloudDocs.forEach((v,k)=>{ if(k.startsWith("presence_") && v && v.ts && (now-v.ts)<PRESENCE_ACTIVE_MS) out.push(v); });
+  return out.sort((a,b)=>b.ts-a.ts);
+}
+function presenceAgo(ts){ const s=Math.max(0,Math.round((Date.now()-ts)/1000)); return s<60?`לפני ${s} שנ׳`:`לפני ${Math.round(s/60)} דק׳`; }
+/* רענון תצוגת "מי מחובר" בהגדרות, אם פתוחה — בלי בניית כל המסך מחדש */
+function refreshPresenceWidget(){
+  const box=$("#presenceBox"); if(!box) return;
+  const list=activePresence();
+  const meLC=myEmail();
+  box.innerHTML = list.length
+    ? `<div class="row" style="flex-wrap:wrap;gap:6px">${list.map(p=>`<span class="pill ${p.email===meLC?'ok':'neutral'}" style="padding:5px 11px">🟢 ${esc(p.name||p.email)}${p.email===meLC?' (את/ה)':''} · <span class="hint" style="display:inline">${presenceAgo(p.ts)}</span></span>`).join("")}</div>`
+    : `<div class="hint">אף אחד לא מחובר כרגע (מלבד רענון תצוגה זה).</div>`;
+  const c=$("#presenceCount"); if(c) c.textContent=list.length;
+}
+window.addEventListener("beforeunload", ()=>{ try{ clearPresence(); }catch(_){} });
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState!=="hidden") writePresence(); });
 function startDataSync(){
   if(dataUnsub) return;
   document.body.classList.remove("locked");
@@ -2216,6 +2257,8 @@ function startDataSync(){
       if(ch.type==="removed"){ cloudDocs.delete(ch.doc.id); knownStudentDocs.delete(ch.doc.id); shadowSeedFromCloud(ch.doc.id, null, true); }
       else { const d=ch.doc.data(); cloudDocs.set(ch.doc.id, d); if(ch.doc.id.startsWith("students_")) knownStudentDocs.add(ch.doc.id); shadowSeedFromCloud(ch.doc.id, d, false); }
     });
+    // שינויי נוכחות בלבד → רק לרענן את תצוגת "מי מחובר", בלי בניית כל המסך מחדש
+    if(changes.length && changes.every(ch=>ch.doc.id.startsWith("presence_"))){ refreshPresenceWidget(); return; }
     if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
     rebuildDB(cloudDocs);
     if(!md.hasPendingWrites) refreshMergeBase(); // בסיס-השוואה למיזוג = מצב שרת מאושר
@@ -2230,8 +2273,9 @@ function startDataSync(){
   }, err=>{ console.error(err); lastSyncError=(err&&(err.code||err.message))||"unknown"; setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
   // מעבר אוטומטי למצב חלופי (REST) אם חיבור ה-SDK לא הצליח למשוך נתונים תוך ~12 שניות
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
+  startPresence(); // נוכחות: "מי מחובר עכשיו"
 }
-function stopDataSync(){ _accessDenied=false; if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
+function stopDataSync(){ _accessDenied=false; stopPresence(); clearPresence(); if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
 
 function boot(){
   try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
@@ -2283,7 +2327,7 @@ function renderLogin(){
       e.style.display="block"; e.textContent=firebaseErrHe(err.code); }
   };
 }
-async function doSignOut(){ try{ await signOut(auth); toast("התנתקת מהמערכת"); }catch(e){} }
+async function doSignOut(){ try{ await clearPresence(); }catch(_){} try{ await signOut(auth); toast("התנתקת מהמערכת"); }catch(e){} }
 function renderAuthBox(){
   const box=$("#auth-box"); if(!box) return;
   const email = currentUser? currentUser.email : "—";
@@ -7217,6 +7261,12 @@ function viewSettings(root){
   ${admin?"":`<div class="panel"><div class="note">🔒 חלק מההגדרות (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, ניהול מנהלים) פתוחות לעריכה רק למנהל מערכת. אפשר לצפות אך לא לשנות. פנה/י למנהל להוספתך.</div></div>`}
 
   <div class="panel">
+    <h2>מי מחובר עכשיו <span class="pill neutral" id="presenceCount" style="font-size:.85rem">…</span></h2>
+    <div class="sub">משתמשים שפעילים במערכת ב-5 הדקות האחרונות (מתעדכן אונליין). שימושי לדעת מתי בטוח לבצע שינויים/עדכונים כשאין אף אחד באמצע עבודה.</div>
+    <div id="presenceBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
+  </div>
+
+  <div class="panel">
     <h2>מיתוג — כותרת ולוגו</h2>
     <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר <b>להעלות קובץ תמונה</b> (מומלץ), או להזין אימוג'י (למשל 🎒).</div>
     <div class="grid g2">
@@ -7362,6 +7412,7 @@ function viewSettings(root){
 
   renderAuthBox();
   renderInstallBox();
+  writePresence(); refreshPresenceWidget(); // עדכן ורענן את "מי מחובר עכשיו"
 
   // ניהול משתמשים (למנהל בלבד) — אישור כתובות Google מורשות (allowedEmails)
   if(admin){
