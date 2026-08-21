@@ -65,6 +65,10 @@
       </div>
       <div class="status" id="syncStatus">—</div>
     </div>
+    <div class="row" style="margin-top:10px">
+      <button class="ghost" id="pauseBtn">⏸️ הקפא סנכרון (הדמיית מכשיר ישן)</button>
+      <span class="muted">כשמוקפא — המכשיר לא מקבל עדכונים, כמו מכשיר עם נתון ישן. כך משחזרים את הדריסה.</span>
+    </div>
 
     <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
 
@@ -90,12 +94,19 @@
   </div>
 
   <div class="card">
-    <b>איך בודקים (2 מכשירים):</b>
+    <b>איך משחזרים את הבאג באופן אמין (2 כרטיסיות/מכשירים):</b>
     <ol style="margin:8px 0 0;padding-inline-start:20px">
-      <li>פתח את הדף הזה גם בטלפון (או בכרטיסייה נוספת) — <b>אותה כתובת</b>, אותו חשבון.</li>
-      <li>לחץ <b>🌱 זרע 20</b> פעם אחת (רק במכשיר אחד).</li>
-      <li><b>מצב "דריסה" (כבה את המתג):</b> ערוך הערה בתלמידה A במכשיר 1, ובו-זמנית הערה בתלמידה B במכשיר 2. תראה שאחת נעלמת — <b>זו התקלה</b>.</li>
-      <li><b>מצב "מיזוג" (הדלק את המתג):</b> חזור על אותו דבר — <b>שתי ההערות נשמרות</b>. ✅</li>
+      <li>לחץ <b>🌱 זרע 20</b> פעם אחת.</li>
+      <li>פתח את הדף גם בטלפון/כרטיסייה שנייה — <b>אותה כתובת, אותו חשבון</b>. יופיעו אותן 20.</li>
+      <li><b>במכשיר 2: לחץ ⏸️ "הקפא סנכרון"</b> — עכשיו הוא "מכשיר ישן" שלא מתעדכן.</li>
+      <li><b>במכשיר 1:</b> ערוך הערה בתלמידה <b>1</b> ותן לזה להישמר.</li>
+      <li><b>במכשיר 2 (המוקפא):</b> ערוך הערה בתלמידה <b>2</b> (הוא לא יודע על השינוי במכשיר 1).</li>
+      <li><b>בטל את ההקפאה במכשיר 2</b> ותראה:
+        <ul>
+          <li>🔴 אם המתג על <b>"דריסה"</b> — ההערה של תלמידה 1 <b>נעלמה</b>. זו התקלה של אתמול, מדויק.</li>
+          <li>🟢 אם המתג על <b>"מיזוג"</b> — <b>שתי ההערות קיימות</b>. ✅ מוגן.</li>
+        </ul>
+      </li>
     </ol>
     <div class="muted" style="margin-top:8px">יומן פעולות:</div>
     <div class="log" id="log"></div>
@@ -135,6 +146,8 @@ let baseline=new Map();        // id -> json (מצב השרת האחרון שר�
 let useMerge=true;
 let currentUser=null;
 let unsub=null;
+let paused=false;              // הקפאת סנכרון = הדמיית "מכשיר ישן"
+let lastSnapData=null;         // תמונת השרת האחרונה (מוחלת בעת ביטול הקפאה)
 
 function log(msg){ const el=$("#log"); const t=new Date().toLocaleTimeString("he-IL"); el.textContent = `[${t}] ${msg}\n`+el.textContent; }
 function setBaseline(){ baseline=new Map(students.map(s=>[s.id, jkey(s)])); }
@@ -158,18 +171,41 @@ onAuthStateChanged(auth, user=>{
 });
 
 /* ---------- Sync (onSnapshot) ---------- */
+function applySnap(data, md){
+  students = (data.students||[]).map(s=>({...s}));
+  if(!md.hasPendingWrites) setBaseline();   // בסיס-השוואה = מצב השרת המאושר
+  render();
+}
 function startSync(){
   if(unsub) return;
   unsub = onSnapshot(REF, { includeMetadataChanges:true }, snap=>{
     const md=snap.metadata;
+    lastSnapData = snap.exists()? snap.data() : {students:[]};
+    if(paused){   // "מכשיר ישן": לא מקבל עדכונים מהשרת
+      $("#syncStatus").innerHTML = '⏸️ מוקפא (מכשיר ישן) — לא מתעדכן';
+      $("#syncStatus").style.color = 'var(--bad)';
+      return;
+    }
     $("#syncStatus").innerHTML = md.hasPendingWrites ? '⏳ שומר…' : (md.fromCache ? '📴 מהמטמון' : '✓ מסונכרן בענן');
     $("#syncStatus").style.color = md.hasPendingWrites ? 'var(--warn)' : (md.fromCache ? 'var(--soft)' : 'var(--good)');
-    const data = snap.exists()? snap.data() : {students:[]};
-    students = (data.students||[]).map(s=>({...s}));
-    if(!md.hasPendingWrites) setBaseline();   // בסיס-השוואה = מצב השרת המאושר
-    render();
+    applySnap(lastSnapData, md);
   }, err=>{ log("שגיאת סנכרון: "+(err.code||err.message)); });
 }
+function setPaused(p){
+  paused=p;
+  const b=$("#pauseBtn");
+  b.textContent = p ? "▶️ בטל הקפאה וסנכרן" : "⏸️ הקפא סנכרון (הדמיית מכשיר ישן)";
+  b.classList.toggle("danger", p);
+  if(p){
+    log("❄️ סנכרון הוקפא — המכשיר עכשיו 'ישן' (לא יקבל שינויים מהשני)");
+    $("#syncStatus").innerHTML='⏸️ מוקפא (מכשיר ישן)'; $("#syncStatus").style.color='var(--bad)';
+  } else {
+    log("▶️ סנכרון חודש");
+    if(lastSnapData) applySnap(lastSnapData,{hasPendingWrites:false,fromCache:false});
+    $("#syncStatus").innerHTML='✓ מסונכרן בענן'; $("#syncStatus").style.color='var(--good)';
+  }
+}
+$("#pauseBtn").onclick=()=>setPaused(!paused);
 
 /* ---------- Save: merge-on-write או overwrite ---------- */
 async function save(reason){
