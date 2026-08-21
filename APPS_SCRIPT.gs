@@ -60,6 +60,7 @@ function doPost(e){
       case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
+      case 'backupSave':     return json_(out, backupSave_(req.name, req.dataB64));
       case 'copy':           return json_(out, copy_(req.fileId, req.folderId, req.name));
       case 'download':       return json_(out, download_(req.fileId));
       case 'sheetSync':      return json_(out, sheetSync_(req.title, req.sheets));
@@ -386,6 +387,49 @@ function copy_(fileId, folderId, name){
   var folder = DriveApp.getFolderById(folderId);
   var c = file.makeCopy(name || file.getName(), folder);
   return { ok:true, id:c.getId(), name:c.getName(), link:c.getUrl() };
+}
+
+/* ===================== גיבוי אוטומטי ל-Drive ===================== */
+var BACKUP_FOLDER_NAME = 'גיבויים';
+var BACKUP_KEEP = 30; // כמה גיבויים אחרונים לשמור (השאר נמחקים אוטומטית)
+function backupFolder_(){ return sub_(root_(), BACKUP_FOLDER_NAME); }
+function backupPrune_(folder){
+  var arr = [], it = folder.getFiles();
+  while(it.hasNext()){ var f = it.next(); arr.push({ f:f, t:f.getDateCreated().getTime() }); }
+  arr.sort(function(a,b){ return b.t - a.t; }); // חדש → ישן
+  for(var i = BACKUP_KEEP; i < arr.length; i++){ try{ arr[i].f.setTrashed(true); }catch(e){} }
+}
+/* גיבוי שנשלח מהתוכנה (client-side) — JSON של כל הנתונים, מקודד base64 */
+function backupSave_(name, dataB64){
+  var folder = backupFolder_();
+  var blob = Utilities.newBlob(Utilities.base64Decode(dataB64), 'application/json',
+                               name || ('backup-' + new Date().toISOString().slice(0,10) + '.json'));
+  var file = folder.createFile(blob);
+  backupPrune_(folder);
+  return { ok:true, fileId:file.getId(), link:file.getUrl() };
+}
+/* גיבוי שרתי עצמאי — קורא את כל אוסף app מ-Firestore ושומר ל-Drive.
+   מיועד לטריגר יומי (Triggers → backupFirestore_ → Time-driven → Day timer).
+   דורש הרשאת OAuth "datastore" לחשבון המריץ (ראה SETUP.md — "גיבוי אוטומטי"). */
+function backupFirestore_(){
+  var token;
+  try{ token = ScriptApp.getOAuthToken(); }catch(e){ return { ok:false, error:'no-token' }; }
+  var base = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID + '/databases/(default)/documents/app';
+  var docs = [], pageToken = '';
+  do{
+    var url = base + '?pageSize=300' + (pageToken ? ('&pageToken=' + encodeURIComponent(pageToken)) : '');
+    var resp = UrlFetchApp.fetch(url, { headers:{ Authorization:'Bearer ' + token }, muteHttpExceptions:true });
+    if(resp.getResponseCode() !== 200) return { ok:false, error:'firestore ' + resp.getResponseCode() + ': ' + resp.getContentText().slice(0,180) };
+    var j = JSON.parse(resp.getContentText());
+    (j.documents || []).forEach(function(d){ docs.push(d); });
+    pageToken = j.nextPageToken || '';
+  } while(pageToken);
+  var payload = JSON.stringify({ _type:'firestore-raw-backup', at:new Date().toISOString(), documents:docs });
+  var folder = backupFolder_();
+  var fname = 'firestore-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
+  var file = folder.createFile(fname, payload, 'application/json');
+  backupPrune_(folder);
+  return { ok:true, count:docs.length, link:file.getUrl() };
 }
 function download_(fileId){
   var file = DriveApp.getFileById(fileId);

@@ -939,6 +939,22 @@ function maybeCleanupNewModel(){
   cleanupNewModelDocs().then(r=>{ if(r && r.deleted) toast("ניקוי מודל-חדש הושלם: נמחקו "+r.deleted+" מסמכים"); })
     .catch(e=>{ _cleanupDone=false; console.error("cleanup failed", e); });
 }
+/* גיבוי אוטומטי יומי ל-Drive — פעם ביום, כשמנהל נכנס (דרך גשר הדרייב). שומר את כל
+   הנתונים כ-JSON בתיקיית "גיבויים", עם ניקוי אוטומטי של ישנים בצד הגשר. */
+let _dailyBackupTried=false;
+async function maybeDailyBackup(){
+  if(_dailyBackupTried) return;
+  if(!DRIVE_READY || !currentUser || restMode || !serverConfirmed || !isAdmin()) return;
+  const today=new Date().toISOString().slice(0,10);
+  if(DB.settings && DB.settings.lastAutoBackup===today){ _dailyBackupTried=true; return; }
+  _dailyBackupTried=true;
+  try{
+    const dataB64=btoa(unescape(encodeURIComponent(JSON.stringify(DB)))); // UTF-8 → base64
+    const res=await driveCall("backupSave", { name:"גיבוי-"+today+".json", dataB64 });
+    if(res && res.ok){ DB.settings.lastAutoBackup=today; save(); toast("גיבוי אוטומטי נשמר ל-Drive ✓"); }
+    else _dailyBackupTried=false;
+  }catch(e){ _dailyBackupTried=false; console.error("auto backup failed", e); }
+}
 /* ---------- מיתוג במסמך נפרד (app/branding) — סעיף "באג לוגו" ----------
    הלוגו/כותרת נשמרים במסמך ייעודי הנכתב *רק כשמשנים מיתוג*, ולא בכל עריכה.
    כך עריכות רגילות (שכותבות meta בכל שמירה) לא דורסות עוד את הלוגו, וה-data URL
@@ -2274,6 +2290,7 @@ function startDataSync(){
     if(!md.hasPendingWrites) refreshMergeBase(); // בסיס-השוואה למיזוג = מצב שרת מאושר
     maybeMigrateBranding();
     maybeCleanupNewModel();
+    if(!md.fromCache) maybeDailyBackup(); // גיבוי אוטומטי יומי (רק לאחר אישור מהשרת)
     if(!md.fromCache && !enforceAccess()) return; // חסימת התחברות Google לא-מורשית (רק לאחר אישור מהשרת)
     // איתחול meta רק כשהשרת אישר שהוא באמת ריק (לא ממטמון אופליין) —
     // כדי שדפדפן שאינו מצליח להגיע ל-Firestore לא ידחוף DB ריק וידרוס נתונים קיימים.
@@ -7224,11 +7241,13 @@ function viewTools(root){
 
   <div class="panel">
     <h2>💾 גיבוי ושחזור</h2>
-    <div class="sub">הנתונים נשמרים בענן ומסונכרנים אוטומטית. אפשר לייצא גיבוי JSON, ולשחזר קובץ גיבוי — כולל גיבוי מהגרסה הישנה בטלפון (כך מעבירים את הנתונים שהוזנו שם אל הענן).</div>
+    <div class="sub">הנתונים נשמרים בענן ומסונכרנים אוטומטית. <b>גיבוי אוטומטי יומי</b> נשמר ל-Google Drive (תיקיית "גיבויים") בכניסה של מנהל. אפשר גם לייצא/לשחזר גיבוי JSON ידני.</div>
     <div class="row">
+      <button class="btn" id="backupDriveNow">☁️ גיבוי ל-Drive עכשיו</button>
       <button class="btn ghost" id="exportAll">⬇️ ייצוא גיבוי (JSON)</button>
       <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">⬆️ שחזור מגיבוי<input type="file" id="importAll" accept=".json" hidden></label>
     </div>
+    <div id="backupNowMsg" class="hint" style="margin-top:6px"></div>
   </div>`;
 
   renderDriveBox();
@@ -7267,6 +7286,17 @@ function viewTools(root){
 
   // גיבוי ושחזור
   $("#exportAll").onclick=()=>{ downloadBlob(new Blob([JSON.stringify(DB,null,2)],{type:"application/json"}), `גיבוי-רישום-${new Date().toISOString().slice(0,10)}.json`); };
+  { const bn=$("#backupDriveNow"); if(bn) bn.onclick=async()=>{ const msg=$("#backupNowMsg");
+      if(!DRIVE_READY){ if(msg) msg.innerHTML='<b style="color:var(--bad)">גשר הדרייב אינו מוגדר — ראה כלים ושירותים / SETUP.md.</b>'; return; }
+      bn.disabled=true; if(msg) msg.textContent="מגבה ל-Drive… ⏳";
+      try{ const dataB64=btoa(unescape(encodeURIComponent(JSON.stringify(DB))));
+        const res=await driveCall("backupSave", { name:"גיבוי-"+new Date().toISOString().slice(0,10)+".json", dataB64 });
+        if(res && res.ok){ DB.settings.lastAutoBackup=new Date().toISOString().slice(0,10); save();
+          if(msg) msg.innerHTML=`<b style="color:var(--good)">✓ הגיבוי נשמר ל-Drive.</b> ${res.link?`<a href="${esc(res.link)}" target="_blank" rel="noopener">פתיחת הקובץ</a>`:''}`; }
+        else if(msg) msg.innerHTML='<b style="color:var(--bad)">הגיבוי נכשל — ייתכן שצריך לעדכן את גשר הדרייב (הוספת פעולת backupSave).</b>';
+      }catch(e){ if(msg) msg.innerHTML='<b style="color:var(--bad)">שגיאת גיבוי: '+esc(String(e.message||e))+'</b>'; }
+      finally{ bn.disabled=false; }
+    }; }
   $("#importAll").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
     readFileSmart(f, txt=>{ try{ const d=JSON.parse(txt); if(!d.students){throw 0;} if(confirm("שחזור יחליף את כל הנתונים הקיימים. להמשיך?")){ DB=Object.assign(blankDB(),d); save(); route(); toast("שוחזר בהצלחה"); } }catch(_){ toast("קובץ לא תקין"); } });
   };
