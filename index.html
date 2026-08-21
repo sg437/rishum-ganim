@@ -426,11 +426,11 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendP
          GoogleAuthProvider, signInWithPopup }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-         doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence, writeBatch }
+         doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence, writeBatch, runTransaction }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* ===== הגדרות Firebase — הדבק/י כאן את 6 המפתחות מהפרויקט שלך (ראה SETUP.md) ===== */
-const firebaseConfig = {
+const PROD_FIREBASE = {
   apiKey: "AIzaSyBRIWtqtPXxd-W0WR3nB-iGn0Qn9ml-Q8I",
   authDomain: "rishum-ganim-fad40.firebaseapp.com",
   projectId: "rishum-ganim-fad40",
@@ -438,6 +438,21 @@ const firebaseConfig = {
   messagingSenderId: "695537337833",
   appId: "1:695537337833:web:8f1e46f6d6b4c8e5a37778"
 };
+/* פרויקט בדיקה — פעיל רק עם ?testdb=1 בכתובת. נתוני משחק נפרדים לגמרי מהחי. */
+const TEST_FIREBASE = {
+  apiKey: "AIzaSyAsIXD28ODmwbBZqrnJooqT1UTmFjoMOy0",
+  authDomain: "rishum-ganim-test-fe7b0.firebaseapp.com",
+  projectId: "rishum-ganim-test-fe7b0",
+  storageBucket: "rishum-ganim-test-fe7b0.firebasestorage.app",
+  messagingSenderId: "567081379539",
+  appId: "1:567081379539:web:abd216cf35749597c41626"
+};
+let TEST_DB_MODE=false;
+try{ TEST_DB_MODE = new URLSearchParams(location.search).get("testdb")==="1"; }catch(_){}
+const firebaseConfig = TEST_DB_MODE ? TEST_FIREBASE : PROD_FIREBASE;
+/* מנעול נגד דריסה (merge-on-write): כבוי בייצור עד לאישור פריסה; דלוק אוטומטית במצב בדיקה.
+   כשכבוי — התנהגות זהה לחלוטין לקוד הישן (דריסה). ההדלקה לייצור = שינוי הערך הזה בלבד. */
+const MERGE_WRITE = TEST_DB_MODE ? true : false;
 const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
 
 /* ===== כתובת "גשר" ה-Drive (Google Apps Script). ראה SETUP.md — "גשר Drive". אינה סוד ===== */
@@ -701,7 +716,7 @@ async function loadViaRest(){
     if(!map.has("meta") && !map.size){ if(out) out.innerHTML=`<b style="color:var(--bad)">לא נמצאו נתונים במאגר.</b>`; return; }
     cloudDocs=map; serverConfirmed=true;
     knownStudentDocs.clear(); [...map.keys()].forEach(id=>{ if(id.startsWith("students_")) knownStudentDocs.add(id); });
-    enterRestMode(); rebuildDB(cloudDocs); maybeMigrateBranding(); maybeCleanupNewModel();
+    enterRestMode(); rebuildDB(cloudDocs); refreshMergeBase(); maybeMigrateBranding(); maybeCleanupNewModel();
     if(!enforceAccess()) return; // חסימת התחברות Google לא-מורשית גם במצב חלופי
     hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced"); route();
     toast("הנתונים נטענו (מצב חלופי) — אפשר גם לערוך");
@@ -748,8 +763,72 @@ function encFsVal(v){
   return {stringValue:String(v)};
 }
 function encFsFields(obj){ const f={}; for(const k in obj){ if(obj[k]!==undefined) f[k]=encFsVal(obj[k]); } return f; }
+/* מיזוג REST (מצב חלופי כשה-SDK חסום) — GET עם updateTime ואז PATCH מותנה */
+async function _restGet(base, hdr, id){
+  const r=await fetch(base+encodeURIComponent(id), { headers:hdr });
+  if(r.status===404) return { updateTime:null, data:{} };
+  if(!r.ok) throw new Error("get "+id+" ("+r.status+")");
+  const j=await r.json();
+  return { updateTime:j.updateTime||null, data:decFsFields(j.fields||{}) };
+}
+function _condUrl(base, id, updateTime){
+  return base+encodeURIComponent(id)+"?"+(updateTime ? ("currentDocument.updateTime="+encodeURIComponent(updateTime)) : "currentDocument.exists=false");
+}
+async function _restMergeSimple(base, hdr, id, listKey, list, baseMap){
+  const { changed, deleted } = _diffList(list, baseMap);
+  if(!changed.length && !deleted.length) return;
+  for(let attempt=0; attempt<6; attempt++){
+    const g=await _restGet(base, hdr, id);
+    const server=Array.isArray(g.data[listKey])?g.data[listKey]:[];
+    const m=new Map(server.map(o=>[o.id,o]));
+    for(const o of changed) m.set(o.id, o);
+    for(const dId of deleted) m.delete(dId);
+    const p=await fetch(_condUrl(base,id,g.updateTime),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields({[listKey]:[...m.values()]})}) });
+    if(p.ok) return;
+    if(p.status===409||p.status===412) continue; // תנאי נכשל — מישהו כתב בינתיים → נסה שוב
+    throw new Error("restMerge "+id+" ("+p.status+")");
+  }
+  throw new Error("restMerge "+id+" — יותר מדי התנגשויות");
+}
+async function _restMergeStudents(base, hdr){
+  const b=_mergeBase.stu, cur=new Map(DB.students.map(s=>[s.id,s]));
+  const addsByYear=new Map(), removesByYear=new Map();
+  const push=(m,k,v)=>{ let a=m.get(k); if(!a){a=[];m.set(k,a);} a.push(v); };
+  const rm=(m,k,id)=>{ let s=m.get(k); if(!s){s=new Set();m.set(k,s);} s.add(id); };
+  for(const [id,s] of cur){ const bb=b.get(id); if(!bb||bb.j!==_mk(s)){ push(addsByYear,s.year,s); if(bb&&bb.y&&bb.y!==s.year) rm(removesByYear,bb.y,id); } }
+  for(const [id,bb] of b){ if(!cur.has(id)&&bb.y) rm(removesByYear,bb.y,id); }
+  const years=new Set([...addsByYear.keys(), ...removesByYear.keys()]);
+  for(const y of years){ if(!y) continue;
+    const id=safeYearId(y), adds=addsByYear.get(y)||[], rms=removesByYear.get(y)||new Set();
+    let done=false;
+    for(let attempt=0; attempt<6 && !done; attempt++){
+      const g=await _restGet(base,hdr,id);
+      const server=Array.isArray(g.data.students)?g.data.students:[];
+      const m=new Map(server.map(o=>[o.id,o]));
+      for(const s of adds) m.set(s.id,s);
+      for(const rid of rms) m.delete(rid);
+      const p=await fetch(_condUrl(base,id,g.updateTime),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields({year:y,students:[...m.values()]})}) });
+      if(p.ok){ knownStudentDocs.add(id); done=true; break; }
+      if(p.status===409||p.status===412) continue;
+      throw new Error("restMerge "+id+" ("+p.status+")");
+    }
+    if(!done) throw new Error("restMerge "+id+" — יותר מדי התנגשויות");
+  }
+}
+async function mergePushRest(){
+  const token=await currentUser.getIdToken();
+  const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
+  const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
+  const r=await fetch(base+"meta",{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(metaForWrite())}) }); if(!r.ok) throw new Error("write meta ("+r.status+")");
+  await _restMergeSimple(base,hdr,"gans","gans",DB.gans,_mergeBase.gan);
+  await _restMergeSimple(base,hdr,"staff","staff",DB.staff,_mergeBase.staff);
+  await _restMergeSimple(base,hdr,"management","management",DB.management,_mergeBase.mgmt);
+  await _restMergeStudents(base,hdr);
+  refreshMergeBase();
+}
 /* כתיבת כל הנתונים דרך Firestore REST (PATCH=setDoc מלא, DELETE למסמכי שנה שהוסרו) */
 async function pushAllRest(){
+  if(MERGE_WRITE){ await mergePushRest(); return; } // מנעול נגד דריסה
   const token=await currentUser.getIdToken();
   const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
   const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
@@ -951,12 +1030,89 @@ async function runPush(){
     if($("#overlay").classList.contains("show")) pendingRender=true; else route();
   }
 }
+/* ============================================================
+   מנעול נגד דריסה — מיזוג נקודתי (merge-on-write)
+   רשומות (תלמידות/גנים/צוות/הנהלה) נכתבות במיזוג טרנזקציוני: קוראים את מצב
+   השרת העדכני וממזגים רק את השינוי המקומי — כך מכשיר עם נתון ישן אינו דורס
+   שינוי חדש של מכשיר אחר. SDK: runTransaction · REST: תנאי updateTime.
+   נבדק ב-tests/merge-on-write.test.cjs וב-test.html. גייטד ב-MERGE_WRITE. */
+function _mk(o){ return JSON.stringify(o); }
+/* בסיס-השוואה: id → {y?:שנה, j:JSON} של מצב השרת האחרון המאושר */
+const _mergeBase = { stu:new Map(), gan:new Map(), staff:new Map(), mgmt:new Map() };
+function refreshMergeBase(){
+  _mergeBase.stu  = new Map(DB.students.map(s=>[s.id, { y:s.year, j:_mk(s) }]));
+  _mergeBase.gan  = new Map(DB.gans.map(g=>[g.id, { j:_mk(g) }]));
+  _mergeBase.staff= new Map(DB.staff.map(m=>[m.id, { j:_mk(m) }]));
+  _mergeBase.mgmt = new Map(DB.management.map(m=>[m.id, { j:_mk(m) }]));
+}
+/* חישוב שינוי מול הבסיס → {changed:[obj], deleted:[id]} */
+function _diffList(list, baseMap){
+  const cur=new Map(list.map(o=>[o.id,o]));
+  const changed=[], deleted=[];
+  for(const [id,o] of cur){ const b=baseMap.get(id); if(!b || b.j!==_mk(o)) changed.push(o); }
+  for(const id of baseMap.keys()){ if(!cur.has(id)) deleted.push(id); }
+  return { changed, deleted };
+}
+/* מיזוג SDK למסמך-רשימה פשוט (gans/staff/management) */
+async function _txnMergeSimple(docId, listKey, list, baseMap){
+  const { changed, deleted } = _diffList(list, baseMap);
+  if(!changed.length && !deleted.length) return;
+  const ref=doc(db,"app",docId);
+  await runTransaction(db, async tx=>{
+    const snap=await tx.get(ref);
+    const server=(snap.exists() && Array.isArray(snap.data()[listKey])) ? snap.data()[listKey] : [];
+    const m=new Map(server.map(o=>[o.id,o]));
+    for(const o of changed) m.set(o.id, o);
+    for(const id of deleted) m.delete(id);
+    tx.set(ref, { [listKey]:[...m.values()] });
+  });
+}
+/* מיזוג SDK לתלמידות — מחולקות למסמך לכל שנה (students_<year>) */
+async function _txnMergeStudents(){
+  const base=_mergeBase.stu, cur=new Map(DB.students.map(s=>[s.id,s]));
+  const addsByYear=new Map(), removesByYear=new Map();
+  const push=(m,k,v)=>{ let a=m.get(k); if(!a){a=[];m.set(k,a);} a.push(v); };
+  const rm=(m,k,id)=>{ let s=m.get(k); if(!s){s=new Set();m.set(k,s);} s.add(id); };
+  for(const [id,s] of cur){
+    const b=base.get(id);
+    if(!b || b.j!==_mk(s)){
+      push(addsByYear, s.year, s);
+      if(b && b.y && b.y!==s.year) rm(removesByYear, b.y, id); // עבר שנה → הסר מהישנה
+    }
+  }
+  for(const [id,b] of base){ if(!cur.has(id) && b.y) rm(removesByYear, b.y, id); } // נמחקו
+  const years=new Set([...addsByYear.keys(), ...removesByYear.keys()]);
+  for(const y of years){
+    if(!y) continue;
+    const docId=safeYearId(y), ref=doc(db,"app",docId);
+    const adds=addsByYear.get(y)||[], rms=removesByYear.get(y)||new Set();
+    await runTransaction(db, async tx=>{
+      const snap=await tx.get(ref);
+      const server=(snap.exists() && Array.isArray(snap.data().students)) ? snap.data().students : [];
+      const m=new Map(server.map(o=>[o.id,o]));
+      for(const s of adds) m.set(s.id, s);
+      for(const id of rms) m.delete(id);
+      tx.set(ref, { year:y, students:[...m.values()] });
+    });
+    knownStudentDocs.add(docId);
+  }
+}
+async function mergePushSDK(){
+  await setDoc(doc(db,"app","meta"), metaForWrite()); // meta קטן — כתיבה רגילה
+  await _txnMergeSimple("gans","gans",DB.gans,_mergeBase.gan);
+  await _txnMergeSimple("staff","staff",DB.staff,_mergeBase.staff);
+  await _txnMergeSimple("management","management",DB.management,_mergeBase.mgmt);
+  await _txnMergeStudents();
+  refreshMergeBase();
+}
 async function pushAll(){
   if(!db) return;
   // בטיחות: אל תדרוס נתוני שרת עם DB ריק שטרם אושר מול השרת (דפדפן ללא חיבור שלא הספיק לטעון)
   const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
   if(localEmpty && !serverConfirmed) return;
   if(restMode){ await pushAllRest(); return; } // מצב חלופי: כתיבה דרך REST
+  if(MERGE_WRITE){ await mergePushSDK(); return; } // מנעול נגד דריסה
+  // ---- מסלול ישן (דריסה מלאה) — פעיל כשהמנעול כבוי ----
   // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
   const meta=metaForWrite();
   const gans=DB.gans.slice(), management=DB.management.slice(), staff=DB.staff.slice();
@@ -998,8 +1154,8 @@ function rebuildDB(docsMap){
   }
   DB.assignments = meta.assignments||{};
   migrateAssignments();
-  DB.gans = (docsMap.get("gans")||{}).gans||[];
-  DB.management = (docsMap.get("management")||{}).management||[];
+  DB.gans = ((docsMap.get("gans")||{}).gans||[]).map(g=>{ if(!g.id) g.id=uid(); return g; });
+  DB.management = ((docsMap.get("management")||{}).management||[]).map(m=>{ if(!m.id) m.id=uid(); return m; });
   DB.staff = ((docsMap.get("staff")||{}).staff||[]).map(normStaff);
   const studs=[];
   for(const [id,val] of docsMap){ if(id.startsWith("students_") && val && Array.isArray(val.students)) studs.push(...val.students); }
@@ -1007,6 +1163,7 @@ function rebuildDB(docsMap){
 }
 /* השלמת שדות חדשים לרשומות ישנות שנשמרו לפני העדכון */
 function normStudent(s){
+  if(!s.id) s.id=uid(); // מזהה יציב לכל רשומה — בסיס למיזוג נגד דריסה
   if(s.campus==null) s.campus=""; // קמפוס גנים (סעיף 1)
   if(s.placed==null) s.placed=true; // רשומות קיימות נחשבות משובצות (הגירה חד-פעמית)
   if(s.insurancePaid==null) s.insurancePaid=false; // תשלום ביטוח תלמידים
@@ -1022,6 +1179,7 @@ function normStudent(s){
 /* השלמת שדות חדשים לאנשי צוות ישנים (ת"ז, מייל, שם משפחה/פרטי) — סעיף 1 */
 function normStaff(m){
   m=Object.assign({ lastName:"", firstName:"", name:"", tz:"", email:"", role:"סייעת", phone:"", mobile:"", city:"", notes:"" }, m||{});
+  if(!m.id) m.id=uid(); // מזהה יציב לכל רשומה — בסיס למיזוג נגד דריסה
   // רשומה ישנה עם "שם" מלא בלבד — נשלוף ממנו משפחה/פרטי בברירת מחדל
   if(!m.lastName && !m.firstName && m.name){ const p=String(m.name).trim().split(/\s+/); m.lastName=p.shift()||""; m.firstName=p.join(" "); }
   if(!m.name) m.name=[m.lastName,m.firstName].filter(Boolean).join(" ");
@@ -2051,6 +2209,7 @@ function startDataSync(){
     });
     if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
     rebuildDB(cloudDocs);
+    if(!md.hasPendingWrites) refreshMergeBase(); // בסיס-השוואה למיזוג = מצב שרת מאושר
     maybeMigrateBranding();
     maybeCleanupNewModel();
     if(!md.fromCache && !enforceAccess()) return; // חסימת התחברות Google לא-מורשית (רק לאחר אישור מהשרת)

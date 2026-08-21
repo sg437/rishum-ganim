@@ -166,6 +166,48 @@ console.log("\n=== תרחיש 5: 20 מכשירים עורכים 20 תלמידו�
   check("כל 20 העריכות נשמרו (אף אחת לא נדרסה)", allKept);
 }
 
+console.log("\n=== תרחיש 6: תלמידות מחולקות למסמך-לכל-שנה + מעבר שנה (הלוגיקה של index.html) ===");
+{
+  // מודל שרת: yearId -> {students:[]}. מיזוג מחלק שינויים לפי שנה, כולל מעבר שנה.
+  function mergeStudents(server, dev){
+    const base=dev.baseline, cur=new Map(dev.local.map(s=>[s.id,s]));
+    const addsByYear=new Map(), removesByYear=new Map();
+    const push=(m,k,v)=>{let a=m.get(k);if(!a){a=[];m.set(k,a);}a.push(v);};
+    const rmv=(m,k,id)=>{let s=m.get(k);if(!s){s=new Set();m.set(k,s);}s.add(id);};
+    for(const [id,s] of cur){ const b=base.get(id); if(!b||b.j!==jkey(s)){ push(addsByYear,s.year,s); if(b&&b.y&&b.y!==s.year) rmv(removesByYear,b.y,id); } }
+    for(const [id,b] of base){ if(!cur.has(id)&&b.y) rmv(removesByYear,b.y,id); }
+    for(const y of new Set([...addsByYear.keys(),...removesByYear.keys()])){ if(!y) continue;
+      if(!server.has(y)) server.set(y,{students:[]});
+      const m=new Map(server.get(y).students.map(s=>[s.id,s]));
+      for(const s of (addsByYear.get(y)||[])) m.set(s.id,{...s});
+      for(const id of (removesByYear.get(y)||new Set())) m.delete(id);
+      server.get(y).students=[...m.values()];
+    }
+    dev.baseline=new Map(dev.local.map(s=>[s.id,{y:s.year,j:jkey(s)}])); // עדכון בסיס
+  }
+  function loadStu(server){
+    const local=[]; for(const d of server.values()) for(const s of d.students) local.push({...s});
+    return { local, baseline:new Map(local.map(s=>[s.id,{y:s.year,j:jkey(s)}])) };
+  }
+  const server=new Map([
+    ["A",{students:[{id:"a1",year:"A",note:""},{id:"a2",year:"A",note:""},{id:"a3",year:"A",note:""}]}],
+    ["B",{students:[{id:"b1",year:"B",note:""},{id:"b2",year:"B",note:""}]}],
+  ]);
+  const D1=loadStu(server), D2=loadStu(server);
+  D1.local.find(s=>s.id==="a1").note="ערך D1";                 // D1: עריכה בשנה A
+  D2.local.find(s=>s.id==="a2").year="B";                       // D2: מעביר את a2 משנה A ל-B
+  D2.local = D2.local.filter(s=>s.id!=="b1");                   // D2: מוחק את b1
+  mergeStudents(server, D1);
+  mergeStudents(server, D2);   // D2 "ישן" — לא ראה את עריכת D1, אבל המיזוג קורא שרת עדכני
+  const yA=server.get("A").students, yB=server.get("B").students;
+  const find=(arr,id)=>arr.find(s=>s.id===id);
+  check("עריכת D1 (a1) שרדה למרות ש-D2 היה ישן", find(yA,"a1") && find(yA,"a1").note==="ערך D1");
+  check("a2 עבר לשנה B (הוסר מ-A)", !find(yA,"a2") && !!find(yB,"a2"));
+  check("b1 נמחק משנה B", !find(yB,"b1"));
+  check("שנה A: a1,a3 (2)", yA.length===2 && find(yA,"a3"));
+  check("שנה B: b2,a2 (2)", yB.length===2 && find(yB,"b2") && find(yB,"a2"));
+}
+
 console.log("\n============================================");
 console.log(`תוצאה: ${pass} עברו · ${fail} נכשלו`);
 console.log("============================================\n");
