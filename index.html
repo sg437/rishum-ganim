@@ -472,10 +472,12 @@ const RESILIENT_SAVE = TEST_DB_MODE ? true : false;
 /* יומן אבחון — מצב בדיקה בלבד (?testdb=1). רושם את רצף אירועי הסנכרון על המסך כדי
    לאבחן כשלי-כתיבה ברשת חלשה. אין לו כל השפעה בייצור (dlog מיד יוצא אם לא במצב בדיקה). */
 let _dlog=[];
+try{ if(TEST_DB_MODE){ const s=localStorage.getItem("rg-dlog"); if(s) _dlog=JSON.parse(s)||[]; } }catch(_){ _dlog=[]; } // שורד רענון
 function dlog(m){
   if(!TEST_DB_MODE) return;
   const t=new Date().toLocaleTimeString("he-IL")+"."+String(Date.now()%1000).padStart(3,"0");
   _dlog.unshift(t+"  "+m); if(_dlog.length>300) _dlog.pop();
+  try{ localStorage.setItem("rg-dlog", JSON.stringify(_dlog)); }catch(_){} // נשמר כדי לשרוד רענון/היעלמות פאנל
   const b=document.getElementById("dlogBody"); if(b) b.textContent=_dlog.join("\n");
 }
 if(TEST_DB_MODE){
@@ -486,9 +488,9 @@ if(TEST_DB_MODE){
     const bs="font:inherit;cursor:pointer;border:1px solid #2a4133;background:#0e1712;color:#cfe6d5;border-radius:6px;padding:3px 8px";
     p.innerHTML="<div style='display:flex;gap:6px;align-items:center;padding:6px 10px;background:#13241a;border-bottom:1px solid #2a4133;font-weight:700'><span style='flex:1'>🔎 יומן אבחון סנכרון (בדיקה)</span><button id='dlogClear' style='"+bs+"'>נקה</button><button id='dlogHide' style='"+bs+"'>הסתר</button></div>"+
       "<div style='display:flex;gap:6px;flex-wrap:wrap;padding:6px 10px;background:#0c130f;border-bottom:1px solid #2a4133'><button id='dlogOff' style='"+bs+"'>📴 נתק (סימולציה)</button><button id='dlogEdit' style='"+bs+"'>🧪 עריכה+שמירה</button><button id='dlogOn' style='"+bs+"'>🌐 חבר</button></div>"+
-      "<pre id='dlogBody' style='margin:0;padding:8px 10px;overflow:auto;white-space:pre-wrap;direction:ltr;text-align:left;flex:1'></pre>";
+      "<pre id='dlogBody' style='margin:0;padding:8px 10px;overflow:auto;white-space:pre-wrap;direction:ltr;text-align:left;flex:1'>"+_dlog.join("\n")+"</pre>"; // מציג יומן קיים (ששרד רענון)
     document.body.appendChild(p);
-    document.getElementById("dlogClear").onclick=()=>{ _dlog=[]; document.getElementById("dlogBody").textContent=""; };
+    document.getElementById("dlogClear").onclick=()=>{ _dlog=[]; try{ localStorage.removeItem("rg-dlog"); }catch(_){} document.getElementById("dlogBody").textContent=""; };
     document.getElementById("dlogHide").onclick=()=>{ p.style.display="none"; };
     // בדיקה דטרמיניסטית של רשת חלשה — בלי מצב-טיסה, על מכשיר אחד:
     document.getElementById("dlogOff").onclick=async()=>{ try{ await disableNetwork(db); dlog("📴 disableNetwork — Firestore אופליין (סימולציה)"); }catch(e){ dlog("disableNetwork שגיאה: "+e.message); } };
@@ -502,6 +504,7 @@ if(TEST_DB_MODE){
     dlog("יומן אבחון נטען · RESILIENT_SAVE="+RESILIENT_SAVE+" · online="+(navigator.onLine));
   };
   document.addEventListener("DOMContentLoaded", build); build();
+  setInterval(build, 2000); // אם הפאנל נעלם (רינדור מחדש) — יחזור לבד (build יוצא מיד אם הוא קיים)
   window.addEventListener("online",  ()=>dlog("🌐 אירוע online"));
   window.addEventListener("offline", ()=>dlog("📴 אירוע offline"));
 }
