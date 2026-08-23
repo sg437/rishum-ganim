@@ -468,6 +468,30 @@ if(TEST_DB_MODE){ try{ const _sg=localStorage.getItem("rg-syncguard"); if(_sg===
    ב"כתיבות-ממתינות" (_pending), מציגים אותה מעל כל סנאפשוט כדי שלא תיעלם, מסמנים "טרם נשמר"
    (לא "נשמר" מטעה), ומנסים שוב אוטומטית כשהרשת חוזרת — עד שהשרת מאשר. נבדק ב-tests/resilient-save.test.cjs. */
 const RESILIENT_SAVE = TEST_DB_MODE ? true : false;
+/* יומן אבחון — מצב בדיקה בלבד (?testdb=1). רושם את רצף אירועי הסנכרון על המסך כדי
+   לאבחן כשלי-כתיבה ברשת חלשה. אין לו כל השפעה בייצור (dlog מיד יוצא אם לא במצב בדיקה). */
+let _dlog=[];
+function dlog(m){
+  if(!TEST_DB_MODE) return;
+  const t=new Date().toLocaleTimeString("he-IL")+"."+String(Date.now()%1000).padStart(3,"0");
+  _dlog.unshift(t+"  "+m); if(_dlog.length>300) _dlog.pop();
+  const b=document.getElementById("dlogBody"); if(b) b.textContent=_dlog.join("\n");
+}
+if(TEST_DB_MODE){
+  const build=()=>{
+    if(!document.body || document.getElementById("dlogPanel")) return;
+    const p=document.createElement("div"); p.id="dlogPanel";
+    p.style.cssText="position:fixed;bottom:0;inset-inline-end:0;z-index:99998;width:min(96vw,520px);max-height:42vh;display:flex;flex-direction:column;background:#0e1712;color:#cfe6d5;border:2px solid #d9a441;border-radius:12px 0 0 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;box-shadow:0 -6px 20px -8px rgba(0,0,0,.5)";
+    p.innerHTML="<div style='display:flex;gap:8px;align-items:center;padding:6px 10px;background:#13241a;border-bottom:1px solid #2a4133;font-weight:700'><span style='flex:1'>🔎 יומן אבחון סנכרון (בדיקה)</span><button id='dlogClear' style='font:inherit;cursor:pointer;border:1px solid #2a4133;background:#0e1712;color:#cfe6d5;border-radius:6px;padding:2px 8px'>נקה</button><button id='dlogHide' style='font:inherit;cursor:pointer;border:1px solid #2a4133;background:#0e1712;color:#cfe6d5;border-radius:6px;padding:2px 8px'>הסתר</button></div><pre id='dlogBody' style='margin:0;padding:8px 10px;overflow:auto;white-space:pre-wrap;direction:ltr;text-align:left;flex:1'></pre>";
+    document.body.appendChild(p);
+    document.getElementById("dlogClear").onclick=()=>{ _dlog=[]; document.getElementById("dlogBody").textContent=""; };
+    document.getElementById("dlogHide").onclick=()=>{ p.style.display="none"; };
+    dlog("יומן אבחון נטען · RESILIENT_SAVE="+RESILIENT_SAVE+" · online="+(navigator.onLine));
+  };
+  document.addEventListener("DOMContentLoaded", build); build();
+  window.addEventListener("online",  ()=>dlog("🌐 אירוע online"));
+  window.addEventListener("offline", ()=>dlog("📴 אירוע offline"));
+}
 const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
 /* באנר ברור במצב בדיקה — כדי שלא יתבלבלו בין סביבת הבדיקה למערכת האמיתית */
 if(TEST_DB_MODE){ try{
@@ -625,6 +649,7 @@ let lastSyncError="";      // קוד/הודעת השגיאה האחרונה מ-F
 function setSyncStatus(state){
   const el=$("#syncStatus"); if(!el) return;
   _syncState=state;
+  if(TEST_DB_MODE) dlog("setSyncStatus("+state+") pending="+_pending.size+" saveFailed="+_saveFailed+" restMode="+restMode);
   if(!currentUser){ el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; hideOfflineBanner(); return; }
   // שמירה עמידה: כל עוד יש עריכה שטרם אושרה בשרת (_pending) — אל תציג "נשמר" מטעה רק כי הקריאה עובדת.
   // מבחינים: כשל-כתיבה אמיתי → "טרם נשמר" (עם ניסיון-חוזר); כתיבה ששודרה וממתינה לאישור → "מסנכרן".
@@ -654,7 +679,9 @@ function setSyncStatus(state){
   // שומר-סף לכתיבה תקועה: כשהקריאה מהשרת עובדת (serverConfirmed) אך "מסנכרן" לא מתחלף ל"נשמר בענן"
   // תוך ~15 שניות — סימן שערוץ הכתיבה של ה-SDK חסום (רשת/פרוקסי) בעוד הקריאה עוברת. עוברים אוטומטית
   // לכתיבה דרך REST (דחיפה, בלי לדרוס נתונים מקומיים) כדי לשחרר את התקיעה גם ללא התערבות המשתמש.
-  if(state==="pending" && serverConfirmed && !restMode){
+  // כש-RESILIENT_SAVE דלוק: v2 מטפל בניסיונות-חוזרים בעצמו ואסור לו לעצור את המאזין/לעבור ל-REST,
+  // לכן לא מפעילים את שומר-הסף הישן (recoverStuckWrite) — הוא היה מכניס ל-restMode ומבלבל את v2.
+  if(state==="pending" && serverConfirmed && !restMode && !RESILIENT_SAVE){
     if(!_pendingWatch) _pendingWatch=setTimeout(recoverStuckWrite, 15000);
   } else {
     clearTimeout(_pendingWatch); _pendingWatch=null;
@@ -705,21 +732,23 @@ function recordPending(){
    TTL=Infinity: לעולם לא נזרק בשקט — רק אישור-שרת (cj===j) או עריכת-אחר (yield) מנקים. */
 function applyPending(){
   if(!RESILIENT_SAVE || !_pending.size) return;
-  const now=Date.now();
+  const now=Date.now(); const before=_pending.size;
   DB.students   = _guardApplyList("stu",   DB.students,   _pending, now, Infinity);
   DB.gans       = _guardApplyList("gan",   DB.gans,       _pending, now, Infinity);
   DB.staff      = _guardApplyList("staff", DB.staff,      _pending, now, Infinity);
   DB.management = _guardApplyList("mgmt",  DB.management, _pending, now, Infinity);
+  if(TEST_DB_MODE && before!==_pending.size) dlog("  applyPending: "+before+"→"+_pending.size+" (אושרו/נסוגו "+(before-_pending.size)+")");
 }
 /* ניסיון-חוזר אוטומטי כל עוד יש ממתינים — נסיגה מדורגת (backoff) עד 30ש'. */
 function scheduleRetry(){
   if(!RESILIENT_SAVE || !_pending.size) return;
   clearTimeout(_retryTimer);
   _retryDelay = Math.min((_retryDelay||1500)*1.6, 30000);
-  _retryTimer=setTimeout(()=>{ _retryTimer=null; if(_pending.size && currentUser && db && !savePending) save(); }, _retryDelay);
+  if(TEST_DB_MODE) dlog("  scheduleRetry בעוד "+Math.round(_retryDelay)+"ms");
+  _retryTimer=setTimeout(()=>{ _retryTimer=null; if(TEST_DB_MODE) dlog("⏰ retry timer fired (pending="+_pending.size+" online="+navigator.onLine+")"); if(_pending.size && currentUser && db && !savePending) save(); }, _retryDelay);
 }
 function cancelRetry(){ clearTimeout(_retryTimer); _retryTimer=null; _retryDelay=0; }
-function retryNow(){ if(!savePending && currentUser && db){ _retryDelay=0; save(); } }
+function retryNow(){ if(TEST_DB_MODE) dlog("👆 retryNow (ידני)"); if(!savePending && currentUser && db){ _retryDelay=0; save(); } }
 /* רשת-ביטחון אחרי כתיבה *מוצלחת*: בדרך-כלל האישור (echo) מנקה את _pending תוך רגע.
    אם משום-מה לא הגיע — נשחרר בכל זאת (הכתיבה כן הצליחה), כדי שלא יישאר "מסנכרן" תקוע. */
 function armConfirmSafety(){
@@ -733,6 +762,7 @@ function refreshPendingState(fromCache){
 }
 /* כשהרשת חוזרת (מצב-טיסה כובה, סלולרי חזר) — נסה מיד לשמור את הממתינים. */
 if(typeof window!=="undefined") window.addEventListener("online", ()=>{
+  if(TEST_DB_MODE) dlog("🌐 online→ ניסיון שמירה (pending="+_pending.size+" savePending="+savePending+")");
   if(RESILIENT_SAVE && _pending.size && currentUser && db && !savePending){ _retryDelay=0; save(); }
 });
 function hideOfflineBanner(){ const b=$("#offlineBanner"); if(b) b.style.display="none"; }
@@ -1123,7 +1153,7 @@ async function testCloudConnection(){
   out.innerHTML=msg;
 }
 let _skipSheetSchedule=false; // מונע לולאה: כתיבת קישור הגיליון עצמה לא תפעיל שיקוף חוזר
-function save(){ if(!db) return; recordUserActivity(); setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250);
+function save(){ if(!db) return; if(TEST_DB_MODE) dlog("💾 save() נקרא"); recordUserActivity(); setSyncStatus("pending"); savePending=true; clearTimeout(_saveTimer); _saveTimer=setTimeout(runPush, 250);
   if(_skipSheetSchedule){ _skipSheetSchedule=false; } else { try{ scheduleSheetSync(); }catch(_){} } }
 /* רישום פעילות: חותמת-זמן אחרונה שבה המשתמש המחובר שינה נתונים (לפי אימייל).
    נשמר בתוך settings ומסונכרן, ומוצג בעמודת "עריכה אחרונה" בניהול המשתמשים. */
@@ -1168,9 +1198,10 @@ function buildChangeSummary(){
 }
 async function runPush(){
   if(RESILIENT_SAVE) recordPending(); // רשום את מה שעומדים לכתוב *לפני* הכתיבה (בסיס = מצב השרת שלפנינו)
+  if(TEST_DB_MODE) dlog("▶ runPush: pending="+_pending.size+" restMode="+restMode+" online="+navigator.onLine);
   let ok=false;
-  try{ await pushAll(); ok=true; if(restMode) setSyncStatus("synced"); }
-  catch(e){ console.error(e); if(!RESILIENT_SAVE){ setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); } }
+  try{ await pushAll(); ok=true; if(TEST_DB_MODE) dlog("  pushAll OK"); if(restMode) setSyncStatus("synced"); }
+  catch(e){ console.error(e); if(TEST_DB_MODE) dlog("  pushAll FAIL: "+(e&&(e.code||e.message)||e)); if(!RESILIENT_SAVE){ setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); } }
   finally{
     savePending=false;
     if(!restMode){ rebuildDB(cloudDocs); if(RESILIENT_SAVE) applyPending(); else applyGuard(); } // הצג מצב-שרת + החזק עריכות ממתינות
@@ -1178,6 +1209,7 @@ async function runPush(){
       if(ok){ _saveFailed=false; refreshPendingState(false); armConfirmSafety(); } // הצלחה — האישור מגיע בסנאפשוט (echo) וינקה את _pending; רשת-ביטחון ל-15ש'
       else { _saveFailed=true; setSyncStatus("error"); scheduleRetry(); } // כשל — החזק, סמן "טרם נשמר", נסה שוב אוטומטית
     }
+    if(TEST_DB_MODE) dlog("■ runPush end: ok="+ok+" pending="+_pending.size+" saveFailed="+_saveFailed);
     if($("#overlay").classList.contains("show")) pendingRender=true; else route();
   }
 }
@@ -2510,6 +2542,7 @@ function startDataSync(){
   dataUnsub = onSnapshot(collection(db,"app"), { includeMetadataChanges:true }, snap=>{
     const md=snap.metadata; // עדכון חיווי הסנכרון לפי מצב הכתיבות מול השרת
     lastSyncError=""; // התקבל סנאפשוט — הקריאה עובדת
+    if(TEST_DB_MODE) dlog("📸 snapshot fromCache="+md.fromCache+" hasPending="+md.hasPendingWrites+" changes="+snap.docChanges().length+" savePending="+savePending+" pending="+_pending.size);
     if(!md.fromCache) serverConfirmed=true; // אושר מגע עם השרת — מותר לכתוב
     setSyncStatus(md.hasPendingWrites ? "pending" : (md.fromCache ? "offline" : "synced"));
     const changes = snap.docChanges();
@@ -2535,7 +2568,7 @@ function startDataSync(){
     if(!cloudDocs.has("meta") && !md.fromCache) save();
     if($("#overlay").classList.contains("show")){ pendingRender=true; }
     else route();
-  }, err=>{ console.error(err); lastSyncError=(err&&(err.code||err.message))||"unknown"; setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
+  }, err=>{ console.error(err); if(TEST_DB_MODE) dlog("❌ snapshot ERROR: "+(err&&(err.code||err.message)||"unknown")+" (pending="+_pending.size+")"); lastSyncError=(err&&(err.code||err.message))||"unknown"; setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
   // מעבר אוטומטי למצב חלופי (REST) אם חיבור ה-SDK לא הצליח למשוך נתונים תוך ~12 שניות
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
   startPresence(); // נוכחות: "מי מחובר עכשיו"
