@@ -2344,6 +2344,7 @@ function guideContent(){
       `<ul>
         <li><b>ייבוא</b> — מקובץ CSV או הדבקה מאקסל; תיק לכל שורה לפי הכותרות, זיהוי כפילויות ותיקון ניידים.</li>
         <li><b>ייצוא</b> — לאקסל (CSV) ולהדפסה/PDF, עם <b>בחירת שדות</b> ולפי הסינון. יצוא התלמידות נפתח מכפתור <b>📤 יצוא רשימות</b> בלשונית התלמידות; קיים גם לגנים ולשיבוץ הצוות.</li>
+        <li><b>ייצוא תלמידות (רשימות)</b> — בין השדות גם <b>שם הגן</b> (הגן המשובץ) ו<b>סמל גן</b>. אפשר <b>למיין "לפי גן (שם→גיל)"</b> כדי לקבל רשימה מלאה לפי סדר הגנים (למשל אבני נזר 3, 4, 5). כפתור <b>🎨 אקסל צבעוני</b> מפיק אקסל שבו <b>שם הגן והגיל צבועים לפי צבע הגיל</b> (3 ירוק · 4 סגול · 5 צהוב).</li>
         <li><b>ייצוא גנים</b> — מלשונית הגנים (📤 ייצוא / הדפסה). בין השדות לבחירה גם <b>סמל הגן</b> ו<b>גננת משובצת</b> (מהשיבוץ השנתי). הרשימה יוצאת <b>מסודרת לפי שם הגן ואז לפי גיל</b> (למשל אבני נזר 3, 4, 5). כפתור <b>🎨 אקסל צבעוני</b> מפיק קובץ אקסל שבו <b>שם הגן והגיל צבועים לפי צבע הגיל</b> (3 ירוק · 4 סגול · 5 צהוב; דו-גילאי לפי הגיל הראשון).</li>
         <li><b>יצוא ממותג</b> — בהדפסה/PDF מופיע <b>לוגו הרשת</b> בראש הדף, ומתחתיו <b>פרטי המקום</b> לפי הבחירה (למשל שם הגן · סמל · כתובת).</li>
         <li><b>"התאם לעמוד אחד"</b> — סימון שמכווץ אוטומטית רשימה ארוכה לעמוד יחיד.</li>
@@ -7024,6 +7025,7 @@ const EXPORT_FIELDS = [
   ["city","עיר",s=>s.city],
   ["campus","קמפוס",s=>s.campus],
   ["gan","גן",s=>ganName(s.ganId)],
+  ["ganSymbol","סמל גן",s=>{ const g=ganById(s.ganId); return g?(g.ganSymbol||""):""; }],
   ["age","גיל",s=>s.age],
   ["period","מועד",s=>s.period],
   ["education","חינוך",s=>eduLabel(s)],
@@ -7065,6 +7067,7 @@ function viewExport(root){
       <div class="field"><label>חינוך</label><select id="x-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div>
       <div class="field"><label>קלוט בעירייה</label><select id="x-muni"><option value="">הכל</option><option value="yes">רק קלוטות</option><option value="no">רק לא קלוטות</option></select></div>
       <div class="field"><label>כולל שסיימו</label><select id="x-fin"><option value="no">לא</option><option value="yes">כן</option></select></div>
+      <div class="field"><label>מיון</label><select id="x-sort"><option value="name">שם משפחה</option><option value="gan">לפי גן (שם→גיל)</option></select></div>
     </div>
     <fieldset><legend>שדות לייצוא</legend>
       <div class="row" style="margin-bottom:8px">
@@ -7078,6 +7081,7 @@ function viewExport(root){
     </fieldset>
     <div class="row" style="align-items:center;flex-wrap:wrap">
       <button class="btn" id="x-preview">🔎 תצוגה מקדימה</button>
+      <button class="btn ghost" id="x-xls">🎨 אקסל צבעוני</button>
       <button class="btn ghost" id="x-csv">⬇️ ייצוא לאקסל (CSV)</button>
       <button class="btn ghost" id="x-pdf">🖨️ ייצוא ל-PDF / הדפסה</button>
       <button class="btn ghost" id="x-mail">📎 שיתוף מסמך</button>
@@ -7090,7 +7094,9 @@ function viewExport(root){
     if(ev) parts.push("חינוך "+(ev==='ח"מ'?'מיוחד':'רגיל')); if(av) parts.push("גיל "+av); if(pv) parts.push(pv); return parts.join(" · "); };
   const gather=()=>{
     const gv=$("#x-gan").value, av=$("#x-age").value, pv=$("#x-period").value, ev=(activeEdu||$("#x-edu").value), mv=$("#x-muni").value, fv=$("#x-fin").value;
-    return studentsOfYear().filter(s=>{
+    const sortMode=$("#x-sort")?$("#x-sort").value:"name";
+    const byName=(a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he") || (a.firstName||"").localeCompare(b.firstName||"","he");
+    const list=studentsOfYear().filter(s=>{
       if(fv!=='yes' && s.finished) return false;
       if(gv && s.ganId!==gv) return false;
       if(av && String(s.age)!==av) return false;
@@ -7099,7 +7105,13 @@ function viewExport(root){
       if(mv==='yes' && !s.absorbedMunicipality) return false;
       if(mv==='no' && s.absorbedMunicipality) return false;
       return true;
-    }).sort((a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he"));
+    });
+    // מיון: לפי גן (שם הגן ואז גיל, למשל אבני נזר 3/4/5) או לפי שם משפחה
+    if(sortMode==='gan') list.sort((a,b)=>
+      String(ganName(a.ganId)||"").localeCompare(String(ganName(b.ganId)||""),"he")
+      || (ganAgeKey(ganById(a.ganId)||{})-ganAgeKey(ganById(b.ganId)||{})) || byName(a,b));
+    else list.sort(byName);
+    return list;
   };
   const cols=()=> EXPORT_FIELDS.filter(f=>exportSel.has(f[0]));
   const preview=()=>{
@@ -7118,6 +7130,18 @@ function viewExport(root){
   $("#x-none").onclick=()=>{ exportSel=new Set(); rerenderCols(); };
   $("#x-def").onclick=()=>{ exportSel=new Set(EXPORT_DEFAULT); rerenderCols(); };
   $("#x-preview").onclick=preview;
+  const xsort=$("#x-sort"); if(xsort) xsort.onchange=preview;
+  $("#x-xls").onclick=()=>{
+    const rows=gather(), C=cols();
+    if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
+    if(!rows.length){ toast("אין נתונים לייצוא"); return; }
+    // צביעת הטקסט של עמודות "גן" ו"גיל" בלבד — לפי צבע גיל הגן של כל תלמידה
+    const inkCols=new Set(); C.forEach((c,i)=>{ if(c[0]==='gan'||c[0]==='age') inkCols.add(i); });
+    const cellInk=(ri,ci)=> inkCols.has(ci) ? ganAgeInk(ganById(rows[ri].ganId)||{}) : "";
+    tableToXls(`תלמידות_${DB.activeYear}.xls`, C.map(c=>c[1]), rows.map(s=>C.map(c=>c[2](s))),
+      { title:"רשימת תלמידות · "+DB.activeYear, cellInk });
+    toast("קובץ אקסל צבעוני נוצר");
+  };
   $("#x-csv").onclick=()=>{
     const rows=gather(); const C=cols();
     if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
@@ -7152,8 +7176,8 @@ function tintHex(hex, p){ hex=String(hex||"").replace('#',''); if(hex.length===3
 /* יצוא טבלה צבעונית לאקסל: HTML‏-table בסיומת .xls — נפתח באקסל וב-Google Sheets עם הצבעים.
    opts.colBg[i] = צבע רקע לעמודה i (בגוף הטבלה) · opts.title = כותרת מעל הטבלה. */
 function tableToXls(name, headers, rows, opts){
-  opts=opts||{}; const colBg=opts.colBg||[], title=opts.title||"";
-  const td=(v,bg)=>`<td${bg?` style="background:${bg}"`:''}>${esc(String(v==null?"":v))}</td>`;
+  opts=opts||{}; const colBg=opts.colBg||[], title=opts.title||"", cellInk=opts.cellInk||null;
+  const td=(v,bg,ink)=>`<td${(bg||ink)?` style="${bg?`background:${bg};`:''}${ink?`color:${ink};font-weight:bold;`:''}"`:''}>${esc(String(v==null?"":v))}</td>`;
   let h='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'+
     '<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>שיבוץ</x:Name>'+
     '<x:WorksheetOptions><x:DisplayRightToLeft/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'+
@@ -7161,7 +7185,7 @@ function tableToXls(name, headers, rows, opts){
     'th{background:#2f6f43;color:#fff;font-weight:bold}</style></head><body dir="rtl">';
   if(title) h+='<h3 style="font-family:Arial,sans-serif">'+esc(title)+'</h3>';
   h+='<table><thead><tr>'+headers.map(hd=>`<th>${esc(String(hd==null?"":hd))}</th>`).join("")+'</tr></thead><tbody>'+
-    rows.map(r=>'<tr>'+r.map((c,i)=>td(c,colBg[i])).join("")+'</tr>').join("")+'</tbody></table></body></html>';
+    rows.map((r,ri)=>'<tr>'+r.map((c,i)=>td(c,colBg[i],cellInk?cellInk(ri,i):"")).join("")+'</tr>').join("")+'</tbody></table></body></html>';
   downloadBlob(new Blob(["﻿"+h],{type:"application/vnd.ms-excel;charset=utf-8"}), name);
 }
 /* פענוח קובץ טקסט עם זיהוי קידוד — תומך UTF-8 (עם/בלי BOM) וגם Windows-1255
