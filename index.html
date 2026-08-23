@@ -191,6 +191,18 @@ tbody tr.clickable:hover{background:var(--accent-soft)}
 .toolbar .field.grow{flex:1;min-width:180px}
 .toolbar .field label{margin-bottom:3px}
 
+/* בחירה מרובה בסגנון רשימה נפתחת (סינון גנים) */
+.msel{position:relative}
+.msel>summary{list-style:none;cursor:pointer;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;font-weight:600}
+.msel>summary::-webkit-details-marker{display:none}
+.msel>summary::after{content:"▾";color:var(--ink-soft);font-size:.75rem}
+.msel[open]>summary{outline:2px solid var(--accent);border-color:var(--accent)}
+.msel-menu{position:absolute;z-index:60;top:calc(100% + 4px);inset-inline-start:0;min-width:100%;max-height:260px;overflow:auto;background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,.16));padding:6px}
+.msel-menu .msel-tools{display:flex;gap:6px;padding:2px 4px 6px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.msel-opt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-weight:600;white-space:nowrap}
+.msel-opt:hover{background:var(--surface-2)}
+.msel-opt input{width:auto;margin:0}
+
 /* table */
 .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
 table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:720px}
@@ -2244,7 +2256,7 @@ function guideContent(){
         <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: <b>גן — אפשר לבחור כמה גנים יחד</b> (כולל <b>"ללא גן (הוצאו)"</b>; ריק = כל הגנים), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים.</li>
         <li><b>לחיצה על שורה</b> פותחת את התיק (גם בגנים ובצוות).</li>
         <li><b>מיון</b> — לחיצה על כותרת עמודה.</li>
-        <li><b>בחירת כמה גנים יחד</b> — בסינון "גן" לוחצים על כל גן שרוצים לצרף (כמו בסינון הגיל). בחירת כמה גנים מציגה <b>רשימה מאוחדת</b> של התלמידות מכולם; בחירה חוזרת על גן מבטלת אותו; ללא בחירה מוצגות כל התלמידות. כשנבחר <b>גן אחד בלבד</b> מופיע מעל הרשימה פס <b>🖨️ הדפסה / 📎 שיתוף</b> של רשימת אותו גן.</li>
+        <li><b>בחירת כמה גנים יחד</b> — סינון "גן" הוא <b>רשימה נפתחת</b>: לוחצים עליה ומסמנים בתיבות הסימון כמה גנים שרוצים (עם "בחר/י הכל" ו"ניקוי"). בחירת כמה גנים מציגה <b>רשימה מאוחדת</b> של התלמידות מכולם; ללא בחירה מוצגות כל התלמידות. כשנבחר <b>גן אחד בלבד</b> מופיע מעל הרשימה פס <b>🖨️ הדפסה / 📎 שיתוף</b> של רשימת אותו גן.</li>
         <li><b>עמודת רחוב</b> — בטבלה (וגם בתצוגת "תלמידות הגן") מוצג <b>הרחוב והבניין</b> של כל תלמידה במקום העיר — מזהה טוב יותר את התלמידות כשכולן באותה עיר.</li>
         <li><b>פס סיכום</b> חכם מעל הטבלה מתעדכן לפי הסינון.</li>
       </ul>` },
@@ -2332,6 +2344,7 @@ function guideContent(){
       `<ul>
         <li><b>ייבוא</b> — מקובץ CSV או הדבקה מאקסל; תיק לכל שורה לפי הכותרות, זיהוי כפילויות ותיקון ניידים.</li>
         <li><b>ייצוא</b> — לאקסל (CSV) ולהדפסה/PDF, עם <b>בחירת שדות</b> ולפי הסינון. יצוא התלמידות נפתח מכפתור <b>📤 יצוא רשימות</b> בלשונית התלמידות; קיים גם לגנים ולשיבוץ הצוות.</li>
+        <li><b>ייצוא גנים</b> — מלשונית הגנים (📤 ייצוא / הדפסה). בין השדות לבחירה גם <b>סמל הגן</b> ו<b>גננת משובצת</b> (מהשיבוץ השנתי). הרשימה יוצאת <b>מסודרת לפי שם הגן ואז לפי גיל</b> (למשל אבני נזר 3, 4, 5). כפתור <b>🎨 אקסל צבעוני</b> מפיק קובץ אקסל שבו <b>שם הגן והגיל צבועים לפי צבע הגיל</b> (3 ירוק · 4 סגול · 5 צהוב; דו-גילאי לפי הגיל הראשון).</li>
         <li><b>יצוא ממותג</b> — בהדפסה/PDF מופיע <b>לוגו הרשת</b> בראש הדף, ומתחתיו <b>פרטי המקום</b> לפי הבחירה (למשל שם הגן · סמל · כתובת).</li>
         <li><b>"התאם לעמוד אחד"</b> — סימון שמכווץ אוטומטית רשימה ארוכה לעמוד יחיד.</li>
         <li><b>📎 שיתוף מסמך</b> — יוצר <b>PDF ממותג</b> ומשתף אותו כקובץ (למייל / וואטסאפ וכו'). בדפדפנים שאינם תומכים בשיתוף קבצים — ה-PDF יורד למכשיר ואפשר לצרפו למייל.</li>
@@ -3045,6 +3058,11 @@ function stuActiveFilterCount(){ const f=stuFilter; let n=0;
   if(f.gans&&f.gans.length)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
 /* איפוס כל סינוני התלמידות לברירת המחדל (כפתור "ניקוי") */
 function clearStuFilter(){ stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; }
+/* תווית התקציר לרשימת הגנים הנפתחת (בחירה מרובה) */
+function ganFilterLabel(){ const sel=stuFilter.gans||[];
+  if(!sel.length) return "כל הגנים";
+  if(sel.length===1) return sel[0]==='__none__' ? "ללא גן (הוצאו)" : ganName(sel[0]);
+  return sel.length+" גנים נבחרו"; }
 /* מאפייני סינון מיוחדים לתלמידה — לסינון + סיכום מותנה (סעיף השארות/צהרון/קייטנות) */
 const STU_FLAGS = {
   retention:    { label:"השארות",        test:s=>!!(s.special && s.special.retention) },
@@ -3249,11 +3267,18 @@ function viewStudents(root){
     </div>
     <div class="filter-panel" id="stuFilterPanel" ${fOpen?'':'hidden'}>
       <div class="toolbar" style="margin-bottom:0">
-        <div class="field" style="flex-basis:100%"><label>גן (אפשר לבחור כמה)</label>
-          <div class="row" id="f-gan" style="gap:4px;flex-wrap:wrap;max-height:168px;overflow:auto">
-            <button type="button" class="btn sm ${stuFilter.gans.includes('__none__')?'':'ghost'}" data-gan="__none__">ללא גן (הוצאו)</button>
-            ${gans.map(g=>`<button type="button" class="btn sm ${stuFilter.gans.includes(g.id)?'':'ghost'}" data-gan="${g.id}">${esc(ganName(g.id))}</button>`).join("")}
-          </div></div>
+        <div class="field"><label>גן (אפשר לבחור כמה)</label>
+          <details class="msel" id="f-gan">
+            <summary id="f-gan-summary">${ganFilterLabel()}</summary>
+            <div class="msel-menu">
+              <div class="msel-tools">
+                <button type="button" class="btn ghost sm" data-gan-all>בחר/י הכל</button>
+                <button type="button" class="btn ghost sm" data-gan-clear>ניקוי</button>
+              </div>
+              <label class="msel-opt"><input type="checkbox" data-gan="__none__" ${stuFilter.gans.includes('__none__')?'checked':''}> ללא גן (הוצאו)</label>
+              ${gans.map(g=>`<label class="msel-opt"><input type="checkbox" data-gan="${g.id}" ${stuFilter.gans.includes(g.id)?'checked':''}> ${esc(ganName(g.id))}</label>`).join("")}
+            </div>
+          </details></div>
         <div class="field"><label>גיל (אפשר לבחור כמה)</label>
           <div class="row" id="f-age" style="gap:4px;flex-wrap:wrap">
             ${CHILD_AGES.map(a=>`<button type="button" class="btn sm ${stuFilter.age.includes(a)?'':'ghost'}" data-age="${a}">${a}</button>`).join("")}
@@ -3286,11 +3311,25 @@ function viewStudents(root){
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
   bind("#f-q","q");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
   const clr=$("#f-clear"); if(clr) clr.onclick=()=>{ clearStuFilter(); stuFiltersOpen=true; viewStudents(root); };
-  // סינון גן בריבוי בחירה — לחיצה מוסיפה/מסירה גן (אפשר לבחור כמה גנים יחד)
-  const ganBox=$("#f-gan"); if(ganBox) ganBox.querySelectorAll("[data-gan]").forEach(btn=> btn.onclick=()=>{
-    const id=btn.dataset.gan, set=new Set(stuFilter.gans); set.has(id)?set.delete(id):set.add(id); stuFilter.gans=[...set];
-    btn.classList.toggle("ghost"); renderStuTable();
-  });
+  // סינון גן בריבוי בחירה — רשימה נפתחת עם תיבות סימון (אפשר לבחור כמה גנים יחד)
+  const ganBox=$("#f-gan");
+  if(ganBox){
+    const syncLabel=()=>{ const s=$("#f-gan-summary"); if(s) s.textContent=ganFilterLabel(); };
+    ganBox.querySelectorAll("input[data-gan]").forEach(cb=> cb.onchange=()=>{
+      const id=cb.dataset.gan, set=new Set(stuFilter.gans); cb.checked?set.add(id):set.delete(id); stuFilter.gans=[...set];
+      syncLabel(); renderStuTable();
+    });
+    const allBtn=ganBox.querySelector("[data-gan-all]"); if(allBtn) allBtn.onclick=()=>{
+      stuFilter.gans=gans.map(g=>g.id); // כל הגנים (מלבד "ללא גן")
+      ganBox.querySelectorAll("input[data-gan]").forEach(cb=> cb.checked = cb.dataset.gan!=='__none__');
+      syncLabel(); renderStuTable();
+    };
+    const clrBtn=ganBox.querySelector("[data-gan-clear]"); if(clrBtn) clrBtn.onclick=()=>{
+      stuFilter.gans=[];
+      ganBox.querySelectorAll("input[data-gan]").forEach(cb=> cb.checked=false);
+      syncLabel(); renderStuTable();
+    };
+  }
   // סינון גיל בריבוי בחירה — לחיצה מוסיפה/מסירה גיל (סעיף 6)
   const ageBox=$("#f-age"); if(ageBox) ageBox.querySelectorAll("[data-age]").forEach(btn=> btn.onclick=()=>{
     const a=btn.dataset.age, set=new Set(stuFilter.age); set.has(a)?set.delete(a):set.add(a); stuFilter.age=[...set];
@@ -4242,6 +4281,34 @@ function gansScoped(){
     if(ganFilter.status==='off' && g.active) return false;
     return true;
   }));
+}
+/* גיל הגן כמספר למיון (דו-גילאי לפי ממוצע) */
+function ganAgeKey(g){ const ns=(String(g&&g.age||"").match(/\d+/g)||[]).map(Number); return ns.length? ns.reduce((a,b)=>a+b,0)/ns.length : 999; }
+/* סדר הגנים ליצוא — קודם לפי שם הגן, ואז לפי גיל עולה
+   (למשל: אבני נזר גיל 3, אבני נזר גיל 4, אבני נזר גיל 5) */
+function gansForExport(){
+  return gansScoped().slice().sort((a,b)=>
+    String(ganName(a.id)||"").localeCompare(String(ganName(b.id)||""),"he") || (ganAgeKey(a)-ganAgeKey(b)) );
+}
+/* צבע הטקסט לפי גיל הגן (לגן דו-גילאי — צבע הגיל הראשון). ריק אם אין גיל מוכר */
+function ganAgeInk(g){ const a=(String(g&&g.age||"").match(/\d+/g)||[])[0]; return (a&&AGE_HUE[a])||""; }
+/* יצוא לאקסל צבעוני — קובץ HTML שאקסל פותח כגיליון, עם שם הגן והגיל צבועים לפי צבע הגיל.
+   (CSV לא תומך בצבעים, לכן נעשה שימוש בפורמט Excel-HTML.) C = עמודות נבחרות, rows = גנים */
+function exportGansXlsColored(C, rows, fileBase){
+  const cellBase="border:1px solid #bcd;padding:5px 8px;text-align:right;";
+  const th=C.map(c=>`<th style="${cellBase}background:#e6f3e9;font-weight:bold">${esc(c[1])}</th>`).join("");
+  const body=rows.map(g=>{
+    const ink=ganAgeInk(g);
+    return `<tr>${C.map(c=>{
+      const colored=(c[0]==='ganName'||c[0]==='age') && ink;
+      return `<td style="${cellBase}${colored?`color:${ink};font-weight:bold;`:''}">${esc(c[2](g)??"")}</td>`;
+    }).join("")}</tr>`;
+  }).join("");
+  const html=`<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">`
+    +`<style>table{border-collapse:collapse} td,th{mso-number-format:"\\@"}</style></head>`
+    +`<body><table dir="rtl"><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+  downloadBlob(new Blob(["\ufeff"+html],{type:"application/vnd.ms-excel;charset=utf-8"}), `${fileBase}.xls`);
+  toast("קובץ אקסל צבעוני נוצר");
 }
 /* ============================================================
    מפת שיבוץ — OpenStreetMap + Leaflet (חינם, ללא מפתח / חיוב).
@@ -5299,6 +5366,7 @@ const GAN_EXPORT_FIELDS = [
   ["internalSymbol","סמל פנימי",g=>g.internalSymbol],
   ["ganSymbol","סמל הגן",g=>g.ganSymbol],
   ["teacherName","גננת",g=>g.teacherName],
+  ["asgTeacher","גננת משובצת",g=>asgStaffInfo(ganAsg(g.id,'activity'),'גננת').name],
   ["age","גיל",g=>g.age],
   ["education","חינוך",g=>eduLabel(g)],
   ["address","כתובת",g=>g.address],
@@ -5314,7 +5382,8 @@ function openGanExport(){
   if(!ganExportSel) ganExportSel=new Set(GAN_EXPORT_FIELDS.map(f=>f[0]));
   modal(`
     <h3>ייצוא / הדפסה — רשימת גנים</h3>
-    <div class="note">מיוצאים הגנים לפי הסינון הפעיל כרגע במסך הגנים${activeEdu?` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})`:''}. בחר/י אילו שדות לכלול.</div>
+    <div class="note">מיוצאים הגנים לפי הסינון הפעיל כרגע במסך הגנים${activeEdu?` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})`:''}, <b>מסודרים לפי שם הגן ואז לפי גיל</b> (למשל: אבני נזר 3, 4, 5). בחר/י אילו שדות לכלול. ב<b>אקסל צבעוני</b> שם הגן והגיל צבועים לפי צבע הגיל.</div>
+    ${ageLegendHtml()}
     <fieldset style="margin-top:10px"><legend>שדות</legend>
       <div class="row" style="margin-bottom:8px">
         <button class="btn ghost sm" id="gx-all" type="button">סמן הכל</button>
@@ -5326,7 +5395,8 @@ function openGanExport(){
     </fieldset>
     <label class="check" style="margin-top:8px"><input type="checkbox" id="gx-onepage"> התאם לעמוד אחד</label>
     <div class="foot">
-      <button class="btn" id="gx-csv" type="button">⬇️ ייצוא לאקסל (CSV)</button>
+      <button class="btn" id="gx-xls" type="button">🎨 אקסל צבעוני</button>
+      <button class="btn ghost" id="gx-csv" type="button">⬇️ אקסל (CSV)</button>
       <button class="btn ghost" id="gx-pdf" type="button">🖨️ הדפסה / PDF</button>
       <button class="btn ghost" id="gx-mail" type="button">📎 שיתוף מסמך</button>
       <button class="btn ghost" id="gx-cancel" type="button" style="margin-inline-start:auto">סגירה</button>
@@ -5337,8 +5407,14 @@ function openGanExport(){
   $("#gx-all").onclick=()=>{ ganExportSel=new Set(GAN_EXPORT_FIELDS.map(f=>f[0])); rerender(); };
   $("#gx-none").onclick=()=>{ ganExportSel=new Set(); rerender(); };
   const cols=()=>GAN_EXPORT_FIELDS.filter(f=>ganExportSel.has(f[0]));
+  $("#gx-xls").onclick=()=>{
+    const C=cols(), rows=gansForExport();
+    if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
+    if(!rows.length){ toast("אין גנים לייצוא"); return; }
+    exportGansXlsColored(C, rows, `גנים_${DB.activeYear}`);
+  };
   $("#gx-csv").onclick=()=>{
-    const C=cols(), rows=gansScoped();
+    const C=cols(), rows=gansForExport();
     if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
     if(!rows.length){ toast("אין גנים לייצוא"); return; }
     const csv=[C.map(c=>c[1]).join(",")].concat(rows.map(g=>C.map(c=>csvCell(c[2](g))).join(","))).join("\r\n");
@@ -5346,12 +5422,12 @@ function openGanExport(){
   };
   const ganTitle=()=>`רשימת גנים · ${DB.activeYear}${activeEdu?` · חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'}`:''}`;
   $("#gx-pdf").onclick=()=>{
-    const C=cols(), rows=gansScoped(); if(!C.length||!rows.length){ toast("אין נתונים"); return; }
+    const C=cols(), rows=gansForExport(); if(!C.length||!rows.length){ toast("אין נתונים"); return; }
     printReport({ title:ganTitle(), subtitle:`${rows.length} גנים`, headers:C.map(c=>c[1]), rows:rows.map(g=>C.map(c=>c[2](g))),
       onePage:$("#gx-onepage").checked, landscape:C.length>6 });
   };
   $("#gx-mail").onclick=()=>{
-    const C=cols(), rows=gansScoped(); if(!C.length||!rows.length){ toast("אין נתונים לשיתוף"); return; }
+    const C=cols(), rows=gansForExport(); if(!C.length||!rows.length){ toast("אין נתונים לשיתוף"); return; }
     shareReportDoc({ title:ganTitle(), subtitle:`${rows.length} גנים`, headers:C.map(c=>c[1]), rows:rows.map(g=>C.map(c=>c[2](g))),
       onePage:$("#gx-onepage").checked, landscape:C.length>6, fileName:ganTitle() });
   };
