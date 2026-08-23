@@ -1,5 +1,8 @@
 # Cloudflare Pages headers
-# Applied automatically when the site is served from Cloudflare Pages.
+# ⚠️ קובץ זה פעיל רק אם האתר מתארח ב-Cloudflare Pages. האתר החי כיום ב-GitHub Pages,
+#    ש*אינו* תומך בכותרות HTTP מותאמות — ולכן ה-CSP האמיתי מוגדר כתגית <meta> בתוך
+#    index.html / register.html / management.html. הקובץ נשמר למקרה מעבר עתידי ל-Cloudflare
+#    (ושם frame-ancestors שבכותרת יוסיף גם הגנת clickjacking). יש לשמור את שתי ההגדרות תואמות.
 #
 # Content-Security-Policy (CSP): רשת ביטחון נגד XSS. גם אם קוד זדוני יחדור לדף,
 # ה-CSP חוסם ממנו לטעון סקריפטים ממקורות זרים ולשלוח נתונים החוצה (exfiltration).
