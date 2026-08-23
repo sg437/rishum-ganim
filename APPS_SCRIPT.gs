@@ -23,6 +23,11 @@ var FIREBASE_API_KEY = 'AIzaSyBRIWtqtPXxd-W0WR3nB-iGn0Qn9ml-Q8I';
 // מזהה פרויקט Firebase (זהה ל-projectId ב-index.html). משמש לניהול משתמשים ולבדיקת מנהל.
 var FIREBASE_PROJECT_ID = 'rishum-ganim-fad40';
 
+// בעלי המערכת — עוגן הרשאה קבוע. תמיד נחשבים מורשים/מנהלים, גם אם ההגדרות
+// ב-Firestore ריקות. ⚠️ חייב להיות זהה ל-OWNER_EMAILS ב-index.html ול-ownerEmails()
+// ב-firestore.rules. מיילים באותיות קטנות בלבד.
+var OWNER_EMAILS = ['sg@taharat.org'];
+
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
 
@@ -38,11 +43,17 @@ function doPost(e){
     var req = JSON.parse((e && e.parameter && e.parameter.data) || (e && e.postData && e.postData.contents) || '{}');
     // פעולות ציבוריות (טופס הרישום להורים) — ללא צורך בהתחברות
     var PUBLIC_ACTIONS = { regConfigGet:true, regSubmit:true };
-    if(!PUBLIC_ACTIONS[req.action] && !verifyToken_(req.idToken)) return json_(out, {ok:false, error:'unauthorized'});
-    // פעולות ניהול משתמשים פתוחות למנהלי מערכת בלבד.
-    if(USER_ACTIONS[req.action]){
-      var gate = adminGate_(req.idToken);
-      if(!gate.ok) return json_(out, {ok:false, error:gate.error || 'not-admin'});
+    // אכיפת הרשאה בכל פעולה לא-ציבורית: לא די בטוקן Firebase תקף — המייל חייב
+    // להופיע ברשימת המורשים של המערכת (או להיות בעל מערכת). פעולות ניהול משתמשים
+    // דורשות הרשאת מנהל (adminGate_ הוא תת-קבוצה של allowedGate_).
+    if(!PUBLIC_ACTIONS[req.action]){
+      if(USER_ACTIONS[req.action]){
+        var gate = adminGate_(req.idToken);
+        if(!gate.ok) return json_(out, {ok:false, error:gate.error || 'not-admin'});
+      } else {
+        var agate = allowedGate_(req.idToken);
+        if(!agate.ok) return json_(out, {ok:false, error:agate.error || 'unauthorized'});
+      }
     }
     switch(req.action){
       case 'ping':           return json_(out, ping_());
@@ -307,7 +318,8 @@ function walk_(origin, dests){
 
 function json_(out, obj){ out.setContent(JSON.stringify(obj)); return out; }
 
-/* אימות שהבקשה הגיעה ממשתמש מחובר של הפרויקט (טוקן Firebase תקף) */
+/* ⚠️ הוצא משימוש כשער הרשאה. בודק רק שהטוקן שייך למשתמש Firebase כלשהו — לא
+   שהמשתמש מורשה במערכת. אין להשתמש בו לאימות פעולות; השתמש ב-allowedGate_/adminGate_. */
 function verifyToken_(idToken){
   if(!idToken) return false;
   try{
@@ -536,12 +548,19 @@ function shareRemove_(email){
      Toolkit. שירותים אלה חינמיים (אינם דורשים תוכנית Blaze).
    ================================================================== */
 
-/* אימות שהקורא הוא מנהל מערכת: קורא את app/meta מ-Firestore עם הטוקן של
-   הקורא עצמו (הרשאת קריאה בסיסית), ובודק את רשימת settings.admins. רשימה
-   ריקה = מצב אתחול (כל משתמש מחובר רשאי) — תואם ל-isAdmin() באפליקציה. */
+/* האם מייל (lower-case) הוא בעל מערכת (עוגן ההרשאה הקבוע). */
+function isOwnerEmail_(email){
+  email = String(email || '').toLowerCase();
+  return OWNER_EMAILS.map(function(x){ return String(x).toLowerCase(); }).indexOf(email) >= 0;
+}
+
+/* אימות שהקורא הוא מנהל מערכת: בעל מערכת תמיד; אחרת קורא את app/meta מ-Firestore
+   עם הטוקן של הקורא עצמו ובודק את settings.admins. רשימה ריקה = רק בעלים
+   (אין יותר "כל מחובר מנהל" במצב אתחול) — תואם ל-isAdmin() באפליקציה. */
 function adminGate_(idToken){
   var email = tokenEmail_(idToken);
   if(!email) return { ok:false, error:'unauthorized' };
+  if(isOwnerEmail_(email)) return { ok:true };
   try{
     var url = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID +
               '/databases/(default)/documents/app/meta';
@@ -552,10 +571,41 @@ function adminGate_(idToken){
       var vals = JSON.parse(resp.getContentText()).fields.settings.mapValue.fields.admins.arrayValue.values || [];
       admins = vals.map(function(v){ return String(v.stringValue || '').toLowerCase(); }).filter(String);
     }catch(e){ admins = []; }
-    if(!admins.length) return { ok:true };            // מצב אתחול
     if(admins.indexOf(email) >= 0) return { ok:true };
     return { ok:false, error:'not-admin' };
   }catch(err){ return { ok:false, error:'admin-check-failed' }; }
+}
+
+/* אימות שהקורא מורשה להשתמש במערכת: בעל מערכת תמיד; אחרת המייל חייב להופיע
+   ברשימת המורשים ב-app/meta (admins ∪ allowedEmails ∪ מפתחות userActivity) —
+   מקביל ל-emailAllowed()/knownEmails() באפליקציה. חוסם כל חשבון Google אקראי
+   שקיבל טוקן תקף אך אינו מורשה במערכת. */
+function allowedGate_(idToken){
+  var email = tokenEmail_(idToken);
+  if(!email) return { ok:false, error:'unauthorized' };
+  if(isOwnerEmail_(email)) return { ok:true, email:email };
+  try{
+    var url = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID +
+              '/databases/(default)/documents/app/meta';
+    var resp = UrlFetchApp.fetch(url, { headers:{ Authorization:'Bearer ' + idToken }, muteHttpExceptions:true });
+    if(resp.getResponseCode() !== 200) return { ok:false, error:'access-check-failed' };
+    var s = {};
+    try{ s = JSON.parse(resp.getContentText()).fields.settings.mapValue.fields; }catch(e){ s = {}; }
+    var known = {};
+    ['admins','allowedEmails'].forEach(function(key){
+      try{
+        (s[key].arrayValue.values || []).forEach(function(v){
+          var e = String(v.stringValue || '').toLowerCase(); if(e) known[e] = true;
+        });
+      }catch(e){}
+    });
+    try{
+      var ua = s.userActivity.mapValue.fields || {};
+      Object.keys(ua).forEach(function(k){ known[String(k).toLowerCase()] = true; });
+    }catch(e){}
+    if(known[email]) return { ok:true, email:email };
+    return { ok:false, error:'not-allowed' };
+  }catch(err){ return { ok:false, error:'access-check-failed' }; }
 }
 
 /* מחזיר את האימייל (lower-case) של בעל הטוקן, או null אם אינו תקף. */

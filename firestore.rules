@@ -4,18 +4,27 @@ service cloud.firestore {
 
     /* =====================================================================
        אכיפת הרשאות בצד השרת (Firestore) — לא רק בדפדפן.
-       החוקים כאן משכפלים במדויק את enforceAccess() שבאפליקציה, כך שכל משתמש
-       שהמערכת מתירה לו כיום ממשיך לעבוד, אבל חשבון שאינו מורשה (למשל כניסת
-       Google של אדם אקראי) נחסם כבר בשרת — גם אם הוא פונה ישירות ל-REST
-       ועוקף את מסך התוכנה.
+       החוקים כאן משכפלים את enforceAccess() ואת isAdmin() שבאפליקציה, כך שכל
+       משתמש שהמערכת מתירה לו כיום ממשיך לעבוד, אבל:
+         • חשבון שאינו מורשה (למשל כניסת Google של אדם אקראי) נחסם כבר בשרת —
+           גם אם הוא פונה ישירות ל-REST ועוקף את מסך התוכנה.
+         • משתמש מורשה שאינו מנהל אינו יכול לשנות את השדות הרגישים בהגדרות
+           (admins/allowedEmails/editScopes) — כלומר אינו יכול להוסיף את עצמו
+           ל-admins דרך ה-REST (מניעת הסלמת הרשאות שהדפדפן חוסם אך הכללים
+           הקודמים אִפשרו). שמירת נתונים רגילה במסמך meta ממשיכה לעבוד.
 
        מודל ההרשאות (זהה לאפליקציה):
-         • רשימת המורשים = מנהלים ∪ allowedEmails ∪ מי שכבר ערך (userActivity),
-           השמורה במסמך  app/meta  תחת  settings.
-         • כל משתמש מחובר — בכל שיטת כניסה — חייב שהמייל שלו יופיע ברשימה.
-           (הכניסה למערכת היא Google בלבד; חשבונות אימייל/סיסמה בוטלו.)
-         • מערכת "טרייה" ללא הגדרות → פתוחה (איתחול), בדיוק כמו accessConfigured().
+         • בעלי המערכת (OWNER_EMAILS) — עוגן קבוע: תמיד מנהלים ומורשים, גם אם
+           ההגדרות ריקות/נמחקו. כך המערכת לעולם אינה "פתוחה לכולם".
+         • רשימת המורשים = בעלים ∪ מנהלים ∪ allowedEmails ∪ מי שכבר ערך
+           (userActivity), השמורה במסמך app/meta תחת settings.
+         • מנהלים = בעלים ∪ settings.admins.
+         • הכניסה למערכת היא Google בלבד; כל כתובת חייבת להופיע ברשימת המורשים.
+       ⚠️ OWNER_EMAILS חייבת להישאר זהה לזו שב-index.html וב-APPS_SCRIPT.gs.
        ===================================================================== */
+
+    // בעלי המערכת — עוגן הרשאה קבוע (חייב להיות זהה ל-index.html / APPS_SCRIPT.gs)
+    function ownerEmails() { return ['sg@taharat.org']; }
 
     function metaPath()   { return /databases/$(database)/documents/app/meta; }
     function metaExists() { return exists(metaPath()); }
@@ -25,20 +34,19 @@ service cloud.firestore {
     // מחזיר את הערך כרשימה, או רשימה ריקה אם המפתח חסר / אינו רשימה
     function asList(m, k)  { return (k in m) && (m[k] is list) ? m[k] : []; }
 
-    // האם הוגדרה כלל רשימת-מורשים (אחרת המערכת במצב איתחול — פתוחה)
-    function accessConfigured() {
-      return metaExists() && (
-           asList(settings(), 'admins').size() > 0
-        || asList(settings(), 'allowedEmails').size() > 0
-        || ( ('userActivity' in settings()) && settings().userActivity.keys().size() > 0 )
-      );
-    }
-
     function authEmail()  { return request.auth != null && request.auth.token.email != null ? request.auth.token.email : ''; }
     function emailLower() { return authEmail().lower(); }
 
     // בדיקת חברות ברשימה — משווה גם למקור וגם ל-lowercase (מיילים נשמרים לעיתים באותיות שונות)
     function inList(l)    { return l.hasAny([ authEmail(), emailLower() ]); }
+
+    function isOwner()    { return request.auth != null && inList(ownerEmails()); }
+
+    // מנהל מערכת — בעלים או מי שברשימת admins (מקביל ל-isAdmin() באפליקציה).
+    // רשימת admins ריקה → רק הבעלים מנהל (אין יותר "כל מחובר מנהל" במצב אתחול).
+    function isAdminUser() {
+      return isOwner() || inList(asList(settings(), 'admins'));
+    }
 
     function isKnownEmail() {
       return inList(asList(settings(), 'admins'))
@@ -46,18 +54,39 @@ service cloud.firestore {
           || ( ('userActivity' in settings()) && (emailLower() in settings().userActivity) );
     }
 
-    // מקביל ל-enforceAccess() בקוד: כל מחובר חייב להופיע ברשימת המורשים.
-    // מערכת שטרם הוגדרה — פתוחה (איתחול).
+    // מקביל ל-enforceAccess() בקוד: בעלים תמיד; אחרת חייב להופיע ברשימת המורשים.
+    // אין יותר "פתוח במצב לא-מוגדר" — מערכת ריקה פתוחה לבעלים בלבד (חלון האתחול נסגר).
     function isAllowedUser() {
-      return request.auth != null && (
-           !accessConfigured()
-        || isKnownEmail()
-      );
+      return isOwner() || isKnownEmail();
     }
 
-    // נתוני האפליקציה — רק משתמש מורשה קורא/כותב
+    /* השדות הרגישים שבתוך settings — מי שאינו מנהל אינו רשאי לשנותם (מניעת הסלמה).
+       ההשוואה היא בין הקיים לנכנס; שאר settings (כמו userActivity, מיתוג, שנים)
+       נשמר כרגיל גם ע"י משתמש מורשה שאינו מנהל — כי save() כותב את כל מסמך meta. */
+    function oldMetaSettings() {
+      return (metaExists() && ('settings' in metaData())) ? metaData().settings : {};
+    }
+    function newMetaSettings() {
+      return request.resource.data.get('settings', {});
+    }
+    function metaPrivFieldsUnchanged() {
+      return oldMetaSettings().get('admins', [])        == newMetaSettings().get('admins', [])
+          && oldMetaSettings().get('allowedEmails', []) == newMetaSettings().get('allowedEmails', [])
+          && oldMetaSettings().get('editScopes', {})    == newMetaSettings().get('editScopes', {});
+    }
+
+    // הגדרות המערכת (app/meta): כל מורשה קורא. כתיבה — מנהל חופשי; משתמש מורשה
+    // שאינו מנהל רשאי לשמור רק אם השדות הרגישים (admins/allowedEmails/editScopes)
+    // נותרים ללא שינוי. כך שמירה רגילה עובדת, אך אי אפשר להעלות את עצמך למנהל.
+    match /app/meta {
+      allow read:  if isAllowedUser();
+      allow write: if isAdminUser() || (isAllowedUser() && metaPrivFieldsUnchanged());
+    }
+
+    // שאר נתוני האפליקציה — כל משתמש מורשה קורא/כותב (כתיבה ל-meta מטופלת למעלה)
     match /app/{docId} {
-      allow read, write: if isAllowedUser();
+      allow read:  if isAllowedUser();
+      allow write: if isAllowedUser() && docId != 'meta';
     }
 
     // כל השאר חסום כברירת מחדל

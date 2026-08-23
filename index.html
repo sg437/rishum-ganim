@@ -534,6 +534,13 @@ if(TEST_DB_MODE){ try{
 /* ===== כתובת "גשר" ה-Drive (Google Apps Script). ראה SETUP.md — "גשר Drive". אינה סוד ===== */
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxC0ywjZFGGb1IOCRhscp5dO9FSv4rEX3_bWV2wEgY05dIq3_OHTqFwU7UveV27KXm1/exec";
 const DRIVE_READY = !APPS_SCRIPT_URL.includes("YOUR_");
+/* ===== בעלי המערכת — עוגן הרשאה קבוע =====================================
+   מיילים אלה נחשבים תמיד מנהלים ומורשים, גם אם רשימת ההגדרות ב-Firestore ריקה
+   או נמחקה. כך המערכת לעולם אינה "פתוחה לכולם" במצב לא-מוגדר (מצב אתחול).
+   ⚠️ חייבים להיות מיילים של חשבון Google שאיתו נכנסים למערכת. ניתן להוסיף כאן.
+   אותה רשימה מופיעה גם ב-firestore.rules וב-APPS_SCRIPT.gs — יש לעדכן את שלושתם יחד. */
+const OWNER_EMAILS = ["sg@taharat.org"].map(x=>x.toLowerCase());
+function isOwnerEmail(email){ return OWNER_EMAILS.includes(String(email||"").toLowerCase()); }
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
@@ -1755,9 +1762,10 @@ if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigato
 
 /* ---------- הרשאות: רק מנהל משנה הגדרות מערכת (סעיף 15) ---------- */
 function isAdmin(){
-  const admins=(DB.settings&&DB.settings.admins)||[];
-  if(!admins.length) return true; // עוד לא הוגדרו מנהלים — כל מחובר יכול (איתחול)
   const em=(currentUser&&currentUser.email||"").toLowerCase();
+  if(isOwnerEmail(em)) return true;                 // בעלי המערכת — תמיד מנהלים
+  const admins=(DB.settings&&DB.settings.admins)||[];
+  if(!admins.length) return false;                  // אין מנהלים מוגדרים — רק הבעלים (לא כל מחובר)
   return admins.map(x=>String(x).toLowerCase()).includes(em);
 }
 /* ---------- הרשאת עריכה לפי חינוך (הסתרה בממשק — סעיף 7) ----------
@@ -1795,7 +1803,14 @@ function knownEmails(){
   return set;
 }
 function accessConfigured(){ const s=DB.settings||{}; return !!((s.admins&&s.admins.length)||(s.allowedEmails&&s.allowedEmails.length)||(s.userActivity&&Object.keys(s.userActivity).length)); }
-function emailAllowed(email){ if(!accessConfigured()) return true; return knownEmails().has(String(email||"").toLowerCase()); }
+/* גישה מותרת: בעלי המערכת תמיד; אחרת המייל חייב להופיע ברשימת המורשים.
+   שים לב: אין יותר "פתוח לכולם במצב לא-מוגדר" — במצב ריק רק הבעלים נכנסים
+   (חלון האתחול נסגר; מונע חשיפה מלאה אם ההגדרות נמחקו/אופסו). */
+function emailAllowed(email){
+  const em=String(email||"").toLowerCase();
+  if(isOwnerEmail(em)) return true;
+  return knownEmails().has(em);
+}
 let _accessDenied=false;
 /* אוכף רשימת-מורשים לכל משתמש מחובר. הכניסה למערכת היא Google בלבד, וכל כתובת
    חייבת להופיע ברשימת המורשים (מנהלים ∪ allowedEmails ∪ מי שכבר ערך). */
@@ -2886,6 +2901,8 @@ function driveErrHe(e){
   if(m.includes("not-logged-in")) return "יש להתחבר למערכת קודם";
   if(m.includes("drive-not-configured")) return "הגשר לדרייב לא הוגדר (ראה SETUP.md)";
   if(m.includes("network")||m.includes("bad-response")) return "לא הצלחתי להגיע לגשר הדרייב — בדוק/י את הכתובת/החיבור";
+  if(m.includes("not-allowed")) return "האימייל שלך אינו מורשה במערכת — פנה/י למנהל להוספתו";
+  if(m.includes("access-check-failed")||m.includes("admin-check-failed")) return "לא ניתן לאמת הרשאה כרגע — נסה/י שוב";
   if(m.includes("unauthorized")||m.includes("token")) return "בעיית הרשאה — התחבר/י מחדש למערכת";
   return "שגיאת דרייב — נסה/י שוב";
 }
