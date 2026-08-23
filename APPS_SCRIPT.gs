@@ -554,26 +554,40 @@ function isOwnerEmail_(email){
   return OWNER_EMAILS.map(function(x){ return String(x).toLowerCase(); }).indexOf(email) >= 0;
 }
 
+/* קורא את מסמך app/meta מ-Firestore ומחזיר את ה-JSON (או null).
+   מעדיף טוקן Service Account (פריבילגי — חסין App Check: כשמדליקים אכיפה על
+   Firestore, בקשות REST עם טוקן משתמש נחסמות, אך טוקן SA עוקף זאת). אם SA אינו
+   מוגדר — נופל לטוקן המשתמש (עובד כל עוד אכיפת App Check על Firestore כבויה).
+   כך המעבר לאכיפה אינו שובר את הגשר, ובלי SA הכל ממשיך לעבוד כמו קודם. */
+function metaDocJson_(idToken){
+  var url = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID +
+            '/databases/(default)/documents/app/meta';
+  var sa = saToken_();
+  var auth = sa ? ('Bearer ' + sa) : (idToken ? ('Bearer ' + idToken) : '');
+  if(!auth) return null;
+  try{
+    var resp = UrlFetchApp.fetch(url, { headers:{ Authorization: auth }, muteHttpExceptions:true });
+    if(resp.getResponseCode() !== 200) return null;
+    return JSON.parse(resp.getContentText());
+  }catch(e){ return null; }
+}
+
 /* אימות שהקורא הוא מנהל מערכת: בעל מערכת תמיד; אחרת קורא את app/meta מ-Firestore
-   עם הטוקן של הקורא עצמו ובודק את settings.admins. רשימה ריקה = רק בעלים
-   (אין יותר "כל מחובר מנהל" במצב אתחול) — תואם ל-isAdmin() באפליקציה. */
+   ובודק את settings.admins. רשימה ריקה = רק בעלים (אין יותר "כל מחובר מנהל"
+   במצב אתחול) — תואם ל-isAdmin() באפליקציה. */
 function adminGate_(idToken){
   var email = tokenEmail_(idToken);
   if(!email) return { ok:false, error:'unauthorized' };
   if(isOwnerEmail_(email)) return { ok:true };
+  var meta = metaDocJson_(idToken);
+  if(!meta) return { ok:false, error:'admin-check-failed' };
+  var admins = [];
   try{
-    var url = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID +
-              '/databases/(default)/documents/app/meta';
-    var resp = UrlFetchApp.fetch(url, { headers:{ Authorization:'Bearer ' + idToken }, muteHttpExceptions:true });
-    if(resp.getResponseCode() !== 200) return { ok:false, error:'admin-check-failed' };
-    var admins = [];
-    try{
-      var vals = JSON.parse(resp.getContentText()).fields.settings.mapValue.fields.admins.arrayValue.values || [];
-      admins = vals.map(function(v){ return String(v.stringValue || '').toLowerCase(); }).filter(String);
-    }catch(e){ admins = []; }
-    if(admins.indexOf(email) >= 0) return { ok:true };
-    return { ok:false, error:'not-admin' };
-  }catch(err){ return { ok:false, error:'admin-check-failed' }; }
+    var vals = meta.fields.settings.mapValue.fields.admins.arrayValue.values || [];
+    admins = vals.map(function(v){ return String(v.stringValue || '').toLowerCase(); }).filter(String);
+  }catch(e){ admins = []; }
+  if(admins.indexOf(email) >= 0) return { ok:true };
+  return { ok:false, error:'not-admin' };
 }
 
 /* אימות שהקורא מורשה להשתמש במערכת: בעל מערכת תמיד; אחרת המייל חייב להופיע
@@ -584,28 +598,24 @@ function allowedGate_(idToken){
   var email = tokenEmail_(idToken);
   if(!email) return { ok:false, error:'unauthorized' };
   if(isOwnerEmail_(email)) return { ok:true, email:email };
-  try{
-    var url = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID +
-              '/databases/(default)/documents/app/meta';
-    var resp = UrlFetchApp.fetch(url, { headers:{ Authorization:'Bearer ' + idToken }, muteHttpExceptions:true });
-    if(resp.getResponseCode() !== 200) return { ok:false, error:'access-check-failed' };
-    var s = {};
-    try{ s = JSON.parse(resp.getContentText()).fields.settings.mapValue.fields; }catch(e){ s = {}; }
-    var known = {};
-    ['admins','allowedEmails'].forEach(function(key){
-      try{
-        (s[key].arrayValue.values || []).forEach(function(v){
-          var e = String(v.stringValue || '').toLowerCase(); if(e) known[e] = true;
-        });
-      }catch(e){}
-    });
+  var meta = metaDocJson_(idToken);
+  if(!meta) return { ok:false, error:'access-check-failed' };
+  var s = {};
+  try{ s = meta.fields.settings.mapValue.fields; }catch(e){ s = {}; }
+  var known = {};
+  ['admins','allowedEmails'].forEach(function(key){
     try{
-      var ua = s.userActivity.mapValue.fields || {};
-      Object.keys(ua).forEach(function(k){ known[String(k).toLowerCase()] = true; });
+      (s[key].arrayValue.values || []).forEach(function(v){
+        var e = String(v.stringValue || '').toLowerCase(); if(e) known[e] = true;
+      });
     }catch(e){}
-    if(known[email]) return { ok:true, email:email };
-    return { ok:false, error:'not-allowed' };
-  }catch(err){ return { ok:false, error:'access-check-failed' }; }
+  });
+  try{
+    var ua = s.userActivity.mapValue.fields || {};
+    Object.keys(ua).forEach(function(k){ known[String(k).toLowerCase()] = true; });
+  }catch(e){}
+  if(known[email]) return { ok:true, email:email };
+  return { ok:false, error:'not-allowed' };
 }
 
 /* מחזיר את האימייל (lower-case) של בעל הטוקן, או null אם אינו תקף. */
@@ -720,7 +730,9 @@ function saToken_(){
   var header = Utilities.base64EncodeWebSafe(JSON.stringify({ alg:'RS256', typ:'JWT' })).replace(/=+$/, '');
   var claim = Utilities.base64EncodeWebSafe(JSON.stringify({
     iss: clientEmail,
-    scope: 'https://www.googleapis.com/auth/identitytoolkit',
+    // identitytoolkit — לניהול משתמשים; datastore — לקריאת app/meta מ-Firestore
+    // בטוקן פריבילגי (חסין App Check כשמדליקים אכיפה). שני ה-scopes מופרדים ברווח.
+    scope: 'https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/datastore',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now, exp: now + 3600
   })).replace(/=+$/, '');
