@@ -2,6 +2,14 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
+<!-- Content-Security-Policy: רשת ביטחון נגד XSS. חייב לשבת כאן (meta) כי GitHub Pages
+     אינו תומך בכותרות HTTP מותאמות (קובץ _headers עובד רק ב-Cloudflare). המקורות
+     נבנו במדויק לפי מה שהתוכנה טוענת. ⚠️ ספרייה/שירות חיצוני חדש → להוסיף כאן, אחרת ייחסם.
+     הערה: frame-ancestors (מניעת הטמעה ב-iframe) אינו נתמך ב-meta — מטופל ע"י frame-buster למטה. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.google.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://unpkg.com https://*.tile.openstreetmap.org; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseappcheck.googleapis.com https://script.google.com https://script.googleusercontent.com https://nominatim.openstreetmap.org https://www.google.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://apis.google.com https://www.google.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<!-- הגנת clickjacking (תחליף ל-X-Frame-Options שאי אפשר לשלוח ב-GitHub Pages):
+     אם הדף נטען בתוך iframe של אתר אחר — משחזרים אותו לחלון עליון. -->
+<script>try{if(self!==top){top.location=self.location;}}catch(e){document.documentElement.style.display="none";}</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#2c6a4c">
 <title>מערכת ניהול רשת הגנים</title>
