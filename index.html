@@ -426,7 +426,8 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendP
          GoogleAuthProvider, signInWithPopup }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-         doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence, writeBatch, runTransaction }
+         doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence, writeBatch, runTransaction,
+         disableNetwork, enableNetwork }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* ===== הגדרות Firebase — הדבק/י כאן את 6 המפתחות מהפרויקט שלך (ראה SETUP.md) ===== */
@@ -482,10 +483,22 @@ if(TEST_DB_MODE){
     if(!document.body || document.getElementById("dlogPanel")) return;
     const p=document.createElement("div"); p.id="dlogPanel";
     p.style.cssText="position:fixed;bottom:0;inset-inline-end:0;z-index:99998;width:min(96vw,520px);max-height:42vh;display:flex;flex-direction:column;background:#0e1712;color:#cfe6d5;border:2px solid #d9a441;border-radius:12px 0 0 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;box-shadow:0 -6px 20px -8px rgba(0,0,0,.5)";
-    p.innerHTML="<div style='display:flex;gap:8px;align-items:center;padding:6px 10px;background:#13241a;border-bottom:1px solid #2a4133;font-weight:700'><span style='flex:1'>🔎 יומן אבחון סנכרון (בדיקה)</span><button id='dlogClear' style='font:inherit;cursor:pointer;border:1px solid #2a4133;background:#0e1712;color:#cfe6d5;border-radius:6px;padding:2px 8px'>נקה</button><button id='dlogHide' style='font:inherit;cursor:pointer;border:1px solid #2a4133;background:#0e1712;color:#cfe6d5;border-radius:6px;padding:2px 8px'>הסתר</button></div><pre id='dlogBody' style='margin:0;padding:8px 10px;overflow:auto;white-space:pre-wrap;direction:ltr;text-align:left;flex:1'></pre>";
+    const bs="font:inherit;cursor:pointer;border:1px solid #2a4133;background:#0e1712;color:#cfe6d5;border-radius:6px;padding:3px 8px";
+    p.innerHTML="<div style='display:flex;gap:6px;align-items:center;padding:6px 10px;background:#13241a;border-bottom:1px solid #2a4133;font-weight:700'><span style='flex:1'>🔎 יומן אבחון סנכרון (בדיקה)</span><button id='dlogClear' style='"+bs+"'>נקה</button><button id='dlogHide' style='"+bs+"'>הסתר</button></div>"+
+      "<div style='display:flex;gap:6px;flex-wrap:wrap;padding:6px 10px;background:#0c130f;border-bottom:1px solid #2a4133'><button id='dlogOff' style='"+bs+"'>📴 נתק (סימולציה)</button><button id='dlogEdit' style='"+bs+"'>🧪 עריכה+שמירה</button><button id='dlogOn' style='"+bs+"'>🌐 חבר</button></div>"+
+      "<pre id='dlogBody' style='margin:0;padding:8px 10px;overflow:auto;white-space:pre-wrap;direction:ltr;text-align:left;flex:1'></pre>";
     document.body.appendChild(p);
     document.getElementById("dlogClear").onclick=()=>{ _dlog=[]; document.getElementById("dlogBody").textContent=""; };
     document.getElementById("dlogHide").onclick=()=>{ p.style.display="none"; };
+    // בדיקה דטרמיניסטית של רשת חלשה — בלי מצב-טיסה, על מכשיר אחד:
+    document.getElementById("dlogOff").onclick=async()=>{ try{ await disableNetwork(db); dlog("📴 disableNetwork — Firestore אופליין (סימולציה)"); }catch(e){ dlog("disableNetwork שגיאה: "+e.message); } };
+    document.getElementById("dlogOn").onclick=async()=>{ try{ await enableNetwork(db); dlog("🌐 enableNetwork — Firestore אונליין"); if(RESILIENT_SAVE && _pending.size && !savePending){ _retryDelay=0; save(); } }catch(e){ dlog("enableNetwork שגיאה: "+e.message); } };
+    document.getElementById("dlogEdit").onclick=()=>{
+      if(!DB.students||!DB.students.length){ dlog("🧪 אין תלמידות לבדיקה — הוסף/י אחת קודם"); return; }
+      const s=DB.students[0]; s.notes=(s.notes?s.notes+" ":"")+"בדיקה@"+new Date().toLocaleTimeString("he-IL");
+      dlog("🧪 עריכת בדיקה על '"+((s.lastName||"")+" "+(s.firstName||"")).trim()+"' → save()");
+      save();
+    };
     dlog("יומן אבחון נטען · RESILIENT_SAVE="+RESILIENT_SAVE+" · online="+(navigator.onLine));
   };
   document.addEventListener("DOMContentLoaded", build); build();
