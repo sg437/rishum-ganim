@@ -462,11 +462,12 @@ const MERGE_WRITE = true; /* מנעול נגד דריסה — פעיל בייצ�
 let SYNC_GUARD = TEST_DB_MODE ? true : false;
 /* מצב בדיקה בלבד: זכירת בחירת המתג בין רענונים (אין לזה כל השפעה בייצור) */
 if(TEST_DB_MODE){ try{ const _sg=localStorage.getItem("rg-syncguard"); if(_sg==="0") SYNC_GUARD=false; else if(_sg==="1") SYNC_GUARD=true; }catch(_){} }
-/* שמירה עמידה לרשת חלשה (resilient save): מושבת זמנית (כבוי גם בבדיקה) — הגרסה הראשונה
-   נכשלה בבדיקת "מצב טיסה" (הערה אבדה במקום להישמר), כי עצירת המאזין החי + מעבר-REST +
-   טרנזקציות שאינן נתורות-אופליין אינם מתלכדים היטב. נבנה מחדש כראוי (החזקה אופטימית קשורה
-   לאישור-כתיבה + ניסיון-חוזר בחזרה-לרשת) לפני הפעלה מחדש. הקוד נשאר רדום עד אז. */
-const RESILIENT_SAVE = false;
+/* שמירה עמידה לרשת חלשה (resilient save) v2: כבוי בייצור עד לאישור פריסה; דלוק אוטומטית במצב בדיקה.
+   כשכבוי — התנהגות זהה לחלוטין לקוד היום. עקרון (נבנה אחרי כשל v1 בבדיקת מצב-טיסה):
+   *לא* עוצרים את המאזין החי ו*לא* עוברים ל-REST. במקום זה — מחזיקים את העריכה שטרם אושרה
+   ב"כתיבות-ממתינות" (_pending), מציגים אותה מעל כל סנאפשוט כדי שלא תיעלם, מסמנים "טרם נשמר"
+   (לא "נשמר" מטעה), ומנסים שוב אוטומטית כשהרשת חוזרת — עד שהשרת מאשר. נבדק ב-tests/resilient-save.test.cjs. */
+const RESILIENT_SAVE = TEST_DB_MODE ? true : false;
 const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
 /* באנר ברור במצב בדיקה — כדי שלא יתבלבלו בין סביבת הבדיקה למערכת האמיתית */
 if(TEST_DB_MODE){ try{
@@ -625,12 +626,16 @@ function setSyncStatus(state){
   const el=$("#syncStatus"); if(!el) return;
   _syncState=state;
   if(!currentUser){ el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; hideOfflineBanner(); return; }
-  // שמירה עמידה: כל עוד יש עריכה שלא עלתה לשרת — אל תציג "נשמר/מחובר" מטעה בגלל שהקריאה עובדת.
-  // (רק "מסנכרן" מותר, כי הוא מייצג ניסיון-שמירה פעיל.) בטל כשהתכונה כבויה — אז _writeFailed לעולם לא נדלק.
-  if(_writeFailed && state!=="pending"){
-    el.style.display="inline-flex"; el.textContent="⚠️ שינוי לא נשמר — לחצ/י לניסיון חוזר";
-    el.style.color="var(--bad)"; el.title="עריכה שלא עלתה לשרת. לחצ/י לניסיון חוזר, או השתמש/י בכפתורי המצב-החלופי בבאנר.";
-    el.onclick=retryFailedSave; el.style.cursor="pointer"; return;
+  // שמירה עמידה: כל עוד יש עריכה שטרם אושרה בשרת (_pending) — אל תציג "נשמר" מטעה רק כי הקריאה עובדת.
+  // מבחינים: כשל-כתיבה אמיתי → "טרם נשמר" (עם ניסיון-חוזר); כתיבה ששודרה וממתינה לאישור → "מסנכרן".
+  // בטל כשהתכונה כבויה — אז _pending תמיד ריק.
+  if(RESILIENT_SAVE && _pending.size && state!=="pending"){
+    el.style.display="inline-flex";
+    if(_saveFailed){ el.textContent="⚠️ טרם נשמר — לחצ/י לניסיון חוזר"; el.style.color="var(--bad)";
+      el.title="עריכה שלא עלתה לשרת. תישמר אוטומטית כשהרשת תחזור, או לחצ/י לניסיון חוזר עכשיו."; el.onclick=retryNow; el.style.cursor="pointer"; }
+    else { el.textContent="⏳ מסנכרן…"; el.style.color="var(--warn)";
+      el.title="השינוי נשמר במכשיר וממתין לאישור השרת."; el.onclick=null; el.style.cursor=""; }
+    return;
   }
   const map={
     pending:["⏳ מסנכרן…","var(--warn)","יש שינויים שממתינים להעלאה לשרת — השאר/י את החלון פתוח עד שהחיווי יתחלף ל\"נשמר בענן\""],
@@ -656,7 +661,10 @@ function setSyncStatus(state){
   }
 }
 let _offlineTimer=null, _offlineDismissed=false, _pendingWatch=null, _syncState="";
-let _writeFailed=false; // שמירה עמידה: יש עריכה שנכשלה בכתיבה וטרם נשמרה (אזהרה מתמשכת עד הצלחה)
+/* שמירה עמידה v2 — כתיבות-ממתינות: "coll:id" → {coll,id,j,prev} של עריכות שטרם אושרו בשרת.
+   _saveFailed = הניסיון האחרון נכשל (מציג "טרם נשמר"); אחרת ממתין-לאישור (מציג "מסנכרן"). */
+const _pending = new Map();
+let _saveFailed=false, _retryTimer=null, _retryDelay=0, _confirmTimer=null;
 /* מעבר אוטומטי לכתיבה דרך REST כשכתיבת ה-SDK נתקעת על "מסנכרן" (ראו setSyncStatus).
    דוחף את הנתונים המקומיים כפי שהם — כדי לא לאבד עריכה שטרם עלתה לשרת. */
 async function recoverStuckWrite(){
@@ -666,54 +674,67 @@ async function recoverStuckWrite(){
   if(localEmpty) return; // אין מה לדחוף — לא נדרוס שרת עם DB ריק
   try{
     enterRestMode();
-    if(RESILIENT_SAVE) await pushAll(); else await pushAllRest(); // דלוק → mergePushRest (בטוח-למיזוג)
+    await pushAllRest();
     savePending=false;
     setSyncStatus("synced");
     toast("הסנכרון הושלם (מצב חלופי)");
   }catch(e){ console.error(e); setSyncStatus("error"); toast("שגיאת סנכרון — נסה/י שוב או בדוק/י חיבור"); }
 }
 /* ============================================================
-   שמירה עמידה לרשת חלשה (resilient save) — גייטד ב-RESILIENT_SAVE
+   שמירה עמידה לרשת חלשה (resilient save) v2 — גייטד ב-RESILIENT_SAVE
    ------------------------------------------------------------
-   נקרא מתוך runPush כשכתיבה נכשלה (זרקה שגיאה, לא רק "נתקעה"). בסלולרי לא-יציב
-   הפרעה רגעית נפתרת מעצמה בניסיון חוזר; אם לא — עוברים לערוץ חלופי (REST) בטוח-
-   למיזוג; ואם גם זה נכשל — מסמנים כשל-כתיבה מתמשך (בלי כשל שקט). לוגיקת המדיניות
-   נבדקת ב-tests/resilient-save.test.cjs. */
-const _delay = ms => new Promise(r=>setTimeout(r, ms));
-async function recoverFailedWrite(){
-  if(!currentUser || !serverConfirmed) return false;
-  const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
-  if(localEmpty) return false; // אין מה לדחוף — לא נדרוס שרת עם DB ריק
-  // 1) ניסיון חוזר קצר על אותו ערוץ — הפרעה רגעית בסלולרי נפתרת מעצמה
-  for(let i=0; i<2; i++){
-    await _delay(700*(i+1));
-    setSyncStatus("pending");
-    try{ await pushAll(); return true; }
-    catch(e){ console.error("resilient retry "+(i+1)+" failed", e); }
-  }
-  // 2) מעבר לערוץ חלופי (REST) — בטוח-למיזוג (mergePushRest כשהמנעול דלוק)
-  try{
-    if(!restMode) enterRestMode();
-    await pushAll(); // כעת restMode → mergePushRest
-    setSyncStatus("synced");
-    toast("נשמר (מצב חלופי)");
-    return true;
-  }catch(e){ console.error("resilient REST fallback failed", e); return false; }
+   העיקרון: לא עוצרים את המאזין החי, ולא עוברים ל-REST. כל עריכה נרשמת כ"ממתינה"
+   (_pending) *לפני* הכתיבה. אם הכתיבה מצליחה — האישור מגיע בסנאפשוט וה-_pending
+   מתנקה (applyPending). אם נכשלת — ה-_pending נשמר, מוחל מעל כל סנאפשוט כדי
+   שהעריכה לא "תיעלם", מסומן "טרם נשמר" (לא "נשמר" מטעה), ומנוסה שוב אוטומטית
+   כשהרשת חוזרת — עד אישור. מיזוג תלת-כיווני לכל רשומה (base→ours מול server)
+   דרך _guardApplyList המשותף. נבדק ב-tests/resilient-save.test.cjs. */
+function _pendKey(c,id){ return c+":"+id; }
+/* רישום מה שעומדים לכתוב (ההפרש מול בסיס-ההשוואה, לפני הכתיבה). prev = מצב השרת שלפנינו. */
+function recordPending(){
+  if(!RESILIENT_SAVE) return;
+  const add=(coll,list,base)=>{
+    const cur=new Map(list.map(o=>[o.id,o]));
+    for(const [id,o] of cur){ const b=base.get(id), j=_mk(o); if(!b || b.j!==j) _pending.set(_pendKey(coll,id), {coll,id,j,prev:(b?b.j:null)}); }
+    for(const [id,b] of base){ if(!cur.has(id)) _pending.set(_pendKey(coll,id), {coll,id,j:null,prev:b.j}); }
+  };
+  add("stu",DB.students,_mergeBase.stu); add("gan",DB.gans,_mergeBase.gan);
+  add("staff",DB.staff,_mergeBase.staff); add("mgmt",DB.management,_mergeBase.mgmt);
 }
-/* אזהרה מתמשכת כשכתיבה לא עלתה — שלא תיעלם רק מפני שהקריאה עובדת. משוחררת רק בשמירה מוצלחת. */
-function markWriteFailed(){
-  _writeFailed=true;
-  _offlineDismissed=false; showOfflineBanner();
-  setSyncStatus("error"); // דרך הבודק ב-setSyncStatus יוצג "שינוי לא נשמר — לחצ/י לניסיון חוזר"
+/* החלת הממתינים מעל ה-DB המוצג (מגן מפני דריסת-סנאפשוט) + ניקוי מה שאושר בשרת.
+   TTL=Infinity: לעולם לא נזרק בשקט — רק אישור-שרת (cj===j) או עריכת-אחר (yield) מנקים. */
+function applyPending(){
+  if(!RESILIENT_SAVE || !_pending.size) return;
+  const now=Date.now();
+  DB.students   = _guardApplyList("stu",   DB.students,   _pending, now, Infinity);
+  DB.gans       = _guardApplyList("gan",   DB.gans,       _pending, now, Infinity);
+  DB.staff      = _guardApplyList("staff", DB.staff,      _pending, now, Infinity);
+  DB.management = _guardApplyList("mgmt",  DB.management, _pending, now, Infinity);
 }
-function clearWriteFailed(){
-  if(!_writeFailed) return;
-  _writeFailed=false;
-  const el=$("#syncStatus"); if(el){ el.onclick=null; el.style.cursor=""; }
-  hideOfflineBanner();
-  setSyncStatus("synced");
+/* ניסיון-חוזר אוטומטי כל עוד יש ממתינים — נסיגה מדורגת (backoff) עד 30ש'. */
+function scheduleRetry(){
+  if(!RESILIENT_SAVE || !_pending.size) return;
+  clearTimeout(_retryTimer);
+  _retryDelay = Math.min((_retryDelay||1500)*1.6, 30000);
+  _retryTimer=setTimeout(()=>{ _retryTimer=null; if(_pending.size && currentUser && db && !savePending) save(); }, _retryDelay);
 }
-function retryFailedSave(){ if(!savePending) save(); }
+function cancelRetry(){ clearTimeout(_retryTimer); _retryTimer=null; _retryDelay=0; }
+function retryNow(){ if(!savePending && currentUser && db){ _retryDelay=0; save(); } }
+/* רשת-ביטחון אחרי כתיבה *מוצלחת*: בדרך-כלל האישור (echo) מנקה את _pending תוך רגע.
+   אם משום-מה לא הגיע — נשחרר בכל זאת (הכתיבה כן הצליחה), כדי שלא יישאר "מסנכרן" תקוע. */
+function armConfirmSafety(){
+  clearTimeout(_confirmTimer);
+  _confirmTimer=setTimeout(()=>{ _confirmTimer=null; if(RESILIENT_SAVE && _pending.size && !_saveFailed){ _pending.clear(); cancelRetry(); setSyncStatus("synced"); try{ route(); }catch(_){} } }, 15000);
+}
+/* אחרי כל סנאפשוט/כתיבה: אם התנקו כל הממתינים — סיים מצב "טרם נשמר" והצג "נשמר". */
+function refreshPendingState(fromCache){
+  if(!RESILIENT_SAVE) return;
+  if(!_pending.size){ _saveFailed=false; cancelRetry(); clearTimeout(_confirmTimer); _confirmTimer=null; setSyncStatus(fromCache?"offline":"synced"); }
+}
+/* כשהרשת חוזרת (מצב-טיסה כובה, סלולרי חזר) — נסה מיד לשמור את הממתינים. */
+if(typeof window!=="undefined") window.addEventListener("online", ()=>{
+  if(RESILIENT_SAVE && _pending.size && currentUser && db && !savePending){ _retryDelay=0; save(); }
+});
 function hideOfflineBanner(){ const b=$("#offlineBanner"); if(b) b.style.display="none"; }
 function showOfflineBanner(){
   const b=$("#offlineBanner"); if(!b) return;
@@ -1146,19 +1167,17 @@ function buildChangeSummary(){
   return events.join(", ");
 }
 async function runPush(){
+  if(RESILIENT_SAVE) recordPending(); // רשום את מה שעומדים לכתוב *לפני* הכתיבה (בסיס = מצב השרת שלפנינו)
   let ok=false;
   try{ await pushAll(); ok=true; if(restMode) setSyncStatus("synced"); }
-  catch(e){
-    console.error(e);
-    if(RESILIENT_SAVE) ok = await recoverFailedWrite(); // ניסיון חוזר + מעבר לערוץ חלופי
-    if(!ok){ setSyncStatus("error"); if(RESILIENT_SAVE) markWriteFailed(); else toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
-  }
+  catch(e){ console.error(e); if(!RESILIENT_SAVE){ setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); } }
   finally{
     savePending=false;
-    // כבוי: בנה מחדש תמיד (התנהגות מקורית). דלוק: אל תדרוס עריכה שנכשלה — השאר על המסך עד ניסיון-חוזר/מצב-חלופי.
-    const doRebuild = RESILIENT_SAVE ? ok : true;
-    if(doRebuild && !restMode){ rebuildDB(cloudDocs); applyGuard(); } // ב-SDK: הצג מצב-שרת + כיסוי אופטימי; ב-REST: ה-DB בזיכרון כבר מעודכן
-    if(RESILIENT_SAVE && ok) clearWriteFailed(); // שמירה הצליחה → הסר אזהרת "לא נשמר"
+    if(!restMode){ rebuildDB(cloudDocs); if(RESILIENT_SAVE) applyPending(); else applyGuard(); } // הצג מצב-שרת + החזק עריכות ממתינות
+    if(RESILIENT_SAVE){
+      if(ok){ _saveFailed=false; refreshPendingState(false); armConfirmSafety(); } // הצלחה — האישור מגיע בסנאפשוט (echo) וינקה את _pending; רשת-ביטחון ל-15ש'
+      else { _saveFailed=true; setSyncStatus("error"); scheduleRetry(); } // כשל — החזק, סמן "טרם נשמר", נסה שוב אוטומטית
+    }
     if($("#overlay").classList.contains("show")) pendingRender=true; else route();
   }
 }
@@ -1326,7 +1345,7 @@ async function pushAll(){
   // בטיחות: אל תדרוס נתוני שרת עם DB ריק שטרם אושר מול השרת (דפדפן ללא חיבור שלא הספיק לטעון)
   const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
   if(localEmpty && !serverConfirmed) return;
-  if(restMode){ if(MERGE_WRITE && RESILIENT_SAVE){ await mergePushRest(); } else { await pushAllRest(); } return; } // מצב חלופי: כתיבה דרך REST (בטוח-למיזוג כשהתכונה דלוקה)
+  if(restMode){ await pushAllRest(); return; } // מצב חלופי: כתיבה דרך REST
   if(MERGE_WRITE){ await mergePushSDK(); return; } // מנעול נגד דריסה
   // ---- מסלול ישן (דריסה מלאה) — פעיל כשהמנעול כבוי ----
   // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
@@ -2504,7 +2523,9 @@ function startDataSync(){
     if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
     rebuildDB(cloudDocs);
     if(!md.hasPendingWrites) refreshMergeBase(); // בסיס-השוואה למיזוג = מצב שרת מאושר (לפני הכיסוי האופטימי)
-    applyGuard(); // שומר-ראש: השאר עריכות שטרם הודהדו על המסך; שחרר את שאושרו/שנדחו
+    applyGuard();   // שומר-ראש (SYNC_GUARD): השאר עריכות שטרם הודהדו; שחרר את שאושרו/שנדחו
+    applyPending(); // שמירה עמידה (RESILIENT_SAVE): החזק עריכות ממתינות מעל הסנאפשוט; שחרר מה שאושר בשרת
+    refreshPendingState(md.fromCache); // אם כל הממתינים אושרו → סיים "מסנכרן"/"טרם נשמר" והצג "נשמר"
     maybeMigrateBranding();
     maybeCleanupNewModel();
     if(!md.fromCache) maybeDailyBackup(); // גיבוי אוטומטי יומי (רק לאחר אישור מהשרת)
@@ -2519,7 +2540,7 @@ function startDataSync(){
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
   startPresence(); // נוכחות: "מי מחובר עכשיו"
 }
-function stopDataSync(){ _accessDenied=false; stopPresence(); clearPresence(); if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); _guard.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
+function stopDataSync(){ _accessDenied=false; stopPresence(); clearPresence(); if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); _guard.clear(); _pending.clear(); _saveFailed=false; cancelRetry(); clearTimeout(_confirmTimer); _confirmTimer=null; cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
 
 function boot(){
   try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
