@@ -2344,7 +2344,7 @@ function guideContent(){
       `<ul>
         <li><b>ייבוא</b> — מקובץ CSV או הדבקה מאקסל; תיק לכל שורה לפי הכותרות, זיהוי כפילויות ותיקון ניידים.</li>
         <li><b>ייצוא</b> — לאקסל (CSV) ולהדפסה/PDF, עם <b>בחירת שדות</b> ולפי הסינון. יצוא התלמידות נפתח מכפתור <b>📤 יצוא רשימות</b> בלשונית התלמידות; קיים גם לגנים ולשיבוץ הצוות.</li>
-        <li><b>ייצוא תלמידות (רשימות)</b> — בין השדות גם <b>שם הגן</b> (הגן המשובץ) ו<b>סמל גן</b>. אפשר <b>למיין "לפי גן (שם→גיל)"</b> כדי לקבל רשימה מלאה לפי סדר הגנים (למשל אבני נזר 3, 4, 5). כפתור <b>🎨 אקסל צבעוני</b> מפיק אקסל שבו <b>שם הגן והגיל צבועים לפי צבע הגיל</b> (3 ירוק · 4 סגול · 5 צהוב).</li>
+        <li><b>ייצוא תלמידות (רשימות)</b> — בין השדות גם <b>שם הגן</b> (הגן המשובץ) ו<b>סמל גן</b>. <b>ברירת המחדל היא מיון "לפי גן"</b> — הרשימה יוצאת לפי סדר הגנים (שם הגן ואז גיל, למשל אבני נזר 3, 4, 5) ובתוך כל גן לפי א־ב; בבורר <b>מיון</b> אפשר לעבור ל"שם משפחה". כפתור <b>🎨 אקסל צבעוני</b> מפיק אקסל שבו <b>שם הגן והגיל צבועים לפי צבע הגיל</b> (3 ירוק · 4 סגול · 5 צהוב).</li>
         <li><b>ייצוא גנים</b> — מלשונית הגנים (📤 ייצוא / הדפסה). בין השדות לבחירה גם <b>סמל הגן</b> ו<b>גננת משובצת</b> (מהשיבוץ השנתי). הרשימה יוצאת <b>מסודרת לפי שם הגן ואז לפי גיל</b> (למשל אבני נזר 3, 4, 5). כפתור <b>🎨 אקסל צבעוני</b> מפיק קובץ אקסל שבו <b>שם הגן והגיל צבועים לפי צבע הגיל</b> (3 ירוק · 4 סגול · 5 צהוב; דו-גילאי לפי הגיל הראשון).</li>
         <li><b>יצוא ממותג</b> — בהדפסה/PDF מופיע <b>לוגו הרשת</b> בראש הדף, ומתחתיו <b>פרטי המקום</b> לפי הבחירה (למשל שם הגן · סמל · כתובת).</li>
         <li><b>"התאם לעמוד אחד"</b> — סימון שמכווץ אוטומטית רשימה ארוכה לעמוד יחיד.</li>
@@ -7112,7 +7112,7 @@ function viewExport(root){
       <div class="field"><label>חינוך</label><select id="x-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div>
       <div class="field"><label>קלוט בעירייה</label><select id="x-muni"><option value="">הכל</option><option value="yes">רק קלוטות</option><option value="no">רק לא קלוטות</option></select></div>
       <div class="field"><label>כולל שסיימו</label><select id="x-fin"><option value="no">לא</option><option value="yes">כן</option></select></div>
-      <div class="field"><label>מיון</label><select id="x-sort"><option value="name">שם משפחה</option><option value="gan">לפי גן (שם→גיל)</option></select></div>
+      <div class="field"><label>מיון</label><select id="x-sort"><option value="gan" selected>לפי גן (שם→גיל, ובגן א־ב)</option><option value="name">שם משפחה (א־ב)</option></select></div>
     </div>
     <fieldset><legend>שדות לייצוא</legend>
       <div class="row" style="margin-bottom:8px">
@@ -7139,7 +7139,7 @@ function viewExport(root){
     if(ev) parts.push("חינוך "+(ev==='ח"מ'?'מיוחד':'רגיל')); if(av) parts.push("גיל "+av); if(pv) parts.push(pv); return parts.join(" · "); };
   const gather=()=>{
     const gv=$("#x-gan").value, av=$("#x-age").value, pv=$("#x-period").value, ev=(activeEdu||$("#x-edu").value), mv=$("#x-muni").value, fv=$("#x-fin").value;
-    const sortMode=$("#x-sort")?$("#x-sort").value:"name";
+    const sortMode=$("#x-sort")?$("#x-sort").value:"gan";
     const byName=(a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he") || (a.firstName||"").localeCompare(b.firstName||"","he");
     const list=studentsOfYear().filter(s=>{
       if(fv!=='yes' && s.finished) return false;
