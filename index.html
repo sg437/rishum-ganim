@@ -462,6 +462,11 @@ const MERGE_WRITE = true; /* מנעול נגד דריסה — פעיל בייצ�
 let SYNC_GUARD = TEST_DB_MODE ? true : false;
 /* מצב בדיקה בלבד: זכירת בחירת המתג בין רענונים (אין לזה כל השפעה בייצור) */
 if(TEST_DB_MODE){ try{ const _sg=localStorage.getItem("rg-syncguard"); if(_sg==="0") SYNC_GUARD=false; else if(_sg==="1") SYNC_GUARD=true; }catch(_){} }
+/* שמירה עמידה לרשת חלשה (resilient save): כבוי בייצור עד לאישור פריסה; דלוק אוטומטית במצב בדיקה.
+   כשכבוי — התנהגות זהה לחלוטין לקוד היום. בהדלקה: על *כל* כשל-כתיבה (לא רק תקיעה של 15ש') המערכת
+   מנסה שוב מיד, ואם צריך עוברת לערוץ חלופי (REST) בטוח-למיזוג; ואם הכול נכשל — אזהרה מתמשכת
+   "שינוי לא נשמר" עם ניסיון חוזר (בלי כשל שקט). נבנה בעקבות כשלי-כתיבה לסירוגין בסלולרי. */
+const RESILIENT_SAVE = TEST_DB_MODE ? true : false;
 const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
 /* באנר ברור במצב בדיקה — כדי שלא יתבלבלו בין סביבת הבדיקה למערכת האמיתית */
 if(TEST_DB_MODE){ try{
@@ -620,6 +625,13 @@ function setSyncStatus(state){
   const el=$("#syncStatus"); if(!el) return;
   _syncState=state;
   if(!currentUser){ el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; hideOfflineBanner(); return; }
+  // שמירה עמידה: כל עוד יש עריכה שלא עלתה לשרת — אל תציג "נשמר/מחובר" מטעה בגלל שהקריאה עובדת.
+  // (רק "מסנכרן" מותר, כי הוא מייצג ניסיון-שמירה פעיל.) בטל כשהתכונה כבויה — אז _writeFailed לעולם לא נדלק.
+  if(_writeFailed && state!=="pending"){
+    el.style.display="inline-flex"; el.textContent="⚠️ שינוי לא נשמר — לחצ/י לניסיון חוזר";
+    el.style.color="var(--bad)"; el.title="עריכה שלא עלתה לשרת. לחצ/י לניסיון חוזר, או השתמש/י בכפתורי המצב-החלופי בבאנר.";
+    el.onclick=retryFailedSave; el.style.cursor="pointer"; return;
+  }
   const map={
     pending:["⏳ מסנכרן…","var(--warn)","יש שינויים שממתינים להעלאה לשרת — השאר/י את החלון פתוח עד שהחיווי יתחלף ל\"נשמר בענן\""],
     synced :["✓ נשמר בענן","var(--good)","כל הנתונים נשמרו בשרת ומשותפים לכל המשתמשים המחוברים"],
@@ -644,6 +656,7 @@ function setSyncStatus(state){
   }
 }
 let _offlineTimer=null, _offlineDismissed=false, _pendingWatch=null, _syncState="";
+let _writeFailed=false; // שמירה עמידה: יש עריכה שנכשלה בכתיבה וטרם נשמרה (אזהרה מתמשכת עד הצלחה)
 /* מעבר אוטומטי לכתיבה דרך REST כשכתיבת ה-SDK נתקעת על "מסנכרן" (ראו setSyncStatus).
    דוחף את הנתונים המקומיים כפי שהם — כדי לא לאבד עריכה שטרם עלתה לשרת. */
 async function recoverStuckWrite(){
@@ -653,12 +666,54 @@ async function recoverStuckWrite(){
   if(localEmpty) return; // אין מה לדחוף — לא נדרוס שרת עם DB ריק
   try{
     enterRestMode();
-    await pushAllRest();
+    if(RESILIENT_SAVE) await pushAll(); else await pushAllRest(); // דלוק → mergePushRest (בטוח-למיזוג)
     savePending=false;
     setSyncStatus("synced");
     toast("הסנכרון הושלם (מצב חלופי)");
   }catch(e){ console.error(e); setSyncStatus("error"); toast("שגיאת סנכרון — נסה/י שוב או בדוק/י חיבור"); }
 }
+/* ============================================================
+   שמירה עמידה לרשת חלשה (resilient save) — גייטד ב-RESILIENT_SAVE
+   ------------------------------------------------------------
+   נקרא מתוך runPush כשכתיבה נכשלה (זרקה שגיאה, לא רק "נתקעה"). בסלולרי לא-יציב
+   הפרעה רגעית נפתרת מעצמה בניסיון חוזר; אם לא — עוברים לערוץ חלופי (REST) בטוח-
+   למיזוג; ואם גם זה נכשל — מסמנים כשל-כתיבה מתמשך (בלי כשל שקט). לוגיקת המדיניות
+   נבדקת ב-tests/resilient-save.test.cjs. */
+const _delay = ms => new Promise(r=>setTimeout(r, ms));
+async function recoverFailedWrite(){
+  if(!currentUser || !serverConfirmed) return false;
+  const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
+  if(localEmpty) return false; // אין מה לדחוף — לא נדרוס שרת עם DB ריק
+  // 1) ניסיון חוזר קצר על אותו ערוץ — הפרעה רגעית בסלולרי נפתרת מעצמה
+  for(let i=0; i<2; i++){
+    await _delay(700*(i+1));
+    setSyncStatus("pending");
+    try{ await pushAll(); return true; }
+    catch(e){ console.error("resilient retry "+(i+1)+" failed", e); }
+  }
+  // 2) מעבר לערוץ חלופי (REST) — בטוח-למיזוג (mergePushRest כשהמנעול דלוק)
+  try{
+    if(!restMode) enterRestMode();
+    await pushAll(); // כעת restMode → mergePushRest
+    setSyncStatus("synced");
+    toast("נשמר (מצב חלופי)");
+    return true;
+  }catch(e){ console.error("resilient REST fallback failed", e); return false; }
+}
+/* אזהרה מתמשכת כשכתיבה לא עלתה — שלא תיעלם רק מפני שהקריאה עובדת. משוחררת רק בשמירה מוצלחת. */
+function markWriteFailed(){
+  _writeFailed=true;
+  _offlineDismissed=false; showOfflineBanner();
+  setSyncStatus("error"); // דרך הבודק ב-setSyncStatus יוצג "שינוי לא נשמר — לחצ/י לניסיון חוזר"
+}
+function clearWriteFailed(){
+  if(!_writeFailed) return;
+  _writeFailed=false;
+  const el=$("#syncStatus"); if(el){ el.onclick=null; el.style.cursor=""; }
+  hideOfflineBanner();
+  setSyncStatus("synced");
+}
+function retryFailedSave(){ if(!savePending) save(); }
 function hideOfflineBanner(){ const b=$("#offlineBanner"); if(b) b.style.display="none"; }
 function showOfflineBanner(){
   const b=$("#offlineBanner"); if(!b) return;
@@ -1091,11 +1146,19 @@ function buildChangeSummary(){
   return events.join(", ");
 }
 async function runPush(){
-  try{ await pushAll(); if(restMode) setSyncStatus("synced"); }
-  catch(e){ console.error(e); setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
+  let ok=false;
+  try{ await pushAll(); ok=true; if(restMode) setSyncStatus("synced"); }
+  catch(e){
+    console.error(e);
+    if(RESILIENT_SAVE) ok = await recoverFailedWrite(); // ניסיון חוזר + מעבר לערוץ חלופי
+    if(!ok){ setSyncStatus("error"); if(RESILIENT_SAVE) markWriteFailed(); else toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
+  }
   finally{
     savePending=false;
-    if(!restMode){ rebuildDB(cloudDocs); applyGuard(); } // ב-SDK: הצג מצב-שרת + כיסוי אופטימי; ב-REST: ה-DB בזיכרון כבר מעודכן
+    // כבוי: בנה מחדש תמיד (התנהגות מקורית). דלוק: אל תדרוס עריכה שנכשלה — השאר על המסך עד ניסיון-חוזר/מצב-חלופי.
+    const doRebuild = RESILIENT_SAVE ? ok : true;
+    if(doRebuild && !restMode){ rebuildDB(cloudDocs); applyGuard(); } // ב-SDK: הצג מצב-שרת + כיסוי אופטימי; ב-REST: ה-DB בזיכרון כבר מעודכן
+    if(RESILIENT_SAVE && ok) clearWriteFailed(); // שמירה הצליחה → הסר אזהרת "לא נשמר"
     if($("#overlay").classList.contains("show")) pendingRender=true; else route();
   }
 }
@@ -1263,7 +1326,7 @@ async function pushAll(){
   // בטיחות: אל תדרוס נתוני שרת עם DB ריק שטרם אושר מול השרת (דפדפן ללא חיבור שלא הספיק לטעון)
   const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
   if(localEmpty && !serverConfirmed) return;
-  if(restMode){ await pushAllRest(); return; } // מצב חלופי: כתיבה דרך REST
+  if(restMode){ if(MERGE_WRITE && RESILIENT_SAVE){ await mergePushRest(); } else { await pushAllRest(); } return; } // מצב חלופי: כתיבה דרך REST (בטוח-למיזוג כשהתכונה דלוקה)
   if(MERGE_WRITE){ await mergePushSDK(); return; } // מנעול נגד דריסה
   // ---- מסלול ישן (דריסה מלאה) — פעיל כשהמנעול כבוי ----
   // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
