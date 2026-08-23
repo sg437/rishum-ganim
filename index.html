@@ -2241,7 +2241,7 @@ function guideContent(){
       illFilter+
       `<ul>
         <li><b>שורת חיפוש</b> עם 🔎 — לפי שם או ת"ז.</li>
-        <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: גן (כולל <b>"ללא גן (הוצאו)"</b>), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים.</li>
+        <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: <b>גן — אפשר לבחור כמה גנים יחד</b> (כולל <b>"ללא גן (הוצאו)"</b>; ריק = כל הגנים), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים.</li>
         <li><b>לחיצה על שורה</b> פותחת את התיק (גם בגנים ובצוות).</li>
         <li><b>מיון</b> — לחיצה על כותרת עמודה.</li>
         <li><b>עמודת רחוב</b> — בטבלה (וגם בתצוגת "תלמידות הגן") מוצג <b>הרחוב והבניין</b> של כל תלמידה במקום העיר — מזהה טוב יותר את התלמידות כשכולן באותה עיר.</li>
@@ -3038,12 +3038,12 @@ function renderInstallBox(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gan:"", age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; // age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
+let stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; // gans = ריבוי גנים (אפשר לבחור כמה); age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
 let stuFiltersOpen=false; // האם פאנל הסינון המתקדם פתוח
 function stuActiveFilterCount(){ const f=stuFilter; let n=0;
-  if(f.gan)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
+  if(f.gans&&f.gans.length)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
 /* איפוס כל סינוני התלמידות לברירת המחדל (כפתור "ניקוי") */
-function clearStuFilter(){ stuFilter = { q:"", gan:"", age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; }
+function clearStuFilter(){ stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; }
 /* מאפייני סינון מיוחדים לתלמידה — לסינון + סיכום מותנה (סעיף השארות/צהרון/קייטנות) */
 const STU_FLAGS = {
   retention:    { label:"השארות",        test:s=>!!(s.special && s.special.retention) },
@@ -3248,7 +3248,11 @@ function viewStudents(root){
     </div>
     <div class="filter-panel" id="stuFilterPanel" ${fOpen?'':'hidden'}>
       <div class="toolbar" style="margin-bottom:0">
-        <div class="field"><label>גן</label><select id="f-gan"><option value="">הכל</option><option value="__none__" ${stuFilter.gan==='__none__'?'selected':''}>— ללא גן (הוצאו) —</option>${gans.map(g=>`<option value="${g.id}" ${stuFilter.gan===g.id?'selected':''}>${esc(ganName(g.id))}</option>`).join("")}</select></div>
+        <div class="field" style="flex-basis:100%"><label>גן (אפשר לבחור כמה)</label>
+          <div class="row" id="f-gan" style="gap:4px;flex-wrap:wrap;max-height:168px;overflow:auto">
+            <button type="button" class="btn sm ${stuFilter.gans.includes('__none__')?'':'ghost'}" data-gan="__none__">ללא גן (הוצאו)</button>
+            ${gans.map(g=>`<button type="button" class="btn sm ${stuFilter.gans.includes(g.id)?'':'ghost'}" data-gan="${g.id}">${esc(ganName(g.id))}</button>`).join("")}
+          </div></div>
         <div class="field"><label>גיל (אפשר לבחור כמה)</label>
           <div class="row" id="f-age" style="gap:4px;flex-wrap:wrap">
             ${CHILD_AGES.map(a=>`<button type="button" class="btn sm ${stuFilter.age.includes(a)?'':'ghost'}" data-age="${a}">${a}</button>`).join("")}
@@ -3279,8 +3283,13 @@ function viewStudents(root){
   $("#importUpdate").onclick = ()=> openBulkImport();
   $("#stuFilterToggle").onclick = ()=>{ stuFiltersOpen = $("#stuFilterPanel").hasAttribute("hidden"); viewStudents(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
+  bind("#f-q","q");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
   const clr=$("#f-clear"); if(clr) clr.onclick=()=>{ clearStuFilter(); stuFiltersOpen=true; viewStudents(root); };
+  // סינון גן בריבוי בחירה — לחיצה מוסיפה/מסירה גן (אפשר לבחור כמה גנים יחד)
+  const ganBox=$("#f-gan"); if(ganBox) ganBox.querySelectorAll("[data-gan]").forEach(btn=> btn.onclick=()=>{
+    const id=btn.dataset.gan, set=new Set(stuFilter.gans); set.has(id)?set.delete(id):set.add(id); stuFilter.gans=[...set];
+    btn.classList.toggle("ghost"); renderStuTable();
+  });
   // סינון גיל בריבוי בחירה — לחיצה מוסיפה/מסירה גיל (סעיף 6)
   const ageBox=$("#f-age"); if(ageBox) ageBox.querySelectorAll("[data-age]").forEach(btn=> btn.onclick=()=>{
     const a=btn.dataset.age, set=new Set(stuFilter.age); set.has(a)?set.delete(a):set.add(a); stuFilter.age=[...set];
@@ -3297,8 +3306,11 @@ function studentsScopeBase(){
     if(f.status==='active' && s.finished) return false;
     if(f.status==='finished' && !s.finished) return false;
     if(q){ const hay=(s.firstName+" "+s.lastName+" "+s.tz).toLowerCase(); if(!hay.includes(q)) return false; }
-    if(f.gan==='__none__'){ if(s.ganId) return false; }   // ללא גן — ילדות שהוצאו מהגן (ganId ריק)
-    else if(f.gan && s.ganId!==f.gan) return false;
+    if(f.gans && f.gans.length){ // ריבוי גנים — התלמידה שייכת לאחד הגנים שנבחרו (או "ללא גן" למי שהוצאה)
+      const noneSel=f.gans.includes('__none__');
+      const ok = (noneSel && !s.ganId) || (s.ganId && f.gans.includes(s.ganId));
+      if(!ok) return false;
+    }
     if(f.age && f.age.length && !f.age.includes(String(s.age))) return false;
     if(f.city && s.city!==f.city) return false;
     if(f.street){ const sq=f.street.trim().toLowerCase(); if(sq && !(s.street||"").toLowerCase().includes(sq)) return false; }
@@ -3371,7 +3383,7 @@ function renderStuSummary(){
   const notAbsorbed=total-absorbed;
   const placed=base.filter(s=>s.placed!==false).length;   // משובצות סופית
   const waiting=total-placed;                              // ממתינות לשיבוץ
-  const g=stuFilter.gan && DB.gans.find(x=>x.id===stuFilter.gan);
+  const g=(stuFilter.gans && stuFilter.gans.length===1 && stuFilter.gans[0]!=='__none__') && DB.gans.find(x=>x.id===stuFilter.gans[0]);
   const capTxt = g && g.capacity ? ` <small>/ ${esc(g.capacity)}</small>` : "";
   const regColor = (g && g.capacity) ? capColor(capState(total, g.capacity)) : "";
   const tile=(k,v,color,title)=>`<div class="stat"${title?` title="${esc(title)}"`:''}><div class="k">${k}</div><div class="v"${color?` style="color:${color}"`:''}>${v}</div></div>`;
@@ -3416,7 +3428,7 @@ function renderStuTable(){
   const host = $("#stuTable");
   const statusLbl = { active:"פעילות", finished:"שסיימו / יצאו", all:"כל הסטטוסים" }[stuFilter.status]||"";
   /* כשמסוננים לגן ספציפי — פס פעולות מהיר להדפסה/שיתוף של רשימת הגן */
-  const selGan = (stuFilter.gan && stuFilter.gan!=='__none__') ? ganById(stuFilter.gan) : null;
+  const selGan = (stuFilter.gans && stuFilter.gans.length===1 && stuFilter.gans[0]!=='__none__') ? ganById(stuFilter.gans[0]) : null;
   const ganBar = selGan ? `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:10px 12px;background:var(--surface-2);border-radius:12px">
       <button class="btn ghost sm" id="stuGanBack" type="button">→ חזרה לגנים</button>
       <b style="margin-inline-end:auto">📋 רשימת הגן: ${esc(ganName(selGan.id))}</b>
@@ -3426,7 +3438,7 @@ function renderStuTable(){
     </div>` : "";
   if(!list.length){ host.innerHTML = ganBar + `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`;
     if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
-      const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gan=""; navToTab('gans'); };
+      const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gans=[]; navToTab('gans'); };
       const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
       const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
     return; }
@@ -3457,7 +3469,7 @@ function renderStuTable(){
   <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק.</div>`;
   /* פס פעולות רשימת הגן — חזרה/הדפסה/שיתוף ישירות מתוך רשימת התלמידות המסוננת לגן */
   if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
-    const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gan=""; navToTab('gans'); };
+    const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gans=[]; navToTab('gans'); };
     const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
     const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
   // לחיצה על שורה (מחוץ לכפתורים/תיבות סימון) פותחת את התיק (סעיף 8.4.3)
@@ -3479,7 +3491,7 @@ function openStudentById(id){ const st=DB.students.find(x=>x.id===id); if(st) op
    כשנקראת מתוך מודל פתוח (טופס הגן): סוגרים את המודל וממירים את רשומת ההיסטוריה
    שלו לניווט — במקום history.back() (שיוצר popstate אסינכרוני שמבטל את הניווט). */
 function viewGanStudents(ganId){
-  stuFilter.gan=ganId||""; stuFilter.status='active';
+  stuFilter.gans=ganId?[ganId]:[]; stuFilter.status='active';
   const ov=$("#overlay");
   if(modalHistoryOpen){
     if(ov) ov.classList.remove("show"); document.body.style.overflow="";
