@@ -2401,7 +2401,7 @@ function guideContent(){
         <li><b>📋 רשימת גן</b>: בוחרים גן ולוחצים <b>הפקה והדפסה</b> או <b>📎 שיתוף מסמך</b>. נוצרת רשימת התלמידות בגן (שם, ת"ז, גיל, טלפונים, כתובת) עם כותרת ממותגת (הלוגו, שם הרשת ופרטי הגן).</li>
         <li><b>🧩 מצבת שיבוץ צוות</b> — בשתי תבניות:
           <ul>
-            <li><b>🏢 למשרד הראשי</b> — כל הגנים, מסודר לפי גן עם כל אנשי הצוות, ימים ושעות שבועיות, <b>צבע לכל תפקיד + מקרא</b>. זמין ב<b>🖨️ הפקה והדפסה</b>, ב<b>🎨 אקסל צבעוני</b> (אותו פילוח וצבעים בקובץ אקסל) וב<b>📎 שיתוף מסמך</b>.</li>
+            <li><b>🏢 למשרד הראשי</b> — כל הגנים, מסודר לפי גן עם כל אנשי הצוות, ימים ושעות שבועיות, <b>צבע לכל תפקיד + מקרא</b>. זמין ב<b>🖨️ הפקה והדפסה</b>, ב<b>📎 שיתוף מסמך</b>, וב<b>🎨 אקסל צבעוני</b> — טבלה אחת ב<b>שורות רצות</b>: תחילה טורי פרטי הגן (שם גננת · גיל · סמל · רחוב · מספר · מס' תלמידות — ללא צבע, פעם אחת לכל גן), ואז טורי התפקיד (תפקיד · שם · טלפון · ימים/תקופה · שעות) <b>צבועים בצבע התפקיד</b>.</li>
             <li><b>🏛️ למשרד החינוך</b> — תבנית "מצבת משרד החינוך" (שורה לכל גן, 32 עמודות) ל<b>אקסל</b> או PDF. את פרטי הרכז/ת, המנהל והמזכיר/ה ממלאים פעם אחת ב<b>"✏️ פרטי כותרת"</b> והם מופיעים אוטומטית בראש.</li>
           </ul></li>
         <li>סימון <b>"התאם לעמוד אחד"</b> מכווץ רשימה ארוכה לעמוד יחיד.</li>
@@ -5693,40 +5693,49 @@ function makeAsgMainOffice(opts){
 function makeAsgMainOfficeXls(){
   const gans=eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
   const rolesUsed=new Set();
-  const headCells=["תפקיד","שם","טלפון","ימים / תקופה","שעות שבועיות"];
+  // טור אחד רציף לכל הגנים: 6 טורי פרטי-גן (ללא צבע) + 5 טורי תפקיד (צבועים לפי התפקיד)
+  const headers=["שם גננת","גיל","סמל הגן","רחוב","מספר","מספר תלמידות","תפקיד","שם","טלפון","ימים / תקופה","שעות שבועיות"];
+  const GANCOLS=6; // מספר טורי פרטי-הגן שלפני התפקידים
   let body="";
   gans.forEach(g=>{
     const a=ganAsg(g.id,'activity'), free=ganFreeDays(g.id,'activity');
-    const roleRows=assignRoles().map(meta=>{
-      const c=a[meta.role]; if(!c || !(c.name||c.staffId)) return "";
+    const staff=assignRoles().map(meta=>{
+      const c=a[meta.role]; if(!c || !(c.name||c.staffId)) return null;
       rolesUsed.add(meta.role);
       const info=asgStaffInfo(a,meta.role);
       const hours=HOURS_ROLES.includes(meta.role)?(c.hours||(info.m&&info.m.weeklyHours)||""):"";
       let daysTxt=info.days.length?info.days.join(", "):asgExtraText(meta.role,c);
       if(free[meta.role] && free[meta.role].length) daysTxt=`🏖️ יום חופשי: ${free[meta.role].join(", ")}`;
-      const tint=tintHex(roleColor(meta.role),.72), bg=tint?` style="background:${tint}"`:"";
-      return `<tr${bg}><td>${esc(meta.role)}</td><td><b>${esc(info.name)}</b></td><td>${esc(info.phone)}</td><td>${esc(daysTxt)}</td><td>${esc(hours)}</td></tr>`;
-    }).filter(Boolean).join("");
-    if(!roleRows) return;
+      return { role:meta.role, name:info.name, phone:info.phone, days:daysTxt, hours, tint:tintHex(roleColor(meta.role),.72) };
+    }).filter(Boolean);
+    if(!staff.length) return;
     const reg=studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length;
-    const meta=[g.age?("גיל "+g.age):"", g.ganSymbol?("סמל "+g.ganSymbol):"", [g.address,g.building].filter(Boolean).join(" "), reg+" תלמידות"].filter(Boolean).join(" · ");
-    body+=`<tr><td colspan="5" style="background:#2f6f43;color:#fff;font-weight:bold;font-size:13px">${esc(ganName(g.id))}${meta?` — ${esc(meta)}`:""}</td></tr>`;
-    body+=`<tr>${headCells.map(h=>`<td style="background:#dfeee4;font-weight:bold">${esc(h)}</td>`).join("")}</tr>`;
-    body+=roleRows;
-    body+=`<tr><td colspan="5" style="border:none"></td></tr>`;
+    const ganCells=[ganName(g.id), g.age||"", g.ganSymbol||"", g.address||"", g.building||"", reg]; // פרטי הגן — פעם אחת בשורה הראשונה
+    staff.forEach((r,ri)=>{
+      // טורי פרטי-הגן: מלאים בשורה הראשונה של הגן, ריקים בשאר — ותמיד ללא צבע
+      const infoTd=(ri===0?ganCells:new Array(GANCOLS).fill("")).map(v=>`<td>${esc(v)}</td>`).join("");
+      // טורי התפקיד: צבועים ברקע צבע התפקיד, בכל שורה
+      const bg=r.tint?` style="background:${r.tint}"`:"";
+      const roleTd=`<td${bg}>${esc(r.role)}</td><td${bg}><b>${esc(r.name)}</b></td><td${bg}>${esc(r.phone)}</td><td${bg}>${esc(r.days)}</td><td${bg}>${esc(r.hours)}</td>`;
+      body+=`<tr>${infoTd}${roleTd}</tr>`;
+    });
   });
   if(!body){ toast("אין שיבוצים להצגה"); return; }
+  // מקרא תפקידים בסוף — שם התפקיד בטור התפקיד, צבוע
   const legendRoles=[...rolesUsed].filter(r=>roleColor(r));
+  let legend="";
   if(legendRoles.length){
-    body+=`<tr><td colspan="5" style="font-weight:bold;background:#f0f0f0">מקרא תפקידים</td></tr>`;
-    legendRoles.forEach(r=>{ body+=`<tr><td style="background:${tintHex(roleColor(r),.72)}">${esc(r)}</td><td colspan="4" style="border:none"></td></tr>`; });
+    legend+=`<tr><td colspan="${headers.length}" style="border:none"></td></tr>`;
+    legend+=`<tr><td colspan="${headers.length}" style="font-weight:bold;background:#f0f0f0">מקרא תפקידים</td></tr>`;
+    legendRoles.forEach(r=>{ legend+=`<tr>${new Array(GANCOLS).fill('<td style="border:none"></td>').join("")}<td style="background:${tintHex(roleColor(r),.72)}" colspan="${headers.length-GANCOLS}">${esc(r)}</td></tr>`; });
   }
+  const headHtml=`<tr>${headers.map(h=>`<th style="background:#2f6f43;color:#fff;font-weight:bold">${esc(h)}</th>`).join("")}</tr>`;
   const h='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
     +'<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>מצבת</x:Name>'
     +'<x:WorksheetOptions><x:DisplayRightToLeft/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
-    +'<style>table{border-collapse:collapse}td{border:1px solid #b9c4bd;padding:4px 9px;font-family:Arial,sans-serif;font-size:12px;mso-number-format:"\\@";text-align:right}</style></head>'
+    +'<style>table{border-collapse:collapse}td,th{border:1px solid #b9c4bd;padding:4px 9px;font-family:Arial,sans-serif;font-size:12px;mso-number-format:"\\@";text-align:right}</style></head>'
     +'<body dir="rtl"><h3 style="font-family:Arial,sans-serif">מצבת שיבוץ צוות — משרד ראשי · שנת '+esc(DB.activeYear)+' · '+gans.length+' גנים</h3>'
-    +'<table><tbody>'+body+'</tbody></table></body></html>';
+    +'<table><thead>'+headHtml+'</thead><tbody>'+body+legend+'</tbody></table></body></html>';
   downloadBlob(new Blob(["\ufeff"+h],{type:"application/vnd.ms-excel;charset=utf-8"}), "מצבת שיבוץ ראשי "+DB.activeYear+".xls");
   toast("קובץ אקסל צבעוני נוצר");
 }
