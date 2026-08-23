@@ -24,7 +24,7 @@ service cloud.firestore {
        ===================================================================== */
 
     // בעלי המערכת — עוגן הרשאה קבוע (חייב להיות זהה ל-index.html / APPS_SCRIPT.gs)
-    function ownerEmails() { return ['7684252sg@gmail.com']; }
+    function ownerEmails() { return ['7684252sg@gmail.com', 'sg@taharat.org']; }
 
     function metaPath()   { return /databases/$(database)/documents/app/meta; }
     function metaExists() { return exists(metaPath()); }
