@@ -2241,7 +2241,7 @@ function guideContent(){
       illFilter+
       `<ul>
         <li><b>שורת חיפוש</b> עם 🔎 — לפי שם או ת"ז.</li>
-        <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: גן (כולל <b>"ללא גן (הוצאו)"</b>), גיל (ריבוי), עיר, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס. מספר קטן על הכפתור מציין כמה סינונים פעילים.</li>
+        <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: גן (כולל <b>"ללא גן (הוצאו)"</b>), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים.</li>
         <li><b>לחיצה על שורה</b> פותחת את התיק (גם בגנים ובצוות).</li>
         <li><b>מיון</b> — לחיצה על כותרת עמודה.</li>
         <li><b>פס סיכום</b> חכם מעל הטבלה מתעדכן לפי הסינון.</li>
@@ -3037,10 +3037,12 @@ function renderInstallBox(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gan:"", age:[], city:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; // age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
+let stuFilter = { q:"", gan:"", age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; // age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
 let stuFiltersOpen=false; // האם פאנל הסינון המתקדם פתוח
 function stuActiveFilterCount(){ const f=stuFilter; let n=0;
-  if(f.gan)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
+  if(f.gan)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
+/* איפוס כל סינוני התלמידות לברירת המחדל (כפתור "ניקוי") */
+function clearStuFilter(){ stuFilter = { q:"", gan:"", age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; }
 /* מאפייני סינון מיוחדים לתלמידה — לסינון + סיכום מותנה (סעיף השארות/צהרון/קייטנות) */
 const STU_FLAGS = {
   retention:    { label:"השארות",        test:s=>!!(s.special && s.special.retention) },
@@ -3222,6 +3224,7 @@ function startHomeClock(){
 function viewStudents(root){
   const gans = eduScope(DB.gans.slice()).sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
   const cities = [...new Set(studentsOfYear().map(s=>s.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const streets = [...new Set(studentsOfYear().map(s=>(s.street||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
   const campuses = [...new Set(studentsOfYear().map(s=>s.campus).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
   const fOpen = stuFiltersOpen || stuActiveFilterCount()>0;
   root.innerHTML = `
@@ -3250,6 +3253,7 @@ function viewStudents(root){
             ${CHILD_AGES.map(a=>`<button type="button" class="btn sm ${stuFilter.age.includes(a)?'':'ghost'}" data-age="${a}">${a}</button>`).join("")}
           </div></div>
         <div class="field"><label>עיר</label><select id="f-city"><option value="">הכל</option>${cities.map(c=>`<option ${stuFilter.city===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
+        <div class="field"><label>רחוב</label><input id="f-street" list="f-street-list" value="${esc(stuFilter.street)}" placeholder="חיפוש לפי רחוב…"><datalist id="f-street-list">${streets.map(st=>`<option value="${esc(st)}">`).join("")}</datalist></div>
         ${campuses.length?`<div class="field"><label>קמפוס</label><select id="f-campus"><option value="">הכל</option>${campuses.map(c=>`<option ${stuFilter.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>`:""}
         <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
         ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
@@ -3261,6 +3265,7 @@ function viewStudents(root){
           <option value="finished" ${stuFilter.status==='finished'?'selected':''}>שסיימו / יצאו</option>
           <option value="all" ${stuFilter.status==='all'?'selected':''}>הכל</option>
         </select></div>
+        <div class="field"><label>&nbsp;</label><button class="btn ghost" id="f-clear" type="button" title="ניקוי כל הסינון">🧹 ניקוי</button></div>
       </div>
     </div>
     <div id="stuTable"></div>
@@ -3273,7 +3278,8 @@ function viewStudents(root){
   $("#importUpdate").onclick = ()=> openBulkImport();
   $("#stuFilterToggle").onclick = ()=>{ stuFiltersOpen = $("#stuFilterPanel").hasAttribute("hidden"); viewStudents(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
+  bind("#f-q","q");bind("#f-gan","gan");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
+  const clr=$("#f-clear"); if(clr) clr.onclick=()=>{ clearStuFilter(); stuFiltersOpen=true; viewStudents(root); };
   // סינון גיל בריבוי בחירה — לחיצה מוסיפה/מסירה גיל (סעיף 6)
   const ageBox=$("#f-age"); if(ageBox) ageBox.querySelectorAll("[data-age]").forEach(btn=> btn.onclick=()=>{
     const a=btn.dataset.age, set=new Set(stuFilter.age); set.has(a)?set.delete(a):set.add(a); stuFilter.age=[...set];
@@ -3294,6 +3300,7 @@ function studentsScopeBase(){
     else if(f.gan && s.ganId!==f.gan) return false;
     if(f.age && f.age.length && !f.age.includes(String(s.age))) return false;
     if(f.city && s.city!==f.city) return false;
+    if(f.street){ const sq=f.street.trim().toLowerCase(); if(sq && !(s.street||"").toLowerCase().includes(sq)) return false; }
     if(f.campus && s.campus!==f.campus) return false;
     if(f.period && s.period!==f.period) return false;
     if(eduFilter && eduLabel(s)!==eduFilter) return false;
@@ -3316,7 +3323,7 @@ function sortStudents(list){
   const cmpNum=(a,b)=>(+a||0)-(+b||0);
   const val={
     name:s=>[s.lastName,s.firstName].filter(Boolean).join(" "),
-    tz:s=>s.tz, gan:s=>ganName(s.ganId), age:s=>s.age, city:s=>s.city,
+    tz:s=>s.tz, gan:s=>ganName(s.ganId), age:s=>s.age, city:s=>s.city, street:s=>s.street,
     period:s=>PERIODS.indexOf(s.period), edu:s=>eduLabel(s)
   };
   const getter=val[k]||val.name;
@@ -3426,7 +3433,7 @@ function renderStuTable(){
   const th=(k,lbl)=>`<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>`;
   host.innerHTML = ganBar + `<div class="table-wrap"><table><thead><tr>
     ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
-    ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}<th title="שיבוץ סופי בגן — לחיצה משנה בין 'משובצת' ל'ממתינה'">שיבוץ</th>${th("age",'גיל')}${th("city",'עיר')}${th("period",'מועד')}${th("edu",'חינוך')}
+    ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}<th title="שיבוץ סופי בגן — לחיצה משנה בין 'משובצת' ל'ממתינה'">שיבוץ</th>${th("age",'גיל')}${th("street",'רחוב')}${th("period",'מועד')}${th("edu",'חינוך')}
     <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th title="סימון בלבד — תוכן ההערה בתוך התיק">הערות</th><th>סטטוס</th></tr></thead><tbody>
     ${list.map(s=>`<tr data-sid="${esc(s.id)}" class="${bulkMode?'':'clickable'}"${bulkMode&&bulkSel.has(s.id)?' style="background:var(--good-soft)"':''}>
       ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
@@ -3435,7 +3442,7 @@ function renderStuTable(){
       <td>${esc(ganName(s.ganId))}</td>
       <td>${s.ganId?`<button type="button" class="pill ${s.placed!==false?'ok':'warn'} stu-place" data-id="${esc(s.id)}" style="cursor:pointer;border:none" title="לחצי כדי לשנות סטטוס שיבוץ">${s.placed!==false?'✔ משובצת':'⏳ ממתינה'}</button>`:'<span class="pill neutral" title="אין גן משובץ">—</span>'}</td>
       <td>${esc(s.age)||'—'}</td>
-      <td>${esc(s.city)||'—'}</td>
+      <td>${esc([s.street,s.building].filter(Boolean).join(" "))||'—'}</td>
       <td><span class="pill neutral">${esc(s.period)}</span></td>
       <td>${eduBadge(s)}</td>
       <td>${docDots(s)}</td>
