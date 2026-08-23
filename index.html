@@ -453,6 +453,12 @@ const firebaseConfig = TEST_DB_MODE ? TEST_FIREBASE : PROD_FIREBASE;
 /* מנעול נגד דריסה (merge-on-write): כבוי בייצור עד לאישור פריסה; דלוק אוטומטית במצב בדיקה.
    כשכבוי — התנהגות זהה לחלוטין לקוד הישן (דריסה). ההדלקה לייצור = שינוי הערך הזה בלבד. */
 const MERGE_WRITE = true; /* מנעול נגד דריסה — פעיל בייצור (הופעל לאחר בדיקות). לחזרה מהירה: החזר ל-`TEST_DB_MODE ? true : false`. */
+/* שומר-ראש לסנכרון (UI אופטימי): כבוי בייצור עד לאישור פריסה; דלוק אוטומטית במצב בדיקה.
+   כשכבוי — התנהגות זהה לחלוטין לקוד היום. ההדלקה לייצור = שינוי הערך הזה בלבד (ראה §"שומר-ראש לסנכרון").
+   מטרה: מנעול-נגד-דריסה כותב בטרנזקציה (SDK) או REST, ואלה — בשונה מ-setDoc — אינן מייצרות "הד"
+   מקומי מיידי. לכן אחרי שמירה, בנייה-מחדש מהסנאפשוט הישן החזירה לרגע את המצב שלפני העריכה (הבהוב/פיגור
+   ויזואלי ברשתות חלשות). השומר-ראש מציג את מה שנכתב מיד, עד שהשרת מאשר או עד פקיעת-זמן. */
+const SYNC_GUARD = TEST_DB_MODE ? true : false;
 const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
 /* באנר ברור במצב בדיקה — כדי שלא יתבלבלו בין סביבת הבדיקה למערכת האמיתית */
 if(TEST_DB_MODE){ try{
@@ -833,6 +839,7 @@ async function mergePushRest(){
   await _restMergeSimple(base,hdr,"staff","staff",DB.staff,_mergeBase.staff);
   await _restMergeSimple(base,hdr,"management","management",DB.management,_mergeBase.mgmt);
   await _restMergeStudents(base,hdr);
+  recordGuard(); // שומר-ראש: לפני refreshMergeBase, בעוד _mergeBase מחזיק את מצב השרת שלפני הכתיבה
   refreshMergeBase();
 }
 /* כתיבת כל הנתונים דרך Firestore REST (PATCH=setDoc מלא, DELETE למסמכי שנה שהוסרו) */
@@ -1085,7 +1092,7 @@ async function runPush(){
   catch(e){ console.error(e); setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
   finally{
     savePending=false;
-    if(!restMode) rebuildDB(cloudDocs); // ב-SDK: הצג את המצב המעודכן; ב-REST: ה-DB בזיכרון כבר מעודכן
+    if(!restMode){ rebuildDB(cloudDocs); applyGuard(); } // ב-SDK: הצג מצב-שרת + כיסוי אופטימי; ב-REST: ה-DB בזיכרון כבר מעודכן
     if($("#overlay").classList.contains("show")) pendingRender=true; else route();
   }
 }
@@ -1112,6 +1119,67 @@ function _diffList(list, baseMap){
   for(const id of baseMap.keys()){ if(!cur.has(id)) deleted.push(id); }
   return { changed, deleted };
 }
+
+/* ============================================================
+   שומר-ראש לסנכרון (sync guard) — UI אופטימי
+   ------------------------------------------------------------
+   מיזוג-נגד-דריסה כותב בטרנזקציה (SDK) או ב-REST, ושתי הדרכים אינן מייצרות
+   "הד" מקומי מיידי כמו setDoc. לכן מיד אחרי שמירה, rebuildDB מתוך הסנאפשוט
+   *שלפני ההד* היה מחזיר לרגע את המצב הישן — העריכה "נעלמת" עד שהשרת מחזיר
+   אותה (הבהוב/פיגור ויזואלי, בולט ברשתות חלשות). השומר-ראש זוכר את מה שכתבנו
+   ומחיל אותו מחדש מעל כל rebuild — עד שהשרת מאשר (הערך זהה) או עד פקיעת-זמן.
+   מיזוג תלת-כיווני לכל רשומה בנפרד:  base(prev) → ours(j)  מול  server(cj):
+     • cj === j      → השרת אישר את שלנו → שחרר את השומר (אין יותר צורך בכיסוי)
+     • cj === prev   → ההד עוד לא הגיע (השרת עדיין במצב שלפנינו) → הצג את שלנו
+     • cj אחר לגמרי  → מישהו אחר שינה אחרינו → תן לשרת לנצח (yield), שחרר
+   כך עריכה של אחר על אותה רשומה אינה "מוחזרת לאחור", ומחיקות/הוספות מגושרות אף הן.
+   השומר מנקה את עצמו (אישור/yield/פקיעה) — במצב יציב הוא ריק ואין תקורה.
+   גייטד ב-SYNC_GUARD. נבדק ב-tests/sync-guard.test.cjs. */
+const GUARD_TTL = 12000; // ms — גבול עליון: אם ההד לא הגיע עד אז, נסוג לטובת השרת
+const _guard = new Map(); // "coll:id" → { coll, id, j, prev, ts }   (j=null → מחיקה)
+function _guardKey(coll,id){ return coll+":"+id; }
+/* רישום מה שנכתב זה עתה, מתוך ההפרש מול בסיס-ההשוואה (prev = מצב השרת שלפני הכתיבה) */
+function _guardRecordList(coll, list, baseMap, now){
+  const cur=new Map(list.map(o=>[o.id,o]));
+  for(const [id,o] of cur){ const b=baseMap.get(id), j=_mk(o); if(!b || b.j!==j) _guard.set(_guardKey(coll,id), { coll, id, j, prev:(b?b.j:null), ts:now }); }
+  for(const [id,b] of baseMap){ if(!cur.has(id)) _guard.set(_guardKey(coll,id), { coll, id, j:null, prev:b.j, ts:now }); }
+}
+function recordGuard(){
+  if(!SYNC_GUARD) return;
+  const now=Date.now();
+  _guardRecordList("stu",   DB.students,   _mergeBase.stu,   now);
+  _guardRecordList("gan",   DB.gans,       _mergeBase.gan,   now);
+  _guardRecordList("staff", DB.staff,      _mergeBase.staff, now);
+  _guardRecordList("mgmt",  DB.management, _mergeBase.mgmt,  now);
+}
+/* מיזוג-אופטימי לוגי (טהור, ניתן לבדיקה): מקבל רשימת-שרת ומפת-שומר, ומחזיר
+   את הרשימה לאחר החלת הכיסוי, תוך עדכון/ניקוי רשומות השומר. משמש את applyGuard
+   ומשוכפל ב-tests/sync-guard.test.cjs (אותו אלגוריתם בדיוק). */
+function _guardApplyList(coll, list, guard, now, ttl){
+  const map=new Map(list.map(o=>[o.id,o])); let changed=false;
+  for(const [key,g] of guard){
+    if(g.coll!==coll) continue;
+    const cj = map.has(g.id) ? _mk(map.get(g.id)) : null;
+    if(cj===g.j){ guard.delete(key); continue; }            // אושר → שחרר
+    if(now - g.ts > ttl){ guard.delete(key); continue; }    // פקע → תן לשרת לנצח
+    if(cj===g.prev){                                        // ההד עוד לא הגיע → החל את שלנו
+      if(g.j===null) map.delete(g.id);                      // מחיקה אופטימית
+      else map.set(g.id, JSON.parse(g.j));                  // הוספה/עדכון אופטימי
+      changed=true;
+    } else { guard.delete(key); }                           // מישהו שינה אחרינו → yield
+  }
+  return changed ? [...map.values()] : list;
+}
+/* החלת השומר-ראש על ה-DB המוצג — אחרי כל rebuildDB (ורק כשיש מה להחיל) */
+function applyGuard(){
+  if(!SYNC_GUARD || !_guard.size) return;
+  const now=Date.now();
+  DB.students   = _guardApplyList("stu",   DB.students,   _guard, now, GUARD_TTL);
+  DB.gans       = _guardApplyList("gan",   DB.gans,       _guard, now, GUARD_TTL);
+  DB.staff      = _guardApplyList("staff", DB.staff,      _guard, now, GUARD_TTL);
+  DB.management = _guardApplyList("mgmt",  DB.management, _guard, now, GUARD_TTL);
+}
+
 /* מיזוג SDK למסמך-רשימה פשוט (gans/staff/management) */
 async function _txnMergeSimple(docId, listKey, list, baseMap){
   const { changed, deleted } = _diffList(list, baseMap);
@@ -1162,6 +1230,7 @@ async function mergePushSDK(){
   await _txnMergeSimple("staff","staff",DB.staff,_mergeBase.staff);
   await _txnMergeSimple("management","management",DB.management,_mergeBase.mgmt);
   await _txnMergeStudents();
+  recordGuard(); // שומר-ראש: לפני refreshMergeBase, בעוד _mergeBase מחזיק את מצב השרת שלפני הכתיבה
   refreshMergeBase();
 }
 async function pushAll(){
@@ -2346,7 +2415,8 @@ function startDataSync(){
     if(changes.length && changes.every(ch=>ch.doc.id.startsWith("presence_"))){ refreshPresenceWidget(); return; }
     if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
     rebuildDB(cloudDocs);
-    if(!md.hasPendingWrites) refreshMergeBase(); // בסיס-השוואה למיזוג = מצב שרת מאושר
+    if(!md.hasPendingWrites) refreshMergeBase(); // בסיס-השוואה למיזוג = מצב שרת מאושר (לפני הכיסוי האופטימי)
+    applyGuard(); // שומר-ראש: השאר עריכות שטרם הודהדו על המסך; שחרר את שאושרו/שנדחו
     maybeMigrateBranding();
     maybeCleanupNewModel();
     if(!md.fromCache) maybeDailyBackup(); // גיבוי אוטומטי יומי (רק לאחר אישור מהשרת)
@@ -2361,7 +2431,7 @@ function startDataSync(){
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
   startPresence(); // נוכחות: "מי מחובר עכשיו"
 }
-function stopDataSync(){ _accessDenied=false; stopPresence(); clearPresence(); if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
+function stopDataSync(){ _accessDenied=false; stopPresence(); clearPresence(); if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); _guard.clear(); cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
 
 function boot(){
   try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
