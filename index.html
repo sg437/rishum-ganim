@@ -441,6 +441,8 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
          doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence, writeBatch, runTransaction,
          disableNetwork, enableNetwork }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { initializeAppCheck, ReCaptchaV3Provider }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-check.js";
 
 /* ===== הגדרות Firebase — הדבק/י כאן את 6 המפתחות מהפרויקט שלך (ראה SETUP.md) ===== */
 const PROD_FIREBASE = {
@@ -462,6 +464,13 @@ const TEST_FIREBASE = {
 };
 let TEST_DB_MODE=false;
 try{ TEST_DB_MODE = new URLSearchParams(location.search).get("testdb")==="1"; }catch(_){}
+/* ===== App Check (reCAPTCHA v3) — הגנה שרק התוכנה האמיתית ניגשת ל-Firebase =====
+   מפתח אתר (site key) של reCAPTCHA v3 מקונסולת Firebase → App Check → רישום האפליקציה.
+   כל עוד הערך ריק — App Check כבוי לגמרי (אין שינוי בהתנהגות). אחרי מילוי המפתח,
+   הדפדפן יצרף חתימת-מקור לכל בקשה ל-Firebase. השלב הראשון בקונסולה הוא "ניטור"
+   (לא אכיפה) — לא שובר כלום. אכיפה מדליקים רק אחרי שמוודאים שהכל תקין (וכולל טיפול בגשר).
+   אינו סוד — מפתח אתר של reCAPTCHA הוא ציבורי. */
+const RECAPTCHA_SITE_KEY = "";
 const firebaseConfig = TEST_DB_MODE ? TEST_FIREBASE : PROD_FIREBASE;
 /* מנעול נגד דריסה (merge-on-write): כבוי בייצור עד לאישור פריסה; דלוק אוטומטית במצב בדיקה.
    כשכבוי — התנהגות זהה לחלוטין לקוד הישן (דריסה). ההדלקה לייצור = שינוי הערך הזה בלבד. */
@@ -2628,6 +2637,12 @@ function boot(){
   if(!CONFIG_READY){ renderSetupNeeded(); return; }
   try{
     app=initializeApp(firebaseConfig);
+    // App Check — פעיל רק אם הוגדר מפתח reCAPTCHA, ורק בפרויקט הייצור (לא בסביבת הבדיקה,
+    // שהיא פרויקט Firebase נפרד עם מפתח אחר). כשל באתחול לא חוסם את התוכנה.
+    if(RECAPTCHA_SITE_KEY && !TEST_DB_MODE){
+      try{ initializeAppCheck(app, { provider:new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled:true }); }
+      catch(e){ console.error("App Check init failed", e); }
+    }
     auth=getAuth(app);
     // experimentalAutoDetectLongPolling: מעבר אוטומטי ל-long-polling כשרשת/פרוקסי חוסמים את
     // חיבור ה-streaming של Firestore — מאפשר סנכרון גם ברשתות ארגוניות שבהן התוכנה נטענת אך הנתונים לא הסתנכרנו.
