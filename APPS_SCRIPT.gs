@@ -26,7 +26,7 @@ var FIREBASE_PROJECT_ID = 'rishum-ganim-fad40';
 // בעלי המערכת — עוגן הרשאה קבוע. תמיד נחשבים מורשים/מנהלים, גם אם ההגדרות
 // ב-Firestore ריקות. ⚠️ חייב להיות זהה ל-OWNER_EMAILS ב-index.html ול-ownerEmails()
 // ב-firestore.rules. מיילים באותיות קטנות בלבד.
-var OWNER_EMAILS = ['sg@taharat.org'];
+var OWNER_EMAILS = ['7684252sg@gmail.com'];
 
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';

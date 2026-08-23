@@ -539,7 +539,7 @@ const DRIVE_READY = !APPS_SCRIPT_URL.includes("YOUR_");
    או נמחקה. כך המערכת לעולם אינה "פתוחה לכולם" במצב לא-מוגדר (מצב אתחול).
    ⚠️ חייבים להיות מיילים של חשבון Google שאיתו נכנסים למערכת. ניתן להוסיף כאן.
    אותה רשימה מופיעה גם ב-firestore.rules וב-APPS_SCRIPT.gs — יש לעדכן את שלושתם יחד. */
-const OWNER_EMAILS = ["sg@taharat.org"].map(x=>x.toLowerCase());
+const OWNER_EMAILS = ["7684252sg@gmail.com"].map(x=>x.toLowerCase());
 function isOwnerEmail(email){ return OWNER_EMAILS.includes(String(email||"").toLowerCase()); }
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
