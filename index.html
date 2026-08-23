@@ -478,7 +478,7 @@ try{ TEST_DB_MODE = new URLSearchParams(location.search).get("testdb")==="1"; }c
    הדפדפן יצרף חתימת-מקור לכל בקשה ל-Firebase. השלב הראשון בקונסולה הוא "ניטור"
    (לא אכיפה) — לא שובר כלום. אכיפה מדליקים רק אחרי שמוודאים שהכל תקין (וכולל טיפול בגשר).
    אינו סוד — מפתח אתר של reCAPTCHA הוא ציבורי. */
-const RECAPTCHA_SITE_KEY = "";
+const RECAPTCHA_SITE_KEY = "6LcBJpUtAAAAANZlt45fnwvqD1f8Ylf3_wgFedcq";
 const firebaseConfig = TEST_DB_MODE ? TEST_FIREBASE : PROD_FIREBASE;
 /* מנעול נגד דריסה (merge-on-write): כבוי בייצור עד לאישור פריסה; דלוק אוטומטית במצב בדיקה.
    כשכבוי — התנהגות זהה לחלוטין לקוד הישן (דריסה). ההדלקה לייצור = שינוי הערך הזה בלבד. */
