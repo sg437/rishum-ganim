@@ -458,7 +458,9 @@ const MERGE_WRITE = true; /* מנעול נגד דריסה — פעיל בייצ�
    מטרה: מנעול-נגד-דריסה כותב בטרנזקציה (SDK) או REST, ואלה — בשונה מ-setDoc — אינן מייצרות "הד"
    מקומי מיידי. לכן אחרי שמירה, בנייה-מחדש מהסנאפשוט הישן החזירה לרגע את המצב שלפני העריכה (הבהוב/פיגור
    ויזואלי ברשתות חלשות). השומר-ראש מציג את מה שנכתב מיד, עד שהשרת מאשר או עד פקיעת-זמן. */
-const SYNC_GUARD = TEST_DB_MODE ? true : false;
+let SYNC_GUARD = TEST_DB_MODE ? true : false; /* `let` כדי לאפשר מתג בזמן-ריצה במצב בדיקה בלבד; בייצור נשאר קבוע false עד הפריסה */
+/* מצב בדיקה בלבד: זכירת בחירת המתג בין רענונים (אין לזה כל השפעה בייצור) */
+if(TEST_DB_MODE){ try{ const _sg=localStorage.getItem("rg-syncguard"); if(_sg==="0") SYNC_GUARD=false; else if(_sg==="1") SYNC_GUARD=true; }catch(_){} }
 const CONFIG_READY = !JSON.stringify(firebaseConfig).includes("YOUR_");
 /* באנר ברור במצב בדיקה — כדי שלא יתבלבלו בין סביבת הבדיקה למערכת האמיתית */
 if(TEST_DB_MODE){ try{
@@ -1178,6 +1180,28 @@ function applyGuard(){
   DB.gans       = _guardApplyList("gan",   DB.gans,       _guard, now, GUARD_TTL);
   DB.staff      = _guardApplyList("staff", DB.staff,      _guard, now, GUARD_TTL);
   DB.management = _guardApplyList("mgmt",  DB.management, _guard, now, GUARD_TTL);
+}
+/* מתג בזמן-ריצה — גלוי אך ורק במצב בדיקה (?testdb=1). מאפשר להדליק/לכבות את
+   השומר-ראש על אותו מסך כדי לראות "לפני/אחרי" בלי לנחש. אין לו כל ביטוי בייצור. */
+if(TEST_DB_MODE){
+  const buildGuardToggle=()=>{
+    if(!document.body || document.getElementById("sgToggle")) return;
+    const el=document.createElement("button");
+    el.id="sgToggle"; el.type="button";
+    el.style.cssText="position:fixed;bottom:14px;inset-inline-start:14px;z-index:99999;border:2px solid #d9a441;border-radius:999px;background:#fff;color:#6b4b12;font-family:sans-serif;font-weight:800;font-size:.85rem;padding:8px 14px;box-shadow:0 6px 18px -8px rgba(0,0,0,.4);cursor:pointer;display:flex;align-items:center;gap:8px";
+    const paint=()=>{ el.innerHTML = SYNC_GUARD ? "🛡️ שומר-ראש: <span style='color:#2f6f43'>פעיל</span> · לחצו לכיבוי"
+                                                 : "🛡️ שומר-ראש: <span style='color:#b0413a'>כבוי</span> · לחצו להדלקה"; };
+    el.onclick=()=>{
+      SYNC_GUARD=!SYNC_GUARD;
+      try{ localStorage.setItem("rg-syncguard", SYNC_GUARD?"1":"0"); }catch(_){}
+      if(!SYNC_GUARD){ try{ _guard.clear(); }catch(_){} } // כיבוי → נקה כיסוי תלוי כדי שהתצוגה תשקף מיד את השרת
+      paint();
+      try{ if(typeof route==="function") route(); }catch(_){} // רענן מסך שהאפקט ייראה מיד
+    };
+    paint(); document.body.appendChild(el);
+  };
+  document.addEventListener("DOMContentLoaded", buildGuardToggle);
+  buildGuardToggle();
 }
 
 /* מיזוג SDK למסמך-רשימה פשוט (gans/staff/management) */
