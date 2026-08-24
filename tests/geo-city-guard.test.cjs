@@ -36,10 +36,11 @@ function grabConst(name){
   return code.slice(a+1, e+3);
 }
 
-const ctx={ console, MAP_CITY_RADIUS_KM:10, geocodeOnce:null };
+const ctx={ console, MAP_CITY_RADIUS_KM:10, geocodeOnce:null, _geoWhy:"" };
 vm.createContext(ctx);
 vm.runInContext([grab('haversineKm'), grab('geoNearCity'), grabAsync('ensureGeo'),
-                 grabConst('CITY_ALIASES'), grab('normCityName')].join('\n'), ctx);
+                 grabConst('CITY_ALIASES'), grabConst('CITY_ALT_NAMES'), grab('normCityName'),
+                 grab('geoDropHouseNo'), grab('geoSwapCity'), grab('geoQueryCandidates')].join('\n'), ctx);
 
 const MODIIN={lat:31.9330,lng:35.0400};      // מרכז מודיעין עילית
 const NEAR  ={lat:31.9380,lng:35.0455};      // רחוב באותה עיר (~0.7 ק"מ)
