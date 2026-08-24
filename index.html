@@ -2087,6 +2087,7 @@ const TABS = [
   {id:"reports",   label:"דוחות ואחוזים", icon:"📊"},
   {id:"municipality", label:"עירייה", icon:"🏛️"},
   {id:"management",label:"הנהלה", icon:"📞"},
+  {id:"messages",  label:"הודעות", icon:"📣"},
   {id:"tools",     label:"כלים ושירותים", icon:"🧰"},
   {id:"settings",  label:"הגדרות", icon:"⚙️"},
   {id:"guide",     label:"מדריך", icon:"📖"}
@@ -2413,7 +2414,7 @@ function guideContent(){
     { icon:"🧒", title:"תלמידות — הוספת תיק וכל השדות", html:
       `<ol class="gd-steps">
         <li><b>➕ הוספת ילדה</b> → נפתח תיק; ממלאים פרטים אישיים, הורים וכתובת.</li>
-        <li><b>חיוג ומייל בלחיצה</b> — ליד שדות הטלפון (בית / נייד אב / נייד אם) יש כפתור <b>📞 חיוג</b>, וליד הדוא"ל כפתור <b>✉️ שליחת מייל</b>. הכפתור מחייג/פותח מייל לפי הערך <b>המעודכן בשדה</b> באותו רגע.</li>
+        <li><b>חיוג · וואטסאפ · SMS · מייל בלחיצה</b> — ליד <b>כל מספר טלפון בתוכנה</b> (בתיק, בטבלאות, בכרטיס הגן, אצל הצוות, בספר הטלפונים ובמפה) יש כפתורים: <b>📞 חיוג</b>, ולמספר <b>נייד</b> גם <b>💬 וואטסאפ</b> ו-<b>✉️ SMS</b> — בלי להעתיק את המספר. ליד הדוא"ל יש <b>✉️ שליחת מייל</b>. בשדות הטופס הכפתור פועל לפי הערך <b>המעודכן בשדה</b> באותו רגע. המערכת ממירה לבד מספר ישראלי לפורמט הבינלאומי שוואטסאפ צריך (05X → 9725X).</li>
         <li><b>מספר זהות (ת"ז)</b> — אם הילדה כבר רשומה באותה שנה (גם בחינוך אחר!), תופיע <b style="color:var(--g-bad)">התראה מיד</b> והשמירה תיחסם — כדי למנוע רישום כפול. בהתראה יש כפתור <b>↩ פתיחת התיק</b> שמעביר ישירות לתיק הקיים.
           <div class="gd-line"><span class="gd-pill bad">⚠️ כבר רשומה בשנה זו: מיכל אבו · חינוך מיוחד · גן רבקה</span></div></li>
         <li><b>בדיקת תקינות ת"ז</b> <span class="gd-pill warn">חדש</span> — כשמסיימים להקליד מספר זהות, המערכת בודקת את <b>ספרת הביקורת</b> (החישוב הרשמי של תעודת הזהות). אם יש <b>טעות הקלדה</b> (ספרה שגויה או חסרה), תופיע התראה עדינה <span class="gd-pill warn">⚠️ מספר הזהות אינו תקין — ייתכן שיש טעות הקלדה</span> כדי לתקן במקום. זו התראה בלבד ואינה חוסמת שמירה.</li>
@@ -2423,6 +2424,7 @@ function guideContent(){
         <li><b>תשלום ביטוח תלמידים</b> · <b>סיוע והעשרה</b> · <b>שונות</b> (גרושים/חוץ/השארות/אחר).</li>
         <li><b>הערות</b> — טקסט חופשי בתוך התיק. ברשימת התלמידות מוצג רק <b>סימון</b> שיש הערה (<span class="gd-pill warn">📝 הערה</span>), בלי תוכן ההערה.</li>
         <li><b>🔎 בדיקת אחים/אחיות</b> — מאתר תיקים עם אותו שם משפחה + כתובת, לשיבוץ באותו קמפוס. לכל תוצאה יש כפתור <b>↩ פתיחת התיק</b>.</li>
+        <li><b>🧭 בדיקת קרבה לגנים (חדש)</b> — מקטע מתקפל בתוך התיק, ממש מתחת ל"בדיקת אחים/אחיות": מסמנים אילו גנים לבדוק (מקובצים לפי קמפוס, עם חיווי מי כבר מלא) ולוחצים <b>"📏 בדיקת המרחקים"</b> — ומקבלים <b>כאן בתיק</b> טבלת מרחקים ממוינת מהקרוב לרחוק, בלי לפתוח את המפה הגדולה. עם גשר Google מוצג גם <b>מרחק וזמן הליכה</b> אמיתיים. לחיצה על <b>"שבץ"</b> בוחרת את הגן בשדה "גן משובצת" (השמירה בכפתור <b>שמירה</b>).<br>אותה בדיקה זמינה גם בלי לפתוח את התיק — כפתור <b>🧭</b> בעמודת הגן בטבלת התלמידות.</li>
       </ol>`+
       `<div class="gd-tip">💡 סימון "סיימה/יצאה" נמצא <b>רק בתוך התיק</b> (לא ברשימה) — כדי לא להסיר ילדה בטעות.</div>` },
 
@@ -2433,6 +2435,7 @@ function guideContent(){
         <li>בתיק — סימון <b>"משובצת בגן (שיבוץ סופי)"</b>.</li>
         <li>ברשימה, בעמודת <b>שיבוץ</b> — כפתור שמחליף בין <b>משובצת</b> ל<b>ממתינה</b> בלחיצה.</li>
         <li>סינון לפי <b>משובצת / לא משובצת</b>.</li>
+        <li><b>🚧 רף שיבוץ (חדש):</b> לכל גן אפשר להגדיר מספר מרבי של משובצות. כשהגן מגיע לרף — המערכת <b>לא תאפשר</b> לסמן "משובצת" לתלמידה נוספת ותציג הודעה ("הגן מלא 36/36"). <b>הרישום עצמו אינו מוגבל</b> — אפשר להמשיך לרשום לגן, רק לא לשבץ סופית. בתיק, מתחת לשדה "גן משובצת", מוצג חיווי חי: <b>"נותרו N מקומות"</b> או <b>"⛔ הגן מלא"</b>. ההגדרה: כרטיס הגן → "רף שיבוץ", וברירת מחדל לכולם ב<b>הגדרות → רף שיבוץ</b>.</li>
       </ul>` },
 
     { icon:"🔎", title:"חיפוש, סינון ומיון ברשימה", html:
@@ -2466,6 +2469,10 @@ function guideContent(){
         <li>גנים דו-גילאיים נתמכים (למשל 3/4, 4/5).</li>
         <li>הקמפוס של הגן קובע את הקמפוס של התלמידות שבו.</li>
         <li><b>מספר הרשומות</b> נצבע לפי הקיבולת: <span class="gd-pill ok">בתוך הקיבולת</span> · חריגה של <b>ילדה אחת</b> (למשל 36 כשהקיבולת 35) <b>בסגול</b> — וגם הילדה שמעל הקיבולת נצבעת בסגול ברשימה · חריגה גדולה יותר <span class="gd-pill" style="background:#f5dcd9;color:#a5342b">אדום</span>.</li>
+        <li><b>🚧 רף שיבוץ (חדש) — מגבלה קשיחה:</b> בכרטיס הגן, ליד "קיבולת", יש שדה <b>"רף שיבוץ"</b> — המספר המרבי של תלמידות שאפשר <b>לשבץ סופית</b> לגן. כשמגיעים אליו המערכת <b>חוסמת</b> שיבוץ נוסף ומציגה הודעה, בכל מקום שממנו משבצים (התיק, המפה, החלפת סטטוס מהטבלה, עדכון קבוצתי ושיבוץ אוטומטי).<br>
+          <b>ההבדל מ"קיבולת":</b> הקיבולת היא חיווי צבע על ה<b>רישום</b> ומותר לחרוג ממנה; רף השיבוץ חוסם בפועל את ה<b>שיבוץ הסופי</b>. כך אפשר להמשיך לרשום לגן מעל למספר, אבל לא לשבץ מעליו.<br>
+          <b>ברירת מחדל לכל הגנים:</b> <b>הגדרות → רף שיבוץ</b> — קובעים מספר לחינוך רגיל (למשל 36) ולחינוך מיוחד, ואפשר לבחור שהקיבולת תשמש כרף כשלא הוגדר אחרת. רף שנקבע בכרטיס גן מסוים גובר תמיד.<br>
+          עמודת <b>"משובצות / רף"</b> בטבלת הגנים מראה את המצב בכל רגע: ירוק = יש מקום · כתום = הגן מלא · אדום = חריגה.</li>
         <li><b>צפייה בתלמידות הגן</b> — <b>לחיצה על מספר הרשומות</b> בטבלה (או כפתור <b>🎒 צפייה בתלמידות</b> בתוך טופס הגן) פותחת את רשימת התלמידות מסוננת לאותו גן. מעל הרשימה המסוננת מופיע פס פעולות עם <b>🖨️ הדפסה</b> ו-<b>📎 שיתוף מסמך</b> (PDF) של רשימת הגן — כולל <b>"התאם לעמוד אחד"</b>.</li>
       </ul>` },
 
@@ -2484,6 +2491,7 @@ function guideContent(){
         <li><b>צביעה לפי גן:</b> בבורר "צבע התלמידות → לפי גן", כל תלמידה נצבעת בצבע הגן שאליו היא רשומה — כך רואים במבט מי רשומה לאן. אפשר לעבור ל"לפי מרחק".</li>
         <li><b>רשימת צד:</b> לאחר "הצג על המפה", בצד מופיעה רשימת <b>כל התלמידות הרשומות</b> לגנים שנבחרו, מקובצת לפי גן (בצבע הגן) — <b>מיד, גם לפני טעינת מיקומי התלמידות</b>. תלמידה שטרם מוקמה על המפה מסומנת ב-<b>○</b> ובעמעום, וכותרת הגן מציגה כמה כבר מוקמו מתוך הסך. <b>לחיצה על שם ממקדת את המפה על התלמידה</b> ופותחת את פירוט המרחקים.</li>
         <li>הכתובות מומרות למיקום פעם אחת ונשמרות (טעינה הבאה מהירה). הגנים ממוקמים אוטומטית; לתלמידות לוחצים <b>"טעינת מיקומי תלמידות"</b> (במקטע "כלים נוספים"). <b>"רענון מיקומים"</b> ממיר מחדש. דיוק המיקום תלוי בכתובת — אם שגוי, אפשר לתקן בתיק ולרענן, או להשתמש ב<b>מיקום ידני</b> לגן.</li>
+        <li><b>⚡ שיבוץ אוטומטי לפי קרבה (חדש):</b> מסמנים כמה גנים (למשל 3), לוחצים <b>"⚡ שיבוץ אוטומטי לפי קרבה"</b> — והמערכת משבצת <b>כל תלמידה לגן הקרוב אליה</b> מבין הגנים שנבחרו. בוחרים אילו תלמידות לכלול (רק מי שאין לה גן · גם הממתינות · הכל), והאם <b>לשמור אחיות באותו גן</b>, <b>לכבד את רף השיבוץ</b> של כל גן, ו<b>להתאים גיל</b> תלמידה לגיל הגן. תמיד מוצגת <b>תצוגה מקדימה</b> — כמה ישובצו לכל גן, מי ומה המרחק, ומי לא ישובצה ולמה — והשיבוץ מתבצע רק בלחיצת <b>"✅ ביצוע השיבוץ"</b>.<br>המערכת מעדיפה תלמידה שההפרש אצלה בין הגן הקרוב לשני הקרוב גדול, כדי שהיא לא תפסיד את הגן הקרוב לטובת מי שההבדל אצלה זניח.</li>
         <li><b>שדרוג דיוק (אופציונלי):</b> כברירת מחדל המפה חינמית (OpenStreetMap). אפשר לחבר מפתח <b>Google</b> לדיוק גבוה יותר (כלים ושירותים → "דיוק מפה") — ואז המיקומים מומרים דרך Google, עם נפילה חזרה ל-OpenStreetMap כשאין מפתח.</li>
       </ul>` },
 
@@ -2605,11 +2613,41 @@ function guideContent(){
       <ul>
         <li><b>🔗 חיבור Google Drive</b> — בדיקת חיבור, שיתוף, <b>שיקוף ל-Google Sheets</b>, ארגון תיקיות לפי גן, ו<b>📁 ייבוא מסמכים מהדרייב (לפי גן)</b>.</li>
         <li><b>📝 רישום דיגיטלי — טופס להורים</b> — טופס רישום ציבורי שהורים ממלאים אונליין (עם <b>חתימה דיגיטלית</b> והעלאת ת"ז + ספח). ממלאים את פרטי הבעלות (שם, סמל, כתובת, שם מורשה החתימה, שם המוסד) ו<b>מעלים תמונת חתימה+חותמת</b> (מופיעה בטופס ובמסמך ה-PDF), ולוחצים <b>"שמירה ופרסום"</b> — ומעבירים את הקישור להורים. כל רישום נכנס ל<b>"רישומים ממתינים"</b>; <b>"צור תיק"</b> פותח תיק ילדה מלא (גיל אוטומטי לפי הגן, מסמכים מסומנים, תיקיית דרייב), ומגיעה <b>התראה למייל עם ה-PDF הממותג</b>. דורש חיבור לגשר (דרייב).</li>
+        <li><b>✉️ מייל אישור אוטומטי לנרשם (חדש)</b> — בתוך מקטע הרישום הדיגיטלי. מסמנים <b>"להפעיל שליחה אוטומטית לנרשם"</b>, וכל הורה שמשלים רישום דרך הקישור מקבל מיד מייל אישור בנוסח שלכם. הנוסח נערך במקום (נושא + תוכן) עם שדות מיזוג: <code>{{שם הילדה}}</code> · <code>{{תז}}</code> · <code>{{גן}}</code> · <code>{{שם ההורה}}</code> · <code>{{שנה}}</code> · <code>{{שם המוסד}}</code> · <code>{{תאריך}}</code>. אפשר לצרף את <b>מסמך הרישום החתום (PDF)</b>, לקבוע <b>כתובת לתשובות</b>, לשלוח <b>מייל בדיקה</b> לעצמכם, ולהחזיר לנוסח ברירת המחדל. לאחר עריכה יש ללחוץ <b>"שמירה ופרסום הטופס"</b> כדי שהנוסח יישמר בגשר.</li>
         <li><b>🔗 נדרים פלוס</b> — הכנה לחיבור עתידי לרישום דרך נדרים פלוס (הממשק מוכן; החיבור הטכני בהמשך).</li>
-        <li><b>🤖 עוזר חכם (AI)</b> — הגדרת מפתח לצ'אט העזרה: <b>Google Gemini חינם</b> (מומלץ) או Anthropic Claude בתשלום.</li>
+        <li><b>🤖 עוזר חכם (AI)</b> — הגדרת מפתח לעוזר: <b>Google Gemini חינם</b> (מומלץ) או Anthropic Claude בתשלום.</li>
+        <li><b>✉️ מייל אישור אוטומטי לנרשם</b> (בתוך "רישום דיגיטלי") — מפעילים, כותבים נושא ותוכן עם שדות מיזוג, ולוחצים "שמירה ופרסום". פרטים במקטע "רישום דיגיטלי" למטה.</li>
         <li><b>🗺️ דיוק מפה (Google)</b> — חיבור מפתח Google לשדרוג דיוק מפת השיבוץ ומרחקי ההליכה (אופציונלי; בלעדיו המפה עובדת חינם דרך OpenStreetMap).</li>
         <li><b>💾 גיבוי ושחזור</b> — ייצוא גיבוי JSON ושחזור (כולל העברת נתונים מהגרסה הישנה).</li>
       </ul>` },
+
+    { icon:"📣", title:"מרכז ההודעות — מיילים · וואטסאפ · SMS · הודעות קוליות", html:
+      `<p>לשונית <b>📣 הודעות</b> שולחת הודעה מרוכזת להורים, לצוות או להנהלה. כותבים את התוכן <b>פעם אחת</b> עם שדות מיזוג, והמערכת ממלאת לכל נמענת את הפרטים שלה — כולל <b>הגן שאליו שובצה</b>.</p>
+      <ol class="gd-steps">
+        <li><b>למי שולחים</b> — 👪 הורי תלמידות (סינון לפי גנים, חינוך, קמפוס, גיל, מועד וסטטוס שיבוץ) · 👩‍🏫 צוות (לפי תפקיד וחינוך) · 📞 הנהלה (לפי אגף) · ✍️ רשימה ידנית (הדבקת שמות וכתובות/מספרים). המערכת מציגה מיד כמה נמענים יש וכמה מהם חסרי מייל/טלפון.</li>
+        <li><b>באיזה ערוץ</b> — ✉️ מייל · 💬 וואטסאפ · 📱 SMS · 📞 הודעה קולית.</li>
+        <li><b>מה שולחים</b> — בוחרים <b>תבנית</b> מוכנה (הודעת שיבוץ סופי · אישור רישום · תזכורת מסמכים · הודעה כללית · הודעה לצוות), עורכים, ואפשר <b>לשמור תבנית משלכם</b>. לחיצה על שדה מיזוג מוסיפה אותו לטקסט: <code>{{שם הילדה}}</code> · <code>{{גן}}</code> · <code>{{גננת}}</code> · <code>{{כתובת הגן}}</code> · <code>{{טלפון הגן}}</code> ועוד.</li>
+        <li><b>תצוגה מקדימה ושליחה</b> — <b>👁️ תצוגה מקדימה</b> מציגה שלוש הודעות אמיתיות כפי שיישלחו · <b>✉️ שליחת בדיקה</b> שולחת אליכם דוגמה · <b>📤 שליחה</b> מבצע.</li>
+      </ol>
+      <div class="gd-tip">💡 <b>הודעת שיבוץ בלחיצה אחת:</b> אחרי השיבוץ הסופי — לשונית התלמידות → <b>📣 שליחת הודעות</b> (הסינון הנוכחי עובר אוטומטית), תבנית <b>"הודעת שיבוץ סופי"</b> → תצוגה מקדימה → שליחה. כל הורה מקבל את הגן, הגננת, הכתובת והטלפון של הגן <b>שלו</b>.</div>
+      <ul>
+        <li><b>מיילים — ללא עלות.</b> נשלחים מחשבון הגשר. יש מכסה יומית (Gmail רגיל ≈ 100 נמענים ליום · Google Workspace ≈ 1,500). המספר שנותר להיום מוצג במסך, וכשהמכסה נגמרת השליחה נעצרת בעדינות ומדווחת כמה נשלחו.</li>
+        <li><b>וואטסאפ / SMS / קולי — דורשים ספק חיצוני.</b> אלה אינם שירותים חינמיים של Google. מי שמחבר ספק (019 · InforU · Cellact · Twilio וכד' — הגדרה חד-פעמית בגשר, ראה <b>SETUP.md → "שער הודעות"</b>) — השליחה מתבצעת אוטומטית.</li>
+        <li><b>בלי ספק — מצב ידני שעובד מיד:</b> המערכת מכינה את ההודעה האישית לכל נמענת ופותחת בלחיצה אחת צ׳אט וואטסאפ / הודעת SMS / חיוג, עם רשימה מסודרת, כפתור <b>"פתיחת הבא"</b> ומעקב מי כבר טופלה. בערוץ הקולי מוצג גם <b>התסריט</b> לכל שיחה.</li>
+        <li><b>🕘 היסטוריית שליחות</b> — מה נשלח, מתי, לכמה, באיזה ערוץ ועל ידי מי.</li>
+      </ul>` },
+
+    { icon:"🤖", title:"עוזר חכם — פאנל צד שגם מבצע", html:
+      `<p>העוזר נפתח מהתפריט (<b>🤖 עוזר חכם</b>) כ<b>פאנל נעוץ בצד המסך</b> — הוא נשאר פתוח בזמן שעובדים, כך שאפשר לקרוא את ההנחיה ולבצע אותה באותו רגע, בלי לצאת ולזכור.</p>
+      <ul>
+        <li><b>נשאר איתך</b> — הפאנל לא סוגר את המסך; אפשר לנווט בין לשוניות בזמן שהוא פתוח. הרוחב ניתן לגרירה ונשמר, השיחה נשמרת בין פתיחות, ויש כפתור <b>🗑️ שיחה חדשה</b>. בנייד הוא נפתח על כל הרוחב.</li>
+        <li><b>עונה לפי נתוני אמת</b> — כששואלים "כמה תלמידות משובצות בגן הדקל?" או "מי עדיין בלי גן?", העוזר <b>קורא את הנתונים מהמערכת</b> ועונה לפיהם. הוא לא מנחש ולא ממציא.</li>
+        <li><b>מבצע פעולות</b> — אפשר לבקש: <i>"שבצי את שרה כהן לגן הדקל"</i> · <i>"קבעי רף שיבוץ 36 לגן הדקל"</i> · <i>"עדכני את הטלפון של משפחת לוי ל-050…"</i> · <i>"סמני את כל תלמידות גן א כקלוטות בעירייה"</i>.</li>
+        <li><b>שום דבר לא קורה בלי אישור</b> — כל בקשת שינוי מוצגת ככרטיס עם תיאור מדויק של מה ישתנה (<b>לפני ← אחרי</b>) ואזהרות אם יש, ומתבצעת רק בלחיצה על <b>✅ בצע</b>. אפשר תמיד לבטל.</li>
+        <li><b>אותן מגבלות כמו ידנית</b> — הרשאות העריכה לפי חינוך ורף השיבוץ נאכפים גם על העוזר.</li>
+        <li><b>ניווט</b> — אפשר לבקש "פתחי לי את לשונית הגנים" או "פתחי את התיק של שרה כהן".</li>
+      </ul>
+      <div class="gd-tip">💡 העוזר פועל דרך הגשר עם מפתח AI (Google Gemini חינמי מספיק). הגדרה: <b>כלים ושירותים → עוזר חכם</b>.</div>` },
 
     { icon:"⚙️", title:"הגדרות ומיתוג", html:
       `<div class="gd-tip">💡 חיבורי הדרייב, הטופס הדיגיטלי, עוזר ה-AI, דיוק המפה והגיבוי עברו ללשונית <b>"כלים ושירותים"</b>.</div>
@@ -2617,6 +2655,7 @@ function guideContent(){
         <li><b>מיתוג</b> — כותרת, ו<b>העלאת קובץ לוגו</b> (מומלץ): התמונה מוטמעת במערכת ומופיעה בכותרת, בפאביקון וגם כ<b>אייקון האפליקציה</b> המותקנת.</li>
         <li><b>שנים</b> — הוספה/מחיקה, ו<b>מעבר שנה</b>.</li>
         <li><b>רשימות</b> — גילי ילדים, תפקידי צוות (צבע + שיוך חינוך), קמפוסים.</li>
+        <li><b>🚧 רף שיבוץ</b> — ברירת מחדל למספר המרבי של משובצות בגן, בנפרד לחינוך רגיל ולחינוך מיוחד (למשל 36 ו-12), עם אפשרות להשתמש ב<b>קיבולת</b> של הגן כרף כשלא הוגדר אחרת. רף שנקבע בכרטיס גן מסוים גובר. המסך מציג את מצב כל הגנים הפעילים (משובצות / רף).</li>
         <li><b>מנהלים ומשתמשים</b> — מי משנה הגדרות, והוספת משתמשי התחברות.</li>
         <li><b>הרשאות עריכה לפי חינוך</b> — מגבילים משתמש/ת ל<b>עריכת חינוך אחד בלבד</b> (רגיל או מיוחד): רואה את כל הנתונים, אך תיק תלמידה/גן/צוות בחינוך שאינו מורשה נפתח <b>לקריאה בלבד</b> (🔒), וכן שיבוץ / עדכון קבוצתי / כפתור "משובצת" חסומים. עדיין אפשר <b>להעביר</b> ילדה מהחינוך המורשה לחינוך השני. ההגבלה היא ברמת הממשק. למנהל מערכת בלבד.</li>
       </ul>` }
@@ -2680,7 +2719,7 @@ function route(){
   const so=$("#signOutBtn"); if(so) so.style.display=currentUser?"flex":"none";
   const v = $("#view");
   ({home:viewHome, students:viewStudents, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
-    municipality:viewMunicipality, export:viewExport, management:viewManagement, tools:viewTools, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
+    municipality:viewMunicipality, export:viewExport, management:viewManagement, messages:viewMessages, tools:viewTools, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
 }
 
 /* ============================================================
@@ -3451,6 +3490,7 @@ function viewStudents(root){
     <div class="row" style="gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
       <button class="btn" id="addStu">➕ הוספת ילדה</button>
       <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
+      <button class="btn ghost" id="stuMsg" title="שליחת מיילים / וואטסאפ / SMS להורים לפי הסינון">📣 שליחת הודעות</button>
       <span style="flex:1;min-width:8px"></span>
       <span class="hint" style="align-self:center">ייבוא / יצוא:</span>
       <button class="btn ghost sm" id="exportStu">📤 יצוא</button>
@@ -3499,6 +3539,10 @@ function viewStudents(root){
     <div id="stuTable"></div>
   </div>`;
 
+  { const b=$("#stuMsg"); if(b) b.onclick=()=>openMessages({ audience:"parents", tplId:"placement",
+      parentFilter:{ gans:(stuFilter.gans||[]).filter(x=>x&&x!=="__none__"), edu:stuFilter.edu||"", campus:stuFilter.campus||"",
+                     period:stuFilter.period||"", ages:(stuFilter.age||[]).map(String),
+                     placed: stuFilter.placed==='no' ? 'no' : 'yes' } }); }
   $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#exportStu").onclick = ()=> openExportModal();
   $("#importStu").onclick = ()=> openImport();
@@ -6909,11 +6953,13 @@ function viewStaff(root){
     </div>
     <div class="row" style="gap:8px;margin-bottom:12px">
       <button class="btn" id="addStaff">➕ הוספת איש/אשת צוות</button>
+      <button class="btn ghost" id="staffMsg" title="שליחת הודעה לצוות">📣 שליחת הודעות</button>
       <button class="btn ghost" id="impStaff">⬆️ ייבוא מקובץ</button>
     </div>
     <div id="staffTable"></div>
   </div>`;
   $("#addStaff").onclick=()=>openStaff(makeStaff());
+  { const b=$("#staffMsg"); if(b) b.onclick=()=>openMessages({ audience:"staff", tplId:"staff-general" }); }
   $("#impStaff").onclick=openStaffImport;
   $("#staffFilterToggle").onclick=()=>{ staffFiltersOpen=$("#staffFilterPanel").hasAttribute("hidden"); viewStaff(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ staffFilter[key]=e.value; renderStaffTable(); }; };
@@ -7858,10 +7904,12 @@ function viewManagement(root){
     <div class="section-title">
       <div><h2>טלפוני ההנהלה הראשית</h2><div class="sub">אנשי קשר לפי אגפים. ניתן לעדכן בהמשך.</div></div>
       <button class="btn" id="addM">➕ הוספת איש קשר</button>
+      <button class="btn ghost" id="mgmtMsg" title="שליחת הודעה לאנשי ההנהלה">📣 שליחת הודעות</button>
     </div>
     <div id="mTable"></div>
   </div>`;
   $("#addM").onclick=()=>openMgmt({id:uid(),dept:"",name:"",role:"",phone:"",mobile:"",email:""});
+  { const b=$("#mgmtMsg"); if(b) b.onclick=()=>openMessages({ audience:"management", tplId:"general" }); }
   renderMgmt();
 }
 function renderMgmt(){
@@ -8059,6 +8107,17 @@ function openFeedback(){
   };
 }
 /* ---------- רישום דיגיטלי (טופס להורים) ---------- */
+/* נוסח ברירת המחדל של מייל האישור לנרשם (סעיף 7) */
+const REG_MAIL_DEFAULT={
+  subject:'אישור קבלת רישום · {{שם הילדה}}',
+  body:'שלום {{שם ההורה}},\n\n'
+      +'רישומה של {{שם הילדה}} (ת"ז {{תז}}) לגן {{גן}} לשנת {{שנה}} התקבל אצלנו בהצלחה.\n\n'
+      +'הרישום נקלט וממתין לעיבוד. נעדכן אתכם בהמשך לגבי השיבוץ הסופי.\n'
+      +'אם יש שאלות — אפשר להשיב למייל זה.\n\n'
+      +'בברכה,\n{{שם המוסד}}\n{{תאריך}}'
+};
+/* שדות המיזוג הזמינים במייל האישור */
+const REG_MAIL_VARS=["שם הילדה","תז","גן","סמל גן","שם ההורה","כתובת","שנה","שם המוסד","תאריך"];
 function regFormCfg(){ return (DB.settings&&DB.settings.regForm)||{}; }
 function publicFormUrl(){ try{ return location.origin + location.pathname.replace(/[^/]*$/, "") + "register.html"; }catch(e){ return "register.html"; } }
 async function regFormPublish(){
@@ -8071,6 +8130,14 @@ async function regFormPublish(){
     year: rf.year || DB.activeYear || "",
     logo: isImg? logo : "",
     notifyEmail: rf.notifyEmail || contactEmail() || "",
+    /* מייל אישור אוטומטי לנרשם (סעיף 7) — נשלח מהגשר מיד עם קליטת הרישום */
+    applicantMail: {
+      enabled: !!rf.applicantMailOn,
+      subject: rf.applicantMailSubject || REG_MAIL_DEFAULT.subject,
+      body:    rf.applicantMailBody    || REG_MAIL_DEFAULT.body,
+      replyTo: rf.applicantMailReplyTo || rf.notifyEmail || contactEmail() || "",
+      attachForm: rf.applicantMailAttach!==false
+    },
     ownership: { name:rf.ownName||"", symbol:rf.ownSymbol||"", address:rf.ownAddress||"",
       recognizedFrom:rf.recognizedFrom||"", signName:rf.signName||"", institutionName:rf.institutionName||rf.ownName||"",
       stampImage:rf.stampImage||"" },
@@ -8579,6 +8646,527 @@ function openAiHelp(){ aiOpen(); }
 })();
 
 /* ============================================================
+   מרכז ההודעות (סעיפים 8-11)
+   שליחה מרוכזת להורי תלמידות / לצוות / להנהלה, בארבעה ערוצים:
+     ✉️ מייל          — נשלח מהשרת דרך גשר הדרייב (חינם, במסגרת מכסת Gmail)
+     💬 וואטסאפ       — דרך ספק חיצוני אם הוגדר, אחרת מצב ידני (פתיחת צ'אט לכל נמענת)
+     📱 SMS           — דרך ספק חיצוני אם הוגדר, אחרת מצב ידני
+     📞 הודעה קולית   — דרך ספק חיצוני; ללא ספק — רשימת חיוג מסודרת עם תסריט
+   כל הודעה נבנית מתבנית עם שדות מיזוג ({{שם הילדה}}, {{גן}} …), כך
+   שהמערכת ממלאת לבד את פרטי כל נמענת — כולל הגן שאליו שובצה.
+   ============================================================ */
+
+/* מיזוג שדות בתבנית: {{שדה}} → הערך; שדה שאינו קיים — מנוקה */
+function msgMerge(tpl, vars){
+  let t=String(tpl||"");
+  Object.keys(vars||{}).forEach(k=>{ t=t.split("{{"+k+"}}").join(String(vars[k]==null?"":vars[k])); });
+  return t.replace(/\{\{[^}]*\}\}/g,"");
+}
+/* שדות המיזוג לפי סוג הקהל */
+const MSG_VARS = {
+  parents:["שם הילדה","שם משפחה","שם מלא","תז","גיל","חינוך","מועד רישום","גן","גננת","סמל גן","כתובת הגן","טלפון הגן","קמפוס","שם האם","שם האב","כתובת","עיר","שנה","שם המוסד","תאריך"],
+  staff:["שם","שם פרטי","שם משפחה","תפקיד","חינוך","תז","שנה","שם המוסד","תאריך"],
+  management:["שם","תפקיד","אגף","שנה","שם המוסד","תאריך"],
+  manual:["שם","שנה","שם המוסד","תאריך"]
+};
+function msgToday(){ try{ return new Date().toLocaleDateString("he-IL"); }catch(e){ return ""; } }
+function msgOrgName(){ const rf=regFormCfg(); return rf.institutionName||rf.ownName||appTitle(); }
+
+/* ---------- בניית רשימת הנמענים ---------- */
+function msgParentRecipients(f){
+  f=f||{};
+  let l=studentsOfYear().filter(s=>!s.finished);
+  l=eduScope(l);
+  if(f.edu) l=l.filter(s=>eduLabel(s)===f.edu);
+  if(f.gans&&f.gans.length) l=l.filter(s=>f.gans.includes(s.ganId));
+  if(f.ages&&f.ages.length) l=l.filter(s=>f.ages.includes(String(s.age||"")));
+  if(f.campus) l=l.filter(s=>String(ganCampus(s.ganId)||s.campus||"")===f.campus);
+  if(f.period) l=l.filter(s=>String(s.period||"")===f.period);
+  if(f.placed==="yes") l=l.filter(s=>s.ganId&&s.placed!==false);
+  if(f.placed==="no")  l=l.filter(s=>!s.ganId||s.placed===false);
+  if(f.withGanOnly) l=l.filter(s=>!!s.ganId);
+  return l.map(s=>{
+    const g=s.ganId?ganById(s.ganId):null;
+    return {
+      id:s.id, kind:"parents",
+      name:[s.lastName,s.firstName].filter(Boolean).join(" "),
+      email:String(s.email||"").trim(),
+      phone:String(s.momMobile||s.dadMobile||s.mobile||s.phone||"").trim(),
+      vars:{
+        "שם הילדה":s.firstName||"", "שם משפחה":s.lastName||"",
+        "שם מלא":[s.lastName,s.firstName].filter(Boolean).join(" "),
+        "תז":s.tz||"", "גיל":s.age||"", "חינוך":eduLabel(s), "מועד רישום":s.period||"",
+        "גן":g?ganName(g.id):"", "גננת":g?(g.teacherName||""):"",
+        "סמל גן":g?(g.ganSymbol||g.internalSymbol||""):"",
+        "כתובת הגן":g?[g.address,g.building].filter(Boolean).join(" "):"",
+        "טלפון הגן":g?(g.phoneGan||""):"",
+        "קמפוס":ganCampus(s.ganId)||s.campus||"",
+        "שם האם":s.motherName||"", "שם האב":s.fatherName||"",
+        "כתובת":[s.street,s.building].filter(Boolean).join(" "), "עיר":s.city||"",
+        "שנה":DB.activeYear||"", "שם המוסד":msgOrgName(), "תאריך":msgToday()
+      }
+    };
+  });
+}
+function msgStaffRecipients(f){
+  f=f||{};
+  let l=(DB.staff||[]).filter(m=>m.active!==false);
+  l=eduScope(l);
+  if(f.edu) l=l.filter(m=>eduLabel(m)===f.edu);
+  if(f.roles&&f.roles.length) l=l.filter(m=>f.roles.includes(m.role));
+  return l.map(m=>({
+    id:m.id, kind:"staff", name:staffName(m),
+    email:String(m.email||"").trim(),
+    phone:String(m.mobile||m.phone||"").trim(),
+    vars:{ "שם":staffName(m), "שם פרטי":m.firstName||"", "שם משפחה":m.lastName||"",
+      "תפקיד":m.role||"", "חינוך":eduLabel(m), "תז":m.tz||"",
+      "שנה":DB.activeYear||"", "שם המוסד":msgOrgName(), "תאריך":msgToday() }
+  }));
+}
+function msgMgmtRecipients(f){
+  f=f||{};
+  let l=(DB.management||[]);
+  if(f.dept) l=l.filter(m=>String(m.dept||"")===f.dept);
+  return l.map(m=>({
+    id:m.id, kind:"management", name:m.name||"",
+    email:String(m.email||"").trim(),
+    phone:String(m.mobile||m.phone||"").trim(),
+    vars:{ "שם":m.name||"", "תפקיד":m.role||"", "אגף":m.dept||"",
+      "שנה":DB.activeYear||"", "שם המוסד":msgOrgName(), "תאריך":msgToday() }
+  }));
+}
+/* רשימה ידנית: כל שורה — "שם, כתובת/מספר" או רק כתובת/מספר */
+function msgManualRecipients(text){
+  return String(text||"").split(/[\n;]+/).map(x=>x.trim()).filter(Boolean).map((line,i)=>{
+    const parts=line.split(/[,\t]/).map(x=>x.trim()).filter(Boolean);
+    const contact=parts.find(p=>/@/.test(p)||/\d{7,}/.test(p))||parts[parts.length-1]||"";
+    const name=parts.filter(p=>p!==contact).join(" ")||contact;
+    return { id:"m"+i, kind:"manual", name,
+      email:/@/.test(contact)?contact:"", phone:/@/.test(contact)?"":contact,
+      vars:{ "שם":name, "שנה":DB.activeYear||"", "שם המוסד":msgOrgName(), "תאריך":msgToday() } };
+  });
+}
+function msgRecipients(st){
+  if(st.audience==="staff")      return msgStaffRecipients(st.staffFilter);
+  if(st.audience==="management") return msgMgmtRecipients(st.mgmtFilter);
+  if(st.audience==="manual")     return msgManualRecipients(st.manualText);
+  return msgParentRecipients(st.parentFilter);
+}
+
+/* ---------- תבניות ---------- */
+const MSG_PRESETS = [
+  { id:"placement", name:"הודעת שיבוץ סופי", audience:"parents",
+    subject:"שיבוץ {{שם הילדה}} לשנת {{שנה}}",
+    body:'שלום רב,\n\nשמחים לעדכן כי {{שם הילדה}} {{שם משפחה}} שובצה לשנת {{שנה}} ל:\n\n'
+        +'🏫 גן {{גן}}\n👩‍🏫 גננת: {{גננת}}\n📍 כתובת: {{כתובת הגן}}\n📞 טלפון הגן: {{טלפון הגן}}\n\n'
+        +'נא לשמור הודעה זו. פרטים נוספים על פתיחת השנה יישלחו בהמשך.\n\n'
+        +'בברכה,\n{{שם המוסד}}\n{{תאריך}}' },
+  { id:"reg-ack", name:"אישור קבלת רישום", audience:"parents",
+    subject:"אישור קבלת רישום · {{שם הילדה}}",
+    body:'שלום רב,\n\nרישומה של {{שם הילדה}} {{שם משפחה}} (ת"ז {{תז}}) לשנת {{שנה}} התקבל אצלנו.\n\n'
+        +'הרישום ממתין לעיבוד ולשיבוץ. נעדכן אתכם בהמשך.\n\nבברכה,\n{{שם המוסד}}' },
+  { id:"docs", name:"תזכורת להשלמת מסמכים", audience:"parents",
+    subject:"השלמת מסמכים · {{שם הילדה}}",
+    body:'שלום רב,\n\nלצורך השלמת הרישום של {{שם הילדה}} {{שם משפחה}} חסרים לנו מסמכים.\n\n'
+        +'נודה להשלמתם בהקדם.\n\nבברכה,\n{{שם המוסד}}' },
+  { id:"general", name:"הודעה כללית להורים", audience:"parents",
+    subject:"הודעה מ{{שם המוסד}}",
+    body:'שלום רב,\n\n(כאן כותבים את תוכן ההודעה)\n\nבברכה,\n{{שם המוסד}}' },
+  { id:"staff-general", name:"הודעה לצוות", audience:"staff",
+    subject:"הודעה לצוות · {{שם המוסד}}",
+    body:'שלום {{שם}},\n\n(כאן כותבים את תוכן ההודעה)\n\nבברכה,\n{{שם המוסד}}' }
+];
+function msgSavedTemplates(){ return (DB.settings&&DB.settings.msgTemplates)||[]; }
+function msgAllTemplates(){ return MSG_PRESETS.concat(msgSavedTemplates()); }
+
+/* ---------- יומן שליחות ---------- */
+function msgLog(){ return (DB.settings&&DB.settings.msgLog)||[]; }
+function msgLogAdd(entry){
+  DB.settings=DB.settings||{};
+  DB.settings.msgLog=[Object.assign({ at:new Date().toISOString(), by:(currentUser&&currentUser.email)||"" }, entry)]
+    .concat(msgLog()).slice(0,40);
+  save();
+}
+
+/* ---------- שער ההודעות (ספק חיצוני) ---------- */
+let _msgGwStatus=null;
+async function msgGatewayStatus(){
+  if(_msgGwStatus) return _msgGwStatus;
+  if(!DRIVE_READY) return (_msgGwStatus={ sms:false, whatsapp:false, voice:false });
+  try{ const r=await driveCall("msgGatewayStatus",{}); _msgGwStatus=(r&&r.channels)||{ sms:false, whatsapp:false, voice:false }; }
+  catch(e){ _msgGwStatus={ sms:false, whatsapp:false, voice:false }; }
+  return _msgGwStatus;
+}
+
+/* ---------- המסך ---------- */
+const MSG_CHANNELS = [
+  { id:"email",    label:"✉️ מייל",         need:"email" },
+  { id:"whatsapp", label:"💬 וואטסאפ",      need:"phone" },
+  { id:"sms",      label:"📱 SMS",          need:"phone" },
+  { id:"voice",    label:"📞 הודעה קולית",  need:"phone" }
+];
+let msgState = {
+  audience:"parents", channel:"email",
+  parentFilter:{ edu:"", gans:[], ages:[], campus:"", period:"", placed:"yes", withGanOnly:false },
+  staffFilter:{ edu:"", roles:[] },
+  mgmtFilter:{ dept:"" },
+  manualText:"",
+  tplId:"placement", subject:"", body:"", inited:false
+};
+function msgApplyTemplate(id){
+  const t=msgAllTemplates().find(x=>x.id===id); if(!t) return;
+  msgState.tplId=id; msgState.subject=t.subject||""; msgState.body=t.body||"";
+  if(t.audience) msgState.audience=t.audience;
+}
+function viewMessages(root){
+  if(!msgState.inited){ msgState.inited=true; msgApplyTemplate("placement"); }
+  const gans=eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+  const ages=[...new Set(studentsOfYear().map(s=>String(s.age||"")).filter(Boolean))].sort();
+  const campuses=[...new Set(DB.gans.map(g=>(g.campus||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const depts=[...new Set((DB.management||[]).map(m=>(m.dept||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const roles=STAFF_ROLES.slice();
+  const pf=msgState.parentFilter, sf=msgState.staffFilter;
+  const vars=MSG_VARS[msgState.audience]||[];
+
+  root.innerHTML=`
+  <div class="panel">
+    <div class="section-title">
+      <div><h2>📣 מרכז ההודעות</h2>
+        <div class="sub">שליחה מרוכזת להורים, לצוות ולהנהלה — במייל, בוואטסאפ, ב-SMS ובהודעה קולית.
+          התוכן נכתב פעם אחת עם שדות מיזוג, והמערכת ממלאת לכל נמענת את הפרטים שלה (כולל הגן שאליו שובצה).</div></div>
+      <button class="btn ghost" id="msg-history">🕘 היסטוריית שליחות</button>
+    </div>
+
+    <fieldset><legend>1 · למי שולחים</legend>
+      <div class="row" style="gap:6px;flex-wrap:wrap">
+        ${[["parents","👪 הורי תלמידות"],["staff","👩‍🏫 צוות הגנים"],["management","📞 הנהלה"],["manual","✍️ רשימה ידנית"]]
+          .map(([v,l])=>`<button type="button" class="btn ${msgState.audience===v?'':'ghost'} sm msg-aud" data-v="${v}">${l}</button>`).join("")}
+      </div>
+
+      <div id="msg-aud-parents" style="margin-top:10px;${msgState.audience==='parents'?'':'display:none'}">
+        <div class="grid g4">
+          <div><label>חינוך</label><select id="mf-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${pf.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
+          <div><label>קמפוס</label><select id="mf-campus"><option value="">הכל</option>${campuses.map(c=>`<option ${pf.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
+          <div><label>מועד רישום</label><select id="mf-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${pf.period===p?'selected':''}>${esc(p)}</option>`).join("")}</select></div>
+          <div><label>סטטוס שיבוץ</label><select id="mf-placed">
+            <option value="yes" ${pf.placed==='yes'?'selected':''}>רק משובצות סופית</option>
+            <option value="no" ${pf.placed==='no'?'selected':''}>רק ממתינות לשיבוץ</option>
+            <option value="" ${pf.placed===''?'selected':''}>כולן</option></select></div>
+        </div>
+        <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <b>גנים</b><button class="btn ghost sm" type="button" id="mf-gan-all">בחר הכל</button>
+          <button class="btn ghost sm" type="button" id="mf-gan-none">נקה</button>
+          <span class="hint">לא נבחר גן = כל הגנים</span>
+        </div>
+        <div style="max-height:130px;overflow:auto;margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:10px;display:flex;flex-wrap:wrap;gap:4px 14px">
+          ${gans.map(g=>`<label class="check" style="margin:0;font-size:13px"><input type="checkbox" class="mf-gan" value="${esc(g.id)}" ${pf.gans.includes(g.id)?'checked':''}> ${esc(ganName(g.id))}</label>`).join("")||'<span class="hint">אין גנים פעילים</span>'}
+        </div>
+        <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <b>גיל</b>${ages.map(a=>`<label class="check" style="margin:0"><input type="checkbox" class="mf-age" value="${esc(a)}" ${pf.ages.includes(a)?'checked':''}> ${esc(a)}</label>`).join("")||'<span class="hint">—</span>'}
+        </div>
+      </div>
+
+      <div id="msg-aud-staff" style="margin-top:10px;${msgState.audience==='staff'?'':'display:none'}">
+        <div class="grid g2">
+          <div><label>חינוך</label><select id="sf-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${sf.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
+        </div>
+        <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px"><b>תפקידים</b><span class="hint">לא נבחר תפקיד = כל הצוות</span></div>
+        <div style="margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:10px;display:flex;flex-wrap:wrap;gap:4px 14px">
+          ${roles.map(r=>`<label class="check" style="margin:0;font-size:13px"><input type="checkbox" class="sf-role" value="${esc(r)}" ${sf.roles.includes(r)?'checked':''}> ${esc(r)}</label>`).join("")}
+        </div>
+      </div>
+
+      <div id="msg-aud-management" style="margin-top:10px;${msgState.audience==='management'?'':'display:none'}">
+        <div class="grid g2"><div><label>אגף</label><select id="gf-dept"><option value="">הכל</option>${depts.map(d=>`<option ${msgState.mgmtFilter.dept===d?'selected':''}>${esc(d)}</option>`).join("")}</select></div></div>
+      </div>
+
+      <div id="msg-aud-manual" style="margin-top:10px;${msgState.audience==='manual'?'':'display:none'}">
+        <label>רשימת נמענים — שורה לכל נמען: <b>שם, כתובת מייל או מספר נייד</b></label>
+        <textarea id="mf-manual" rows="5" placeholder="ישראל ישראלי, mail@example.com&#10;מרים כהן, 0501234567">${esc(msgState.manualText)}</textarea>
+      </div>
+
+      <div class="note" id="msg-count" style="margin-top:10px">…</div>
+    </fieldset>
+
+    <fieldset><legend>2 · באיזה ערוץ</legend>
+      <div class="row" style="gap:6px;flex-wrap:wrap">
+        ${MSG_CHANNELS.map(c=>`<button type="button" class="btn ${msgState.channel===c.id?'':'ghost'} sm msg-ch" data-v="${c.id}">${c.label}</button>`).join("")}
+      </div>
+      <div class="hint" id="msg-ch-note" style="margin-top:8px"></div>
+    </fieldset>
+
+    <fieldset><legend>3 · מה שולחים</legend>
+      <div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field" style="min-width:220px"><label>תבנית</label>
+          <select id="msg-tpl">${msgAllTemplates().map(t=>`<option value="${esc(t.id)}" ${msgState.tplId===t.id?'selected':''}>${esc(t.name)}</option>`).join("")}</select></div>
+        <button class="btn ghost sm" type="button" id="msg-tpl-save">💾 שמירה כתבנית חדשה</button>
+        <button class="btn ghost sm" type="button" id="msg-tpl-del">🗑️ מחיקת תבנית שמורה</button>
+      </div>
+      <div style="margin-top:10px" id="msg-subject-wrap">
+        <label>נושא (למייל)</label><input id="msg-subject" value="${esc(msgState.subject)}"></div>
+      <div style="margin-top:10px"><label>תוכן ההודעה</label>
+        <textarea id="msg-body" rows="10">${esc(msgState.body)}</textarea></div>
+      <div style="margin-top:8px">
+        <div class="hint" style="margin-bottom:4px">שדות מיזוג — לחיצה מוסיפה לתוכן במקום הסמן:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          ${vars.map(v=>`<button type="button" class="btn ghost sm msg-var" data-v="${esc(v)}" style="padding:1px 8px;font-size:12px">{{${esc(v)}}}</button>`).join("")}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>4 · תצוגה מקדימה ושליחה</legend>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button class="btn" type="button" id="msg-preview">👁️ תצוגה מקדימה</button>
+        <button class="btn" type="button" id="msg-send" style="background:var(--good,#1a7f37)">📤 שליחה</button>
+        <button class="btn ghost" type="button" id="msg-test">✉️ שליחת בדיקה אליי</button>
+      </div>
+      <div id="msg-out" style="margin-top:10px"></div>
+    </fieldset>
+  </div>`;
+
+  /* ---- חיווט ---- */
+  const readParentFilter=()=>{
+    pf.edu=$("#mf-edu").value; pf.campus=$("#mf-campus").value; pf.period=$("#mf-period").value;
+    pf.placed=$("#mf-placed").value;
+    pf.gans=[...root.querySelectorAll(".mf-gan")].filter(b=>b.checked).map(b=>b.value);
+    pf.ages=[...root.querySelectorAll(".mf-age")].filter(b=>b.checked).map(b=>b.value);
+  };
+  const readStaffFilter=()=>{
+    sf.edu=$("#sf-edu").value;
+    sf.roles=[...root.querySelectorAll(".sf-role")].filter(b=>b.checked).map(b=>b.value);
+  };
+  const readAll=()=>{
+    if(msgState.audience==="parents") readParentFilter();
+    if(msgState.audience==="staff") readStaffFilter();
+    if(msgState.audience==="management") msgState.mgmtFilter.dept=$("#gf-dept").value;
+    if(msgState.audience==="manual") msgState.manualText=$("#mf-manual").value;
+    msgState.subject=$("#msg-subject").value; msgState.body=$("#msg-body").value;
+  };
+  const need=()=> (MSG_CHANNELS.find(c=>c.id===msgState.channel)||{}).need||"email";
+  const updateCount=()=>{
+    readAll();
+    const all=msgRecipients(msgState);
+    const k=need();
+    const ok=all.filter(r=>r[k]);
+    const miss=all.length-ok.length;
+    $("#msg-count").innerHTML=`נמענים לפי הסינון: <b>${all.length}</b> · עם ${k==='email'?'כתובת מייל':'מספר טלפון'}: <b>${ok.length}</b>`
+      +(miss?` · <span style="color:var(--bad)">${miss} ללא ${k==='email'?'מייל':'טלפון'} — יידלגו</span>`:"");
+  };
+  root.querySelectorAll(".msg-aud").forEach(b=>b.onclick=()=>{ readAll(); msgState.audience=b.dataset.v; viewMessages(root); });
+  root.querySelectorAll(".msg-ch").forEach(b=>b.onclick=()=>{ readAll(); msgState.channel=b.dataset.v; viewMessages(root); });
+  ["#mf-edu","#mf-campus","#mf-period","#mf-placed","#sf-edu","#gf-dept"].forEach(id=>{ const e=$(id); if(e) e.onchange=updateCount; });
+  root.querySelectorAll(".mf-gan,.mf-age,.sf-role").forEach(b=>b.onchange=updateCount);
+  { const t=$("#mf-manual"); if(t) t.oninput=updateCount; }
+  { const a=$("#mf-gan-all"); if(a) a.onclick=()=>{ root.querySelectorAll(".mf-gan").forEach(b=>b.checked=true); updateCount(); };
+    const n=$("#mf-gan-none"); if(n) n.onclick=()=>{ root.querySelectorAll(".mf-gan").forEach(b=>b.checked=false); updateCount(); }; }
+  $("#msg-tpl").onchange=e=>{ msgApplyTemplate(e.target.value); viewMessages(root); };
+  root.querySelectorAll(".msg-var").forEach(b=>b.onclick=()=>{
+    const ta=$("#msg-body"); const tag="{{"+b.dataset.v+"}}";
+    const st=ta.selectionStart||0, en=ta.selectionEnd||0;
+    ta.value=ta.value.slice(0,st)+tag+ta.value.slice(en);
+    ta.focus(); ta.selectionStart=ta.selectionEnd=st+tag.length; msgState.body=ta.value;
+  });
+  $("#msg-tpl-save").onclick=()=>{
+    readAll();
+    const nm=prompt("שם לתבנית החדשה:", (msgAllTemplates().find(t=>t.id===msgState.tplId)||{}).name||"תבנית שלי");
+    if(!nm) return;
+    DB.settings=DB.settings||{};
+    DB.settings.msgTemplates=(DB.settings.msgTemplates||[]).concat([{ id:"t"+uid(), name:nm,
+      audience:msgState.audience, subject:msgState.subject, body:msgState.body }]);
+    save(); toast("התבנית נשמרה"); viewMessages(root);
+  };
+  $("#msg-tpl-del").onclick=()=>{
+    const t=msgSavedTemplates().find(x=>x.id===msgState.tplId);
+    if(!t){ toast("אפשר למחוק רק תבנית שנשמרה על ידיכם"); return; }
+    if(!confirm('למחוק את התבנית "'+t.name+'"?')) return;
+    DB.settings.msgTemplates=msgSavedTemplates().filter(x=>x.id!==t.id); save();
+    msgApplyTemplate("placement"); viewMessages(root); toast("נמחקה");
+  };
+  $("#msg-preview").onclick=()=>msgPreview(root);
+  $("#msg-send").onclick=()=>msgSend(root);
+  $("#msg-test").onclick=()=>msgSendTest(root);
+  $("#msg-history").onclick=msgOpenHistory;
+
+  /* הערת ערוץ + זמינות ספק */
+  const note=$("#msg-ch-note");
+  const subjWrap=$("#msg-subject-wrap");
+  if(subjWrap) subjWrap.style.display = msgState.channel==="email" ? "" : "none";
+  if(msgState.channel==="email"){
+    note.innerHTML=`המיילים נשלחים מחשבון הגשר (Google), ולכן <b>ללא עלות</b>. יש מכסה יומית (חשבון Gmail רגיל ~100 נמענים ביום · חשבון Workspace ~1,500). מעל המכסה — השליחה נעצרת והמערכת תדווח כמה נשלחו.`;
+    if(DRIVE_READY) driveCall("mailQuota",{}).then(r=>{ if(r&&r.remaining>=0) note.innerHTML+=` <b>נותרו היום: ${r.remaining} מיילים.</b>`; }).catch(()=>{});
+  } else {
+    note.textContent="בודק אם מוגדר ספק חיצוני…";
+    msgGatewayStatus().then(st=>{
+      const on=!!st[msgState.channel];
+      const chLabel=(MSG_CHANNELS.find(c=>c.id===msgState.channel)||{}).label||"";
+      note.innerHTML = on
+        ? `<span style="color:var(--good,#1a7f37)">✅ מוגדר ספק חיצוני לערוץ ${esc(chLabel)} — השליחה תתבצע אוטומטית.</span>`
+        : `<b>אין ספק חיצוני מוגדר לערוץ זה.</b> ${esc(chLabel)} אינו שירות חינמי של Google, ולכן נדרש חיבור לספק (למשל 019 · InforU · Cellact · Twilio) —
+           ההגדרה נעשית פעם אחת ב-Script Properties של הגשר (ראה SETUP.md, מקטע "שער הודעות").<br>
+           <b>בינתיים ניתן לשלוח במצב ידני:</b> המערכת תכין את ההודעה האישית לכל נמענת ותפתח עבורכם ${msgState.channel==='whatsapp'?'צ׳אט וואטסאפ':msgState.channel==='sms'?'הודעת SMS':'חיוג'} בלחיצה אחת, עם מעקב מי כבר טופלה.`;
+    });
+  }
+  updateCount();
+}
+
+/* בניית ההודעות בפועל לכל נמענת */
+function msgBuild(st){
+  const k=(MSG_CHANNELS.find(c=>c.id===st.channel)||{}).need||"email";
+  return msgRecipients(st).filter(r=>r[k]).map(r=>({
+    to: r[k], name:r.name,
+    subject: msgMerge(st.subject, r.vars),
+    text: msgMerge(st.body, r.vars)
+  }));
+}
+function msgPreview(root){
+  const st=msgState;
+  st.subject=$("#msg-subject").value; st.body=$("#msg-body").value;
+  const items=msgBuild(st);
+  const out=$("#msg-out");
+  if(!items.length){ out.innerHTML=`<div class="note">אין נמענים מתאימים לפי הסינון והערוץ שנבחרו.</div>`; return; }
+  out.innerHTML=`<div class="note" style="margin-bottom:8px">${items.length} הודעות ייווצרו. להלן ${Math.min(3,items.length)} דוגמאות:</div>`
+    +items.slice(0,3).map(it=>`<div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
+        <div class="hint">אל: <b>${esc(it.name)}</b> · <span dir="ltr">${esc(it.to)}</span></div>
+        ${st.channel==='email'?`<div style="font-weight:700;margin-top:4px">${esc(it.subject)}</div>`:""}
+        <div style="white-space:pre-wrap;margin-top:4px">${esc(it.text)}</div></div>`).join("");
+}
+async function msgSendTest(root){
+  const st=msgState; st.subject=$("#msg-subject").value; st.body=$("#msg-body").value;
+  const items=msgBuild(st);
+  if(!items.length){ toast("אין נמענים — אין ממה לבנות דוגמה"); return; }
+  const sample=items[0];
+  if(st.channel!=="email"){
+    msgManualPanel($("#msg-out"), [Object.assign({}, sample, { to:(prompt("מספר נייד לבדיקה:", "")||"").trim() })].filter(x=>x.to), st.channel, true);
+    return;
+  }
+  const to=prompt("לאיזו כתובת לשלוח את הבדיקה?", contactEmail()||"");
+  if(!to) return;
+  if(!DRIVE_READY){ toast("שליחת מייל דורשת חיבור גשר"); return; }
+  try{
+    await driveCall("sendMail",{ to, subject:"[בדיקה] "+sample.subject, body:sample.text });
+    toast("נשלח מייל בדיקה אל "+to);
+  }catch(e){ toast(driveErrHe(e)); }
+}
+async function msgSend(root){
+  const st=msgState; st.subject=$("#msg-subject").value; st.body=$("#msg-body").value;
+  const items=msgBuild(st);
+  const out=$("#msg-out");
+  if(!items.length){ out.innerHTML=`<div class="note">אין נמענים מתאימים לפי הסינון והערוץ שנבחרו.</div>`; return; }
+  const chLabel=(MSG_CHANNELS.find(c=>c.id===st.channel)||{}).label||"";
+  if(st.channel==="email"){
+    if(!DRIVE_READY){ out.innerHTML=`<div class="note">שליחת מיילים פועלת דרך גשר הדרייב, שאינו מוגדר עדיין (ראה SETUP.md).</div>`; return; }
+    if(!confirm(`לשלוח ${items.length} מיילים?\n\nנושא: ${st.subject}`)) return;
+    const btn=$("#msg-send"); btn.disabled=true;
+    let sent=0, failed=0, stopped=false; const errs=[];
+    out.innerHTML=`<div class="note" id="msg-prog">שולח… 0 / ${items.length}</div>`;
+    const CH=35;
+    for(let i=0;i<items.length;i+=CH){
+      const chunk=items.slice(i,i+CH).map(x=>({ to:x.to, subject:x.subject, body:x.text }));
+      try{
+        const r=await driveCall("sendMailBulk",{ items:chunk, opts:{ fromName:msgOrgName(), replyTo:contactEmail()||"" } });
+        sent+=r.sent||0; failed+=r.failed||0; (r.errors||[]).forEach(e=>errs.push(e));
+        if(r.stopped){ stopped=true; break; }
+      }catch(e){ failed+=chunk.length; errs.push({ to:"(מנה)", error:(e&&e.message)||String(e) }); break; }
+      $("#msg-prog").textContent=`שולח… ${sent} / ${items.length}`;
+    }
+    btn.disabled=false;
+    out.innerHTML=`<div class="note" style="background:var(--good-soft,#e8f5ec)">
+        ✅ נשלחו <b>${sent}</b> מתוך ${items.length}${failed?` · נכשלו ${failed}`:""}${stopped?` · <b style="color:var(--bad)">השליחה נעצרה — נגמרה המכסה היומית של חשבון הגשר. אפשר להמשיך מחר, או לשדרג ל-Google Workspace.</b>`:""}
+      </div>`
+      +(errs.length?`<div class="hint" style="margin-top:6px">שגיאות: ${errs.slice(0,10).map(e=>esc(e.to)+" — "+esc(e.error)).join(" · ")}</div>`:"");
+    msgLogAdd({ channel:"email", audience:st.audience, count:items.length, sent, failed, subject:st.subject });
+    return;
+  }
+  /* SMS / וואטסאפ / קולי */
+  const gw=await msgGatewayStatus();
+  if(gw[st.channel]){
+    if(!confirm(`לשלוח ${items.length} הודעות בערוץ ${chLabel} דרך הספק החיצוני?`)) return;
+    const btn=$("#msg-send"); btn.disabled=true;
+    out.innerHTML=`<div class="note">שולח דרך הספק…</div>`;
+    let sent=0, failed=0; const errs=[];
+    const CH=50;
+    for(let i=0;i<items.length;i+=CH){
+      const chunk=items.slice(i,i+CH).map(x=>({ to:x.to, text:x.text }));
+      try{ const r=await driveCall("msgGateway",{ channel:st.channel, items:chunk });
+        sent+=r.sent||0; failed+=r.failed||0; (r.errors||[]).forEach(e=>errs.push(e)); }
+      catch(e){ failed+=chunk.length; errs.push({ to:"(מנה)", error:(e&&e.message)||String(e) }); break; }
+    }
+    btn.disabled=false;
+    out.innerHTML=`<div class="note" style="background:var(--good-soft,#e8f5ec)">✅ נשלחו <b>${sent}</b> מתוך ${items.length}${failed?` · נכשלו ${failed}`:""}</div>`
+      +(errs.length?`<div class="hint" style="margin-top:6px">שגיאות: ${errs.slice(0,10).map(e=>esc(e.to)+" — "+esc(e.error)).join(" · ")}</div>`:"");
+    msgLogAdd({ channel:st.channel, audience:st.audience, count:items.length, sent, failed, subject:st.subject });
+    return;
+  }
+  msgManualPanel(out, items, st.channel, false);
+}
+/* מצב ידני — ללא ספק חיצוני: פותחים לכל נמענת בלחיצה, עם מעקב */
+function msgManualPanel(out, items, channel, isTest){
+  if(!items.length){ out.innerHTML=`<div class="note">אין נמענים.</div>`; return; }
+  const label = channel==='whatsapp' ? "וואטסאפ" : channel==='sms' ? "SMS" : "חיוג";
+  const icon  = channel==='whatsapp' ? "💬" : channel==='sms' ? "📱" : "📞";
+  const done=new Set();
+  const linkFor=it=> channel==='whatsapp' ? waHref(it.to, it.text)
+                   : channel==='sms'      ? smsHref(it.to, it.text)
+                   : telHref(it.to);
+  const draw=()=>{
+    out.innerHTML=`<div class="note" style="margin-bottom:8px">
+        <b>${icon} מצב ידני — ${esc(label)}</b> · ${items.length} נמענים · טופלו: <b id="msg-done">${done.size}</b>
+        ${channel==='voice'?'<br>אין ספק חיצוני מוגדר, ולכן ההודעה הקולית אינה נשלחת אוטומטית. להלן רשימת חיוג מסודרת עם התסריט האישי לכל שיחה.'
+                           :'<br>לחיצה על הכפתור פותחת את ההודעה מוכנה לשליחה — רק ללחוץ "שלח".'}
+      </div>
+      ${channel==='voice'?`<div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px"><b>תסריט לדוגמה:</b><div style="white-space:pre-wrap;margin-top:4px">${esc(items[0].text)}</div></div>`:""}
+      <div class="row" style="gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="btn sm" type="button" id="msg-next">${icon} פתיחת הבא</button>
+        <button class="btn ghost sm" type="button" id="msg-copy">📋 העתקת הרשימה</button>
+      </div>
+      <div class="table-wrap" style="max-height:50vh;overflow:auto"><table><thead><tr><th></th><th>נמען</th><th>${channel==='voice'?'טלפון':'נייד'}</th><th>הודעה</th><th></th></tr></thead><tbody>
+      ${items.map((it,i)=>`<tr${done.has(i)?' style="opacity:.5"':''}>
+        <td style="text-align:center"><input type="checkbox" class="msg-dn" data-i="${i}" ${done.has(i)?'checked':''} title="סמן/י כטופל"></td>
+        <td>${esc(it.name)}</td><td dir="ltr">${esc(it.to)}</td>
+        <td style="font-size:12px;max-width:340px">${esc(it.text.slice(0,120))}${it.text.length>120?'…':''}</td>
+        <td><a class="btn sm msg-open" data-i="${i}" href="${esc(linkFor(it))}" ${channel==='whatsapp'?'target="_blank" rel="noopener"':''}>${icon} ${esc(label)}</a></td>
+      </tr>`).join("")}
+      </tbody></table></div>`;
+    out.querySelectorAll(".msg-dn").forEach(cb=>cb.onchange=()=>{ cb.checked?done.add(+cb.dataset.i):done.delete(+cb.dataset.i); const d=$("#msg-done"); if(d) d.textContent=done.size; cb.closest("tr").style.opacity=cb.checked?.5:1; });
+    out.querySelectorAll(".msg-open").forEach(a=>a.addEventListener("click",()=>{ done.add(+a.dataset.i); const cb=out.querySelector('.msg-dn[data-i="'+a.dataset.i+'"]'); if(cb){ cb.checked=true; cb.closest("tr").style.opacity=.5; } const d=$("#msg-done"); if(d) d.textContent=done.size; }));
+    const nx=$("#msg-next"); if(nx) nx.onclick=()=>{
+      const i=items.findIndex((_,k)=>!done.has(k));
+      if(i<0){ toast("כל הנמענים טופלו ✅"); return; }
+      const a=out.querySelector('.msg-open[data-i="'+i+'"]'); if(a) a.click();
+    };
+    const cp=$("#msg-copy"); if(cp) cp.onclick=()=>{
+      const txt=items.map(it=>it.name+"\t"+it.to+"\t"+it.text.replace(/\n/g," ")).join("\n");
+      navigator.clipboard?.writeText(txt).then(()=>toast("הרשימה הועתקה"),()=>toast("לא ניתן להעתיק"));
+    };
+  };
+  draw();
+  if(!isTest) msgLogAdd({ channel, audience:msgState.audience, count:items.length, sent:0, failed:0, manual:true, subject:msgState.subject });
+}
+function msgOpenHistory(){
+  const log=msgLog();
+  modal(`<h3>🕘 היסטוריית שליחות</h3>
+    ${log.length?`<div class="table-wrap"><table><thead><tr><th>מתי</th><th>ערוץ</th><th>קהל</th><th>נמענים</th><th>נשלחו</th><th>נושא</th><th>מי</th></tr></thead><tbody>
+      ${log.map(e=>`<tr><td>${esc(new Date(e.at).toLocaleString("he-IL"))}</td>
+        <td>${esc((MSG_CHANNELS.find(c=>c.id===e.channel)||{}).label||e.channel)}</td>
+        <td>${esc({parents:"הורים",staff:"צוות",management:"הנהלה",manual:"ידני"}[e.audience]||e.audience)}</td>
+        <td>${e.count||0}</td><td>${e.manual?'ידני':(e.sent||0)}${e.failed?` <span style="color:var(--bad)">(${e.failed} נכשלו)</span>`:''}</td>
+        <td style="font-size:12px">${esc(e.subject||"")}</td><td style="font-size:12px">${esc(e.by||"")}</td></tr>`).join("")}
+      </tbody></table></div>`:'<div class="hint">עדיין לא נשלחו הודעות מהמערכת.</div>'}
+    <div class="foot"><button class="btn ghost" id="mh-close" style="margin-inline-start:auto">סגירה</button></div>`);
+  $("#mh-close").onclick=closeModal;
+}
+/* פתיחת מרכז ההודעות עם קהל/תבנית מוכנים — לקיצורי דרך מלשוניות אחרות */
+function openMessages(opts){
+  opts=opts||{};
+  msgState.inited=true;
+  if(opts.tplId) msgApplyTemplate(opts.tplId);
+  if(opts.audience) msgState.audience=opts.audience;
+  if(opts.channel) msgState.channel=opts.channel;
+  if(opts.parentFilter) Object.assign(msgState.parentFilter, opts.parentFilter);
+  navToTab("messages");
+}
+
+/* ============================================================
    כלים ושירותים — חיבורים ופעולות תפעוליות (דרייב, טופס דיגיטלי, נדרים,
    עוזר AI, דיוק מפה, גיבוי) — הופרדו מ"הגדרות" לניהול נוח יותר.
    ============================================================ */
@@ -8633,6 +9221,24 @@ function viewTools(root){
       </div>
       <div class="hint" style="margin-top:4px">התמונה (חתימה + חותמת הבעלות) תופיע בהצהרת הבעלות בטופס ובמסמך ה-PDF — בדיוק כפי שתעלו אותה. מומלץ צילום/סריקה נקי על רקע לבן.</div>
     </div>
+    <fieldset style="margin-top:14px"><legend>✉️ מייל אישור אוטומטי לנרשם (סעיף 7)</legend>
+      <div class="hint" style="margin-bottom:8px">כשהורה משלים רישום דרך הקישור — המערכת שולחת לו מיד מייל אישור, בנוסח שנקבע כאן.
+        המייל נשלח מחשבון הגשר. שדות למיזוג: ${REG_MAIL_VARS.map(v=>`<code>{{${esc(v)}}}</code>`).join(" · ")}</div>
+      <label class="check"><input type="checkbox" id="rf-am-on" ${rf.applicantMailOn?'checked':''}> להפעיל שליחה אוטומטית לנרשם</label>
+      <div class="grid g2" style="margin-top:8px">
+        <div><label>נושא המייל</label><input id="rf-am-subject" value="${esc(rf.applicantMailSubject||REG_MAIL_DEFAULT.subject)}"></div>
+        <div><label>כתובת לתשובות (Reply-To)</label><input id="rf-am-reply" dir="ltr" style="text-align:right" value="${esc(rf.applicantMailReplyTo||rf.notifyEmail||contactEmail()||"")}"></div>
+      </div>
+      <div style="margin-top:8px"><label>נוסח ההודעה</label>
+        <textarea id="rf-am-body" rows="8">${esc(rf.applicantMailBody||REG_MAIL_DEFAULT.body)}</textarea></div>
+      <label class="check" style="margin-top:8px"><input type="checkbox" id="rf-am-attach" ${rf.applicantMailAttach!==false?'checked':''}> לצרף למייל את מסמך הרישום שנחתם (PDF)</label>
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost sm" type="button" id="rf-am-test">📤 שליחת מייל בדיקה אליי</button>
+        <button class="btn ghost sm" type="button" id="rf-am-reset">↺ החזרה לנוסח ברירת המחדל</button>
+        <span class="hint" style="flex:1;min-width:180px">לאחר עריכה יש ללחוץ <b>"שמירה ופרסום הטופס"</b> — הנוסח נשמר בגשר יחד עם שאר הגדרות הטופס.</span>
+      </div>
+    </fieldset>
+
     <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
       <button class="btn" id="rf-publish">💾 שמירה ופרסום הטופס</button>
       <button class="btn ghost" id="rf-review">🗂️ רישומים ממתינים</button>
@@ -8714,6 +9320,11 @@ function viewTools(root){
         const r=new FileReader(); r.onload=()=>{ stampVal=String(r.result||""); if(stImg){ stImg.src=stampVal; stImg.style.display=""; } if(stClr) stClr.style.display=""; }; r.readAsDataURL(f); };
       if(stClr) stClr.onclick=()=>{ stampVal=""; if(stImg){ stImg.src=""; stImg.style.display="none"; } stClr.style.display="none"; if(stFile) stFile.value=""; };
       const collect=()=>({ year:($("#rf-year").value||"").trim(), notifyEmail:($("#rf-notify").value||"").trim(),
+        applicantMailOn: !!($("#rf-am-on")||{}).checked,
+        applicantMailSubject: (($("#rf-am-subject")||{}).value||"").trim(),
+        applicantMailBody: (($("#rf-am-body")||{}).value||""),
+        applicantMailReplyTo: (($("#rf-am-reply")||{}).value||"").trim(),
+        applicantMailAttach: !!($("#rf-am-attach")||{}).checked,
         ownName:($("#rf-ownName").value||"").trim(), ownSymbol:($("#rf-ownSymbol").value||"").trim(), ownAddress:($("#rf-ownAddress").value||"").trim(),
         recognizedFrom:($("#rf-recognizedFrom").value||"").trim(), signName:($("#rf-signName").value||"").trim(), institutionName:($("#rf-institutionName").value||"").trim(),
         stampImage:stampVal });
@@ -8726,6 +9337,24 @@ function viewTools(root){
         finally{ pub.disabled=false; pub.textContent=old; }
       };
       const rv=$("#rf-review"); if(rv) rv.onclick=openRegReview;
+      /* מייל אישור לנרשם — איפוס נוסח ובדיקה */
+      { const rs=$("#rf-am-reset"); if(rs) rs.onclick=()=>{
+          $("#rf-am-subject").value=REG_MAIL_DEFAULT.subject; $("#rf-am-body").value=REG_MAIL_DEFAULT.body;
+          toast("הוחזר נוסח ברירת המחדל — לחצ/י שמירה ופרסום"); };
+        const tb=$("#rf-am-test"); if(tb) tb.onclick=async()=>{
+          const to=(($("#rf-am-reply")||{}).value||"").trim()||contactEmail();
+          if(!to){ toast('יש להזין כתובת לתשובות / אימייל להתראות'); return; }
+          if(!DRIVE_READY){ toast("שליחת מייל דורשת חיבור גשר"); return; }
+          const vars={ "שם הילדה":"שרה כהן", "תז":"123456789", "גן":"גן הדקל", "סמל גן":"567890",
+            "שם ההורה":"משפחת כהן", "כתובת":"רחוב הרב שך 12", "שנה":($("#rf-year").value||DB.activeYear||""),
+            "שם המוסד":(($("#rf-institutionName")||{}).value||($("#rf-ownName")||{}).value||appTitle()),
+            "תאריך":new Date().toLocaleDateString("he-IL") };
+          tb.disabled=true; const ot=tb.textContent; tb.textContent="שולח…";
+          try{ await driveCall("sendMail",{ to, subject:"[בדיקה] "+msgMerge($("#rf-am-subject").value||REG_MAIL_DEFAULT.subject, vars),
+                 body:msgMerge($("#rf-am-body").value||REG_MAIL_DEFAULT.body, vars) });
+               toast("נשלח מייל בדיקה אל "+to); }
+          catch(e){ toast(driveErrHe(e)); }
+          finally{ tb.disabled=false; tb.textContent=ot; } }; }
       const cp=$("#rf-copy"); if(cp) cp.onclick=async ()=>{ const t=$("#rf-link"); try{ await navigator.clipboard.writeText(t.value); toast("הקישור הועתק"); }catch(e){ t.select(); document.execCommand&&document.execCommand("copy"); toast("הקישור הועתק"); } };
     } }
 

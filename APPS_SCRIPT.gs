@@ -63,6 +63,10 @@ function doPost(e){
       case 'geocode':        return json_(out, geocode_(req.q, req.city, req.bias));
       case 'walk':           return json_(out, walk_(req.origin, req.dests));
       case 'sendMail':       return json_(out, sendMail_(req.to, req.subject, req.body));
+      case 'sendMailBulk':   return json_(out, sendMailBulk_(req.items, req.opts));
+      case 'mailQuota':      return json_(out, mailQuota_());
+      case 'msgGateway':     return json_(out, msgGateway_(req.channel, req.items));
+      case 'msgGatewayStatus': return json_(out, msgGatewayStatus_());
       case 'regConfigGet':   return json_(out, regConfigGet_());
       case 'regConfigSet':   return json_(out, regConfigSet_(req.config));
       case 'regSubmit':      return json_(out, regSubmit_(req.data, req.files));
@@ -164,7 +168,41 @@ function regSubmit_(data, files){
       MailApp.sendEmail(String(cfg.notifyEmail), 'רישום דיגיטלי חדש · ' + (data.childName||''), body, mailOpts);
     }
   }catch(e){}
+  /* אישור אוטומטי לנרשם (סעיף 7) — נשלח לכתובת שההורה הזין, לפי התבנית
+     שנקבעה בתוכנה (כלים ושירותים → רישום דיגיטלי → מייל אישור לנרשם). */
+  try{
+    var cfg2 = {}; try{ cfg2 = JSON.parse(getTextFile_(f,'reg-config.json')||'{}'); }catch(e){}
+    var am = cfg2.applicantMail || {};
+    if(am.enabled && data.email){
+      var own = cfg2.ownership || {};
+      var vars = {
+        'שם הילדה': data.childName || '',
+        'תז': data.childTz || '',
+        'גן': data.ganName || '',
+        'סמל גן': data.ganSymbol || '',
+        'שם ההורה': data.parentName || '',
+        'כתובת': data.address || '',
+        'שנה': data.year || cfg2.year || '',
+        'שם המוסד': own.institutionName || own.name || '',
+        'תאריך': Utilities.formatDate(new Date(), Session.getScriptTimeZone()||'Asia/Jerusalem', 'dd/MM/yyyy')
+      };
+      var subj = msgMerge_(am.subject || 'אישור קבלת רישום · {{שם הילדה}}', vars);
+      var bodyA = msgMerge_(am.body || 'שלום {{שם ההורה}},\n\nרישומה של {{שם הילדה}} התקבל אצלנו בהצלחה.\n\nבברכה,\n{{שם המוסד}}', vars);
+      var optsA = { name: own.name || 'רישום דיגיטלי' };
+      if(am.replyTo) optsA.replyTo = String(am.replyTo);
+      if(am.attachForm && formPdfBlob) optsA.attachments = [formPdfBlob];
+      MailApp.sendEmail(String(data.email), subj, bodyA, optsA);
+    }
+  }catch(e){}
   return { ok:true };
+}
+/* מיזוג {{שדה}} בתוך תבנית טקסט */
+function msgMerge_(tpl, vars){
+  var t = String(tpl || '');
+  Object.keys(vars || {}).forEach(function(k){
+    t = t.split('{{' + k + '}}').join(String(vars[k] == null ? '' : vars[k]));
+  });
+  return t.replace(/\{\{[^}]*\}\}/g, '');   // שדות שלא הוגדרו — מנוקים
 }
 
 /* שליחת מייל מהשרת (מחשבון הגשר) — לפניות/הצעות שמגיעות מהמערכת */
@@ -172,6 +210,108 @@ function sendMail_(to, subject, body){
   if(!to) return { ok:false, error:'no-recipient' };
   MailApp.sendEmail(String(to), String(subject || '(ללא נושא)'), String(body || ''));
   return { ok:true };
+}
+
+/* מכסת המיילים שנותרה היום בחשבון הגשר (Gmail רגיל ~100 · Workspace ~1500) */
+function mailQuota_(){
+  var left = 0;
+  try{ left = MailApp.getRemainingDailyQuota(); }catch(e){ left = -1; }
+  return { ok:true, remaining:left };
+}
+/* ============================================================
+   שליחת מיילים מרוכזת (סעיפים 8-9) — כל נמען מקבל הודעה ממוזגת משלו.
+   items: [{to, subject, body}] · opts: {fromName, replyTo, html}
+   השליחה נעצרת בעדינות כשנגמרת המכסה היומית, ומדווחת מה נשלח.
+   ============================================================ */
+function sendMailBulk_(items, opts){
+  items = items || []; opts = opts || {};
+  var quota = 0; try{ quota = MailApp.getRemainingDailyQuota(); }catch(e){ quota = items.length; }
+  var sent = 0, failed = 0, errors = [], stopped = false;
+  for(var i = 0; i < items.length; i++){
+    var it = items[i] || {};
+    if(!it.to){ failed++; errors.push({ to:'', error:'no-recipient' }); continue; }
+    if(quota <= 0){ stopped = true; break; }
+    try{
+      var o = { name: opts.fromName || '' };
+      if(!o.name) delete o.name;
+      if(opts.replyTo) o.replyTo = String(opts.replyTo);
+      if(opts.html) o.htmlBody = String(it.body || '');
+      MailApp.sendEmail(String(it.to), String(it.subject || '(ללא נושא)'), String(it.body || ''), o);
+      sent++; quota--;
+    }catch(e){ failed++; errors.push({ to:String(it.to), error:String(e && e.message || e) }); }
+  }
+  return { ok:true, sent:sent, failed:failed, stopped:stopped,
+           remaining:(items.length - sent - failed), errors:errors.slice(0, 25),
+           quotaLeft:quota };
+}
+
+/* ============================================================
+   שער הודעות חיצוני (סעיפים 10-11) — SMS · וואטסאפ · הודעה קולית.
+   שירותים אלה אינם חינמיים ואינם חלק מ-Google, ולכן הם עוברים דרך ספק
+   חיצוני שבוחרים (למשל 019 / InforU / Cellact / Twilio). ההגדרה נעשית
+   פעם אחת ב-Script Properties של הגשר — כדי שהמפתחות לא יישמרו בתוכנה:
+
+     MSG_SMS_URL / MSG_WHATSAPP_URL / MSG_VOICE_URL   — כתובת ה-API של הספק
+     MSG_SMS_BODY / MSG_WHATSAPP_BODY / MSG_VOICE_BODY — תבנית גוף הבקשה (JSON),
+        עם {{to}} למספר, {{text}} לתוכן ו-{{from}} לשם/מספר השולח
+     MSG_SMS_HEADERS / …                              — כותרות (JSON), למשל אימות
+     MSG_SMS_FROM / …                                 — שם או מספר השולח
+     MSG_SMS_METHOD / …                               — ברירת מחדל POST
+
+   אין ספק מוגדר → מוחזר 'no-gateway', והתוכנה נופלת אוטומטית למצב ידני
+   (פתיחת וואטסאפ / SMS / חיוג לכל נמען בלחיצה).
+   ============================================================ */
+function msgChannelKey_(channel){
+  var c = String(channel || '').toLowerCase();
+  if(c === 'sms') return 'SMS';
+  if(c === 'whatsapp' || c === 'wa') return 'WHATSAPP';
+  if(c === 'voice' || c === 'call') return 'VOICE';
+  return '';
+}
+function msgGatewayStatus_(){
+  var props = PropertiesService.getScriptProperties();
+  var out = {};
+  ['SMS','WHATSAPP','VOICE'].forEach(function(k){
+    out[k.toLowerCase()] = !!props.getProperty('MSG_' + k + '_URL');
+  });
+  return { ok:true, channels:out };
+}
+function msgGateway_(channel, items){
+  var key = msgChannelKey_(channel);
+  if(!key) return { ok:false, error:'bad-channel' };
+  var props = PropertiesService.getScriptProperties();
+  var url = props.getProperty('MSG_' + key + '_URL');
+  if(!url) return { ok:false, error:'no-gateway' };
+  var bodyTpl = props.getProperty('MSG_' + key + '_BODY') || '{"to":"{{to}}","text":"{{text}}"}';
+  var method  = (props.getProperty('MSG_' + key + '_METHOD') || 'post').toLowerCase();
+  var from    = props.getProperty('MSG_' + key + '_FROM') || '';
+  var headers = {};
+  try{ headers = JSON.parse(props.getProperty('MSG_' + key + '_HEADERS') || '{}'); }catch(e){ headers = {}; }
+
+  var sent = 0, failed = 0, errors = [];
+  (items || []).forEach(function(it){
+    it = it || {};
+    if(!it.to){ failed++; errors.push({ to:'', error:'no-recipient' }); return; }
+    try{
+      var payload = bodyTpl
+        .split('{{to}}').join(msgJsonEsc_(it.to))
+        .split('{{text}}').join(msgJsonEsc_(it.text || ''))
+        .split('{{from}}').join(msgJsonEsc_(from));
+      var res = UrlFetchApp.fetch(url, {
+        method: method, contentType:'application/json', headers: headers,
+        payload: payload, muteHttpExceptions: true
+      });
+      var code = res.getResponseCode();
+      if(code >= 200 && code < 300) sent++;
+      else { failed++; errors.push({ to:String(it.to), error:'http-' + code + ' ' + String(res.getContentText()||'').slice(0,120) }); }
+    }catch(e){ failed++; errors.push({ to:String(it.to), error:String(e && e.message || e) }); }
+  });
+  return { ok:true, sent:sent, failed:failed, errors:errors.slice(0, 25) };
+}
+/* בריחה בטוחה של ערך לתוך תבנית JSON */
+function msgJsonEsc_(v){
+  var s = JSON.stringify(String(v == null ? '' : v));
+  return s.slice(1, -1);
 }
 
 /* ============================================================
