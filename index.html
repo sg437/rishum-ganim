@@ -5160,6 +5160,9 @@ function mapFocusStudent(s){
 }
 /* סיבה שגן נבחר אינו מוצג — לאבחון (null = מוצג) */
 function mapGanIssue(g){
+  // מיקום ידני הוא מקור אמת: הגן מוצג על המפה (mapGanShown), ולכן אסור לדווח
+  // עליו כ"לא מוצג". גם כתובת חסרה אינה רלוונטית כשהמיקום נקבע ידנית.
+  if(g.geo && g.geo.manual && g.geo.lat!=null) return null;
   const q=ganAddrQuery(g);
   if(!q) return "אין כתובת בכרטיס הגן";
   if(!(g.geo&&g.geo.lat!=null)) return "לא נמצא מיקום (גאוקוד נכשל)";
@@ -5311,9 +5314,23 @@ async function mapEnsureCityCenter(city){
   if(_cityCenter && _cityCenter.city===city && _cityCenter.lat!=null) return _cityCenter;
   let pt=null; try{ pt=await geocodeOnce(normCityName(city)+", ישראל"); }catch(e){ pt=null; }
   if(pt){ _cityCenter={ city, lat:pt.lat, lng:pt.lng }; return _cityCenter; }
-  const med=mapComputeCenter();
+  const med=mapComputeCenter() || mapManualCenter(city);
   _cityCenter = med ? { city, lat:med.lat, lng:med.lng } : { city, lat:null, lng:null };
   return _cityCenter;
+}
+/* גיבוי אחרון למרכז העיר: חציון הגנים שהוצבו *ידנית* בעיר. הצבה ידנית היא מקור
+   אמת (אדם סימן אותה על המפה), ולכן די בשלוש נקודות. בלי זה, כשגאוקוד שם העיר
+   נכשל, ה-bias יוצא null — וההגנה שדוחה כתובת שזוהתה בעיר אחרת מושבתת לגמרי,
+   ואז מוצגים מרחקים אבסורדיים של מאות ק"מ. */
+function mapManualCenter(city){
+  const c=normCityName(city), lats=[], lngs=[];
+  DB.gans.forEach(g=>{
+    if(!(g.geo && g.geo.manual && g.geo.lat!=null)) return;
+    if(c && ganCity(g)!==c) return;
+    lats.push(g.geo.lat); lngs.push(g.geo.lng);
+  });
+  if(lats.length<3) return null;
+  return { lat:_median(lats), lng:_median(lngs) };
 }
 /* האם נקודה נמצאת בתוך רדיוס העיר הנבחרת (או שאין סינון עיר / אין מרכז) */
 function mapInCity(geo){
@@ -5853,9 +5870,25 @@ function proxBind(host, getStudent, idp, onPick){
         });
         html+=`</tbody></table></div>`;
         if(!rows.length) html=`<div class="note">לא התקבל מרחק אמין לאף גן מהגנים שנבחרו.</div>`;
-        if(suspect.length) html+=`<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ מרחק לא סביר (מעל ${MAP_CITY_RADIUS_KM} ק"מ) — כנראה כתובת שזוהתה בעיר אחרת, ולכן לא מוצגת: ${suspect.map(r=>esc(ganName(r.g.id))+" ("+r.km.toFixed(0)+' ק"מ)').join(" · ")}. כדאי לבדוק את הכתובת בכרטיס הגן, או למקם אותו ידנית בלשונית מפת שיבוץ.</div>`;
+        if(suspect.length){
+          // אבחון: אם *כל* הגנים יצאו רחוקים, הגורם המשותף הוא כתובת התלמידה —
+          // ולא הגנים. במיוחד כשהגנים מוקמו ידנית, שהוא מקור אמת.
+          const allFar = !rows.length;
+          const anyManual = suspect.some(r=>r.g.geo&&r.g.geo.manual);
+          html+= allFar
+            ? `<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ <b>כל</b> הגנים יצאו במרחק לא סביר (${suspect.map(r=>r.km.toFixed(0)).join(", ")} ק"מ).
+                 כשכולם רחוקים במידה דומה, הבעיה כמעט תמיד ב<b>כתובת התלמידה</b> ולא בגנים${anyManual?" (חלק מהגנים מוקמו ידנית, ולכן המיקום שלהם אמין)":""}.
+                 כדאי לבדוק את הרחוב/המספר/העיר בתיק, ואז ללחוץ <b>"חישוב מחדש"</b>.</div>
+               <div class="row" style="margin-top:6px"><button class="btn ghost sm" type="button" id="${idp}-refresh">🔄 חישוב מחדש של מיקום התלמידה</button></div>`
+            : `<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ מרחק לא סביר (מעל ${MAP_CITY_RADIUS_KM} ק"מ) — כנראה כתובת שזוהתה בעיר אחרת, ולכן לא מוצגת: ${suspect.map(r=>esc(ganName(r.g.id))+" ("+r.km.toFixed(0)+' ק"מ)').join(" · ")}. כדאי לבדוק את הכתובת בכרטיס הגן, או למקם אותו ידנית בלשונית מפת שיבוץ.</div>`;
+        }
         if(missing.length) html+=`<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ ללא מיקום (כתובת חסרה/לא זוהתה): ${missing.map(g=>esc(ganName(g.id))).join(" · ")} — אפשר למקם ידנית בלשונית מפת שיבוץ.</div>`;
         out.innerHTML=html;
+        { const rb=out.querySelector("#"+idp+"-refresh"); if(rb) rb.onclick=()=>{
+            const rec2=DB.students.find(x=>x.id===st.id); if(rec2) rec2.geo=null;   // ניקוי המטמון של התלמידה בלבד
+            try{ save(); }catch(e){}
+            go.click();
+          }; }
         out.querySelectorAll("."+idp+"-pick").forEach(b=>b.onclick=()=>{
           const g=ganById(b.dataset.gid); if(!g) return;
           if(onPick) onPick(g); else mapAssign(DB.students.find(x=>x.id===st.id)||st, g);

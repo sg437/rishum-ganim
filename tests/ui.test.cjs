@@ -35,9 +35,10 @@ window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicke
 window.__get=k=> k==='active'?active : k==='DB'?DB : undefined;
 Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
 Object.defineProperty(window,'stuFilter',{get:()=>stuFilter,set:v=>{stuFilter=v},configurable:true});
+Object.defineProperty(window,'_cityCenter',{get:()=>_cityCenter,set:v=>{_cityCenter=v},configurable:true});
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, phoneCell });
+  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, save });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -76,7 +77,9 @@ const server=require('http').createServer((req,res)=>{
   const pg=await b.newPage();
   const errors=[];
   pg.on('pageerror',e=>errors.push('pageerror: '+e.message));
-  pg.on('console',m=>{ if(m.type()==='error') errors.push('console: '+m.text()); });
+  // בקשות רשת שנכשלות אינן תקלה: חלק מהבדיקות מריצות בכוונה את מסלול "הגאוקודר לא זמין"
+  const BENIGN=/Failed to load resource|net::ERR_/;
+  pg.on('console',m=>{ if(m.type()==='error' && !BENIGN.test(m.text())) errors.push('console: '+m.text()); });
   await pg.route('**',r=>{ const u=r.request().url();
     if(u.startsWith('http://127.0.0.1:'+PORT+'/')) return r.continue();
     return r.abort(); });
@@ -336,6 +339,81 @@ const server=require('http').createServer((req,res)=>{
     if(JSON.stringify(DB.students)!==stuBefore) return 'תלמידות נגעו';
     if(JSON.stringify(DB.staff)!==staffBefore) return 'צוות נגע';
     return true; }));
+
+  /* ---- מיקום ידני של גן הוא מקור אמת: מוצג על המפה ולא מדווח כ"לא מוצג" ---- */
+  await step('גן שהוצב ידנית לא מדווח כחריג גיאוגרפי', ()=>pg.evaluate(()=>{
+    _mapState.city='מודיעין עילית'; _mapState.edu=null; _mapState.ganIds=null; _mapState.inited=true;
+    window._cityCenter={ city:'מודיעין עילית', lat:31.9320, lng:35.0400 };
+    // הוצב ידנית ובלי כתובת בכרטיס — בדיוק המצב שדווח מהשטח
+    const g={id:'mg0',ganName:'ידני',active:true,education:'רגיל',city:'מודיעין עילית',address:'',building:'',
+      geo:{lat:31.9345,lng:35.0432,manual:true,q:'__manual__',locType:'MANUAL',tried:true}};
+    if(mapGanShown(g)!==true) return 'הגן הידני לא מוצג על המפה';
+    if(mapGanIssue(g)!==null) return 'הגן מוצג על המפה אך מדווח כ"לא מוצג": '+mapGanIssue(g);
+    return true; }));
+
+  await step('מיקום ידני אמין גם מחוץ לרדיוס — ואוטומטי חריג עדיין מדווח', ()=>pg.evaluate(()=>{
+    _mapState.city='מודיעין עילית'; _mapState.inited=true;
+    window._cityCenter={ city:'מודיעין עילית', lat:31.9320, lng:35.0400 };
+    const far={lat:33.0,lng:35.5};
+    const manual={id:'mg1',ganName:'ידני רחוק',active:true,education:'רגיל',city:'מודיעין עילית',
+      address:'רחוב',building:'1',geo:{...far,manual:true,q:'__manual__',locType:'MANUAL',tried:true}};
+    const auto={id:'mg2',ganName:'אוטומטי רחוק',active:true,education:'רגיל',city:'מודיעין עילית',
+      address:'רחוב',building:'2',geo:{...far,q:'רחוב 2, מודיעין עילית, ישראל'}};
+    if(mapGanIssue(manual)!==null) return 'מיקום ידני מחוץ לרדיוס דווח כשגיאה';
+    if(typeof mapGanIssue(auto)!=='string') return 'איבדנו את האבחון של מיקום אוטומטי חריג';
+    return true; }));
+
+  /* ---- מרחקים אבסורדיים (123 ק"מ): מרכז העיר חייב להשתחזר מהגנים הידניים ---- */
+  const proxRun = gans => pg.evaluate(async(gans)=>{
+    window._cityCenter=null;                 // גאוקוד שם העיר נכשל — התרחיש שבו נוצרו המרחקים האבסורדיים
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    const s={id:'px9',year:'תשפ"ז',lastName:'שטרן',firstName:'תמר',city:'מודיעין עילית',
+      street:'חפץ חיים',building:'16', geo:{lat:32.95,lng:35.30,q:'חפץ חיים 16, מודיעין עילית, ישראל'},
+      finished:false,docs:{},docFiles:{},programs:{},programsPaid:{},special:{},support:{},createdAt:''};
+    DB.students=[s]; DB.gans=gans;
+    let host=document.getElementById('pxHost'); if(host) host.remove();
+    host=document.createElement('div'); host.id='pxHost'; document.body.appendChild(host);
+    host.innerHTML=proxPanelHtml(s,'px'); proxBind(host,()=>s,'px',null);
+    host.querySelectorAll('.px-gan').forEach(c=>c.checked=true);
+    host.querySelector('#px-go').click();
+    for(let i=0;i<80;i++){ await new Promise(r=>setTimeout(r,50));
+      const t=document.getElementById('px-out').textContent; if(t && !/מחשב מרחקים/.test(t)) break; }
+    const res={ txt:document.getElementById('px-out').textContent, center:window._cityCenter,
+      hasBtn:!!document.getElementById('px-refresh'), overflow:host.scrollWidth>host.clientWidth+1 };
+    // "חישוב מחדש" חייב לנקות את מטמון התלמידה בלבד, בלי לגעת במיקומי הגנים
+    const btn=document.getElementById('px-refresh');
+    if(btn){
+      const before=JSON.stringify(DB.gans.map(g=>g.geo));
+      // נמדד לפני runPush (דחוי ב-250ms): מול Firestore מדומה הוא מרוקן את DB —
+      // תופעה של סביבת הבדיקה בלבד. כאן נבדק מה שהכפתור עושה למודל שבזיכרון.
+      btn.click(); await new Promise(r=>setTimeout(r,120));
+      const stu=DB.students.find(x=>x.id==='px9');
+      res.refresh = JSON.stringify(DB.gans.map(g=>g.geo))!==before ? 'מיקומי הגנים השתנו'
+        : !stu ? 'התלמידה נעלמה'
+        : (stu.geo && stu.geo.lat!=null) ? 'המטמון של התלמידה לא נוקה' : true;
+    }
+    return res;
+  }, gans);
+  const mkGan=(id,lat,lng,manual)=>({id,ganName:'גן '+id,active:true,education:'רגיל',city:'מודיעין עילית',
+    address:'רחוב',building:id, geo: manual?{lat,lng,manual:true,q:'__manual__'}:{lat,lng,q:'רחוב '+id}});
+
+  await step('מרכז העיר משוחזר מהגנים שהוצבו ידנית — ואין מרחקי מאות ק"מ', async()=>{
+    const r=await proxRun([mkGan('a',31.9345,35.0432,true),mkGan('b',31.9300,35.0380,true),mkGan('c',31.9360,35.0450,true)]);
+    if(!(r.center && r.center.lat!=null)) return 'מרכז העיר לא שוחזר מהגנים הידניים';
+    if(/\b1\d\d\.\d\d ק"מ/.test(r.txt)) return 'עדיין מוצגים מרחקים אבסורדיים: '+r.txt.slice(0,120);
+    if(!/לתקן את הרחוב|מחוץ ל|נדחתה/.test(r.txt)) return 'אין הודעה מעשית על כתובת התלמידה';
+    return true; });
+
+  await step('כשאין מרכז עיר — ההודעה מאשימה את כתובת התלמידה ומציעה חישוב מחדש', async()=>{
+    const r=await proxRun([mkGan('a',31.9345,35.0432,true),mkGan('b',31.9300,35.0380,true)]);
+    if(!(r.center && r.center.lat==null)) return 'התרחיש לא שוחזר (יש מרכז עיר)';
+    if(!/כל.{0,3} הגנים יצאו במרחק לא סביר/.test(r.txt)) return 'אין הודעת "כל הגנים רחוקים"';
+    if(!/כתובת התלמידה/.test(r.txt)) return 'ההודעה לא מפנה לכתובת התלמידה';
+    if(!/מוקמו ידנית/.test(r.txt)) return 'ההודעה לא מציינת שהגנים הידניים אמינים';
+    if(!r.hasBtn) return 'אין כפתור "חישוב מחדש"';
+    if(r.overflow) return 'גלישה אופקית בטלפון';
+    if(r.refresh!==true) return 'חישוב מחדש: '+r.refresh;
+    return true; });
 
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
