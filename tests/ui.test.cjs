@@ -41,7 +41,7 @@ Object.defineProperty(window,'_placeGanId',{get:()=>_placeGanId,set:v=>{_placeGa
 Object.defineProperty(window,'_placeKind',{get:()=>_placeKind,set:v=>{_placeKind=v},configurable:true});
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, mapPlaceSave, save });
+  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapPlaceSave, save });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -379,7 +379,7 @@ const server=require('http').createServer((req,res)=>{
     host.innerHTML=proxPanelHtml(s,'px'); proxBind(host,()=>s,'px',null);
     host.querySelectorAll('.px-gan').forEach(c=>c.checked=true);
     host.querySelector('#px-go').click();
-    for(let i=0;i<80;i++){ await new Promise(r=>setTimeout(r,50));
+    for(let i=0;i<240;i++){ await new Promise(r=>setTimeout(r,50));
       const t=document.getElementById('px-out').textContent; if(t && !/מחשב מרחקים/.test(t)) break; }
     const res={ txt:document.getElementById('px-out').textContent, center:window._cityCenter,
       hasBtn:!!document.getElementById('px-refresh'), overflow:host.scrollWidth>host.clientWidth+1 };
@@ -471,7 +471,7 @@ const server=require('http').createServer((req,res)=>{
     host.innerHTML=proxPanelHtml(s,'dg'); proxBind(host,()=>s,'dg',null);
     host.querySelectorAll('.dg-gan').forEach(c=>c.checked=true);
     host.querySelector('#dg-go').click();
-    for(let i=0;i<80;i++){ await new Promise(r=>setTimeout(r,50));
+    for(let i=0;i<240;i++){ await new Promise(r=>setTimeout(r,50));
       const t=document.getElementById('dg-out').textContent; if(t && !/מחשב מרחקים/.test(t)) break; }
     const out=document.getElementById('dg-out');
     return { hasDetails:!!out.querySelector('details'), hasRefresh:!!out.querySelector('#dg-refresh'), txt:out.textContent };
@@ -633,6 +633,114 @@ const server=require('http').createServer((req,res)=>{
         if(r) return 'התקבל מיקום רחוק במקום להידחות';
         if(!st.geo.outCity) return 'לא סומן outCity';
         if(!/מחוץ לרדיוס/.test(st.geo.why||'')) return 'הסיבה לא מציינת דחייה: '+st.geo.why;
+        return true; });
+    } finally { await pg.unroute(/nominatim/); }
+  });
+
+  /* ---- מפת רחובות מקומית מהגנים שהוצבו ידנית ---- */
+  await step('פיצול כתובת לרחוב ומספר', ()=>pg.evaluate(()=>{
+    const c=[['נתיבות המשפט 75',['נתיבות המשפט',75]],['רח׳ חפץ חיים 16',['חפץ חיים',16]],
+             ['חזון איש 3א',['חזון איש',3]],['אבני נזר',['אבני נזר',null]]];
+    for(const [a,b] of c){ const r=splitStreetNo(a);
+      if(r.street!==b[0]||r.no!==b[1]) return a+' → '+JSON.stringify(r); }
+    return true; }));
+
+  await step('תלמידה ברחוב שיש בו גן מוצב — מקבלת מיקום מקורב', async()=>{
+    await pg.route(/nominatim/, r=>r.fulfill({status:200,contentType:'application/json',body:'[]'}));
+    try{
+      return await pg.evaluate(async()=>{
+        DB.gans=[{id:'sg1',ganName:'א',active:true,education:'רגיל',city:'מודיעין עילית',
+                  address:'חפץ חיים',building:'20',geo:{lat:31.9340,lng:35.0420,manual:true,q:'__manual__'}},
+                 {id:'sg2',ganName:'ב',active:true,education:'רגיל',city:'מודיעין עילית',
+                  address:'חפץ חיים',building:'90',geo:{lat:31.9380,lng:35.0470,manual:true,q:'__manual__'}}];
+        const bias={ city:'מודיעין עילית', lat:31.93102, lng:35.04723, src:'manual' };
+        const st={id:'sp1',geo:null};
+        const r=await ensureGeo(st,'חפץ חיים 16, מודיעין עילית, ישראל',false,'מודיעין עילית',bias);
+        if(!r || r.lat==null) return 'לא התקבל מיקום מהרחוב המוכר';
+        if(r.lat!==31.9340) return 'נבחר הגן הרחוק במספור (16 קרוב ל-20): '+r.lat;
+        if(!st.geo.approx) return 'מיקום לפי רחוב חייב להיות מסומן כמקורב';
+        if(st.geo.byStreet!=='חפץ חיים') return 'לא נרשם הרחוב שממנו נגזר';
+        return true; });
+    } finally { await pg.unroute(/nominatim/); }
+  });
+
+  await step('רחוב שאין בו גן מוצב — לא ממציא מיקום', async()=>{
+    await pg.route(/nominatim/, r=>r.fulfill({status:200,contentType:'application/json',body:'[]'}));
+    try{
+      return await pg.evaluate(async()=>{
+        const bias={ city:'מודיעין עילית', lat:31.93102, lng:35.04723, src:'manual' };
+        const st={id:'sp2',geo:null};
+        const r=await ensureGeo(st,'רחוב שלא קיים 5, מודיעין עילית, ישראל',false,'מודיעין עילית',bias);
+        if(r) return 'הומצא מיקום לרחוב לא מוכר';
+        return true; });
+    } finally { await pg.unroute(/nominatim/); }
+  });
+
+  await step('גן בעיר אחרת לא מזהם את מפת הרחובות', async()=>{
+    await pg.route(/nominatim/, r=>r.fulfill({status:200,contentType:'application/json',body:'[]'}));
+    try{
+      return await pg.evaluate(async()=>{
+        DB.gans=[{id:'sg9',ganName:'רחוק',active:true,education:'רגיל',city:'ביתר עילית',
+                  address:'חפץ חיים',building:'16',geo:{lat:31.6990,lng:35.1200,manual:true,q:'__manual__'}}];
+        const bias={ city:'מודיעין עילית', lat:31.93102, lng:35.04723, src:'manual' };
+        const st={id:'sp3',geo:null};
+        const r=await ensureGeo(st,'חפץ חיים 16, מודיעין עילית, ישראל',false,'מודיעין עילית',bias);
+        if(r) return 'נלקח גן מעיר אחרת: '+r.lat;
+        return true; });
+    } finally { await pg.unroute(/nominatim/); }
+  });
+
+  /* ---- סינון מדינה: מוחק יישובים שהספק אינו משייך ל-IL ---- */
+  await step('שאילתת Nominatim עם תיבת עיר אינה מסננת לפי מדינה', async()=>{
+    let seen=null;
+    await pg.route(/nominatim/, r=>{ seen=decodeURIComponent(r.request().url());
+      return r.fulfill({status:200,contentType:'application/json',body:'[]'}); });
+    try{
+      await pg.evaluate(async()=>{
+        const bias={ city:'מודיעין עילית', lat:31.93102, lng:35.04723, src:'manual' };
+        try{ await geocodeOnce('חפץ חיים 16, מודיעין עילית, ישראל','מודיעין עילית',bias); }catch(e){}
+      });
+      if(!seen) return 'לא נשלחה בקשה';
+      if(/countrycodes/.test(seen)) return 'עדיין מסנן לפי מדינה: '+seen;
+      if(!/bounded=1/.test(seen)) return 'אבד הגבול הגיאוגרפי (viewbox)';
+      return true;
+    } finally { await pg.unroute(/nominatim/); }
+  });
+
+  await step('בלי תיבת עיר — סינון המדינה נשאר כגבול היחיד', async()=>{
+    let seen=null;
+    await pg.route(/nominatim/, r=>{ seen=decodeURIComponent(r.request().url());
+      return r.fulfill({status:200,contentType:'application/json',body:'[]'}); });
+    try{
+      await pg.evaluate(async()=>{ try{ await geocodeOnce('רחוב כלשהו 1','',null); }catch(e){} });
+      if(!/countrycodes=il/.test(seen||'')) return 'אין גבול כלל: '+seen;
+      return true;
+    } finally { await pg.unroute(/nominatim/); }
+  });
+
+  await step('סיומת המדינה מוסרת בניסיון נפרד', ()=>pg.evaluate(()=>{
+    if(geoStripCountry('חפץ חיים 16, מודיעין עילית, ישראל')!=='חפץ חיים 16, מודיעין עילית')
+      return 'לא הוסרה הסיומת';
+    if(geoStripCountry('חפץ חיים 16, מודיעין עילית')!=='') return 'הוסר משהו כשאין סיומת';
+    const qs=geoQueryCandidates('חפץ חיים 16, מודיעין עילית, ישראל','מודיעין עילית').map(x=>x.q);
+    if(!qs.includes('חפץ חיים 16, מודיעין עילית')) return 'אין ניסיון בלי סיומת מדינה: '+qs.join(' | ');
+    return true; }));
+
+  await step('כתובת שנמצאת רק בלי סיומת המדינה — מתקבלת', async()=>{
+    await pg.route(/nominatim/, r=>{
+      const u=decodeURIComponent(r.request().url());
+      const ok=/q=חפץ חיים 16, מודיעין עילית(&|$)/.test(u.replace(/\+/g,' '));
+      return r.fulfill({status:200,contentType:'application/json',
+        body:JSON.stringify(ok?[{lat:'31.9331',lon:'35.0409'}]:[])});
+    });
+    try{
+      return await pg.evaluate(async()=>{
+        DB.gans=[];   // בלי מפת רחובות מקומית — שהתוצאה תגיע מהגאוקודר
+        const bias={ city:'מודיעין עילית', lat:31.93102, lng:35.04723, src:'manual' };
+        const st={id:'nc1',geo:null};
+        const r=await ensureGeo(st,'חפץ חיים 16, מודיעין עילית, ישראל',false,'מודיעין עילית',bias);
+        if(!r || r.lat==null) return 'לא התקבל מיקום גם בלי סיומת המדינה';
+        if(Math.abs(r.lat-31.9331)>0.001) return 'התקבל מיקום שגוי: '+r.lat;
         return true; });
     } finally { await pg.unroute(/nominatim/); }
   });
