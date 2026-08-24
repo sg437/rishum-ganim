@@ -87,7 +87,15 @@ const ok=(c,msg)=>{ if(!c){fail++;console.log('❌ '+msg);} else console.log('�
   r=await ctx.ensureGeo(ent,q,false,'מודיעין עילית',MODIIN);
   ok(r && r.manual===true && called===0, 'מיקום ידני נשמר ולא נדרס');
 
-  /* 7. נרמול שם עיר — הכתיב שבתיק מפיל את נעילת העיר בגאוקודר */
+  /* 7. עיר הגן קודמת לעיר הראשית (ganCity) */
+  ctx.DB={ students:[{city:'מודיעין עלית'},{city:'מודיעין עלית'}] };
+  vm.runInContext([grab('geoDefaultCity'), grab('mainCityName'), grab('ganCity')].join('\n'), ctx);
+  ok(ctx.mainCityName()==='מודיעין עילית', 'העיר הראשית נגזרת מהתלמידות ומנורמלת');
+  ok(ctx.ganCity({city:'בני ברק'})==='בני ברק', 'גן עם עיר משלו — העיר שלו קובעת');
+  ok(ctx.ganCity({city:''})==='מודיעין עילית', 'גן בלי עיר — נופל לעיר הראשית');
+  ok(ctx.ganCity({city:'מודיעין עלית'})==='מודיעין עילית', 'עיר הגן עצמה מנורמלת');
+
+  /* 8. נרמול שם עיר — הכתיב שבתיק מפיל את נעילת העיר בגאוקודר */
   ok(ctx.normCityName('מודיעין עלית')==='מודיעין עילית', 'מודיעין עלית → מודיעין עילית');
   ok(ctx.normCityName('ביתר עלית')==='ביתר עילית', 'ביתר עלית → ביתר עילית');
   ok(ctx.normCityName('קרית ספר')==='מודיעין עילית', 'קרית ספר → מודיעין עילית');
