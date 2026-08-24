@@ -2588,14 +2588,14 @@ function guideContent(){
     { icon:"🗺️", title:"מפת שיבוץ", html:
       `<ul>
         <li>לשונית <b>מפת שיבוץ</b> מציגה מפה חינמית (OpenStreetMap) עם מיקומי הגנים והתלמידות לפי הכתובת — <b>ללא צורך במפתח או חיוב</b>.</li>
-        <li><b>מבנה העמוד (מסודר במקטעים מתקפלים):</b> בראש — כפתורי <b>"הצג על המפה"</b> ו<b>"מסך מלא"</b>. מתחת שני מקטעים: <b>⚙️ "סינון וגנים"</b> (פתוח) לבחירת עיר/חינוך/גנים, ו<b>🔧 "כלים נוספים"</b> (מקופל) לחיפוש תלמידה, מיקום ידני לגן, וטעינה/רענון מיקומים. לחיצה על כותרת מקטע פותחת/סוגרת אותו.</li>
+        <li><b>מבנה העמוד (מסודר במקטעים מתקפלים):</b> בראש — כפתורי <b>"הצג על המפה"</b> ו<b>"מסך מלא"</b>. מתחת שני מקטעים: <b>⚙️ "סינון וגנים"</b> (פתוח) לבחירת עיר/חינוך/גנים, ו<b>🔧 "כלים נוספים"</b> (מקופל) לחיפוש תלמידה, מיקום ידני לגן או לתלמידה, וטעינה/רענון מיקומים. לחיצה על כותרת מקטע פותחת/סוגרת אותו.</li>
         <li><b>סינון (חשוב):</b> בוחרים <b>עיר</b> (ברירת מחדל: העיר הראשית — מונע בלבול מערים אחרות), <b>חינוך</b>, ומסמנים אילו <b>גנים</b> להציג — הרשימה מקובצת <b>לפי קמפוס</b> (סימון קמפוס בוחר את כל הגנים שבו), או "בחר הכל" לכל הגנים. כברירת מחדל מוצגות רק התלמידות <b>הרשומות</b> לגנים שנבחרו (מתאים לתחילת רישום, כשעדיין לא שובצו) — או מסמנים <b>"כל התלמידות"</b>. לוחצים <b>"הצג על המפה"</b>.</li>
         <li><b>ניווט:</b> גרירה להזזה, גלגלת או צביטה בשתי אצבעות לזום, וכפתור <b>"⛶ מסך מלא"</b> שמגדיל את המפה <b>יחד עם רשימת התלמידות בצד</b> ל<b>כל המסך</b> (יציאה ב-Esc או בכפתור החזרה מהמסך המלא).</li>
         <li><b>צבע לפי מרחק:</b> כל תלמידה נצבעת לפי המרחק לגן הנבחר הקרוב — ירוק (קרוב) עד אדום (רחוק). <b>סגול</b> = גן.</li>
         <li><b>אח/ות:</b> תלמידה שיש לה אח/ות רשומ/ה מסומנת בטבעת זהב — <b>גם אם היא רחוקה</b>. בלחיצה עליה מופיע כפתור <b>"שבץ יחד"</b> לגן של האח/ות.</li>
         <li><b>שיבוץ בקליק:</b> לחיצה על תלמידה מציגה את הגנים הנבחרים הקרובים (מאותו חינוך) עם <b>מרחק וזמן הליכה אמיתיים</b> (Google), ממוינים לפי הליכה, עם כפתור <b>"שבץ"</b>. אם אין מפתח Google — מוצג מרחק אווירי.</li>
         <li><b>🔎 חיפוש תלמידה:</b> (במקטע "כלים נוספים") מקלידים שם תלמידה ולוחצים "מיקוד" — המפה מתמקדת עליה ונפתח פירוט המרחקים. שימושי להשוואה: בוחרים שני גנים ובודקים לאיזה היא קרובה יותר.</li>
-        <li><b>📍 מיקום ידני לגן:</b> (במקטע "כלים נוספים") לגן שכתובתו אינה מזוהה נכון — בוחרים אותו ברשימה (⚠ = ללא מיקום תקין · 📍 = כבר מוקם ידנית), מקלידים כתובת ולוחצים <b>"↗️ קפוץ לכתובת"</b>, או גוררים/לוחצים על 📍 במפה לכיוונון מדויק, ואז <b>"💾 שמור מיקום"</b>. המיקום נשמר לגן <b>לתמיד</b> ולא נדרס עוד בזיהוי אוטומטי. <b>"בטל ידני"</b> מחזיר לזיהוי אוטומטי. אפשר גם ללחוץ <b>"📍 מקם ידנית"</b> ליד כל גן ברשימת הצד של הגנים שאינם מוצגים.</li>
+        <li><b>📍 מיקום ידני (גן או תלמידה):</b> (במקטע "כלים נוספים") כשכתובת אינה מזוהה נכון — בוחרים תחילה <b>גן</b> או <b>תלמידה</b> בבורר, ואז בוחרים ברשימה (⚠ = ללא מיקום תקין · 📍 = כבר מוקם ידנית), מקלידים כתובת ולוחצים <b>"↗️ קפוץ לכתובת"</b>, או גוררים/לוחצים על 📍 במפה לכיוונון מדויק, ואז <b>"💾 שמור מיקום"</b>. המיקום נשמר לגן <b>לתמיד</b> ולא נדרס עוד בזיהוי אוטומטי. <b>"בטל ידני"</b> מחזיר לזיהוי אוטומטי. אפשר גם ללחוץ <b>"📍 מקם ידנית"</b> ליד כל גן ברשימת הצד של הגנים שאינם מוצגים.<br>זהו הפתרון כשכתובת פשוט אינה קיימת אצל ספקי המפות — ואז <b>בדיקת הקרבה תעבוד רגיל</b>, כי מיקום ידני גובר תמיד על זיהוי אוטומטי.</li>
         <li><b>סימוני הגנים:</b> כל גן מוצג כ<b>דגל עם לוגו הרשת</b> בצבע ייחודי, ו<b>שם הגן תמיד גלוי</b>.</li>
         <li><b>צביעה לפי גן:</b> בבורר "צבע התלמידות → לפי גן", כל תלמידה נצבעת בצבע הגן שאליו היא רשומה — כך רואים במבט מי רשומה לאן. אפשר לעבור ל"לפי מרחק".</li>
         <li><b>רשימת צד:</b> לאחר "הצג על המפה", בצד מופיעה רשימת <b>כל התלמידות הרשומות</b> לגנים שנבחרו, מקובצת לפי גן (בצבע הגן) — <b>מיד, גם לפני טעינת מיקומי התלמידות</b>. תלמידה שטרם מוקמה על המפה מסומנת ב-<b>○</b> ובעמעום, וכותרת הגן מציגה כמה כבר מוקמו מתוך הסך. <b>לחיצה על שם ממקדת את המפה על התלמידה</b> ופותחת את פירוט המרחקים.</li>
@@ -5029,22 +5029,28 @@ function studentAddrQuery(s){
    ל-OSM בלבד — כיבוד מדיניות (≤1 בקשה/שנייה). */
 let _geoChain=Promise.resolve();
 let _geoGoogle=null;   // null=לא ידוע · true=מפתח Google פעיל · false=אין מפתח → OSM
+let _geoWhy="", _geoBridgeErr="";   // סיבת הכישלון האחרונה — מוצגת ב"פרטים טכניים"
 async function geocodeGoogleBridge(q, city, bias){
-  if(_geoGoogle===false) return null;
-  if(!DRIVE_READY){ _geoGoogle=false; return null; }
+  // הסיבה נשמרת מילה במילה. "לא מצא" סתמי לא מבחין בין "אין מפתח", "הגשר לא
+  // מחובר", "Google החזיר ZERO_RESULTS" ו"נפילת רשת" — ארבעה מצבים שכל אחד
+  // מהם דורש טיפול אחר לגמרי.
+  _geoBridgeErr="";
+  if(_geoGoogle===false){ _geoBridgeErr="כבוי (אין מפתח או שהגשר לא תומך)"; return null; }
+  if(!DRIVE_READY){ _geoGoogle=false; _geoBridgeErr="הגשר לא מחובר"; return null; }
   try{
     const res=await driveCall("geocode",{ q, city:city||"", bias:(bias&&bias.lat!=null)?{lat:bias.lat,lng:bias.lng}:null });
     if(res && res.lat!=null && res.lng!=null){ _geoGoogle=true; return { lat:res.lat, lng:res.lng, partial:!!res.partial, locType:res.locType||"" }; }
+    _geoBridgeErr="הגשר החזיר תשובה ריקה";
     return null;
   }catch(e){
     const m=String((e&&e.message)||e||"");
+    _geoBridgeErr=m||"שגיאה לא ידועה";
     if(m.indexOf("no-geo-key")>=0){ _geoGoogle=false; return null; }        // אין מפתח → OSM
     if(m.indexOf("unknown-action")>=0){ _geoGoogle=false; return null; }    // גשר עדיין לא עודכן → OSM
     if(m.indexOf("geo-not-found")>=0){ _geoGoogle=true; return null; }      // Google פעיל אך ללא תוצאה
     return null;                                                             // רשת/אחר → נפילה ל-OSM
   }
 }
-let _geoWhy="";   // סיבת הכישלון האחרונה של הגאוקודר — מוצגת ב"פרטים טכניים"
 /* הורדת מספר הבית מהשאילתה: "חפץ חיים 16, מודיעין עילית, ישראל" → "חפץ חיים, …".
    מרכז הרחוב מספיק בהחלט לבדיקת קרבה בתוך עיר, ועדיף בהרבה על "לא נמצא מיקום"
    שמשאיר את התיק בלי שום מרחק בגלל מספר בית שהגאוקודר לא מכיר. */
@@ -5061,7 +5067,7 @@ function geocodeOnce(q, city, bias){
     // bounds של Google היא העדפה רכה ולא הגבלה — תוצאה שנפלה בעיר אחרת נזנחת,
     // וממשיכים ל-OSM שמוגבל בפועל לתיבת העיר (bounded=1).
     if(g && geoNearCity(g, bias)) return { lat:g.lat, lng:g.lng, source:"google", partial:g.partial, locType:g.locType };
-    const gWhy = _geoGoogle===false ? "Google לא זמין" : (g ? "Google החזיר מיקום מחוץ לעיר" : "Google לא מצא");
+    const gWhy = g ? "Google החזיר מיקום מחוץ לעיר" : ("Google — "+(_geoBridgeErr||"לא מצא"));
     await new Promise(r=>setTimeout(r,1100));   // כיבוד מדיניות Nominatim (≤1/שנייה)
     let url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=il&accept-language=he&q="+encodeURIComponent(q);
     // הגבלה לתיבת העיר הנבחרת — מונע התאמה לרחוב באותו שם בעיר רחוקה
@@ -5227,6 +5233,9 @@ function mapRenderSide(){
   box.querySelectorAll(".map-side-kid").forEach(el=>{ el.onclick=()=>{ const s=DB.students.find(x=>x.id===el.dataset.sid); if(s) mapFocusStudent(s); }; });
   // כפתור "מקם ידנית" לכל גן שאינו מוצג — בחירתו בכלי המיקום הידני והצבת סמן
   box.querySelectorAll("[data-place]").forEach(b=>{ b.onclick=()=>{ const id=b.dataset.place;
+    _placeKind="gan";                                  // הכפתור הזה תמיד מציב גן
+    const kSel=$("#place-kind"); if(kSel) kSel.value="gan";
+    mapPlaceOptions();
     const sel=$("#place-gan"); if(sel) sel.value=id; mapPlaceSelect(id);
     const wrap=$("#place-gan"); if(wrap) wrap.scrollIntoView({behavior:"smooth",block:"center"}); }; });
 }
@@ -5235,7 +5244,15 @@ function mapRenderSide(){
    כשגן אינו מתגאוקד נכון (כתובת חלקית / הגיע למרכז העיר), מציבים לו סמן ידני:
    בוחרים גן → קופצים לכתובת או גוררים/לוחצים על המפה → "שמור מיקום".
    המיקום נשמר בכרטיס הגן (geo.manual=true) ואינו נדרס עוד ע"י גאוקוד אוטומטי. */
-let _placeMarker=null, _placeGanId=null;
+let _placeMarker=null, _placeGanId=null, _placeKind="gan";
+/* הרשומה שמוקמת — גן או תלמידה. כתובת שאינה מתגאוקדת השאירה עד עכשיו תלמידה
+   בלי שום מיקום ובלי מוצא, בעוד לגנים כבר הייתה דרך ידנית. */
+function placeRec(id){
+  return _placeKind==="stu" ? (DB.students.find(x=>x.id===id)||null) : (DB.gans.find(x=>x.id===id)||null);
+}
+function placeRecName(r){
+  return _placeKind==="stu" ? ([r.lastName,r.firstName].filter(Boolean).join(" ")||"תלמידה") : ganName(r.id);
+}
 function mapPlaceIcon(L){
   const html=`<div style="font-size:34px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));cursor:grab">📍</div>`;
   return L.divIcon({ className:"map-place-divicon", html, iconSize:[34,34], iconAnchor:[17,32] });
@@ -5244,11 +5261,20 @@ function mapPlaceHint(t){ const el=$("#place-hint"); if(el) el.textContent=t; }
 /* אכלוס הרשימה הנפתחת: ⚠ = גן ללא מיקום תקין · 📍 = בעל מיקום ידני */
 function mapPlaceOptions(){
   const sel=$("#place-gan"); if(!sel) return; const cur=sel.value;
-  const gans=mapGansForEdu().slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
-  sel.innerHTML=`<option value="">— בחר/י גן —</option>`+gans.map(g=>{
-    const mark=(g.geo&&g.geo.manual)?"📍 ":(mapGanShown(g)?"":"⚠ ");
-    return `<option value="${esc(g.id)}">${mark}${esc(ganName(g.id))}</option>`;
-  }).join("");
+  if(_placeKind==="stu"){
+    const list=studentsOfYear().filter(s=>!s.finished)
+      .sort((a,b)=>placeRecName(a).localeCompare(placeRecName(b),"he"));
+    sel.innerHTML=`<option value="">— בחר/י תלמידה —</option>`+list.map(s=>{
+      const mark=(s.geo&&s.geo.manual)?"📍 ":((s.geo&&s.geo.lat!=null)?"":"⚠ ");
+      return `<option value="${esc(s.id)}">${mark}${esc(placeRecName(s))}</option>`;
+    }).join("");
+  } else {
+    const gans=mapGansForEdu().slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+    sel.innerHTML=`<option value="">— בחר/י גן —</option>`+gans.map(g=>{
+      const mark=(g.geo&&g.geo.manual)?"📍 ":(mapGanShown(g)?"":"⚠ ");
+      return `<option value="${esc(g.id)}">${mark}${esc(ganName(g.id))}</option>`;
+    }).join("");
+  }
   if(cur) sel.value=cur;
 }
 function mapPlaceRemoveMarker(){
@@ -5262,8 +5288,8 @@ function mapPlaceMapClick(e){
 }
 function mapPlaceSelect(ganId){
   mapPlaceRemoveMarker(); _placeGanId=ganId||null;
-  if(!ganId){ mapPlaceHint('בוחרים גן → כתובת ו"קפוץ" (או גרירה/לחיצה על המפה) → "שמור מיקום". המיקום נשמר לגן לתמיד.'); return; }
-  const g=DB.gans.find(x=>x.id===ganId); if(!g||!_map) return;
+  if(!ganId){ mapPlaceHint('בוחרים גן או תלמידה → כתובת ו"קפוץ" (או גרירה/לחיצה על המפה) → "שמור מיקום".'); return; }
+  const g=placeRec(ganId); if(!g||!_map) return;
   let lat, lng;
   if(g.geo&&g.geo.lat!=null){ lat=g.geo.lat; lng=g.geo.lng; }
   else if(_cityCenter&&_cityCenter.lat!=null){ lat=_cityCenter.lat; lng=_cityCenter.lng; }
@@ -5273,8 +5299,10 @@ function mapPlaceSelect(ganId){
     mapPlaceHint("מיקום נבחר: "+p.lat.toFixed(5)+", "+p.lng.toFixed(5)+' — לחצ/י "שמור מיקום".'); });
   _map.on("click", mapPlaceMapClick);
   try{ _map.setView([lat,lng], Math.max(_map.getZoom(),15)); }catch(e){}
-  const inp=$("#place-addr"); if(inp&&!inp.value.trim()){ const q=ganAddrQuery(g); if(q) inp.value=q.replace(/, ?ישראל\s*$/,""); }
-  mapPlaceHint('גוררים את 📍 למקום הגן, או מקלידים כתובת ולוחצים "קפוץ". לסיום — "שמור מיקום".');
+  const inp=$("#place-addr"); if(inp&&!inp.value.trim()){
+    const q=(_placeKind==="stu")?studentAddrQuery(g):ganAddrQuery(g);
+    if(q) inp.value=q.replace(/, ?ישראל\s*$/,""); }
+  mapPlaceHint('גוררים את 📍 למקום המדויק, או מקלידים כתובת ולוחצים "קפוץ". לסיום — "שמור מיקום".');
 }
 async function mapPlaceJump(){
   if(!_placeMarker){ toast("בחר/י גן קודם"); return; }
@@ -5291,30 +5319,30 @@ async function mapPlaceJump(){
   mapPlaceHint("נמצא: "+pt.lat.toFixed(5)+", "+pt.lng.toFixed(5)+'. אפשר לתקן בגרירה ואז "שמור מיקום".');
 }
 function mapPlaceSave(){
-  if(!_placeMarker||!_placeGanId){ toast("בחר/י גן והצב/י מיקום"); return; }
-  const g=DB.gans.find(x=>x.id===_placeGanId); if(!g){ toast("הגן לא נמצא"); return; }
+  if(!_placeMarker||!_placeGanId){ toast("בחר/י רשומה והצב/י מיקום"); return; }
+  const g=placeRec(_placeGanId); if(!g){ toast("הרשומה לא נמצאה"); return; }
   const p=_placeMarker.getLatLng();
   g.geo={ lat:p.lat, lng:p.lng, manual:true, q:"__manual__", locType:"MANUAL", tried:true };
   try{ save(); }catch(e){}
-  const nm=ganName(g.id);
+  const nm=placeRecName(g);
   mapPlaceRemoveMarker();
   const selE=$("#place-gan"); if(selE) selE.value=""; _placeGanId=null;
   mapBuildGanColors(); mapPlotGans(); mapPlotStudents(); mapFit(); mapRenderSide(); mapPlaceOptions();
   mapStatus(mapStatusReport());
-  mapPlaceHint("✔ המיקום נשמר לגן "+nm+".");
-  toast("מיקום הגן נשמר");
+  mapPlaceHint("✔ המיקום נשמר: "+nm+".");
+  toast("המיקום נשמר");
 }
 function mapPlaceClear(){
   const id=_placeGanId||($("#place-gan")?$("#place-gan").value:"");
-  if(!id){ toast("בחר/י גן"); return; }
-  const g=DB.gans.find(x=>x.id===id); if(!g) return;
-  if(!(g.geo&&g.geo.manual)){ toast("לגן זה אין מיקום ידני"); return; }
+  if(!id){ toast("בחר/י רשומה"); return; }
+  const g=placeRec(id); if(!g) return;
+  if(!(g.geo&&g.geo.manual)){ toast("אין לרשומה הזו מיקום ידני"); return; }
   delete g.geo; try{ save(); }catch(e){}
   mapPlaceRemoveMarker();
   const selE=$("#place-gan"); if(selE) selE.value=""; _placeGanId=null;
   mapPlaceOptions();
   mapApply();
-  mapPlaceHint("המיקום הידני בוטל — הגן יאותר שוב אוטומטית בגאוקוד.");
+  mapPlaceHint("המיקום הידני בוטל — הרשומה תאותר שוב אוטומטית בגאוקוד.");
   toast("בוטל מיקום ידני");
 }
 /* מרכז העיר הנבחרת — לסינון נקודות שהתגאוקדו לעיר אחרת בטעות.
@@ -5406,7 +5434,7 @@ function viewMap(root){
     </details>
 
     <details class="map-fold">
-      <summary>🔧 כלים נוספים — חיפוש תלמידה · מיקום ידני לגן · טעינה ורענון</summary>
+      <summary>🔧 כלים נוספים — חיפוש תלמידה · מיקום ידני (גן/תלמידה) · טעינה ורענון</summary>
       <div class="map-fold-body">
         <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
           <b>🔎 חיפוש תלמידה</b>
@@ -5415,13 +5443,14 @@ function viewMap(root){
           <button class="btn sm" id="map-child-go" type="button">מיקוד</button>
         </div>
         <div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:8px">
-          <b>📍 מיקום ידני לגן</b>
+          <b>📍 מיקום ידני</b>
+          <select id="place-kind" style="width:auto"><option value="gan">גן</option><option value="stu">תלמידה</option></select>
           <select id="place-gan" style="width:auto"><option value="">— בחר/י גן —</option></select>
           <input id="place-addr" placeholder="כתובת לקפיצה (רחוב + מספר)" style="flex:1;min-width:160px">
           <button class="btn ghost sm" id="place-jump" type="button">↗️ קפוץ לכתובת</button>
           <button class="btn sm" id="place-save" type="button">💾 שמור מיקום</button>
           <button class="btn ghost sm" id="place-clear" type="button">בטל ידני</button>
-          <div class="hint" id="place-hint" style="flex-basis:100%;margin:0">בוחרים גן → מקלידים כתובת ו"קפוץ" (או גוררים/לוחצים על המפה) → "שמור מיקום". המיקום נשמר לגן לתמיד.</div>
+          <div class="hint" id="place-hint" style="flex-basis:100%;margin:0">בוחרים גן או תלמידה → מקלידים כתובת ו"קפוץ" (או גוררים/לוחצים על המפה) → "שמור מיקום". המיקום נשמר לתמיד ואינו נדרס ע"י גאוקוד.</div>
         </div>
         <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
           <button class="btn ghost sm" id="map-load-students" type="button">📍 טעינת מיקומי תלמידות</button>
@@ -5461,6 +5490,11 @@ function viewMap(root){
   const colSel=$("#map-color"); if(colSel) colSel.onchange=e=>{ _mapState.colorMode=e.target.value; mapPlotStudents(); mapUpdateLegend(); };
   // מיקום ידני לגן
   mapPlaceOptions();
+  const pKind=$("#place-kind"); if(pKind) pKind.onchange=e=>{
+    _placeKind=e.target.value; _placeGanId=null; mapPlaceRemoveMarker();
+    const a=$("#place-addr"); if(a) a.value="";
+    mapPlaceOptions(); mapPlaceSelect("");
+  };
   const pSel=$("#place-gan"); if(pSel) pSel.onchange=e=>mapPlaceSelect(e.target.value);
   const pJump=$("#place-jump"); if(pJump) pJump.onclick=mapPlaceJump;
   const pSave=$("#place-save"); if(pSave) pSave.onclick=mapPlaceSave;
