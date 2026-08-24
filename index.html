@@ -442,8 +442,11 @@ tbody td{padding-block:8px}
 .stu-quick .btn.full{width:100%;justify-content:center;display:flex}
 
 @media(max-width:1100px){
-  .stu-stage{flex-direction:column}
-  .stu-quick{position:static;flex:1 1 auto;width:100%;max-height:none;order:-1}
+  /* בפריסת עמודה הציר הראשי אנכי — לכן flex/min-width כבר לא מגבילים את הרוחב.
+     בלי stretch הטבלה מתנפחת לרוחב התוכן שלה וגולשת מהמסך (בולט בטלפון). */
+  .stu-stage{flex-direction:column;align-items:stretch}
+  .stu-stage>#stuTable{width:100%;min-width:0;max-width:100%}
+  .stu-quick{position:static;flex:1 1 auto;width:100%;max-width:100%;min-width:0;max-height:none;order:-1}
 }
 
 /* ---- עוזר חכם — פאנל צד נעוץ (סעיף 4) ---- */
@@ -3806,7 +3809,14 @@ function qField(k,v,extra){
     +`<div class="v${val?"":" dim"}">${val?esc(val):"—"}${(val&&extra)?(" "+extra):""}</div></div>`;
 }
 function closeStuQuick(){ stuQuickId=null; renderStuQuick(); paintQuickSelection(); }
-function openStuQuick(id){ stuQuickId=id; renderStuQuick(); paintQuickSelection(); }
+function openStuQuick(id){
+  stuQuickId=id; renderStuQuick(); paintQuickSelection();
+  /* במסך צר התיק נפתח מעל הרשימה — גוללים אליו כדי שלא ייפתח מחוץ לשדה הראייה */
+  if(window.matchMedia && window.matchMedia("(max-width:1100px)").matches){
+    const box=$("#stuQuick");
+    if(box) try{ box.scrollIntoView({ behavior:"smooth", block:"start" }); }catch(e){ box.scrollIntoView(); }
+  }
+}
 /* סימון השורה הנבחרת בטבלה בלי לבנות אותה מחדש */
 function paintQuickSelection(){
   const host=$("#stuTable"); if(!host) return;

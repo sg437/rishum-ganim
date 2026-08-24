@@ -225,6 +225,49 @@ const server=require('http').createServer((req,res)=>{
     const t=document.body.innerText;
     return t.includes('מרכז ההודעות') && t.includes('עוזר חכם — פאנל צד שגם מבצע'); }));
 
+  /* ---- רגרסיה: אין גלישה אופקית ברוחב טלפון ----
+     באג שהיה: .stu-stage עבר ל-flex-direction:column בלי align-items:stretch,
+     ואז הטבלה התנפחה לרוחב התוכן (≈1000px) וגלשה מהמסך בטלפון. */
+  {
+    const mob=await b.newPage({viewport:{width:412,height:915},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+    await mob.route('**',r=>{ const u=r.request().url();
+      if(u.startsWith('http://127.0.0.1:'+PORT+'/')) return r.continue(); return r.abort(); });
+    await mob.goto('http://127.0.0.1:'+PORT+'/app.html'); await mob.waitForTimeout(800);
+    await mob.evaluate(()=>{
+      DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+      DB.gans=[0,1,2].map(i=>({id:'g'+i,ganName:'גן '+i,teacherName:'גננת '+i,age:String(3+i),active:true,
+        education:'רגיל',capacity:'30',ganSymbol:String(560120+i),address:'הרב שך',building:String(i+1),phoneGan:'08-976123'+i}));
+      DB.students=Array.from({length:12},(_,i)=>({id:'m'+i,year:'תשפ"ז',lastName:'משפחה'+i,firstName:'ילדה'+i,
+        tz:String(325417800+i*137),age:String([3,4,5][i%3]),education:'רגיל',ganId:'g'+(i%3),placed:true,finished:false,
+        period:'א',motherName:'רחל',street:'נתיבות המשפט',building:String(11+i),city:'מודיעין עילית',
+        momMobile:'055-677508'+i,phone:'08-97613'+i,mobile:'055-677508'+i,email:'p'+i+'@x.com',
+        absorbedMunicipality:true,docs:{},docFiles:{},programs:{},programsPaid:{},special:{},support:{},notes:'',
+        createdAt:new Date().toISOString()}));
+      DB.staff=[]; DB.management=[];
+      __set('eduPicked',true); __set('activeEdu',null); document.body.classList.remove('locked');
+      __set('active','home'); route();
+    });
+    await mob.waitForTimeout(300);
+    const tabs=await mob.evaluate(()=>[...document.querySelectorAll('#tabs button')].map(x=>x.dataset.tab));
+    const overflow=async()=>mob.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+    if(!tabs.length){ fail++; console.log('❌ בדיקת הטלפון לא תקפה — לא נמצאו לשוניות'); }
+    else {
+      const bad=[];
+      for(const t of tabs){
+        await mob.evaluate(t=>{__set('active',t); route();},t); await mob.waitForTimeout(200);
+        const o=await overflow(); if(o>1) bad.push(t+' ('+o+'px)');
+      }
+      await mob.evaluate(()=>{__set('active','students'); route(); openStuQuick('m1');}); await mob.waitForTimeout(260);
+      const oq=await overflow(); if(oq>1) bad.push('תיק מקוצר ('+oq+'px)');
+      const tw=await mob.evaluate(()=>{const e=document.getElementById('stuTable');
+        return e?Math.round(e.getBoundingClientRect().width):-1;});
+      if(tw>412){ bad.push('#stuTable רחב מהמסך ('+tw+'px)'); }
+      if(bad.length){ fail++; console.log('❌ גלישה אופקית בטלפון: '+bad.join(' · ')); }
+      else console.log('✅ אין גלישה אופקית בטלפון (כל '+tabs.length+' הלשוניות + התיק המקוצר)');
+    }
+    await mob.close();
+  }
+
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
   await b.close(); server.close();
