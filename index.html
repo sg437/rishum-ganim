@@ -5308,20 +5308,24 @@ function mapComputeCenter(){
   if(lats.length<5) return null;   // רק עם מספיק נקודות (חציון אמין)
   return { lat:_median(lats), lng:_median(lngs) };
 }
-/* מרכז העיר — גאוקוד שם העיר (מרכז אמיתי, אמין) הוא המקור העיקרי;
-   חציון הנקודות רק כגיבוי. מונע קיבוע מרכז שגוי כשמעט גנים והם התגאוקדו לא נכון. */
+/* מרכז העיר — נקודת העוגן שכל בדיקת "האם זה בעיר" נשענת עליה. סדר העדיפויות
+   קובע הכל: גנים שהוצבו ידנית הם ידיעה אנושית ודאית ולכן קודמים לגאוקוד של שם
+   העיר. גאוקוד של שם עיר יכול ליפול על עיר אחרת בעלת שם דומה, ואז נקבע מרכז
+   שגוי — וכל הכתובות שנופלות *לידו* עוברות את ההגנה, בעוד הגנים האמיתיים
+   נמדדים כרחוקים ממנה מאות ק"מ. */
 async function mapEnsureCityCenter(city){
   if(_cityCenter && _cityCenter.city===city && _cityCenter.lat!=null) return _cityCenter;
+  const man=mapManualCenter(city);
+  if(man){ _cityCenter={ city, lat:man.lat, lng:man.lng, src:"manual" }; return _cityCenter; }
   let pt=null; try{ pt=await geocodeOnce(normCityName(city)+", ישראל"); }catch(e){ pt=null; }
-  if(pt){ _cityCenter={ city, lat:pt.lat, lng:pt.lng }; return _cityCenter; }
-  const med=mapComputeCenter() || mapManualCenter(city);
-  _cityCenter = med ? { city, lat:med.lat, lng:med.lng } : { city, lat:null, lng:null };
+  if(pt){ _cityCenter={ city, lat:pt.lat, lng:pt.lng, src:"geocode" }; return _cityCenter; }
+  const med=mapComputeCenter();
+  _cityCenter = med ? { city, lat:med.lat, lng:med.lng, src:"median" } : { city, lat:null, lng:null };
   return _cityCenter;
 }
-/* גיבוי אחרון למרכז העיר: חציון הגנים שהוצבו *ידנית* בעיר. הצבה ידנית היא מקור
-   אמת (אדם סימן אותה על המפה), ולכן די בשלוש נקודות. בלי זה, כשגאוקוד שם העיר
-   נכשל, ה-bias יוצא null — וההגנה שדוחה כתובת שזוהתה בעיר אחרת מושבתת לגמרי,
-   ואז מוצגים מרחקים אבסורדיים של מאות ק"מ. */
+/* המקור המועדף למרכז העיר: חציון הגנים שהוצבו *ידנית* בעיר. הצבה ידנית היא
+   ידיעה אנושית ודאית (אדם סימן אותה על המפה), ולכן די בשלוש נקודות והיא גוברת
+   על גאוקוד. */
 function mapManualCenter(city){
   const c=normCityName(city), lats=[], lngs=[];
   DB.gans.forEach(g=>{
@@ -5800,6 +5804,23 @@ function proxPanelHtml(st, idp){
 }
 /* הפעלת הפאנל. getStudent() מחזיר תמונת מצב עדכנית של התלמידה (כולל עריכות שטרם נשמרו).
    onPick(gan) — מה לעשות בלחיצה על "שבץ"; ברירת מחדל: שיבוץ ישיר ב-DB. */
+/* פירוט טכני לאבחון מרחקים חריגים. בלי המספרים עצמם אי אפשר לדעת אם השתבשה
+   כתובת התלמידה, מיקום הגן, או נקודת העוגן של העיר — וכל אבחון הוא ניחוש. */
+function proxDiagHtml(st, sgeo, bias, suspect){
+  const co=p=>(p&&p.lat!=null)?(p.lat.toFixed(5)+", "+p.lng.toFixed(5)):"—";
+  const srcName={manual:"הגנים שהוצבו ידנית",geocode:"גאוקוד שם העיר",median:"חציון הנקודות"};
+  const anchor = bias ? `${co(bias)} · לפי ${esc(srcName[bias.src]||"לא ידוע")}` : "לא נקבע";
+  const rows = suspect.map(r=>`<tr><td class="wrap">${esc(ganName(r.g.id))}</td><td>${co(r.g.geo)}</td>
+      <td>${r.g.geo&&r.g.geo.manual?"ידני":esc((r.g.geo&&r.g.geo.source)||"אוטומטי")}</td>
+      <td>${r.km.toFixed(1)}</td></tr>`).join("");
+  return `<details style="margin-top:6px"><summary class="hint" style="cursor:pointer">🔬 פרטים טכניים (לשליחה לתמיכה)</summary>
+    <div class="hint" style="margin-top:4px">
+      מיקום התלמידה: <b>${co(sgeo)}</b> · מקור: ${esc((sgeo&&(sgeo.manual?"ידני":sgeo.source))||"—")}<br>
+      עוגן העיר: <b>${anchor}</b>
+    </div>
+    <div class="table-wrap"><table class="tbl-fit"><thead><tr><th>גן</th><th>מיקום</th><th>מקור</th><th>ק"מ</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></details>`;
+}
 function proxBind(host, getStudent, idp, onPick){
   const boxes=()=>[...host.querySelectorAll("."+idp+"-gan")];
   const readSel=()=>new Set(boxes().filter(b=>b.checked).map(b=>b.value));
@@ -5879,7 +5900,8 @@ function proxBind(host, getStudent, idp, onPick){
             ? `<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ <b>כל</b> הגנים יצאו במרחק לא סביר (${suspect.map(r=>r.km.toFixed(0)).join(", ")} ק"מ).
                  כשכולם רחוקים במידה דומה, הבעיה כמעט תמיד ב<b>כתובת התלמידה</b> ולא בגנים${anyManual?" (חלק מהגנים מוקמו ידנית, ולכן המיקום שלהם אמין)":""}.
                  כדאי לבדוק את הרחוב/המספר/העיר בתיק, ואז ללחוץ <b>"חישוב מחדש"</b>.</div>
-               <div class="row" style="margin-top:6px"><button class="btn ghost sm" type="button" id="${idp}-refresh">🔄 חישוב מחדש של מיקום התלמידה</button></div>`
+               <div class="row" style="margin-top:6px"><button class="btn ghost sm" type="button" id="${idp}-refresh">🔄 חישוב מחדש של מיקום התלמידה</button></div>
+               ${proxDiagHtml(st, sgeo, bias, suspect)}`
             : `<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ מרחק לא סביר (מעל ${MAP_CITY_RADIUS_KM} ק"מ) — כנראה כתובת שזוהתה בעיר אחרת, ולכן לא מוצגת: ${suspect.map(r=>esc(ganName(r.g.id))+" ("+r.km.toFixed(0)+' ק"מ)').join(" · ")}. כדאי לבדוק את הכתובת בכרטיס הגן, או למקם אותו ידנית בלשונית מפת שיבוץ.</div>`;
         }
         if(missing.length) html+=`<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ ללא מיקום (כתובת חסרה/לא זוהתה): ${missing.map(g=>esc(ganName(g.id))).join(" · ")} — אפשר למקם ידנית בלשונית מפת שיבוץ.</div>`;
