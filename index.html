@@ -1555,6 +1555,76 @@ function ganOverflowMap(){
   });
   return map;
 }
+
+/* ============================================================
+   רף שיבוץ (סעיף 2) — מגבלה קשיחה על מספר המשובצות בגן.
+   שונה מ"קיבולת": הקיבולת היא חיווי צבע על *הרישום* (מותר לחרוג),
+   ואילו רף השיבוץ חוסם בפועל שיבוץ סופי מעבר למספר שהוגדר.
+   סדר העדיפויות לרף של גן: assignCap של הגן → ברירת מחדל לפי חינוך
+   (הגדרות → רף שיבוץ) → הקיבולת של הגן. 0 / ריק = ללא הגבלה.
+   ============================================================ */
+function assignCapDefaults(){
+  const d=(DB.settings&&DB.settings.assignCaps)||{};
+  return { 'רגיל': d['רגיל']==null?"":d['רגיל'], 'ח"מ': d['ח"מ']==null?"":d['ח"מ'],
+           useCapacity: d.useCapacity!==false };   // ברירת מחדל: הקיבולת משמשת כרף כשאין ערך אחר
+}
+/* הרף האפקטיבי של גן (0 = ללא הגבלה) */
+function ganAssignCap(g){
+  if(!g) return 0;
+  const own=+String(g.assignCap??"").replace(/[^\d]/g,"")||0;
+  if(own) return own;
+  const d=assignCapDefaults();
+  const byEdu=+String(d[eduLabel(g)]??"").replace(/[^\d]/g,"")||0;
+  if(byEdu) return byEdu;
+  if(d.useCapacity) return +String(g.capacity??"").replace(/[^\d]/g,"")||0;
+  return 0;
+}
+/* מקור הרף — לתצוגה ("של הגן" / "ברירת מחדל" / "קיבולת") */
+function ganAssignCapSource(g){
+  if(!g) return "";
+  if(+String(g.assignCap??"").replace(/[^\d]/g,"")) return "רף של הגן";
+  const d=assignCapDefaults();
+  if(+String(d[eduLabel(g)]??"").replace(/[^\d]/g,"")) return "ברירת מחדל ל"+eduLabel(g);
+  if(d.useCapacity && +String(g.capacity??"").replace(/[^\d]/g,"")) return "קיבולת הגן";
+  return "";
+}
+/* מספר המשובצות בפועל בגן בשנה הפעילה (שיבוץ סופי, לא כולל שסיימו) */
+function ganAssignedCount(ganId, excludeStudentId){
+  return studentsOfYear().filter(s=>!s.finished && s.ganId===ganId && s.placed!==false
+    && s.id!==excludeStudentId).length;
+}
+/* מקומות פנויים לשיבוץ (Infinity = ללא הגבלה) */
+function ganAssignRoom(g, excludeStudentId){
+  const cap=ganAssignCap(g); if(!cap) return Infinity;
+  return cap - ganAssignedCount(g.id, excludeStudentId);
+}
+/* האם מותר לשבץ תלמידה לגן. מחזיר {ok, cap, count, msg} */
+function canAssignStudent(g, student){
+  const cap=ganAssignCap(g);
+  const exclude=student&&student.id;
+  const count=ganAssignedCount(g.id, exclude);
+  if(!cap) return { ok:true, cap:0, count, msg:"" };
+  if(count>=cap) return { ok:false, cap, count,
+    msg:'אין אפשרות לשבץ ל'+ganName(g.id)+' — הגן מלא ('+count+'/'+cap+'). '
+       +'אפשר להעלות את הרף בכרטיס הגן (לשונית גנים → "רף שיבוץ").' };
+  return { ok:true, cap, count, msg:"" };
+}
+/* שער אכיפה אחיד: מחזיר true אם מותר; אחרת מציג הודעה ומחזיר false */
+function assignGate(ganId, student, silent){
+  const g=ganById(ganId); if(!g) return true;
+  const r=canAssignStudent(g, student);
+  if(!r.ok && !silent) toast(r.msg);
+  return r.ok;
+}
+/* תגית "משובצות / רף" עם צבע (ירוק=פנוי · כתום=מלא · אדום=חריגה) */
+function assignCapPill(g){
+  const cap=ganAssignCap(g); const cnt=ganAssignedCount(g.id);
+  if(!cap) return `<span class="pill neutral" title="לא הוגדר רף שיבוץ">${cnt} / ∞</span>`;
+  const cls = cnt>cap ? 'no' : 'ok';
+  const style = cnt===cap ? ' style="background:var(--over1-soft);color:var(--over1)"' : '';
+  const title = cnt>cap ? 'חריגה מרף השיבוץ' : cnt===cap ? 'הגן מלא — לא ניתן לשבץ עוד' : 'יש מקום לשיבוץ';
+  return `<span class="pill ${cls}"${style} title="${esc(title)}">${cnt} / ${cap}</span>`;
+}
 function digits(s){ return String(s||"").replace(/\D/g,""); }
 /* בדיקת תקינות ת"ז ישראלי (ספרת ביקורת). מחזיר: true תקין · false שגוי · null ריק/קצר מכדי לבדוק */
 function isValidIsraeliId(id){
@@ -1916,7 +1986,7 @@ function makeGan(){ return {
   address:"", building:"", street:"", zone:"", phoneGan:"", phoneHome:"",
   teacherMobile:"", assistantName:"", assistantMobile:"",
   campus:"",   // קמפוס הגן — מקור האמת; אצל התלמידות נגזר מהגן
-  capacity:"", active:true, docsNote:"", createdAt:new Date().toISOString()
+  capacity:"", assignCap:"", active:true, docsNote:"", createdAt:new Date().toISOString()
 };}
 
 /* ============================================================
@@ -2937,8 +3007,8 @@ function buildSheetPayload(){
   const yn=v=>v?"כן":"לא";
   const stuHeaders=["שנה","שם משפחה","שם פרטי",'ת"ז',"גן","קמפוס","גיל","מועד","חינוך","משובצת","קלוט בעירייה","נרשמה על ידינו","ביטוח שולם","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","בניין","עיר","סטטוס","הערות"];
   const stuRows=DB.students.map(s=>[s.year,s.lastName,s.firstName,s.tz,ganName(s.ganId),ganCampus(s.ganId)||s.campus||"",s.age,s.period,eduLabel(s),yn(s.placed!==false),yn(s.absorbedMunicipality),yn(s.registeredByUs),yn(s.insurancePaid),s.phone,s.dadMobile||"",s.momMobile||s.mobile||"",s.email||"",s.street,s.building,s.city,(s.finished?"סיימה":"פעילה"),s.notes]);
-  const ganHeaders=["שם הגן","סמל פנימי","סמל גן","גיל","חינוך","גננת","קמפוס","כתובת","בניין","אזור","טל' גן","נייד גננת","קיבולת","רשומות (שנה פעילה)","פעיל"];
-  const ganRows=DB.gans.map(g=>[g.ganName,g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.teacherName,g.campus,g.address,g.building,g.zone,g.phoneGan,g.teacherMobile,g.capacity,studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length,yn(g.active)]);
+  const ganHeaders=["שם הגן","סמל פנימי","סמל גן","גיל","חינוך","גננת","קמפוס","כתובת","בניין","אזור","טל' גן","נייד גננת","קיבולת","רף שיבוץ","משובצות (שנה פעילה)","רשומות (שנה פעילה)","פעיל"];
+  const ganRows=DB.gans.map(g=>[g.ganName,g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.teacherName,g.campus,g.address,g.building,g.zone,g.phoneGan,g.teacherMobile,g.capacity,(ganAssignCap(g)||""),ganAssignedCount(g.id),studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length,yn(g.active)]);
   const staffHeaders=["שם משפחה","שם פרטי",'ת"ז',"תפקיד","חינוך","טלפון","נייד","מייל","עיר","הערות"];
   const staffRows=DB.staff.map(m=>[m.lastName,m.firstName,m.tz,m.role,eduLabel(m),m.phone,m.mobile,m.email,m.city,m.notes]);
   const asgHeaders=["שנה","הקשר","גן","תפקיד","שם העובד/ת"];
@@ -3140,15 +3210,17 @@ const BULK_FIELDS = [
 function applyBulk(fieldKey, val){
   const f=BULK_FIELDS.find(x=>x.key===fieldKey); if(!f){ toast("בחר/י שדה"); return; }
   const ids=[...bulkSel]; if(!ids.length){ toast("לא סומנו תלמידות"); return; }
-  let n=0, transferred=0, failed=0, blocked=0;
+  let n=0, transferred=0, failed=0, blocked=0, full=0;
   ids.forEach(id=>{ const s=DB.students.find(x=>x.id===id); if(!s) return;
     if(!canEditRec(s)){ blocked++; return; } // הרשאת עריכה לפי חינוך
+    // רף שיבוץ (סעיף 2): סימון "משובצת" לא יעבור את הרף של הגן
+    if(f.key==='placed' && val && s.ganId && s.placed===false && !assignGate(s.ganId, s, true)){ full++; return; }
     const before = f.retention ? !!s.retentionNext : null;
     f.set(s, val); n++;
     if(f.retention && val && !before){ const r=ensureRetentionTransfer(s); r.ok?transferred++:failed++; }
   });
   save(); bulkSel.clear(); renderStuTable();
-  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}${blocked?` · ${blocked} דולגו (אין הרשאת חינוך)`:''}`);
+  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}${blocked?` · ${blocked} דולגו (אין הרשאת חינוך)`:''}${full?` · ${full} לא שובצו (הגן הגיע לרף השיבוץ)`:''}`);
 }
 
 /* ============================================================
@@ -3559,7 +3631,9 @@ function renderStuTable(){
     const s=DB.students.find(x=>x.id===tr.dataset.sid); if(s) openStudent(JSON.parse(JSON.stringify(s)));
   });
   /* החלפת סטטוס שיבוץ בלחיצה אחת מהרשימה (משובצת ⇄ ממתינה) */
-  host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; if(!canEditRec(st)){ toast("אין הרשאת עריכה בחינוך זה"); return; } st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
+  host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; if(!canEditRec(st)){ toast("אין הרשאת עריכה בחינוך זה"); return; }
+    if(st.placed===false && !assignGate(st.ganId, st)) return;   // רף שיבוץ (סעיף 2)
+    st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(stuSort.key===k) stuSort.dir*=-1; else { stuSort.key=k; stuSort.dir=1; } renderStuTable(); });
   /* עדכון קבוצתי — סימון שורות + בחירת הכל */
   host.querySelectorAll(".bulk-cb").forEach(cb=> cb.onchange=()=>{ cb.checked?bulkSel.add(cb.dataset.id):bulkSel.delete(cb.dataset.id); renderStuTable(); });
@@ -3618,7 +3692,9 @@ function openStudent(s){
     <div class="grid g3">
       <div><label>קמפוס גנים</label><input id="s-campus" value="${esc(ganCampus(s.ganId)||s.campus||"")}" readonly placeholder="נקבע לפי הגן">
         <div class="hint">נקבע אוטומטית לפי הקמפוס של הגן (בלשונית גנים).</div></div>
-      <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
+      <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>{ const room=ganAssignRoom(g,s.id); const full=room<=0;
+          return `<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}${full?' — מלא':''}</option>`; }).join("")}</select>
+        <div class="hint" id="s-gan-room"></div></div>
       <div><label>גיל</label><select id="s-age"><option value="">—</option>${(s.age && !CHILD_AGES.map(String).includes(String(s.age)))?`<option selected>${esc(s.age)}</option>`:''}${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select><div id="s-age-hint" class="hint"></div></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="s-education">${EDU_TYPES.map(t=>`<option ${eduLabel(s)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
@@ -3816,7 +3892,23 @@ function openStudent(s){
     if(ages.length===1){ ageSel.value=ages[0]; if(hint) hint.textContent="הגיל נקבע אוטומטית לפי הגן ("+ages[0]+")."; }
     else if(ages.length>=2){ if(!ages.includes(ageSel.value)) ageSel.value=""; if(hint) hint.textContent="גן דו-גילאי — בחר/י גיל: "+ages.join(" / "); }
   }
-  const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; applyGanAge(); };
+  /* חיווי חי של רף השיבוץ לגן הנבחר (סעיף 2) */
+  function ganRoomHint(){
+    const h=$("#s-gan-room"); if(!h) return;
+    const g=ganById(($("#s-ganId")||{}).value||""); if(!g){ h.textContent=""; h.style.color=""; return; }
+    const cap=ganAssignCap(g);
+    if(!cap){ h.textContent="לא הוגדר רף שיבוץ לגן זה."; h.style.color=""; return; }
+    const cnt=ganAssignedCount(g.id, s.id), room=cap-cnt;
+    const src=ganAssignCapSource(g);
+    h.textContent = room>0
+      ? `משובצות: ${cnt} מתוך ${cap} · נותרו ${room} מקומות${src?" ("+src+")":""}`
+      : `⛔ הגן מלא — ${cnt} מתוך ${cap}. לא ניתן לשבץ עוד${src?" ("+src+")":""}.`;
+    h.style.color = room>0 ? "" : "var(--bad)";
+    h.style.fontWeight = room>0 ? "" : "700";
+  }
+  const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; applyGanAge(); ganRoomHint(); };
+  { const pc=$("#s-placed"); if(pc) pc.addEventListener("change", ganRoomHint); }
+  ganRoomHint();
   /* עיר אוטומטית לפי רחוב — נלמד מתיקים קיימים; העיר מתמלאת רק אם ריקה, וניתן לתקן ידנית */
   { const streetCity={};
     DB.students.forEach(st=>{ const k=(st.street||"").trim(); if(k&&st.city){ (streetCity[k]=streetCity[k]||{})[st.city]=(streetCity[k][st.city]||0)+1; } });
@@ -3914,6 +4006,11 @@ function openStudent(s){
     const clash=tzClashInYear(data.tz, data.year, s.id);
     if(clash){ const w=$("#s-tz-warn"); if(w) w.textContent="⚠️ כבר רשומה בשנה זו: "+clashDesc(clash);
       toast('לא ניתן לרשום — הילדה כבר רשומה בשנה זו: '+clashDesc(clash)); return; }
+    /* רף שיבוץ (סעיף 2) — חוסם *שיבוץ סופי* מעבר לרף. רישום (בלי "משובצת") אינו מוגבל. */
+    if(data.ganId && data.placed!==false){
+      const gate=canAssignStudent(ganById(data.ganId), data);
+      if(!gate.ok){ toast(gate.msg); const h=$("#s-gan-room"); if(h){ h.scrollIntoView({block:"center"}); } return; }
+    }
     const i=DB.students.findIndex(x=>x.id===s.id);
     const hadRetention = i>=0 ? !!DB.students[i].retentionNext : false;
     if(i>=0) DB.students[i]=data; else DB.students.push(data);
@@ -4306,11 +4403,12 @@ const GAN_SORT_VAL = {
   name:g=>ganName(g.id), internalSymbol:g=>g.internalSymbol, ganSymbol:g=>g.ganSymbol,
   age:g=>g.age, teacherName:g=>g.teacherName,
   address:g=>[g.address,g.building].filter(Boolean).join(" "), zone:g=>g.zone,
-  capacity:g=>+g.capacity||0, reg:g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length
+  capacity:g=>+g.capacity||0, reg:g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length,
+  assigned:g=>ganAssignedCount(g.id)
 };
 function sortGans(list){
   const k=ganSort.key, d=ganSort.dir, v=GAN_SORT_VAL[k]||GAN_SORT_VAL.name;
-  const numeric = k==='capacity' || k==='reg';
+  const numeric = k==='capacity' || k==='reg' || k==='assigned';
   return list.sort((a,b)=> numeric ? ((+v(a)||0)-(+v(b)||0))*d : String(v(a)||"").localeCompare(String(v(b)||""),"he")*d );
 }
 function gansScoped(){
@@ -4702,6 +4800,7 @@ function viewMap(root){
       <span class="pill neutral" id="map-status">טוען…</span>
       <div style="margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn sm" id="map-apply" type="button">🗺️ הצג על המפה</button>
+        <button class="btn sm" id="map-auto" type="button" title="שיבוץ כל התלמידות לגן הקרוב מבין הגנים שנבחרו">⚡ שיבוץ אוטומטי לפי קרבה</button>
         <button class="btn ghost sm" id="map-full-btn" type="button">⛶ מסך מלא</button>
       </div>
     </div>
@@ -4775,6 +4874,7 @@ function viewMap(root){
   const btnStu=$("#map-load-students"); if(btnStu) btnStu.onclick=mapLoadStudents;
   const btnRef=$("#map-refresh"); if(btnRef) btnRef.onclick=mapRefreshGeo;
   const btnFull=$("#map-full-btn"); if(btnFull) btnFull.onclick=mapToggleFull;
+  const btnAuto=$("#map-auto"); if(btnAuto) btnAuto.onclick=openAutoAssign;
   const childGo=$("#map-child-go"), childInp=$("#map-child-search");
   if(childGo) childGo.onclick=()=>mapFindChild(childInp?childInp.value:"");
   if(childInp) childInp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); mapFindChild(childInp.value); } });
@@ -5085,7 +5185,197 @@ function mapStudentPopup(s){
   });
   return box;
 }
+/* ============================================================
+   שיבוץ אוטומטי לפי קרבה (סעיף 1)
+   בוחרים כמה גנים במפה ולוחצים "שיבוץ אוטומטי" — המערכת משבצת כל תלמידה
+   לגן הקרוב אליה מבין הגנים שנבחרו, תוך כיבוד רף השיבוץ של כל גן,
+   התאמת חינוך/גיל, ושמירה על אחיות באותו גן. מוצגת תצוגה מקדימה לפני ביצוע.
+   ============================================================ */
+/* גילי הגן כמערך ("4/5" → ["4","5"]) */
+function ganAges(g){ return String((g&&g.age)||"").split("/").map(x=>x.trim()).filter(Boolean); }
+/* האם גיל התלמידה מתאים לגן (אם לא ידוע גיל — מתאים) */
+function ageFits(s, g){
+  const ages=ganAges(g); if(!ages.length) return true;
+  const a=String(s.age||"").trim(); if(!a) return true;
+  return ages.includes(a);
+}
+/* מפתח קיבוץ אחיות — שם משפחה + כתובת (כמו findSiblings) */
+function sibKey(s){
+  const ln=nameKey(s.lastName), ak=addrKey(s);
+  if(!ln || !ak.replace(/\|/g,"")) return null;
+  return ln+"||"+ak;
+}
+/* מנוע השיבוץ. opts: {scope, siblings, respectCap, markPlaced, matchAge}
+   מחזיר { plan:[{s,g,km}], skipped:[{s,why}], caps:Map(ganId→{cap,used}) } */
+function autoAssignPlan(students, gans, opts){
+  opts=opts||{};
+  const caps=new Map();
+  gans.forEach(g=>{
+    const cap=opts.respectCap===false ? 0 : ganAssignCap(g);
+    // התלמידות שכבר משובצות לגן ואינן חלק מהמאגר שמשבצים מחדש תופסות מקום
+    const ids=new Set(students.map(x=>x.id));
+    const used=studentsOfYear().filter(x=>!x.finished && x.ganId===g.id && x.placed!==false && !ids.has(x.id)).length;
+    caps.set(g.id, { cap, used });
+  });
+  const room=id=>{ const c=caps.get(id); if(!c) return 0; return c.cap ? (c.cap-c.used) : Infinity; };
+  const take=id=>{ const c=caps.get(id); if(c) c.used++; };
+
+  const plan=[], skipped=[];
+  /* מועמדים לתלמידה — גנים תואמים, ממוינים לפי מרחק אווירי */
+  const candsFor=s=> gans
+    .filter(g=> eduLabel(g)===eduLabel(s) && (opts.matchAge===false || ageFits(s,g)) && g.geo && g.geo.lat!=null)
+    .map(g=>({ g, km:haversineKm(s.geo, g.geo) }))
+    .sort((a,b)=>a.km-b.km);
+
+  /* קיבוץ לאחיות (אופציונלי) — כל הקבוצה לאותו גן */
+  const groups=[];
+  if(opts.siblings!==false){
+    const byKey=new Map();
+    students.forEach(s=>{ const k=sibKey(s);
+      if(!k){ groups.push([s]); return; }
+      if(!byKey.has(k)) byKey.set(k,[]); byKey.get(k).push(s); });
+    byKey.forEach(arr=>groups.push(arr));
+  } else students.forEach(s=>groups.push([s]));
+
+  /* מיון לפי "חרטה": קבוצה שההפרש בין הגן הקרוב לשני הקרוב אצלה גדול — קודמת,
+     כדי שהיא לא תפסיד את הגן הקרוב אליה לטובת מי שההבדל אצלו זניח. */
+  const scored=groups.map(arr=>{
+    const cands=arr.map(candsFor);
+    const usable=cands.filter(c=>c.length);
+    let regret=0, near=Infinity;
+    if(usable.length){
+      const first=usable[0];
+      near=first[0].km;
+      regret=(first[1]? first[1].km : first[0].km+5) - first[0].km;
+    }
+    return { arr, cands, regret, near };
+  }).sort((a,b)=> (b.regret-a.regret) || (a.near-b.near));
+
+  scored.forEach(item=>{
+    const arr=item.arr;
+    const noGeo=arr.filter(s=>!(s.geo&&s.geo.lat!=null));
+    if(noGeo.length===arr.length){ arr.forEach(s=>skipped.push({s,why:"אין מיקום על המפה (כתובת חסרה או לא זוהתה)"})); return; }
+    /* גן משותף לכל הקבוצה: סכום המרחקים המינימלי מבין הגנים שיש בהם מקום לכולם */
+    const located=arr.filter(s=>s.geo&&s.geo.lat!=null);
+    noGeo.forEach(s=>skipped.push({s,why:"אין מיקום על המפה (כתובת חסרה או לא זוהתה)"}));
+    let best=null;
+    gans.forEach(g=>{
+      const fit=located.every(s=> eduLabel(g)===eduLabel(s) && (opts.matchAge===false || ageFits(s,g)));
+      if(!fit || !(g.geo&&g.geo.lat!=null)) return;
+      if(room(g.id) < located.length) return;
+      const sum=located.reduce((t,s)=>t+haversineKm(s.geo,g.geo),0);
+      if(!best || sum<best.sum) best={ g, sum };
+    });
+    if(best){ located.forEach(s=>{ plan.push({ s, g:best.g, km:haversineKm(s.geo,best.g.geo) }); take(best.g.id); }); return; }
+    /* אין גן שמכיל את כל הקבוצה — משבצים כל אחת בנפרד לגן הקרוב הפנוי */
+    located.forEach(s=>{
+      const c=candsFor(s).find(c=>room(c.g.id)>0);
+      if(c){ plan.push({ s, g:c.g, km:c.km }); take(c.g.id); }
+      else {
+        const any=candsFor(s);
+        skipped.push({ s, why: any.length ? "כל הגנים המתאימים הגיעו לרף השיבוץ" : "אין גן מתאים מבין הגנים שנבחרו (חינוך/גיל/מיקום)" });
+      }
+    });
+  });
+  plan.sort((a,b)=> ganName(a.g.id).localeCompare(ganName(b.g.id),"he") || a.km-b.km);
+  return { plan, skipped, caps };
+}
+/* מאגר התלמידות לשיבוץ אוטומטי לפי היקף שנבחר */
+function autoAssignPool(scope){
+  let list=mapShownStudents();
+  if(scope==="unassigned") list=list.filter(s=>!s.ganId);
+  else if(scope==="waiting") list=list.filter(s=>!s.ganId || s.placed===false);
+  return list.filter(s=>canEditRec(s));
+}
+/* חלון השיבוץ האוטומטי */
+function openAutoAssign(){
+  const gans=mapSelectedGans().filter(mapGanShown);
+  if(gans.length<2){ toast("בחר/י לפחות שני גנים על המפה (עם מיקום תקין) לשיבוץ אוטומטי"); return; }
+  const st={ scope:"unassigned", siblings:true, respectCap:true, markPlaced:true, matchAge:true, result:null };
+  const opt=(v,l,cur)=>`<option value="${v}" ${cur===v?'selected':''}>${esc(l)}</option>`;
+  modal(`<h3>⚡ שיבוץ אוטומטי לפי קרבה</h3>
+    <div class="sub">כל תלמידה תשובץ ל<b>גן הקרוב אליה</b> מבין <b>${gans.length}</b> הגנים שנבחרו על המפה:
+      ${gans.map(g=>esc(ganName(g.id))).join(" · ")}</div>
+    <div class="grid g2" style="margin-top:10px">
+      <div><label>אילו תלמידות לשבץ</label>
+        <select id="aa-scope">
+          ${opt("unassigned","רק מי שאין לה גן",st.scope)}
+          ${opt("waiting","מי שאין לה גן או שממתינה לשיבוץ",st.scope)}
+          ${opt("all","כל התלמידות המוצגות (כולל שיבוץ מחדש)",st.scope)}
+        </select></div>
+      <div style="align-self:end;display:flex;flex-direction:column;gap:4px">
+        <label class="check"><input type="checkbox" id="aa-sib" checked> לשמור אחיות באותו גן</label>
+        <label class="check"><input type="checkbox" id="aa-cap" checked> לכבד את רף השיבוץ של כל גן</label>
+        <label class="check"><input type="checkbox" id="aa-age" checked> להתאים גיל תלמידה לגיל הגן</label>
+        <label class="check"><input type="checkbox" id="aa-placed" checked> לסמן "משובצת (שיבוץ סופי)"</label>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;gap:8px">
+      <button class="btn" id="aa-calc" type="button">🧮 חישוב תצוגה מקדימה</button>
+      <span class="hint" id="aa-hint">החישוב לא משנה נתונים — רק אחרי "ביצוע השיבוץ".</span>
+    </div>
+    <div id="aa-out" style="margin-top:10px;max-height:46vh;overflow:auto"></div>
+    <div class="foot">
+      <button class="btn" id="aa-apply" disabled style="margin-inline-start:auto">✅ ביצוע השיבוץ</button>
+      <button class="btn ghost" id="aa-close">סגירה</button>
+    </div>`);
+  $("#aa-close").onclick=closeModal;
+  const readOpts=()=>({ scope:$("#aa-scope").value, siblings:$("#aa-sib").checked, respectCap:$("#aa-cap").checked,
+                        matchAge:$("#aa-age").checked, markPlaced:$("#aa-placed").checked });
+  function calc(){
+    const o=readOpts();
+    const pool=autoAssignPool(o.scope);
+    const noGeo=pool.filter(s=>!(s.geo&&s.geo.lat!=null)).length;
+    const res=autoAssignPlan(pool, gans, o);
+    st.result={ res, o };
+    const byGan=new Map();
+    res.plan.forEach(x=>{ if(!byGan.has(x.g.id)) byGan.set(x.g.id,[]); byGan.get(x.g.id).push(x); });
+    let html=`<div class="note" style="margin-bottom:8px">נבדקו <b>${pool.length}</b> תלמידות · ישובצו <b>${res.plan.length}</b> · לא ישובצו <b>${res.skipped.length}</b>${noGeo?` · <b>${noGeo}</b> ללא מיקום — לחצ/י "📍 טעינת מיקומי תלמידות" במפה ואז חשב/י שוב`:""}</div>`;
+    if(byGan.size){
+      html+=`<div class="table-wrap"><table><thead><tr><th>גן</th><th>ישובצו</th><th>סה"כ אחרי השיבוץ</th><th>תלמידות</th></tr></thead><tbody>`;
+      gans.forEach(g=>{
+        const arr=byGan.get(g.id)||[]; if(!arr.length) return;
+        const c=res.caps.get(g.id)||{cap:0,used:0};
+        html+=`<tr><td><b>${esc(ganName(g.id))}</b></td><td>${arr.length}</td>
+          <td>${c.used}${c.cap?(" / "+c.cap):" / ∞"}</td>
+          <td style="font-size:12px">${arr.map(x=>esc([x.s.lastName,x.s.firstName].filter(Boolean).join(" "))+` <span style="color:var(--muted)">(${x.km.toFixed(1)} ק"מ)</span>`).join(" · ")}</td></tr>`;
+      });
+      html+=`</tbody></table></div>`;
+    } else html+=`<div class="hint">אין תלמידות לשיבוץ לפי הבחירה הנוכחית.</div>`;
+    if(res.skipped.length){
+      const byWhy=new Map();
+      res.skipped.forEach(x=>{ if(!byWhy.has(x.why)) byWhy.set(x.why,[]); byWhy.get(x.why).push(x.s); });
+      html+=`<div style="margin-top:10px;padding:8px;border:1px solid var(--border);border-radius:10px">
+        <b>⚠ לא ישובצו (${res.skipped.length}):</b>`;
+      byWhy.forEach((arr,why)=>{ html+=`<div style="margin-top:4px">• ${esc(why)} — <span style="font-size:12px">${arr.slice(0,25).map(s=>esc([s.lastName,s.firstName].filter(Boolean).join(" "))).join(" · ")}${arr.length>25?" …":""}</span></div>`; });
+      html+=`</div>`;
+    }
+    $("#aa-out").innerHTML=html;
+    $("#aa-apply").disabled=!res.plan.length;
+  }
+  $("#aa-calc").onclick=calc;
+  ["#aa-scope","#aa-sib","#aa-cap","#aa-age","#aa-placed"].forEach(sel=>{ const el=$(sel); if(el) el.onchange=()=>{ st.result=null; $("#aa-apply").disabled=true; $("#aa-out").innerHTML=`<div class="hint">ההגדרות השתנו — לחצ/י "חישוב תצוגה מקדימה".</div>`; }; });
+  $("#aa-apply").onclick=()=>{
+    if(!st.result || !st.result.res.plan.length){ toast("יש לחשב תצוגה מקדימה תחילה"); return; }
+    const { res, o }=st.result;
+    if(!confirm(`לשבץ ${res.plan.length} תלמידות לפי התצוגה המקדימה?`)) return;
+    let n=0;
+    res.plan.forEach(x=>{
+      const rec=DB.students.find(y=>y.id===x.s.id); if(!rec) return;
+      rec.ganId=x.g.id;
+      rec.campus=ganCampus(x.g.id)||rec.campus||"";
+      const ages=ganAges(x.g); if(ages.length===1) rec.age=ages[0];
+      if(o.markPlaced) rec.placed=true;
+      n++;
+    });
+    save(); closeModal();
+    toast("שובצו "+n+" תלמידות לפי קרבה");
+    try{ mapBuildGanColors(); mapPlotGans(); mapPlotStudents(); mapRenderSide(); mapStatusReport(); }catch(e){}
+  };
+  calc();
+}
 function mapAssign(s, g){
+  if(!assignGate(g.id, s)) return;             // רף שיבוץ (סעיף 2)
   s.ganId=g.id;
   s.campus=ganCampus(g.id)||s.campus||"";
   if(s.placed===false) s.placed=true;
@@ -5180,7 +5470,7 @@ function renderGanTable(){
   const eduNote = activeEdu ? ` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})` : "";
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
     ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${th("age","גיל")}${th("","חינוך")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("zone","אזור")}
-    ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("","סטטוס")}</tr></thead><tbody>
+    ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("assigned","משובצות / רף")}${th("","סטטוס")}</tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
       const ageBg=ganAgeBg(g);
@@ -5197,6 +5487,7 @@ function renderGanTable(){
         <td>${g.phoneGan?`${esc(g.phoneGan)} ${callBtn(g.phoneGan)}`:'—'}</td>
         <td>${esc(g.capacity)||'—'}</td>
         <td><button type="button" class="gan-reg-open" data-gid="${esc(g.id)}" title="צפייה בתלמידות הגן" style="background:none;border:none;padding:0;cursor:pointer">${capPill(reg, g.capacity)}</button></td>
+        <td>${assignCapPill(g)}</td>
         <td>${g.active?'<span class="pill ok">פעיל</span>':'<span class="pill neutral">כבוי</span>'}</td>
         </tr>`;
     }).join("")}
@@ -5222,7 +5513,12 @@ function openGan(g){
       <div><label>גיל</label><select id="g-age"><option value="">—</option>${GAN_AGES.map(a=>`<option ${String(g.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
-      <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}"></div>
+      <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}">
+        <div class="hint">חיווי בלבד על הרישום — חריגה נצבעת אך מותרת.</div></div>
+      <div><label>רף שיבוץ (מקסימום משובצות)</label><input id="g-assignCap" inputmode="numeric" value="${esc(g.assignCap||"")}" placeholder="${esc(String(ganAssignCap(g)||"ללא הגבלה"))}">
+        <div class="hint">${(()=>{ const cap=ganAssignCap(g), cnt=isNew?0:ganAssignedCount(g.id), src=ganAssignCapSource(g);
+          return cap ? `מלא = ${cnt} מתוך ${cap}${src?" ("+esc(src)+")":""} — מעבר לזה המערכת חוסמת שיבוץ. ריק = לפי ברירת המחדל בהגדרות.`
+                     : `ריק = ללא הגבלה. אפשר לקבוע ברירת מחדל לכל הגנים ב<b>הגדרות → רף שיבוץ</b>.`; })()}</div></div>
       <div><label>קמפוס</label><select id="g-campus"><option value="">— ללא —</option>${(g.campus && !CAMPUSES.includes(g.campus))?`<option selected>${esc(g.campus)}</option>`:''}${CAMPUSES.slice().sort((a,b)=>a.localeCompare(b,"he")).map(c=>`<option ${g.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select>
         <div class="hint">${CAMPUSES.length?'הקמפוס נקבע כאן — ואצל התלמידות בגן יתעדכן אוטומטית.':'להוספת קמפוסים: הגדרות → קמפוסים.'}</div></div>
     </div>
@@ -5256,7 +5552,8 @@ function openGan(g){
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{
       ganName:val("g-ganName"),internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),education:val("g-education"),
-      teacherName:val("g-teacherName"),capacity:val("g-capacity"),campus:val("g-campus"),
+      teacherName:val("g-teacherName"),capacity:val("g-capacity"),
+      assignCap:String(val("g-assignCap")||"").replace(/[^\d]/g,""),campus:val("g-campus"),
       address:val("g-address"),building:val("g-building"),street:val("g-street"),zone:val("g-zone"),
       phoneGan:val("g-phoneGan"),docsNote:val("g-docsNote"),active:chk("g-active")
     });
@@ -5296,6 +5593,7 @@ const GAN_HEADER_MAP = {
   "שםסייעת":"assistantName","סייעת":"assistantName",
   "ניידסייעת":"assistantMobile","פלאפוןסייעת":"assistantMobile",
   "קיבולת":"capacity","מקומות":"capacity","מספרמקומות":"capacity","תקן":"capacity",
+  "רףשיבוץ":"assignCap","מקסימוםשיבוץ":"assignCap","מקסימוםמשובצות":"assignCap","גגלשיבוץ":"assignCap",
   "פעיל":"active","סטטוס":"active",
   "מסמכים":"docsNote","הערות":"docsNote","הערה":"docsNote"
 };
@@ -5322,7 +5620,7 @@ function buildGanImportRows(rows){
     gn.address=g("address"); gn.street=g("street"); gn.building=g("building"); gn.zone=g("zone");
     gn.phoneGan=g("phoneGan"); gn.phoneHome=g("phoneHome"); gn.teacherMobile=fixPhone(g("teacherMobile"));
     gn.assistantName=g("assistantName"); gn.assistantMobile=fixPhone(g("assistantMobile"));
-    gn.capacity=g("capacity").replace(/[^\d]/g,""); gn.docsNote=g("docsNote");
+    gn.capacity=g("capacity").replace(/[^\d]/g,""); gn.assignCap=g("assignCap").replace(/[^\d]/g,""); gn.docsNote=g("docsNote");
     if(idx.active!=null){ const av=g("active").trim(); gn.active=!/^(לא|כבוי|לאפעיל|0|false|no|off|inactive)$/i.test(av); }
     if(!gn.ganName && !gn.teacherName && !gn.ganSymbol && !gn.internalSymbol) continue; // שורה ריקה
     const key=(gn.ganSymbol||"")+"|"+(gn.internalSymbol||"")+"|"+(gn.ganName||gn.teacherName||"");
@@ -5332,7 +5630,7 @@ function buildGanImportRows(rows){
   return { list, mapped };
 }
 function ganTemplateCSV(){
-  const headers=["שם הגן","סמל פנימי","סמל הגן","שם הגננת","גיל","חינוך","כתובת","מספר","אזור","טלפון בגן","נייד גננת","שם סייעת","נייד סייעת","קיבולת","פעיל"];
+  const headers=["שם הגן","סמל פנימי","סמל הגן","שם הגננת","גיל","חינוך","כתובת","מספר","אזור","טלפון בגן","נייד גננת","שם סייעת","נייד סייעת","קיבולת","רף שיבוץ","פעיל"];
   const example=["גן הדקל","1234","567890","מרים כהן","3","רגיל","הרב קוק","12","מרכז","02-1234567","050-1234567","שרה לוי","052-7654321","35","כן"];
   const csv=[headers.map(csvCell).join(","), example.map(csvCell).join(",")].join("\r\n");
   downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `תבנית-ייבוא-גנים.csv`);
@@ -7847,6 +8145,25 @@ function viewSettings(root){
   </div>
 
   <div class="panel">
+    <h2>רף שיבוץ — מקסימום משובצות בגן</h2>
+    <div class="sub">מגבלה <b>קשיחה</b> על השיבוץ הסופי: כשגן מגיע לרף, המערכת לא תאפשר לשבץ אליו עוד תלמידה ותציג הודעה.
+      <b>הרישום אינו מוגבל</b> — אפשר לרשום לגן יותר ממה שהוגדר; המגבלה חלה רק על סימון "משובצת (שיבוץ סופי)".
+      לגן מסוים אפשר לקבוע רף אחר בכרטיס הגן (לשונית גנים → "רף שיבוץ") — והוא גובר על ברירת המחדל כאן.</div>
+    <div class="grid g3" style="margin-top:10px">
+      <div><label>ברירת מחדל — חינוך רגיל</label><input id="ac-reg" inputmode="numeric" value="${esc(assignCapDefaults()['רגיל'])}" placeholder="למשל 36" ${dis}></div>
+      <div><label>ברירת מחדל — חינוך מיוחד</label><input id="ac-spec" inputmode="numeric" value="${esc(assignCapDefaults()['ח"מ'])}" placeholder="למשל 12" ${dis}></div>
+      <div style="align-self:end"><label class="check"><input type="checkbox" id="ac-usecap" ${assignCapDefaults().useCapacity?'checked':''} ${dis}> אם אין רף — להשתמש ב<b>קיבולת</b> של הגן כרף</label></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="saveAC" ${dis}>💾 שמירת רף השיבוץ</button></div>
+    <div style="margin-top:12px">
+      <div class="hint" style="margin-bottom:6px">מצב הגנים הפעילים כרגע (משובצות / רף):</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${eduScope(DB.gans.filter(g=>g.active)).slice()
+        .sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"))
+        .map(g=>`<span style="display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px">${esc(ganName(g.id))} ${assignCapPill(g)}</span>`).join("") || '<span class="hint">אין גנים פעילים.</span>'}</div>
+    </div>
+  </div>
+
+  <div class="panel">
     <h2>שנים</h2>
     <div class="sub">כל שנה מנוהלת בנפרד (תשפ"ז, תשפ"ח, וכו'). הבחירה בראש המסך קובעת על איזו שנה עובדים.</div>
     <div id="years-box"></div>
@@ -8097,6 +8414,14 @@ function viewSettings(root){
     $("#resetBrand").onclick=()=>{ delete DB.settings.appTitle; delete DB.settings.appLogo;
       _brandMigrated=true; saveBranding().catch(e=>console.error(e)); save(); route(); toast("הוחזר לברירת מחדל"); };
   }
+
+  // רף שיבוץ — ברירות מחדל (סעיף 2)
+  { const b=$("#saveAC");
+    if(b && admin) b.onclick=()=>{
+      const num=id=>String(($("#"+id)||{}).value||"").replace(/[^\d]/g,"");
+      DB.settings.assignCaps={ 'רגיל':num("ac-reg"), 'ח"מ':num("ac-spec"), useCapacity: !!($("#ac-usecap")||{}).checked };
+      save(); toast("רף השיבוץ נשמר"); viewSettings(root);
+    }; }
 
   // מנהלי מערכת
   const ab=$("#admins-box");
