@@ -39,9 +39,10 @@ Object.defineProperty(window,'_cityCenter',{get:()=>_cityCenter,set:v=>{_cityCen
 Object.defineProperty(window,'_placeMarker',{get:()=>_placeMarker,set:v=>{_placeMarker=v},configurable:true});
 Object.defineProperty(window,'_placeGanId',{get:()=>_placeGanId,set:v=>{_placeGanId=v},configurable:true});
 Object.defineProperty(window,'_placeKind',{get:()=>_placeKind,set:v=>{_placeKind=v},configurable:true});
+Object.defineProperty(window,'_walkWhy',{get:()=>_walkWhy,configurable:true});
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapPlaceSave, save });
+  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, mapPlaceSave, save });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -744,6 +745,21 @@ const server=require('http').createServer((req,res)=>{
         return true; });
     } finally { await pg.unroute(/nominatim/); }
   });
+
+  /* ---- מרחק הליכה: כשאינו זמין, חייבת להופיע סיבה ולא רק "אווירי" ---- */
+  await step('כשאין גשר — נרשמת סיבה לחוסר מרחק הליכה', ()=>pg.evaluate(async()=>{
+    const g={id:'wk1',geo:{lat:31.934,lng:35.042}};
+    const out=await mapWalk({lat:31.933,lng:35.041},[g]);
+    if(out[0]!==null) return 'התקבל מרחק הליכה בלי גשר';
+    if(!_walkWhy) return 'לא נרשמה סיבה — המשתמש רואה "אווירי" בלי הסבר';
+    return true; }));
+
+  await step('הסיבה מוצגת בתוצאות ובפרטים הטכניים', async()=>{
+    const r=await proxDiag(threeManual,{lat:31.9331,lng:35.0409,manual:true,q:'__manual__'});
+    if(!/ק"מ/.test(r.txt)) return 'הבדיקה לא הצליחה';
+    if(!/מרחק ההליכה אינו זמין/.test(r.txt)) return 'אין הסבר מדוע מוצג מרחק אווירי';
+    if(!/מרחק הליכה לא זמין/.test(r.txt)) return 'הסיבה חסרה בפרטים הטכניים';
+    return true; });
 
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
