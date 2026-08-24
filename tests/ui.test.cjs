@@ -268,6 +268,29 @@ const server=require('http').createServer((req,res)=>{
     await mob.close();
   }
 
+  /* ---- רגרסיה: "השלמת עיר" אסור שתמחק מיקומי גנים ----
+     באג שהיה: הכפתור עשה g.geo=null "כדי שהמיקום יחושב מחדש", ובכך מחק
+     גם מיקומים שסומנו ידנית על המפה — עבודה שאי אפשר לשחזר אוטומטית. */
+  await step('"השלמת עיר" משלימה עיר בלי לגעת במיקומים', ()=>pg.evaluate(()=>{
+    DB.students=[{id:'cs0',year:DB.activeYear,lastName:'כ',firstName:'ש',city:'מודיעין עלית',street:'א',building:'1',
+      docs:{},docFiles:{},programs:{},programsPaid:{},special:{},support:{},finished:false,createdAt:''}];
+    DB.gans=[
+      {id:'cg0',ganName:'ידני',active:true,education:'רגיל',address:'א',building:'1',city:'',
+       geo:{lat:31.9345,lng:35.0432,manual:true,q:'__manual__',locType:'MANUAL',tried:true}},
+      {id:'cg1',ganName:'אוטומטי',active:true,education:'רגיל',address:'ב',building:'2',city:'',
+       geo:{lat:31.9360,lng:35.0450,q:'ב 2, מודיעין עילית, ישראל'}}
+    ];
+    __set('active','gans'); route();
+    const btn=document.getElementById('ganFillCity');
+    if(!btn) return 'הבאנר לא הוצג';
+    window.confirm=()=>true;
+    btn.click();
+    const a=DB.gans[0].geo, b=DB.gans[1].geo;
+    if(!(a && a.manual===true && a.lat===31.9345)) return 'מיקום ידני נמחק';
+    if(!(b && b.lat===31.9360)) return 'מיקום אוטומטי נמחק';
+    if(DB.gans[0].city!=='מודיעין עילית' || DB.gans[1].city!=='מודיעין עילית') return 'העיר לא הושלמה';
+    return true; }));
+
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
   await b.close(); server.close();

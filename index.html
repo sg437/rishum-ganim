@@ -220,6 +220,12 @@ td.actions{white-space:nowrap}
 .pill.no{background:var(--bad-soft);color:var(--bad)}
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
 .pill.neutral{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+/* טבלה צרה שמותר לה להצטמצם לרוחב המכל (במקום min-width הגלובלי של 680px),
+   לשימוש בחלונות כמו בדיקת הקרבה — שם עמודת המרחק נחתכה בטלפון. */
+table.tbl-fit{min-width:0}
+.tbl-fit th,.tbl-fit td{padding:8px 7px}
+.tbl-fit td.wrap{white-space:normal}
+@media(max-width:520px){ .tbl-fit th,.tbl-fit td{padding:7px 5px;font-size:.83rem} }
 .dot-list{display:flex;gap:3px}
 .doc-dot{width:16px;height:16px;border-radius:50%;font-size:10px;display:grid;place-items:center;font-weight:800}
 .doc-dot.on{background:var(--good);color:#fff}
@@ -5826,7 +5832,7 @@ function proxBind(host, getStudent, idp, onPick){
       rows=rows.filter(r=>r.km<=MAP_CITY_RADIUS_KM);
       const draw=()=>{
         let html=`<div class="hint" style="margin-bottom:4px">מהכתובת: <b>${esc([st.street,st.building,st.city].filter(Boolean).join(" "))}</b> · מהקרוב לרחוק</div>
-          <div class="table-wrap"><table><thead><tr><th>#</th><th>גן</th><th>מרחק</th><th>משובצות / רף</th><th></th></tr></thead><tbody>`;
+          <div class="table-wrap"><table class="tbl-fit"><thead><tr><th>גן</th><th>מרחק</th><th>רף</th><th></th></tr></thead><tbody>`;
         rows.forEach((r,i)=>{
           const isCur=r.g.id===st.ganId;
           const room=ganAssignRoom(r.g, st.id);
@@ -5834,9 +5840,12 @@ function proxBind(host, getStudent, idp, onPick){
           if(r.walk===undefined){ dist=`${r.km.toFixed(2)} ק"מ אווירי · 🚶…`; colorKm=r.km; }
           else if(r.walk){ dist=`🚶 ${(r.walk.m/1000).toFixed(2)} ק"מ · ${Math.round(r.walk.sec/60)} דק' הליכה`; colorKm=r.walk.m/1000; }
           else { dist=`${r.km.toFixed(2)} ק"מ אווירי`; colorKm=r.km; }
-          html+=`<tr><td>${i+1}</td>
-            <td><b style="color:${mapDistColor(colorKm)}">●</b> ${esc(ganName(r.g.id))}${r.g.teacherName?` <span class="hint" style="display:inline">· ${esc(r.g.teacherName)}</span>`:""}</td>
-            <td>${esc(dist)}</td>
+          // שם הגן כבר נופל לשם הגננת כשאין שם גן — לא לחזור עליו פעמיים
+          const nm=ganName(r.g.id);
+          const teach=(r.g.teacherName&&r.g.teacherName!==nm)?r.g.teacherName:"";
+          html+=`<tr>
+            <td class="wrap"><b style="color:${mapDistColor(colorKm)}">●</b> ${esc(nm)}${teach?` <span class="hint" style="display:inline">· ${esc(teach)}</span>`:""}</td>
+            <td class="wrap">${esc(dist)}</td>
             <td>${assignCapPill(r.g)}</td>
             <td>${isCur?'<span class="pill ok">משובצת כאן</span>'
                  : room<=0 ? '<span class="pill neutral" title="הגן הגיע לרף השיבוץ">מלא</span>'
@@ -6157,7 +6166,9 @@ function viewGans(root){
       const c=mainCityName(); const miss=DB.gans.filter(g=>!String(g.city||"").trim());
       if(!c || !miss.length) return;
       if(!confirm(`להשלים את העיר "${c}" ל-${miss.length} גנים שאין להם עיר?\n\nגנים שכבר יש להם עיר לא ישתנו. אפשר לשנות כל גן בנפרד בכרטיס שלו.`)) return;
-      let n=0; miss.forEach(g=>{ if(!canEditRec(g)) return; g.city=c; g.geo=null; n++; });   // איפוס geo → מיקום יחושב מחדש עם העיר
+      // אין לגעת ב-geo: מיקום ידני חייב להישמר, ומיקום אוטומטי ממילא יחושב מחדש
+      // כי שאילתת הכתובת משתנה עם העיר (ensureGeo מזהה q שונה).
+      let n=0; miss.forEach(g=>{ if(!canEditRec(g)) return; g.city=c; n++; });
       save(); viewGans(root);
       toast(`הושלמה עיר ל-${n} גנים`+(n<miss.length?` · ${miss.length-n} דולגו (אין הרשאת עריכה)`:""));
     }; }
@@ -9720,6 +9731,12 @@ function viewTools(root){
       <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">⬆️ שחזור מגיבוי<input type="file" id="importAll" accept=".json" hidden></label>
     </div>
     <div id="backupNowMsg" class="hint" style="margin-top:6px"></div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <b>📍 שחזור מיקומי גנים בלבד</b>
+      <div class="hint" style="margin:4px 0 8px">מחזיר <b>רק</b> את מיקומי הגנים על המפה (כולל מיקומים שסומנו ידנית) מתוך קובץ גיבוי — בלי לגעת בתלמידות, בצוות או בשאר פרטי הגנים. שימושי אם המיקומים אבדו. הגיבויים היומיים נמצאים ב-Drive, בתיקייה <b>"גיבויים"</b>.</div>
+      <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px">📍 שחזור מיקומים מקובץ<input type="file" id="restoreGeo" accept=".json" hidden></label>
+      <div id="restoreGeoMsg" class="hint" style="margin-top:6px"></div>
+    </div>
   </div>`;
 
   renderDriveBox();
@@ -9791,6 +9808,42 @@ function viewTools(root){
         else if(msg) msg.innerHTML='<b style="color:var(--bad)">הגיבוי נכשל — ייתכן שצריך לעדכן את גשר הדרייב (הוספת פעולת backupSave).</b>';
       }catch(e){ if(msg) msg.innerHTML='<b style="color:var(--bad)">שגיאת גיבוי: '+esc(String(e.message||e))+'</b>'; }
       finally{ bn.disabled=false; }
+    }; }
+  /* שחזור כירורגי — רק שדה geo של הגנים, מתוך גיבוי של התוכנה או גיבוי גולמי של Firestore */
+  { const rg=$("#restoreGeo"); if(rg) rg.onchange=e=>{
+      const f=e.target.files[0]; if(!f) return;
+      const msg=$("#restoreGeoMsg");
+      readFileSmart(f, txt=>{
+        let gans=null;
+        try{
+          const d=JSON.parse(txt);
+          if(Array.isArray(d.gans)) gans=d.gans;                         // גיבוי רגיל של התוכנה
+          else if(d._type==="firestore-raw-backup"){                     // גיבוי גולמי מהשרת
+            (d.documents||[]).forEach(doc=>{
+              const fv=doc && doc.fields && doc.fields.gans;
+              if(!fv) return;
+              try{ const raw=fv.stringValue!=null?JSON.parse(fv.stringValue):null;
+                   if(Array.isArray(raw)) gans=raw; }catch(_){}
+            });
+          }
+        }catch(_){}
+        if(!Array.isArray(gans)){ msg.innerHTML='<b style="color:var(--bad)">הקובץ אינו גיבוי תקין (לא נמצאה רשימת גנים).</b>'; return; }
+        const byId=new Map(gans.filter(g=>g&&g.id).map(g=>[g.id,g]));
+        let manual=0, auto=0, skipped=0;
+        DB.gans.forEach(g=>{
+          const src=byId.get(g.id);
+          if(!src || !src.geo || src.geo.lat==null){ skipped++; return; }
+          if(g.geo && g.geo.manual && g.geo.lat!=null){ skipped++; return; }   // מיקום ידני קיים — לא נוגעים
+          g.geo=JSON.parse(JSON.stringify(src.geo));
+          if(src.geo.manual) manual++; else auto++;
+        });
+        if(!manual && !auto){ msg.innerHTML='<b>לא נמצאו מיקומים לשחזור בקובץ הזה.</b> אפשר לנסות גיבוי מתאריך מוקדם יותר.'; return; }
+        if(!confirm(`לשחזר מיקומים ל-${manual+auto} גנים?\n\n${manual} מהם מיקומים שסומנו ידנית.\nשאר הנתונים לא ישתנו.`)){ msg.textContent=""; return; }
+        save(); route();
+        msg.innerHTML=`<b style="color:var(--good)">שוחזרו ${manual+auto} מיקומים</b> (${manual} ידניים · ${auto} אוטומטיים)${skipped?` · ${skipped} דולגו`:""}.`;
+        toast("מיקומי הגנים שוחזרו");
+      });
+      e.target.value="";
     }; }
   $("#importAll").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
     readFileSmart(f, txt=>{ try{ const d=JSON.parse(txt); if(!d.students){throw 0;} if(confirm("שחזור יחליף את כל הנתונים הקיימים. להמשיך?")){ DB=Object.assign(blankDB(),d); save(); route(); toast("שוחזר בהצלחה"); } }catch(_){ toast("קובץ לא תקין"); } });
