@@ -29,6 +29,9 @@ html=html.replace(/<meta http-equiv="Content-Security-Policy"[\s\S]*?>/,'');
 html=html.replace(/https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.5\/firebase-[a-z-]+\.js/g,'./fbstub.js');
 // לא לטעון Leaflet מהרשת בבדיקה
 html=html.replace('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js','./noop.js');
+// DRIVE_READY נגזר מכתובת הגשר; לבדיקות שדורשות "גשר מחובר" מספקים כתובת תקפה
+html=html.replace(/const DRIVE_READY = [^;]+;/,
+  'let DRIVE_READY = false; window.__forceDriveReady=()=>{DRIVE_READY=true};');
 // הקוד רץ כמודול (scope נפרד) — חושפים לבדיקה את מה שנדרש
 const expose = `
 window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; };
@@ -40,6 +43,8 @@ Object.defineProperty(window,'_placeMarker',{get:()=>_placeMarker,set:v=>{_place
 Object.defineProperty(window,'_placeGanId',{get:()=>_placeGanId,set:v=>{_placeGanId=v},configurable:true});
 Object.defineProperty(window,'_placeKind',{get:()=>_placeKind,set:v=>{_placeKind=v},configurable:true});
 Object.defineProperty(window,'_walkWhy',{get:()=>_walkWhy,configurable:true});
+Object.defineProperty(window,'_geoGoogle',{get:()=>_geoGoogle,set:v=>{_geoGoogle=v},configurable:true});
+window.__setDriveCall=fn=>{ driveCall=fn; };   // הצהרת פונקציה — ניתנת להחלפה בתוך המודול
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
   ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, bridgeErrHe, mapPlaceSave, save });
@@ -762,12 +767,39 @@ const server=require('http').createServer((req,res)=>{
     return true; });
 
   await step('קודי שגיאה של הגשר מתורגמים להנחיה מעשית', ()=>pg.evaluate(()=>{
-    const c=[['bad-response',/לפרסם אותו מחדש/],['unknown-action',/לפרסם אותו מחדש/],
+    const c=[['bad-response:200:OK',/אינה JSON/],['unknown-action',/לפרסם אותו מחדש/],
              ['REQUEST_DENIED',/Distance Matrix/],['no-geo-key',/אין מפתח/],
              ['network',/חיבור/],['OVER_QUERY_LIMIT',/מכסת/]];
     for(const [code,re] of c){ const t=bridgeErrHe(code);
       if(!re.test(t)) return code+' → "'+t+'"'; 
       if(t===code) return code+' לא תורגם'; }
+    if(/גרסה ישנה/.test(bridgeErrHe('bad-response:200:OK'))) return 'bad-response עדיין מאשים בגרסה ישנה';
+    return true; }));
+
+  /* ---- Distance Matrix מוגבל ל-25 יעדים בבקשה ---- */
+  await step('בקשת מרחקי הליכה מפוצלת למנות של 25 לכל היותר', async()=>{
+    const sizes=await pg.evaluate(async()=>{
+      const seen=[];
+      window.__forceDriveReady(); window._geoGoogle=true;
+      window.__setDriveCall(async(action,payload)=>{
+        if(action!=='walk') throw new Error('unexpected-action:'+action);
+        seen.push(payload.dests.length);
+        return { ok:true, results: payload.dests.map(()=>({ m:100, sec:60 })) };
+      });
+      const gans=[]; for(let i=0;i<60;i++) gans.push({id:'ck'+i,geo:{lat:31.93+i/10000,lng:35.04+i/10000}});
+      const out=await mapWalk({lat:31.9310,lng:35.0472}, gans);
+      return { sizes:seen, filled:out.filter(Boolean).length };
+    });
+    if(!sizes.sizes.length) return 'לא נשלחה בקשת walk כלל';
+    if(sizes.sizes.some(n=>n>25)) return 'מנה חרגה מ-25: '+sizes.sizes.join(',');
+    if(sizes.sizes.reduce((a,b)=>a+b,0)!==60) return 'לא כל היעדים נשלחו: '+sizes.sizes.join(',');
+    if(sizes.filled!==60) return 'לא כל התוצאות שובצו חזרה: '+sizes.filled;
+    return true; });
+
+  await step('תשובה שאינה JSON נשמרת עם התוכן שהוחזר', ()=>pg.evaluate(()=>{
+    const t=bridgeErrHe('bad-response:200:OK');
+    if(/גרסה ישנה/.test(t)) return 'עדיין מאשים בגרסה ישנה: '+t;
+    if(!/OK/.test(t)) return 'התוכן שהוחזר לא נשמר: '+t;
     return true; }));
 
   console.log('============================================');

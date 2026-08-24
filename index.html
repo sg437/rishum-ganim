@@ -3032,7 +3032,12 @@ async function driveCall(action, payload){
     let r;
     try{ r=await fetch(url, opts); }
     catch(e){ throw new Error("network"); }
-    let data; try{ data=await r.json(); }catch(e){ throw new Error("bad-response"); }
+    // התשובה נקראת כטקסט ואז מפוענחת, כדי שכשהיא אינה JSON נדע *מה* הוחזר.
+    // "bad-response" סתמי שלח אותנו לחפש במקומות הלא נכונים.
+    let raw="", data=null;
+    try{ raw=await r.text(); }catch(e){ throw new Error("network"); }
+    try{ data=JSON.parse(raw); }
+    catch(e){ throw new Error("bad-response:"+r.status+":"+raw.replace(/\s+/g," ").trim().slice(0,120)); }
     if(data && data.ok===false){
       // טוקן פג תוקף / לא תקף — רענון כפוי של הטוקן וניסיון חוזר אחד (מונע "בעיית הרשאה")
       if((data.error==='unauthorized' || data.error==='token') && !force){ force=true; continue; }
@@ -5813,7 +5818,12 @@ let _walkCache=new Map(), _walkWhy="";   // סיבת הכישלון האחרונ
 function bridgeErrHe(m){
   m=String(m||"");
   if(/unknown-action/.test(m))       return "הגשר ישן ואינו מכיר את הפעולה — יש לפרסם אותו מחדש";
-  if(/bad-response/.test(m))         return "הגשר החזיר תשובה שאינה תקינה — כנראה גרסה ישנה שפורסמה; יש לפרסם אותו מחדש";
+  if(/bad-response/.test(m)){
+    // התשובה אינה JSON. הגשר מחזיר JSON בכל מסלול, כולל שגיאה ופעולה לא מוכרת,
+    // ולכן זה מצביע על משהו שקרה *סביב* הגשר — הפניה, שגיאת שרת או מכסה.
+    const snip=m.replace(/^.*?bad-response:?/,"").trim();
+    return "הגשר החזיר תשובה שאינה JSON"+(snip?(" — "+snip):"");
+  }
   if(/network/.test(m))              return "לא הצלחתי להגיע לגשר — בדוק/י חיבור";
   if(/no-geo-key/.test(m))           return "אין מפתח Google בגשר";
   if(/REQUEST_DENIED/i.test(m))      return "Google דחה את הבקשה — כנראה Distance Matrix API אינו מופעל בפרויקט";
@@ -5832,18 +5842,26 @@ async function mapWalk(origin, gans){
   const need=[], needIdx=[];
   gans.forEach((g,i)=>{ if(!(g.geo&&g.geo.lat!=null)) return; const k=_walkKey(origin,g.geo);
     if(_walkCache.has(k)) out[i]=_walkCache.get(k); else { need.push({lat:g.geo.lat,lng:g.geo.lng}); needIdx.push(i); } });
-  if(need.length){
+  // Distance Matrix מוגבל ל-25 יעדים בבקשה. שליחת כולם בבת אחת עבדה כשסומנו
+  // כמה גנים ונפלה כשסומנו הרבה — ולכן התקלה נראתה אקראית.
+  const CHUNK=25;
+  let got=0, empty=false;
+  for(let i=0; i<need.length; i+=CHUNK){
+    const part=need.slice(i,i+CHUNK), idx=needIdx.slice(i,i+CHUNK);
     try{
-      const res=await driveCall("walk",{ origin:{lat:origin.lat,lng:origin.lng}, dests:need });
+      const res=await driveCall("walk",{ origin:{lat:origin.lat,lng:origin.lng}, dests:part });
       const arr=(res&&res.results)||[];
-      if(!arr.length) _walkWhy="הגשר לא החזיר תוצאות (ייתכן ש-Distance Matrix API אינו מופעל)";
-      else if(!arr.some(Boolean)) _walkWhy="לא נמצא מסלול הליכה בין הנקודות";
-      needIdx.forEach((gi,j)=>{ const r=arr[j]||null; out[gi]=r; _walkCache.set(_walkKey(origin,gans[gi].geo), r); });
+      if(!arr.length) empty=true;
+      idx.forEach((gi,j)=>{ const r=arr[j]||null; if(r) got++; out[gi]=r;
+        _walkCache.set(_walkKey(origin,gans[gi].geo), r); });
     }catch(e){
-      const m=String((e&&e.message)||e||"");
-      _walkWhy = bridgeErrHe(m);
+      _walkWhy = bridgeErrHe(String((e&&e.message)||e||""));
+      break;                                   // אין טעם להמשיך במנות הבאות
     }
   }
+  if(!_walkWhy && !got && need.length)
+    _walkWhy = empty ? "הגשר לא החזיר תוצאות (ייתכן ש-Distance Matrix API אינו מופעל)"
+                     : "לא נמצא מסלול הליכה בין הנקודות";
   return out;
 }
 function mapStudentPopup(s){
