@@ -59,7 +59,7 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .top-chips{display:flex;align-items:center;gap:7px}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-weight:800;font-size:.84rem;white-space:nowrap}
 /* כפתורי פעולה קטנים: ניווט (Waze/מפות), חיוג, מייל */
-.act{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);text-decoration:none;font-size:.95rem;line-height:1;margin-inline-start:4px;vertical-align:middle;flex:0 0 auto}
+.act{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);text-decoration:none;font-size:.95rem;line-height:1;margin-inline-start:4px;vertical-align:middle;flex:0 0 auto;cursor:pointer;padding:0;color:inherit}
 .act:hover{border-color:var(--accent);background:var(--accent-soft,var(--surface))}
 .actgrp{display:inline-flex;align-items:center;gap:0}
 .fieldwrap{display:flex;gap:5px;align-items:stretch}
@@ -3605,7 +3605,7 @@ function renderStuTable(){
       ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
       <td><b${ovf[s.id]?` style="color:${capColor(ovf[s.id])}" title="${ovf[s.id]==='over1'?'ילדה מעל הקיבולת (הראשונה מעל הקיבולת)':'ילדה מעל הקיבולת'}"`:''}>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
       <td>${esc(s.tz)||'—'}</td>
-      <td>${esc(ganName(s.ganId))}</td>
+      <td>${esc(ganName(s.ganId))} <button type="button" class="act stu-prox" data-id="${esc(s.id)}" title="בדיקת קרבה לגנים — לאיזה גן היא קרובה יותר">🧭</button></td>
       <td>${s.ganId?`<button type="button" class="pill ${s.placed!==false?'ok':'warn'} stu-place" data-id="${esc(s.id)}" style="cursor:pointer;border:none" title="לחצי כדי לשנות סטטוס שיבוץ">${s.placed!==false?'✔ משובצת':'⏳ ממתינה'}</button>`:'<span class="pill neutral" title="אין גן משובץ">—</span>'}</td>
       <td>${esc(s.age)||'—'}</td>
       <td>${esc([s.street,s.building].filter(Boolean).join(" "))||'—'}</td>
@@ -3631,6 +3631,7 @@ function renderStuTable(){
     const s=DB.students.find(x=>x.id===tr.dataset.sid); if(s) openStudent(JSON.parse(JSON.stringify(s)));
   });
   /* החלפת סטטוס שיבוץ בלחיצה אחת מהרשימה (משובצת ⇄ ממתינה) */
+  host.querySelectorAll(".stu-prox").forEach(b=> b.onclick=e=>{ e.stopPropagation(); const st=DB.students.find(x=>x.id===b.dataset.id); if(st) openProximityCheck(st); });
   host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; if(!canEditRec(st)){ toast("אין הרשאת עריכה בחינוך זה"); return; }
     if(st.placed===false && !assignGate(st.ganId, st)) return;   // רף שיבוץ (סעיף 2)
     st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
@@ -3699,11 +3700,18 @@ function openStudent(s){
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="s-education">${EDU_TYPES.map(t=>`<option ${eduLabel(s)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
     </div>
-    <div class="row" style="margin-top:10px;gap:8px;align-items:center">
+    <div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn ghost sm" id="s-sibcheck" type="button">🔎 בדיקת אחים/אחיות בקמפוס</button>
       <span class="hint">איתור לפי שם משפחה + כתובת זהים בשנה זו — לשיבוץ באותו קמפוס.</span>
     </div>
     <div id="s-siblings" style="margin-top:8px"></div>
+    <details class="map-fold" id="s-prox-fold" style="margin-top:10px">
+      <summary>🧭 בדיקת קרבה לגנים — לאיזה גן היא קרובה יותר?</summary>
+      <div class="map-fold-body">
+        <div class="hint" style="margin-bottom:6px">בוחרים אילו גנים לבדוק ומקבלים כאן את המרחקים מהכתובת שבתיק — בלי לפתוח את המפה הגדולה. לחיצה על "שבץ" בוחרת את הגן בשדה "גן משובצת" למעלה (השמירה בכפתור "שמירה").</div>
+        <div id="s-prox-host"></div>
+      </div>
+    </details>
     <div class="checks" style="margin-top:10px">
       <label class="check"><input type="checkbox" id="s-placed" ${s.placed!==false?'checked':''}> משובצת בגן (שיבוץ סופי)</label>
       <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
@@ -3909,6 +3917,23 @@ function openStudent(s){
   const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; applyGanAge(); ganRoomHint(); };
   { const pc=$("#s-placed"); if(pc) pc.addEventListener("change", ganRoomHint); }
   ganRoomHint();
+  /* בדיקת קרבה לגנים מתוך התיק (סעיף 3) — נבנית בפתיחה הראשונה של המקטע */
+  { const fold=$("#s-prox-fold");
+    const curStudent=()=>Object.assign({}, s, {
+      street:val("s-street"), building:val("s-building"), city:val("s-city"),
+      education:val("s-education"), ganId:val("s-ganId"), age:val("s-age") });
+    const build=()=>{
+      const host=$("#s-prox-host"); if(!host) return;
+      host.innerHTML=proxPanelHtml(curStudent(),"pxc");
+      proxBind(host, curStudent, "pxc", g=>{
+        const sel=$("#s-ganId"); if(!sel) return;
+        if(!assignGate(g.id, curStudent())) return;
+        sel.value=g.id; sel.dispatchEvent(new Event("change"));
+        toast("נבחר: "+ganName(g.id)+" — לחצ/י שמירה");
+      });
+    };
+    if(fold) fold.addEventListener("toggle",()=>{ if(fold.open) build(); }, false);
+  }
   /* עיר אוטומטית לפי רחוב — נלמד מתיקים קיימים; העיר מתמלאת רק אם ריקה, וניתן לתקן ידנית */
   { const streetCity={};
     DB.students.forEach(st=>{ const k=(st.street||"").trim(); if(k&&st.city){ (streetCity[k]=streetCity[k]||{})[st.city]=(streetCity[k][st.city]||0)+1; } });
@@ -5184,6 +5209,150 @@ function mapStudentPopup(s){
       h.textContent="מרחק הליכה לא זמין — ודא ש-Distance Matrix API מופעל בפרויקט Google."; box.appendChild(h); }
   });
   return box;
+}
+/* ============================================================
+   בדיקת קרבה לגנים מתוך התיק (סעיף 3)
+   בוחרים גנים לבדיקה — ומקבלים מיד את המרחקים מהכתובת של התלמידה,
+   בלי לפתוח את המפה הגדולה. נגיש מתוך תיק הילדה ומטבלת התלמידות.
+   ============================================================ */
+let _proxSel=null;   // בחירת הגנים האחרונה (Set של מזהים) — נשמרת בין בדיקות
+/* כתובת התלמידה לגאוקוד, ללא תלות במסנן העיר של המפה */
+function proxAddrQuery(st){
+  const base=[st.street,st.building].filter(Boolean).join(" ").trim();
+  if(!base) return "";
+  const city=(st.city||"").trim()||geoDefaultCity();
+  return base+(city?(", "+city):"")+", ישראל";
+}
+/* כתובת גן לגאוקוד, עם עיר מפורשת (במקום להישען על _mapState) */
+function proxGanQuery(g, city){
+  const cand=[String(g.address||"").trim(), String(g.street||"").trim()];
+  const streetName = cand.find(p=>p && /[א-ת]/.test(p)) || "";
+  if(!streetName) return "";
+  const num=String(g.building||"").trim();
+  const base = /\d/.test(streetName) ? streetName : (streetName + (num?(" "+num):""));
+  return base+(city?(", "+city):"")+", ישראל";
+}
+/* גנים מועמדים לבדיקה — פעילים, בחינוך של התלמידה */
+function proxGanOptions(st){
+  return DB.gans.filter(g=>g.active && eduLabel(g)===eduLabel(st))
+    .slice().sort((a,b)=> (a.campus||"").localeCompare(b.campus||"","he") || ganName(a.id).localeCompare(ganName(b.id),"he"));
+}
+/* גוף הפאנל (בחירת גנים + אזור תוצאות) */
+function proxPanelHtml(st, idp){
+  const gans=proxGanOptions(st);
+  const byCampus=new Map();
+  gans.forEach(g=>{ const k=(g.campus||"").trim()||"— ללא קמפוס —"; if(!byCampus.has(k)) byCampus.set(k,[]); byCampus.get(k).push(g); });
+  const sel=_proxSel||new Set(st.ganId?[st.ganId]:[]);
+  let list="";
+  byCampus.forEach((arr,camp)=>{
+    list+=`<div style="margin-bottom:6px"><div style="font-weight:700;font-size:12px;color:var(--muted);margin-bottom:2px">${esc(camp)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 14px">`+
+      arr.map(g=>{ const room=ganAssignRoom(g, st.id); const cap=ganAssignCap(g);
+        const tag = cap ? (room>0 ? `<span style="color:var(--muted);font-size:11px">(${cap-room}/${cap})</span>`
+                                  : `<span style="color:var(--bad);font-size:11px">(מלא)</span>`) : "";
+        return `<label class="check" style="margin:0;font-size:13px"><input type="checkbox" class="${idp}-gan" value="${esc(g.id)}" ${sel.has(g.id)?'checked':''}> ${esc(ganName(g.id))} ${tag}</label>`; }).join("")+
+      `</div></div>`;
+  });
+  if(!gans.length) list=`<div class="hint">אין גנים פעילים בחינוך ${esc(eduLabel(st))}.</div>`;
+  return `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+      <b>🧭 אילו גנים לבדוק?</b>
+      <button class="btn ghost sm" type="button" id="${idp}-all">בחר הכל</button>
+      <button class="btn ghost sm" type="button" id="${idp}-none">נקה</button>
+      <button class="btn sm" type="button" id="${idp}-go" style="margin-inline-start:auto">📏 בדיקת המרחקים</button>
+    </div>
+    <div style="max-height:150px;overflow:auto;margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:10px">${list}</div>
+    <div id="${idp}-out" style="margin-top:8px"></div>`;
+}
+/* הפעלת הפאנל. getStudent() מחזיר תמונת מצב עדכנית של התלמידה (כולל עריכות שטרם נשמרו).
+   onPick(gan) — מה לעשות בלחיצה על "שבץ"; ברירת מחדל: שיבוץ ישיר ב-DB. */
+function proxBind(host, getStudent, idp, onPick){
+  const boxes=()=>[...host.querySelectorAll("."+idp+"-gan")];
+  const readSel=()=>new Set(boxes().filter(b=>b.checked).map(b=>b.value));
+  const setAll=v=>{ boxes().forEach(b=>b.checked=v); _proxSel=readSel(); };
+  const bAll=host.querySelector("#"+idp+"-all"); if(bAll) bAll.onclick=()=>setAll(true);
+  const bNone=host.querySelector("#"+idp+"-none"); if(bNone) bNone.onclick=()=>setAll(false);
+  boxes().forEach(b=>b.onchange=()=>{ _proxSel=readSel(); });
+  const out=host.querySelector("#"+idp+"-out");
+  const go=host.querySelector("#"+idp+"-go");
+  if(go) go.onclick=async()=>{
+    const st=getStudent();
+    _proxSel=readSel();
+    const picked=[..._proxSel];
+    if(!picked.length){ out.innerHTML=`<div class="hint">סמן/י לפחות גן אחד לבדיקה.</div>`; return; }
+    const q=proxAddrQuery(st);
+    if(!q){ out.innerHTML=`<div class="note">אין כתובת (רחוב + מספר) בתיק — לא ניתן לחשב מרחקים.</div>`; return; }
+    go.disabled=true; out.innerHTML=`<div class="hint">מחשב מרחקים… (${picked.length} גנים)</div>`;
+    try{
+      const city=(st.city||"").trim()||geoDefaultCity();
+      // מיקום התלמידה — נשמר על הרשומה שבמסד כדי לא לגאוקד שוב בפעם הבאה
+      const rec=DB.students.find(x=>x.id===st.id) || st;
+      const sgeo=await ensureGeo(rec, q, false, city, null);
+      if(!sgeo){ out.innerHTML=`<div class="note">לא נמצא מיקום לכתובת "${esc(q)}". אפשר לתקן את הרחוב/המספר בתיק ולנסות שוב.</div>`; go.disabled=false; return; }
+      const gans=picked.map(id=>ganById(id)).filter(Boolean);
+      const missing=[];
+      for(const g of gans){
+        if(g.geo && g.geo.manual && g.geo.lat!=null) continue;
+        const gq=proxGanQuery(g, city); if(!gq){ missing.push(g); continue; }
+        await ensureGeo(g, gq, false, city, null);
+        if(!(g.geo&&g.geo.lat!=null)) missing.push(g);
+      }
+      try{ save(); }catch(e){}
+      const ok=gans.filter(g=>g.geo&&g.geo.lat!=null);
+      let rows=ok.map(g=>({ g, km:haversineKm(sgeo,g.geo) })).sort((a,b)=>a.km-b.km);
+      const draw=()=>{
+        let html=`<div class="hint" style="margin-bottom:4px">מהכתובת: <b>${esc([st.street,st.building,st.city].filter(Boolean).join(" "))}</b> · מהקרוב לרחוק</div>
+          <div class="table-wrap"><table><thead><tr><th>#</th><th>גן</th><th>מרחק</th><th>משובצות / רף</th><th></th></tr></thead><tbody>`;
+        rows.forEach((r,i)=>{
+          const isCur=r.g.id===st.ganId;
+          const room=ganAssignRoom(r.g, st.id);
+          let dist, colorKm;
+          if(r.walk===undefined){ dist=`${r.km.toFixed(2)} ק"מ אווירי · 🚶…`; colorKm=r.km; }
+          else if(r.walk){ dist=`🚶 ${(r.walk.m/1000).toFixed(2)} ק"מ · ${Math.round(r.walk.sec/60)} דק' הליכה`; colorKm=r.walk.m/1000; }
+          else { dist=`${r.km.toFixed(2)} ק"מ אווירי`; colorKm=r.km; }
+          html+=`<tr><td>${i+1}</td>
+            <td><b style="color:${mapDistColor(colorKm)}">●</b> ${esc(ganName(r.g.id))}${r.g.teacherName?` <span class="hint" style="display:inline">· ${esc(r.g.teacherName)}</span>`:""}</td>
+            <td>${esc(dist)}</td>
+            <td>${assignCapPill(r.g)}</td>
+            <td>${isCur?'<span class="pill ok">משובצת כאן</span>'
+                 : room<=0 ? '<span class="pill neutral" title="הגן הגיע לרף השיבוץ">מלא</span>'
+                 : `<button class="btn sm ${idp}-pick" type="button" data-gid="${esc(r.g.id)}">שבץ</button>`}</td></tr>`;
+        });
+        html+=`</tbody></table></div>`;
+        if(missing.length) html+=`<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ ללא מיקום (כתובת חסרה/לא זוהתה): ${missing.map(g=>esc(ganName(g.id))).join(" · ")} — אפשר למקם ידנית בלשונית מפת שיבוץ.</div>`;
+        out.innerHTML=html;
+        out.querySelectorAll("."+idp+"-pick").forEach(b=>b.onclick=()=>{
+          const g=ganById(b.dataset.gid); if(!g) return;
+          if(onPick) onPick(g); else mapAssign(DB.students.find(x=>x.id===st.id)||st, g);
+        });
+      };
+      draw();
+      go.disabled=false;
+      // שדרוג למרחקי הליכה אמיתיים כשיש גשר Google
+      mapWalk(sgeo, rows.map(r=>r.g)).then(walks=>{
+        let any=false; rows.forEach((r,i)=>{ r.walk=walks[i]||null; if(r.walk) any=true; });
+        if(any) rows=rows.slice().sort((a,b)=> ((a.walk?a.walk.m:a.km*1000) - (b.walk?b.walk.m:b.km*1000)));
+        draw();
+      }).catch(()=>{});
+    }catch(e){ out.innerHTML=`<div class="note">שגיאה בחישוב: ${esc((e&&e.message)||String(e))}</div>`; go.disabled=false; }
+  };
+}
+/* גרסת חלון — לשימוש מטבלת התלמידות (בלי לפתוח את התיק) */
+function openProximityCheck(st){
+  if(!st) return;
+  modal(`<h3>🧭 בדיקת קרבה לגנים · ${esc([st.lastName,st.firstName].filter(Boolean).join(" "))}</h3>
+    <div class="sub">כתובת: <b>${esc([st.street,st.building,st.city].filter(Boolean).join(" ")||"— חסרה —")}</b> · חינוך: ${esc(eduLabel(st))}</div>
+    <div id="prox-host" style="margin-top:10px">${proxPanelHtml(st,"pxm")}</div>
+    <div class="foot"><button class="btn ghost" id="prox-close" style="margin-inline-start:auto">סגירה</button></div>`);
+  $("#prox-close").onclick=closeModal;
+  proxBind($("#prox-host"), ()=>DB.students.find(x=>x.id===st.id)||st, "pxm", g=>{
+    const rec=DB.students.find(x=>x.id===st.id); if(!rec) return;
+    if(!canEditRec(rec)){ toast("אין הרשאת עריכה בחינוך זה"); return; }
+    if(!assignGate(g.id, rec)) return;
+    rec.ganId=g.id; rec.campus=ganCampus(g.id)||rec.campus||"";
+    const ages=ganAges(g); if(ages.length===1) rec.age=ages[0];
+    save(); toast("שובצה ל"+ganName(g.id)); closeModal();
+    try{ renderStuTable(); }catch(e){}
+  });
 }
 /* ============================================================
    שיבוץ אוטומטי לפי קרבה (סעיף 1)
