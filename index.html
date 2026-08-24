@@ -2155,6 +2155,7 @@ function makeGan(){ return {
   address:"", building:"", street:"", zone:"", phoneGan:"", phoneHome:"",
   teacherMobile:"", assistantName:"", assistantMobile:"",
   campus:"",   // קמפוס הגן — מקור האמת; אצל התלמידות נגזר מהגן
+  city:"",     // עיר הגן — נדרשת לגאוקוד מדויק; בלעדיה הכתובת נשאלת מהתלמידות
   capacity:"", assignCap:"", active:true, docsNote:"", createdAt:new Date().toISOString()
 };}
 
@@ -2572,6 +2573,9 @@ function guideContent(){
           <b>ברירת מחדל לכל הגנים:</b> <b>הגדרות → רף שיבוץ</b> — קובעים מספר לחינוך רגיל (למשל 36) ולחינוך מיוחד. רף שנקבע בכרטיס גן מסוים גובר תמיד.<br>
           <b>עד שמזינים מספר — אין שום הגבלה</b> והמערכת מתנהגת כמו קודם. יש גם אפשרות (כבויה כברירת מחדל) שה<b>קיבולת</b> הקיימת של כל גן תשמש כרף כשלא הוגדר אחרת.<br>
           עמודת <b>"משובצות / רף"</b> בטבלת הגנים מראה את המצב בכל רגע: ירוק = יש מקום · כתום = הגן מלא · אדום = חריגה.</li>
+        <li><b>🏙️ עיר הגן (חדש)</b> — שדה <b>עיר</b> בכרטיס הגן, לצד הכתובת והאזור. <b>למה זה חשוב:</b> המיקום של הגן על המפה ובבדיקות הקרבה מחושב לפי הכתובת <b>יחד עם העיר</b>. בלי עיר בכרטיס, המערכת נופלת לעיר הראשית של הרשת — ואם שם הרחוב קיים גם ביישוב אחר בארץ, הזיהוי עלול ליפול שם ולהציג מרחקים שגויים.<br>
+          גן חדש נפתח עם העיר הראשית ממולאת מראש. אם יש גנים בלי עיר, מופיע בראש לשונית הגנים <b>באנר עם כפתור "השלמת עיר"</b> שממלא בלחיצה אחת את העיר הראשית לכל הגנים שאין להם — <b>בלי לגעת</b> בגנים שכבר הוגדרה להם עיר. בטבלה יש עמודת <b>עיר</b>, וגן בלי עיר מסומן ב-<span class="gd-pill warn">חסר</span>.<br>
+          העיר נכללת גם בייבוא/ייצוא של הגנים.</li>
         <li><b>צפייה בתלמידות הגן</b> — <b>לחיצה על מספר הרשומות</b> בטבלה (או כפתור <b>🎒 צפייה בתלמידות</b> בתוך טופס הגן) פותחת את רשימת התלמידות מסוננת לאותו גן. מעל הרשימה המסוננת מופיע פס פעולות עם <b>🖨️ הדפסה</b> ו-<b>📎 שיתוף מסמך</b> (PDF) של רשימת הגן — כולל <b>"התאם לעמוד אחד"</b>.</li>
       </ul>` },
 
@@ -3229,8 +3233,8 @@ function buildSheetPayload(){
   const yn=v=>v?"כן":"לא";
   const stuHeaders=["שנה","שם משפחה","שם פרטי",'ת"ז',"גן","קמפוס","גיל","מועד","חינוך","משובצת","קלוט בעירייה","נרשמה על ידינו","ביטוח שולם","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","בניין","עיר","סטטוס","הערות"];
   const stuRows=DB.students.map(s=>[s.year,s.lastName,s.firstName,s.tz,ganName(s.ganId),ganCampus(s.ganId)||s.campus||"",s.age,s.period,eduLabel(s),yn(s.placed!==false),yn(s.absorbedMunicipality),yn(s.registeredByUs),yn(s.insurancePaid),s.phone,s.dadMobile||"",s.momMobile||s.mobile||"",s.email||"",s.street,s.building,s.city,(s.finished?"סיימה":"פעילה"),s.notes]);
-  const ganHeaders=["שם הגן","סמל פנימי","סמל גן","גיל","חינוך","גננת","קמפוס","כתובת","בניין","אזור","טל' גן","נייד גננת","קיבולת","רף שיבוץ","משובצות (שנה פעילה)","רשומות (שנה פעילה)","פעיל"];
-  const ganRows=DB.gans.map(g=>[g.ganName,g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.teacherName,g.campus,g.address,g.building,g.zone,g.phoneGan,g.teacherMobile,g.capacity,(ganAssignCap(g)||""),ganAssignedCount(g.id),studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length,yn(g.active)]);
+  const ganHeaders=["שם הגן","סמל פנימי","סמל גן","גיל","חינוך","גננת","קמפוס","כתובת","בניין","עיר","אזור","טל' גן","נייד גננת","קיבולת","רף שיבוץ","משובצות (שנה פעילה)","רשומות (שנה פעילה)","פעיל"];
+  const ganRows=DB.gans.map(g=>[g.ganName,g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.teacherName,g.campus,g.address,g.building,g.city,g.zone,g.phoneGan,g.teacherMobile,g.capacity,(ganAssignCap(g)||""),ganAssignedCount(g.id),studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length,yn(g.active)]);
   const staffHeaders=["שם משפחה","שם פרטי",'ת"ז',"תפקיד","חינוך","טלפון","נייד","מייל","עיר","הערות"];
   const staffRows=DB.staff.map(m=>[m.lastName,m.firstName,m.tz,m.role,eduLabel(m),m.phone,m.mobile,m.email,m.city,m.notes]);
   const asgHeaders=["שנה","הקשר","גן","תפקיד","שם העובד/ת"];
@@ -4895,7 +4899,7 @@ const GAN_SORT_VAL = {
   name:g=>ganName(g.id), internalSymbol:g=>g.internalSymbol, ganSymbol:g=>g.ganSymbol,
   age:g=>g.age, teacherName:g=>g.teacherName,
   address:g=>[g.address,g.building].filter(Boolean).join(" "), zone:g=>g.zone,
-  capacity:g=>+g.capacity||0, reg:g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length,
+  capacity:g=>+g.capacity||0, city:g=>(g.city||"").toLowerCase(), reg:g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length,
   assigned:g=>ganAssignedCount(g.id)
 };
 function sortGans(list){
@@ -4983,6 +4987,10 @@ const CITY_ALIASES = {
   "קרית ספר":"מודיעין עילית",
   "קריית ספר":"מודיעין עילית"
 };
+/* העיר הראשית של הרשת — לפי העיר הנפוצה ביותר אצל התלמידות, בכתיב מנורמל */
+function mainCityName(){ return normCityName(geoDefaultCity()); }
+/* עיר הגן: מה שנקבע בכרטיס הגן, ואם ריק — העיר הראשית (התנהגות תואמת לאחור) */
+function ganCity(g){ return normCityName((g&&g.city)||"") || mainCityName(); }
 function normCityName(c){
   let v=String(c||"").trim().replace(/["'\u05f3\u05f4]/g,"").replace(/\s+/g," ");
   if(!v) return "";
@@ -4999,7 +5007,8 @@ function ganAddrQuery(g){
   if(!streetName) return "";                          // אין שם רחוב (אותיות) → לא ניתן לגאוקד
   const num=String(g.building||"").trim();
   const base = /\d/.test(streetName) ? streetName : (streetName + (num?(" "+num):""));
-  const city=normCityName((_mapState&&_mapState.city)||geoDefaultCity());   // העיר הנבחרת במפה מנצחת
+  // עיר הגן עצמו קודמת; אחריה העיר הנבחרת במפה, ולבסוף העיר הראשית
+  const city=normCityName(g.city||"") || normCityName((_mapState&&_mapState.city)||geoDefaultCity());
   return base+(city?(", "+city):"")+", ישראל";
 }
 function studentAddrQuery(s){
@@ -5732,7 +5741,7 @@ function proxGanQuery(g, city){
   if(!streetName) return "";
   const num=String(g.building||"").trim();
   const base = /\d/.test(streetName) ? streetName : (streetName + (num?(" "+num):""));
-  const c=normCityName(city);
+  const c=normCityName(g.city||"") || normCityName(city);   // עיר הגן קודמת לעיר שהועברה
   return base+(c?(", "+c):"")+", ישראל";
 }
 /* גנים מועמדים לבדיקה — פעילים, בחינוך של התלמידה */
@@ -6135,9 +6144,23 @@ function viewGans(root){
       <button class="btn ghost" id="impGan">⬆️ ייבוא מקובץ</button>
       <button class="btn ghost" id="exportGans">📤 ייצוא / הדפסה</button>
     </div>
+    ${(()=>{ const miss=DB.gans.filter(g=>!String(g.city||"").trim()); const c=mainCityName();
+      if(!miss.length || !c) return "";
+      return `<div class="note" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="flex:1;min-width:220px">🏙️ ל-<b>${miss.length}</b> גנים אין <b>עיר</b> בכרטיס. בלי עיר, מיקום הגן על המפה נקבע לפי העיר הראשית — ולכן רחוב באותו שם בעיר אחרת עלול להתקבל, ולהציג מרחקים שגויים.</span>
+        <button class="btn sm" id="ganFillCity" type="button">השלמת עיר — ${esc(c)}</button>
+      </div>`; })()}
     <div id="ganTable"></div>
   </div>`;
   $("#addGan").onclick=()=>{ const g=makeGan(); if(activeEdu) g.education=activeEdu; openGan(g); };
+  { const b=$("#ganFillCity"); if(b) b.onclick=()=>{
+      const c=mainCityName(); const miss=DB.gans.filter(g=>!String(g.city||"").trim());
+      if(!c || !miss.length) return;
+      if(!confirm(`להשלים את העיר "${c}" ל-${miss.length} גנים שאין להם עיר?\n\nגנים שכבר יש להם עיר לא ישתנו. אפשר לשנות כל גן בנפרד בכרטיס שלו.`)) return;
+      let n=0; miss.forEach(g=>{ if(!canEditRec(g)) return; g.city=c; g.geo=null; n++; });   // איפוס geo → מיקום יחושב מחדש עם העיר
+      save(); viewGans(root);
+      toast(`הושלמה עיר ל-${n} גנים`+(n<miss.length?` · ${miss.length-n} דולגו (אין הרשאת עריכה)`:""));
+    }; }
   $("#impGan").onclick=openGanImport;
   $("#exportGans").onclick=openGanExport;
   $("#ganFilterToggle").onclick=()=>{ ganFiltersOpen=$("#ganFilterPanel").hasAttribute("hidden"); viewGans(root); };
@@ -6156,7 +6179,7 @@ function renderGanTable(){
   const totalActive = eduScope(DB.gans.filter(g=>g.active)).length;
   const eduNote = activeEdu ? ` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})` : "";
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
-    ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${th("age","גיל")}${th("","חינוך")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("zone","אזור")}
+    ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${th("age","גיל")}${th("","חינוך")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("city","עיר")}${th("zone","אזור")}
     ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("assigned","משובצות / רף")}${th("","סטטוס")}</tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
@@ -6170,6 +6193,7 @@ function renderGanTable(){
         <td>${esc(g.teacherName)||'—'}</td>
         <td>${g.address?`${esc(g.address)} ${navBtns([g.address,g.building,g.zone].filter(Boolean).join(" "))}`:'—'}</td>
         <td>${esc(g.building)||'—'}</td>
+        <td>${g.city?esc(g.city):'<span class="pill warn" title="אין עיר בכרטיס הגן — המיקום נקבע לפי העיר הראשית">חסר</span>'}</td>
         <td>${esc(g.zone)||'—'}</td>
         <td>${phoneCell(g.phoneGan)}</td>
         <td>${esc(g.capacity)||'—'}</td>
@@ -6190,6 +6214,7 @@ function openGan(g){
   const gStreetList = uniqSortHe([...DB.gans.map(x=>x.street), ...DB.students.map(s=>s.street)]);
   const gAddrList   = uniqSortHe(DB.gans.map(x=>x.address));
   const gZoneList   = uniqSortHe(DB.gans.map(x=>x.zone));
+  const gCityList   = uniqSortHe([...DB.gans.map(x=>x.city), ...DB.students.map(x=>x.city), mainCityName()]);
   modal(`
   <h3>${isNew?'גן חדש':'עריכת גן'}</h3>
   <fieldset><legend>זיהוי הגן</legend>
@@ -6215,6 +6240,8 @@ function openGan(g){
       <div><label>כתובת הגן</label><div class="fieldwrap"><input id="g-address" list="g-addr-list" value="${esc(g.address)}"><button type="button" class="act" data-nav="g-address" title="ניווט ב-Waze">🚗</button></div><datalist id="g-addr-list">${gAddrList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
       <div><label>מספר</label><input id="g-building" value="${esc(g.building)}" inputmode="numeric"></div>
       <div><label>רחוב</label><input id="g-street" list="g-street-list" value="${esc(g.street)}"><datalist id="g-street-list">${gStreetList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
+      <div><label>עיר</label><input id="g-city" list="g-city-list" value="${esc(g.city||(isNew?mainCityName():""))}" placeholder="${esc(mainCityName()||"שם העיר")}"><datalist id="g-city-list">${gCityList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist>
+        <div class="hint">${g.city?"":"בלי עיר, מיקום הגן נקבע לפי העיר הראשית — מה שעלול לזהות רחוב באותו שם בעיר אחרת."}</div></div>
       <div><label>אזור בעיר</label><input id="g-zone" list="g-zone-list" value="${esc(g.zone)}" placeholder="לסינון לפי אזורים"><datalist id="g-zone-list">${gZoneList.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
     </div>
   </fieldset>
@@ -6242,6 +6269,7 @@ function openGan(g){
       teacherName:val("g-teacherName"),capacity:val("g-capacity"),
       assignCap:String(val("g-assignCap")||"").replace(/[^\d]/g,""),campus:val("g-campus"),
       address:val("g-address"),building:val("g-building"),street:val("g-street"),zone:val("g-zone"),
+      city:val("g-city"),
       phoneGan:val("g-phoneGan"),docsNote:val("g-docsNote"),active:chk("g-active")
     });
     if(!data.ganName && !data.teacherName && !data.ganSymbol && !data.internalSymbol){ toast("יש להזין שם הגן, גננת או סמל"); return; }
@@ -6274,6 +6302,7 @@ const GAN_HEADER_MAP = {
   "רחוב":"street",
   "מספר":"building","בניין":"building","מספרבית":"building","בית":"building","מספרבניין":"building",
   "אזור":"zone","אזורבעיר":"zone","איזור":"zone",
+  "עיר":"city","ישוב":"city","יישוב":"city","עירהגן":"city",
   "טלפון":"phoneGan","טלפוןבגן":"phoneGan","טלגן":"phoneGan","טלפוןגן":"phoneGan","טל":"phoneGan",
   "טלפוןבית":"phoneHome","טלבית":"phoneHome",
   "ניידגננת":"teacherMobile","פלאפוןגננת":"teacherMobile","סלולריגננת":"teacherMobile",
@@ -6304,7 +6333,7 @@ function buildGanImportRows(rows){
     const a=g("age").replace(/\s/g,""); gn.age=GAN_AGES.includes(a)?a:a.replace(/[^\d/]/g,"");
     if(idx.education!=null) gn.education=normEduVal(g("education")); else if(activeEdu) gn.education=activeEdu;
     gn.campus=g("campus");
-    gn.address=g("address"); gn.street=g("street"); gn.building=g("building"); gn.zone=g("zone");
+    gn.address=g("address"); gn.street=g("street"); gn.building=g("building"); gn.zone=g("zone"); gn.city=g("city");
     gn.phoneGan=g("phoneGan"); gn.phoneHome=g("phoneHome"); gn.teacherMobile=fixPhone(g("teacherMobile"));
     gn.assistantName=g("assistantName"); gn.assistantMobile=fixPhone(g("assistantMobile"));
     gn.capacity=g("capacity").replace(/[^\d]/g,""); gn.assignCap=g("assignCap").replace(/[^\d]/g,""); gn.docsNote=g("docsNote");
@@ -6317,7 +6346,7 @@ function buildGanImportRows(rows){
   return { list, mapped };
 }
 function ganTemplateCSV(){
-  const headers=["שם הגן","סמל פנימי","סמל הגן","שם הגננת","גיל","חינוך","כתובת","מספר","אזור","טלפון בגן","נייד גננת","שם סייעת","נייד סייעת","קיבולת","רף שיבוץ","פעיל"];
+  const headers=["שם הגן","סמל פנימי","סמל הגן","שם הגננת","גיל","חינוך","כתובת","מספר","עיר","אזור","טלפון בגן","נייד גננת","שם סייעת","נייד סייעת","קיבולת","רף שיבוץ","פעיל"];
   const example=["גן הדקל","1234","567890","מרים כהן","3","רגיל","הרב קוק","12","מרכז","02-1234567","050-1234567","שרה לוי","052-7654321","35","כן"];
   const csv=[headers.map(csvCell).join(","), example.map(csvCell).join(",")].join("\r\n");
   downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `תבנית-ייבוא-גנים.csv`);
@@ -6473,7 +6502,7 @@ function printTable(title, headers, rows){
 /* שורת פרטי גן קצרה — לכותרת יצוא ממותגת (מתחת ללוגו) */
 function ganPlaceLine(g){
   if(!g) return "";
-  return [ganName(g.id), g.ganSymbol?("סמל "+g.ganSymbol):"", [g.address,g.building].filter(Boolean).join(" "),
+  return [ganName(g.id), g.ganSymbol?("סמל "+g.ganSymbol):"", [g.address,g.building,g.city].filter(Boolean).join(" "),
           g.zone?("אזור "+g.zone):"", g.phoneGan?("טל' "+g.phoneGan):""].filter(Boolean).join(" · ");
 }
 /* בניית מסמך HTML ממותג עצמאי: לוגו הרשת + כותרת · פרטי המקום (subtitle) · טבלה.
@@ -8045,7 +8074,7 @@ function openAsgExport(){
     let gans=eduScope(DB.gans.slice()).sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
     if(gid) gans=gans.filter(g=>g.id===gid);
     const FREE_COLS=[["יום חופשי גננת","גננת"],["יום חופשי סייעת","סייעת"],["יום חופשי סייעת רפואית","סייעת רפואית"]];
-    const headers=["שם הגן"], colBg=[""]; if(fixed){ headers.push("סמל פנימי","סמל גן","גיל","חינוך","כתובת","אזור","טל' גן","קיבולת","רשומות","סטטוס"); for(let i=0;i<10;i++) colBg.push(""); }
+    const headers=["שם הגן"], colBg=[""]; if(fixed){ headers.push("סמל פנימי","סמל גן","גיל","חינוך","כתובת","עיר","אזור","טל' גן","קיבולת","רשומות","סטטוס"); for(let i=0;i<11;i++) colBg.push(""); }
     assignRoles().forEach(meta=>{ const tint=tintHex(roleColor(meta.role),.74);
       headers.push(meta.role); colBg.push(tint);
       if(phones){ headers.push(meta.role+" — טלפון"); colBg.push(tint?tintHex(roleColor(meta.role),.85):""); }
@@ -8054,7 +8083,7 @@ function openAsgExport(){
     const rows=gans.map(g=>{
       const reg=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
       const a=ganAsg(g.id), free=ganFreeDays(g.id, asgContext); const row=[ganName(g.id)];
-      if(fixed) row.push(g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),[g.address,g.building].filter(Boolean).join(" "),g.zone,g.phoneGan,g.capacity,reg,g.active?"פעיל":"כבוי");
+      if(fixed) row.push(g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),[g.address,g.building].filter(Boolean).join(" "),g.city||"",g.zone,g.phoneGan,g.capacity,reg,g.active?"פעיל":"כבוי");
       assignRoles().forEach(meta=>{ const c=a[meta.role]||{}; row.push(c.name||""); if(phones) row.push(c.phone||""); if(meta.extra) row.push(asgExtraText(meta.role,c)); });
       FREE_COLS.forEach(f=>row.push((free[f[1]]||[]).join(", ")));
       return row;
