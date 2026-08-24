@@ -41,7 +41,7 @@ Object.defineProperty(window,'_placeGanId',{get:()=>_placeGanId,set:v=>{_placeGa
 Object.defineProperty(window,'_placeKind',{get:()=>_placeKind,set:v=>{_placeKind=v},configurable:true});
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, mapPlaceSave, save });
+  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, mapPlaceSave, save });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -590,6 +590,52 @@ const server=require('http').createServer((req,res)=>{
     if(!r || r.lat!==31.9331) return 'מיקום ידני של תלמידה לא כובד (force=true)';
     if(!s.geo.manual) return 'הסימון הידני אבד';
     return true; }));
+
+  /* ---- שמות עיר חלופיים: "קרית ספר" כשהספק לא מכיר "מודיעין עילית" ---- */
+  await step('סדר הניסיונות כולל מספר בית, מרכז רחוב ושם עיר חלופי', ()=>pg.evaluate(()=>{
+    const c=geoQueryCandidates('חפץ חיים 16, מודיעין עילית, ישראל','מודיעין עילית');
+    const qs=c.map(x=>x.q);
+    if(qs[0]!=='חפץ חיים 16, מודיעין עילית, ישראל') return 'הניסיון הראשון אינו הכתובת המקורית';
+    if(!qs.includes('חפץ חיים, מודיעין עילית, ישראל')) return 'חסר ניסיון בלי מספר בית';
+    if(!qs.includes('חפץ חיים 16, קרית ספר, ישראל')) return 'חסר ניסיון עם השם החלופי: '+qs.join(' | ');
+    if(!c.find(x=>x.alt).city) return 'לניסיון החלופי אין עיר';
+    return true; }));
+
+  await step('כתובת שנמצאת רק תחת השם החלופי — מתקבלת ומסומנת', async()=>{
+    // הספק מכיר רק "קרית ספר"; על "מודיעין עילית" הוא מחזיר את מושב חפץ חיים הרחוק
+    await pg.route(/nominatim/, r=>{
+      const u=decodeURIComponent(r.request().url());
+      if(/קרית ספר/.test(u)) return r.fulfill({status:200,contentType:'application/json',
+        body:JSON.stringify([{lat:'31.9331',lon:'35.0409'}])});
+      return r.fulfill({status:200,contentType:'application/json',
+        body:JSON.stringify([{lat:'31.7900',lon:'34.8100'}])});   // מושב חפץ חיים
+    });
+    try{
+      return await pg.evaluate(async()=>{
+        const bias={ city:'מודיעין עילית', lat:31.93102, lng:35.04723, src:'manual' };
+        const st={id:'ac1',geo:null};
+        const r=await ensureGeo(st,'חפץ חיים 16, מודיעין עילית, ישראל',false,'מודיעין עילית',bias);
+        if(!r || r.lat==null) return 'לא התקבל מיקום למרות שהשם החלופי עובד';
+        if(Math.abs(r.lat-31.9331)>0.001) return 'התקבל המיקום הרחוק ולא הנכון: '+r.lat;
+        if(st.geo.altCity!=='קרית ספר') return 'לא סומן שהמיקום התקבל לפי שם חלופי';
+        return true; });
+    } finally { await pg.unroute(/nominatim/); }
+  });
+
+  await step('כשכל ההתאמות מחוץ לעיר — נדחות ונרשמת הסיבה', async()=>{
+    await pg.route(/nominatim/, r=>r.fulfill({status:200,contentType:'application/json',
+      body:JSON.stringify([{lat:'31.7900',lon:'34.8100'}])}));   // תמיד המושב הרחוק
+    try{
+      return await pg.evaluate(async()=>{
+        const bias={ city:'מודיעין עילית', lat:31.93102, lng:35.04723, src:'manual' };
+        const st={id:'ac2',geo:null};
+        const r=await ensureGeo(st,'חפץ חיים 16, מודיעין עילית, ישראל',false,'מודיעין עילית',bias);
+        if(r) return 'התקבל מיקום רחוק במקום להידחות';
+        if(!st.geo.outCity) return 'לא סומן outCity';
+        if(!/מחוץ לרדיוס/.test(st.geo.why||'')) return 'הסיבה לא מציינת דחייה: '+st.geo.why;
+        return true; });
+    } finally { await pg.unroute(/nominatim/); }
+  });
 
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');

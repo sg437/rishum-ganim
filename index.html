@@ -4993,6 +4993,14 @@ const CITY_ALIASES = {
   "קרית ספר":"מודיעין עילית",
   "קריית ספר":"מודיעין עילית"
 };
+/* שמות מקומיים חלופיים לאותה עיר. הנרמול לעיל מאחד אותם לשם אחד לשמירה, אבל
+   ספקי המפות לא בהכרח מכירים דווקא את השם המנורמל — ולכן בגאוקוד מנסים גם את
+   השאר. שם עיר שהספק לא מזהה מפיל כל כתובת בעיר, ואז נופלים לרחוב באותו שם
+   במקום אחר בארץ (שנדחה) — כלומר "לא נמצא מיקום" לכל העיר. */
+const CITY_ALT_NAMES = {
+  "מודיעין עילית":["קרית ספר"],
+  "ביתר עילית":["ביתר"]
+};
 /* העיר הראשית של הרשת — לפי העיר הנפוצה ביותר אצל התלמידות, בכתיב מנורמל */
 function mainCityName(){ return normCityName(geoDefaultCity()); }
 /* עיר הגן: מה שנקבע בכרטיס הגן, ואם ריק — העיר הראשית (התנהגות תואמת לאחור) */
@@ -5060,6 +5068,24 @@ function geoDropHouseNo(q){
   const head=q.slice(0,i).trim(), street=head.replace(/\s+\d+\s*[א-ת]?$/,"").trim();
   return (street && street!==head) ? street+q.slice(i) : "";
 }
+/* החלפת שם העיר בתוך שאילתה בנויה ("רחוב 16, עיר, ישראל") */
+function geoSwapCity(q, city, alt){
+  const c=normCityName(city);
+  if(!c || !alt || !String(q||"").includes(c)) return "";
+  return q.split(c).join(alt);
+}
+/* סדר הניסיונות לגאוקוד כתובת אחת: מדויק → בלי מספר בית → שמות עיר חלופיים.
+   נעצרים בראשון שנופל בתוך רדיוס העיר. */
+function geoQueryCandidates(q, city){
+  const out=[{ q, city, relaxed:false, alt:false }];
+  const bare=geoDropHouseNo(q);
+  if(bare) out.push({ q:bare, city, relaxed:true, alt:false });
+  (CITY_ALT_NAMES[normCityName(city)]||[]).forEach(a=>{
+    const qa=geoSwapCity(q, city, a);
+    if(qa) out.push({ q:qa, city:a, relaxed:false, alt:true });
+  });
+  return out;
+}
 function geocodeOnce(q, city, bias){
   const run=async()=>{
     _geoWhy="";
@@ -5101,25 +5127,26 @@ async function ensureGeo(ent, q, force, city, bias){
     if(geoNearCity(ent.geo, bias)) return ent.geo;
   }
   else if(!force && ent.geo && ent.geo.q===q && ent.geo.tried) return null;   // ניסינו וקיבלנו ריק (אלא אם force)
-  let pt=null, why="";
-  try{ pt=await geocodeOnce(q, city, bias); }catch(e){ pt=null; }
-  if(!pt){
-    why=_geoWhy;
-    const relaxed=geoDropHouseNo(q);
-    if(relaxed){ try{ pt=await geocodeOnce(relaxed, city, bias); }catch(e){ pt=null; }
-      if(pt) pt.relaxed=true; else why=why+" · גם בלי מספר בית"; }
+  let pt=null, why="", outCity=false;
+  for(const cand of geoQueryCandidates(q, city)){
+    let r=null; try{ r=await geocodeOnce(cand.q, cand.city, bias); }catch(e){ r=null; }
+    if(!r){ if(!why) why=_geoWhy; else if(cand.relaxed) why+=" · גם בלי מספר בית";
+            else if(cand.alt) why+=" · גם בשם "+cand.city; continue; }
+    // דחיית תוצאה שנפלה מחוץ לרדיוס — עדיף להמשיך לניסיון הבא מאשר לקבוע
+    // מיקום שגוי (רחוב באותו שם בעיר אחרת).
+    if(bias && bias.lat!=null && haversineKm(r,bias) > MAP_CITY_RADIUS_KM){ outCity=true; continue; }
+    pt=r; pt.relaxed=cand.relaxed; pt.altCity=cand.alt?cand.city:""; break;
   }
-  // דחיית תוצאה שנפלה מחוץ לרדיוס העיר הנבחרת — עדיף "לא נמצא בעיר" מאשר
-  // מיקום שגוי במרחק (רחוב באותו שם בעיר אחרת). כך "אם בחרנו עיר — כולם בעיר".
-  if(pt && bias && bias.lat!=null && haversineKm(pt,bias) > MAP_CITY_RADIUS_KM){
-    ent.geo = { lat:null, lng:null, q, tried:true, outCity:true, why:"התקבל מיקום מחוץ לרדיוס העיר" };
+  if(!pt && outCity){
+    ent.geo = { lat:null, lng:null, q, tried:true, outCity:true,
+                why:(why||"")+" · כל ההתאמות נפלו מחוץ לרדיוס העיר" };
     return null;
   }
   const locType = pt ? (pt.locType||"") : "";
   const partial = pt ? !!pt.partial : false;
   // "משוער" רך (סימון ⚠) = מרכז רחוב/אזור או התאמה חלקית
   const approx = pt ? (partial || !!pt.relaxed || locType==="APPROXIMATE" || locType==="GEOMETRIC_CENTER") : false;
-  ent.geo = pt ? { lat:pt.lat, lng:pt.lng, q, source:pt.source, locType, partial, approx, relaxed:!!pt.relaxed }
+  ent.geo = pt ? { lat:pt.lat, lng:pt.lng, q, source:pt.source, locType, partial, approx, relaxed:!!pt.relaxed, altCity:pt.altCity||"" }
                : { lat:null, lng:null, q, tried:true, why };
   return ent.geo.lat!=null ? ent.geo : null;
 }
@@ -5862,7 +5889,8 @@ function proxPanelHtml(st, idp){
    עצמם אי אפשר לדעת אם השתבשה כתובת התלמידה, מיקום הגן, או נקודת העוגן של העיר. */
 function proxDiagHtml(st, sgeo, bias, list){
   const co=p=>(p&&p.lat!=null)?(p.lat.toFixed(5)+", "+p.lng.toFixed(5)):"—";
-  const src=p=>!p||p.lat==null?"—":(p.manual?"ידני":esc(p.source||"אוטומטי")+(p.relaxed?" · מרכז הרחוב":(p.approx?" · מקורב":"")));
+  const src=p=>!p||p.lat==null?"—":(p.manual?"ידני":esc(p.source||"אוטומטי")
+    +(p.altCity?" · לפי השם "+esc(p.altCity):"")+(p.relaxed?" · מרכז הרחוב":(p.approx?" · מקורב":"")));
   const srcName={manual:"הגנים שהוצבו ידנית",geocode:"גאוקוד שם העיר",median:"חציון הנקודות"};
   const anchor=(bias&&bias.lat!=null)?`${co(bias)} · לפי ${esc(srcName[bias.src]||"לא ידוע")}`:"לא נקבע ⚠";
   const rows=(list||[]).map(r=>`<tr><td class="wrap">${esc(ganName(r.g.id))}</td><td>${co(r.g.geo)}</td>
