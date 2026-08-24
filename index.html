@@ -23,17 +23,11 @@
 <meta name="apple-mobile-web-app-title" content="רשת הגנים">
 <style>
 :root{
-  --bg:#f6f2e9;--surface:#fffdf7;--surface-2:#efe9db;--ink:#182b20;--ink-soft:#48594e;
-  --muted:#8a9488;--border:#e4dccb;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e0ecdf;
-  --brass:#a97f2e;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a2691c;--warn-soft:#f3e6cd;
-  --bad:#a5342b;--bad-soft:#f5dcd9;--over1:#7b3fb3;--over1-soft:#ece0f7;
-  --shadow:0 2px 6px rgba(24,43,32,.06),0 14px 34px rgba(24,43,32,.09);--radius:16px}
-@media(prefers-color-scheme:dark){:root{--bg:#0e150f;--surface:#15201a;--surface-2:#1c2a22;--ink:#edf3ec;
-  --ink-soft:#aebcae;--muted:#6f7d70;--border:#26362b;--accent:#4aa877;--accent-strong:#6fce9c;--accent-soft:#16281e;
-  --brass:#d3a956;--good:#54b888;--good-soft:#123527;--warn:#d3a45c;--warn-soft:#2e2411;
-  --bad:#e07b6f;--bad-soft:#3a1c18;--over1:#c39be8;--over1-soft:#2a1f3a;--shadow:0 2px 6px rgba(0,0,0,.4),0 16px 40px rgba(0,0,0,.5)}}
-:root[data-theme="light"]{--bg:#f6f2e9;--surface:#fffdf7;--surface-2:#efe9db;--ink:#182b20;--ink-soft:#48594e;--muted:#8a9488;--border:#e4dccb;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e0ecdf;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a2691c;--warn-soft:#f3e6cd;--bad:#a5342b;--bad-soft:#f5dcd9;--over1:#7b3fb3;--over1-soft:#ece0f7}
-:root[data-theme="dark"]{--bg:#0e150f;--surface:#15201a;--surface-2:#1c2a22;--ink:#edf3ec;--ink-soft:#aebcae;--muted:#6f7d70;--border:#26362b;--accent:#4aa877;--accent-strong:#6fce9c;--accent-soft:#16281e;--good:#54b888;--good-soft:#123527;--warn:#d3a45c;--warn-soft:#2e2411;--bad:#e07b6f;--bad-soft:#3a1c18;--over1:#c39be8;--over1-soft:#2a1f3a}
+  --bg:#f4f6f4;--surface:#ffffff;--surface-2:#f0f3f0;--ink:#17241d;--ink-soft:#4a564e;--muted:#7f8a82;--border:#e2e7e2;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e8f0ea;--brass:#9a7429;--good:#2f7a53;--good-soft:#e6f0e9;--warn:#96661f;--warn-soft:#f4ecdf;--bad:#a03b32;--bad-soft:#f6e7e5;--over1:#6b4c9a;--over1-soft:#ece8f4;
+  --shadow:0 1px 2px rgba(23,36,29,.04),0 6px 18px rgba(23,36,29,.06);--radius:14px}
+@media(prefers-color-scheme:dark){:root{--bg:#101614;--surface:#182019;--surface-2:#1e2823;--ink:#e9efea;--ink-soft:#a9b6ac;--muted:#74827a;--border:#2a352e;--accent:#4aa877;--accent-strong:#7ed2a3;--accent-soft:#1b2a22;--brass:#c9a35a;--good:#5cb98a;--good-soft:#16291f;--warn:#c9a163;--warn-soft:#2a2318;--bad:#d98478;--bad-soft:#33201d;--over1:#b09ad8;--over1-soft:#241f30;--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.42)}}
+:root[data-theme="light"]{--bg:#f4f6f4;--surface:#ffffff;--surface-2:#f0f3f0;--ink:#17241d;--ink-soft:#4a564e;--muted:#7f8a82;--border:#e2e7e2;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e8f0ea;--brass:#9a7429;--good:#2f7a53;--good-soft:#e6f0e9;--warn:#96661f;--warn-soft:#f4ecdf;--bad:#a03b32;--bad-soft:#f6e7e5;--over1:#6b4c9a;--over1-soft:#ece8f4}
+:root[data-theme="dark"]{--bg:#101614;--surface:#182019;--surface-2:#1e2823;--ink:#e9efea;--ink-soft:#a9b6ac;--muted:#74827a;--border:#2a352e;--accent:#4aa877;--accent-strong:#7ed2a3;--accent-soft:#1b2a22;--brass:#c9a35a;--good:#5cb98a;--good-soft:#16291f;--warn:#c9a163;--warn-soft:#2a2318;--bad:#d98478;--bad-soft:#33201d;--over1:#b09ad8;--over1-soft:#241f30}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);direction:rtl;line-height:1.55;
   font-family:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif;font-size:15px}
@@ -193,7 +187,7 @@ main{max-width:1200px;margin:0 auto;padding:18px 16px 80px}
 .filter-panel{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:var(--surface-2)}
 .filter-panel[hidden]{display:none}
 tbody tr.clickable{cursor:pointer}
-tbody tr.clickable:hover{background:var(--accent-soft)}
+tbody tr.clickable:hover{background:var(--surface-2)}
 
 /* toolbar */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
@@ -215,13 +209,13 @@ tbody tr.clickable:hover{background:var(--accent-soft)}
 
 /* table */
 .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
-table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:720px}
-th,td{padding:9px 11px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
-th{background:var(--surface-2);font-weight:800;color:var(--ink-soft);position:sticky;top:0}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:680px}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:var(--surface-2);font-weight:700;font-size:.79rem;color:var(--muted);letter-spacing:.02em;position:sticky;top:0}
 tbody tr:hover{background:var(--surface-2)}
 td.actions{white-space:nowrap}
 .empty{padding:34px;text-align:center;color:var(--muted)}
-.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.76rem;font-weight:800}
+.pill{display:inline-block;padding:2px 9px;border-radius:7px;font-size:.75rem;font-weight:700;letter-spacing:.01em}
 .pill.ok{background:var(--good-soft);color:var(--good)}
 .pill.no{background:var(--bad-soft);color:var(--bad)}
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
@@ -233,11 +227,11 @@ td.actions{white-space:nowrap}
 
 /* stat cards */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-.stat{background:linear-gradient(200deg,var(--surface-2),var(--surface));border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 15px}
 .stat .k{font-size:.78rem;color:var(--muted);font-weight:700}
 .stat .v{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin-top:2px}
 .stat .v small{font-size:.9rem;color:var(--muted);font-weight:700}
-.stat.hero{background:radial-gradient(120% 140% at 88% -20%,color-mix(in srgb,var(--accent) 26%,transparent),transparent 60%),linear-gradient(200deg,var(--surface-2),var(--surface))}
+.stat.hero{background:var(--surface);border-color:color-mix(in srgb,var(--accent) 32%,var(--border))}
 
 .bar{height:9px;background:var(--surface-2);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
 .bar > i{display:block;height:100%;background:var(--accent);border-radius:999px}
@@ -311,10 +305,9 @@ body.locked .top-chips,body.locked .hamburger,body.locked .backbtn{display:none!
 /* ===== Evergreen polish · phase 3 (refinement) ===== */
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
 .pill{display:inline-flex;align-items:center;gap:5px}
-.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
 .pill.neutral::before{opacity:.55}
 .table-wrap{border-radius:16px}
-.brand .logo,.drawer-head .logo{background:linear-gradient(145deg,var(--accent),var(--accent-strong))}
+.brand .logo,.drawer-head .logo{background:var(--accent-strong)}
 .icon-btn{transition:background .18s,border-color .18s,color .18s,transform .15s}
 .icon-btn:hover{border-color:var(--accent);color:var(--accent-strong);transform:translateY(-1px)}
 
@@ -368,6 +361,90 @@ fieldset{border-radius:14px}
 .map-fold[open]>summary::before{transform:rotate(90deg)}
 .map-fold>summary:hover{color:var(--accent-strong)}
 .map-fold-body{padding:0 14px 14px}
+
+/* ---- לשונית התלמידות: טבלה נקייה + תיק מקוצר בצד ---- */
+/* הבמה: הטבלה בצד אחד, התיק המקוצר בצד השני */
+.stu-stage{display:flex;gap:14px;align-items:flex-start}
+.stu-stage>#stuTable{flex:1 1 0;min-width:0}
+/* ראשי תיבות של התלמידה — מזהה ויזואלי שקט במקום צבע */
+.ini{width:34px;height:34px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);
+  color:var(--ink-soft);display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:0 0 auto;line-height:1}
+tr.sel .ini{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 34%,var(--border));color:var(--accent-strong)}
+/* תא הזהות: שם למעלה, ת"ז וגיל מתחת */
+.idcell{display:flex;align-items:center;gap:9px}
+.idcell .nm{font-weight:700;line-height:1.25}
+.idcell .sub{font-size:.74rem;color:var(--muted);font-weight:600;margin-top:1px}
+/* תא הגן: שם הגן ומתחתיו מצב השיבוץ */
+.gancell .g{font-weight:700}
+.gancell .st{font-size:.76rem;font-weight:700;margin-top:1px;display:inline-flex;align-items:center;gap:4px}
+/* תגיות מסמכים — קצרות במקום נקודות */
+.docchips{display:inline-flex;gap:3px}
+.docchip{min-width:26px;padding:1px 5px;border-radius:6px;font-size:.68rem;font-weight:700;text-align:center;
+  background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.docchip.on{background:var(--good-soft);color:var(--good);border-color:color-mix(in srgb,var(--good) 28%,var(--border))}
+/* עמודת "סימונים" — תגיות מאוחדות (תוכניות · שונות · הערה) */
+.tags{display:flex;flex-wrap:wrap;gap:3px;max-width:230px;white-space:normal}
+/* שורה נבחרת — פס מבטא בקצה, בלי צבע רועש */
+tbody tr.sel{background:var(--accent-soft)}
+tbody tr.sel>td:first-child{box-shadow:inset 3px 0 0 0 var(--accent)}
+html[dir="rtl"] tbody tr.sel>td:first-child{box-shadow:inset -3px 0 0 0 var(--accent)}
+td,th{vertical-align:middle}
+tbody td{padding-block:8px}
+
+/* צ׳יפים של סינון פעיל */
+.fchips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+.fchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700;
+  background:var(--accent-soft);color:var(--accent-strong);border:1px solid color-mix(in srgb,var(--accent) 26%,var(--border))}
+.fchip button{background:none;border:0;padding:0;color:inherit;font-size:.95rem;line-height:1;opacity:.7;cursor:pointer}
+.fchip button:hover{opacity:1}
+.fchips .clr{background:none;border:0;color:var(--muted);font-weight:700;font-size:.8rem;text-decoration:underline;cursor:pointer;padding:0 4px}
+.fchips .clr:hover{color:var(--accent-strong)}
+
+/* פס בחירה תחתון */
+.selbar{position:sticky;bottom:10px;z-index:5;margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--accent-strong);color:#fff;border-radius:12px;padding:10px 14px;box-shadow:var(--shadow)}
+.selbar b{margin-inline-end:auto}
+.selbar .btn{background:rgba(255,255,255,.14);color:#fff}
+.selbar .btn:hover{background:rgba(255,255,255,.24)}
+.selbar .btn.light{background:#fff;color:var(--accent-strong)}
+
+/* ---- תיק מקוצר בצד (Quick view) ---- */
+.stu-quick{flex:0 0 296px;width:296px;position:sticky;top:70px;max-height:calc(100vh - 92px);overflow:auto;
+  display:flex;flex-direction:column;gap:12px}
+.stu-quick.empty-state{display:none}
+.qcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.qhead{display:flex;align-items:flex-start;gap:10px}
+.qhead .ini{width:44px;height:44px;border-radius:11px;font-size:.95rem;background:var(--accent-soft);
+  border-color:color-mix(in srgb,var(--accent) 30%,var(--border));color:var(--accent-strong)}
+.qhead .qname{font-weight:800;font-size:1.02rem;line-height:1.3}
+.qhead .qtz{font-size:.78rem;color:var(--muted);font-weight:600}
+.qclose{margin-inline-start:auto;background:none;border:0;color:var(--muted);font-size:1rem;cursor:pointer;padding:2px 4px;line-height:1}
+.qclose:hover{color:var(--ink)}
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-top:12px}
+.qgrid.one{grid-template-columns:1fr}
+.qf .k{font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:1px}
+.qf .v{font-weight:700;font-size:.88rem;word-break:break-word}
+.qf .v.dim{color:var(--muted);font-weight:600}
+.qsep{height:1px;background:var(--border);margin:12px 0}
+.qsec{font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:7px}
+.qdoc{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border);border-radius:9px;
+  margin-bottom:6px;font-size:.85rem;font-weight:700}
+.qdoc .mark{width:15px;text-align:center;flex:0 0 auto}
+.qdoc.on{background:var(--good-soft);border-color:color-mix(in srgb,var(--good) 26%,var(--border));color:var(--good)}
+.qdoc.off{color:var(--muted);font-weight:600}
+.qdoc .grow{margin-inline-start:auto;font-size:.76rem;font-weight:700}
+.qsib{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.qsib:last-child{border-bottom:0}
+.qsib:hover .qsib-nm{color:var(--accent-strong)}
+.qsib .ini{width:30px;height:30px;border-radius:8px;font-size:.72rem}
+.qsib-nm{font-weight:700;font-size:.86rem;line-height:1.25}
+.qsib-sub{font-size:.74rem;color:var(--muted);font-weight:600}
+.stu-quick .btn.full{width:100%;justify-content:center;display:flex}
+
+@media(max-width:1100px){
+  .stu-stage{flex-direction:column}
+  .stu-quick{position:static;flex:1 1 auto;width:100%;max-height:none;order:-1}
+}
 
 /* ---- עוזר חכם — פאנל צד נעוץ (סעיף 4) ---- */
 .aipanel{position:fixed;inset-block:0;inset-inline-end:0;width:var(--ai-w,380px);max-width:100vw;z-index:55;
@@ -1700,8 +1777,9 @@ function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // �
 function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
 /* צבע רקע לפי גיל הגן: 3=ירוק בהיר · 4=סגול בהיר · 5=צהוב בהיר. דו-גילאי = מעבר בין שני הצבעים.
    נעשה שימוש ב-color-mix עם רקע המשטח כדי שהגוון יתאים גם למצב כהה. */
-const AGE_HUE = { "3":"#37b24d", "4":"#8b4fd4", "5":"#f0c000" };
-const AGE_MIX = 48; // עוצמת הגוון (אחוז מהצבע המלא) — גבוה יותר = צבע חזק יותר
+const AGE_HUE = { "3":"#4c9a6a", "4":"#7a6bb0", "5":"#b08a2e" };
+const AGE_MIX = 14; // עוצמת הגוון (אחוז מהצבע המלא) — גוון עדין שמבדיל בין גלאים בלי לצעוק
+const AGE_MIX_SWATCH = 55; // ריבוע המקרא — חזק יותר, כדי שיהיה ברור מה מסמן כל צבע
 function ganAgeBg(gan){
   const ages=String(gan&&gan.age||"").split("/").map(x=>x.trim()).filter(Boolean);
   const cols=ages.map(a=>AGE_HUE[a]).filter(Boolean);
@@ -1711,7 +1789,7 @@ function ganAgeBg(gan){
 }
 /* מקרא צבעי הגילאים — פס קטן להצגה מתחת לרשימות/כרטיסים */
 function ageLegendHtml(){
-  const item=(a,lbl)=>`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);background:color-mix(in srgb, ${AGE_HUE[a]} ${AGE_MIX}%, var(--surface))"></span>גיל ${lbl}</span>`;
+  const item=(a,lbl)=>`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);background:color-mix(in srgb, ${AGE_HUE[a]} ${AGE_MIX_SWATCH}%, var(--surface))"></span>גיל ${lbl}</span>`;
   return `<div class="hint" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">${item("3","3")} ${item("4","4")} ${item("5","5")} <span style="color:var(--muted)">· גן דו-גילאי במעבר צבעים</span></div>`;
 }
 /* איתור כפילות ת"ז באותה שנה — כולל בין סוגי חינוך שונים (מניעת רישום כפול). מחזיר את הרשומה הקיימת או null */
@@ -1856,10 +1934,12 @@ function phoneBtns(p){
   }
   return h+`</span>`;
 }
-/* תא טלפון מוכן לטבלה: המספר (כקישור חיוג) + כפתורי הפעולה */
-function phoneCell(p){
+/* תא טלפון מוכן לטבלה: המספר (כקישור חיוג) + כפתורי הפעולה.
+   compact=true → רק כפתור חיוג, לטבלאות צפופות (וואטסאפ/SMS זמינים בתיק ובטפסים). */
+function phoneCell(p, compact){
   const t=String(p||"").trim(); if(!t) return "—";
-  return `<span style="white-space:nowrap"><a href="${telHref(t)}" dir="ltr">${esc(t)}</a> ${phoneBtns(t)}</span>`;
+  const btns = compact ? `<a class="act" href="${telHref(t)}" title="חיוג ל-${esc(t)}">📞</a>` : phoneBtns(t);
+  return `<span style="white-space:nowrap"><a href="${telHref(t)}" dir="ltr">${esc(t)}</a> ${btns}</span>`;
 }
 /* כפתורי פעולה לשדה קלט בטופס (קוראים את הערך הנוכחי בעת הלחיצה) */
 function phoneFieldBtns(id){
@@ -2440,15 +2520,27 @@ function guideContent(){
         <li><b>🚧 רף שיבוץ (חדש):</b> לכל גן אפשר להגדיר מספר מרבי של משובצות. כשהגן מגיע לרף — המערכת <b>לא תאפשר</b> לסמן "משובצת" לתלמידה נוספת ותציג הודעה ("הגן מלא 36/36"). <b>הרישום עצמו אינו מוגבל</b> — אפשר להמשיך לרשום לגן, רק לא לשבץ סופית. בתיק, מתחת לשדה "גן משובצת", מוצג חיווי חי: <b>"נותרו N מקומות"</b> או <b>"⛔ הגן מלא"</b>. ההגדרה: כרטיס הגן → "רף שיבוץ", וברירת מחדל לכולם ב<b>הגדרות → רף שיבוץ</b>.</li>
       </ul>` },
 
+    { icon:"🗂️", title:"תיק מקוצר בצד — לחיצה על שורה", html:
+      `<p><b>לחיצה על שורה</b> בטבלת התלמידות פותחת <b>תיק מקוצר בצד</b>, בלי לחסום את המסך ובלי לצאת מהרשימה. הרשימה נשארת לידו, ואפשר לדלג בין תלמידות בלחיצה.</p>
+      <ul>
+        <li><b>מה מוצג:</b> שם, ת"ז וגיל · הגן והקמפוס · שם האם והנייד · הכתובת · <b>כל הטלפונים</b> (אם / אב / בית) עם חיוג, וואטסאפ ו-SMS · מצב השיבוץ, העירייה והחינוך · תגיות התוכניות והשונות · ההערה שבתיק · ורשימת <b>המסמכים</b> עם סימון מה התקבל וקישור ישיר לקובץ בדרייב.</li>
+        <li><b>אחים בקמפוס</b> — כרטיס נפרד מתחת, עם האחים והאחיות באותה כתובת; לחיצה על אח/ות מחליפה אליו/ה את התיק המקוצר.</li>
+        <li><b>פעולות מהירות</b> — החלפת מצב השיבוץ (משובצת ⇄ ממתינה) בלחיצה, ו-<b>🧭 קרבה</b> לבדיקת המרחקים לגנים.</li>
+        <li><b>לעריכה</b> — כפתור <b>"פתיחת התיק המלא"</b> (או <b>לחיצה כפולה</b> על השורה) פותח את הטופס המלא כמו קודם. התיק המקוצר הוא לצפייה מהירה.</li>
+        <li><b>סגירה</b> — ✕ בפינה, או לחיצה חוזרת על אותה שורה. בנייד ובמסך צר התיק נפתח מעל הרשימה במקום בצד.</li>
+      </ul>` },
+
     { icon:"🔎", title:"חיפוש, סינון ומיון ברשימה", html:
       illFilter+
       `<ul>
         <li><b>שורת חיפוש</b> עם 🔎 — לפי שם או ת"ז.</li>
         <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: <b>גן — אפשר לבחור כמה גנים יחד</b> (כולל <b>"ללא גן (הוצאו)"</b>; ריק = כל הגנים), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים.</li>
-        <li><b>לחיצה על שורה</b> פותחת את התיק (גם בגנים ובצוות).</li>
+        <li><b>לחיצה על שורה</b> פותחת את <b>התיק המקוצר בצד</b> (בגנים ובצוות — את הטופס המלא). לחיצה כפולה פותחת את התיק המלא.</li>
+        <li><b>צ׳יפים של סינון פעיל</b> — מעל הטבלה מופיעה שורת צ׳יפים עם כל סינון שפעיל כרגע ("גיל 4", "לא קלוט בעירייה"…). ✕ על צ׳יפ מסיר את אותו סינון בלבד, ו<b>"נקה הכל"</b> מאפס את כולם — בלי לפתוח את חלון הסינון.</li>
         <li><b>מיון</b> — לחיצה על כותרת עמודה.</li>
         <li><b>בחירת כמה גנים יחד</b> — סינון "גן" הוא <b>רשימה נפתחת</b>: לוחצים עליה ומסמנים בתיבות הסימון כמה גנים שרוצים (עם "בחר/י הכל" ו"ניקוי"). בחירת כמה גנים מציגה <b>רשימה מאוחדת</b> של התלמידות מכולם; ללא בחירה מוצגות כל התלמידות. כשנבחר <b>גן אחד בלבד</b> מופיע מעל הרשימה פס <b>🖨️ הדפסה / 📎 שיתוף</b> של רשימת אותו גן.</li>
         <li><b>עמודת רחוב</b> — בטבלה (וגם בתצוגת "תלמידות הגן") מוצג <b>הרחוב והבניין</b> של כל תלמידה במקום העיר — מזהה טוב יותר את התלמידות כשכולן באותה עיר.</li>
+        <li><b>מבנה הטבלה</b> — עמודת <b>תלמידה</b> מציגה את השם ומתחתיו ת"ז וגיל, עם ריבוע ראשי תיבות לזיהוי מהיר; עמודת <b>גן ושיבוץ</b> מאחדת את שם הגן ומצב השיבוץ; המסמכים מוצגים כשלוש תגיות קצרות (נס · ת"ז · תק) שמתמלאות כשהמסמך התקבל; ועמודת <b>סימונים</b> מאחדת תוכניות, שונות וחיווי הערה. עמודת החינוך מוסתרת כשכבר בחרתם חינוך אחד.</li>
         <li><b>פס סיכום</b> חכם מעל הטבלה מתעדכן לפי הסינון.</li>
       </ul>` },
 
@@ -2460,6 +2552,7 @@ function guideContent(){
         <li>מסמנים ילדות (או <b>"בחר הכל"</b> לפי הסינון).</li>
         <li>בוחרים <b>שדה</b> ו<b>ערך</b>, ולוחצים <b>סמן כן/לא</b>.</li>
       </ol>
+      <p><b>פס הבחירה התחתון:</b> ברגע שמסמנים תלמידות מופיע בתחתית המסך פס שנשאר גלוי בזמן הגלילה, עם מספר הנבחרות וקיצורי דרך: <b>סמן כקלוט</b> · <b>שיבוץ לגן…</b> (משבץ את כולן לגן אחד — מכבד את רף השיבוץ ואת הרשאות העריכה, ומדווח מי נחסמה) · <b>📣 שליחת הודעה</b> (עובר למרכז ההודעות עם הגנים של הנבחרות) · <b>ניקוי</b>.</p>
       <p><b>ייבוא לעדכון (לפי ת"ז):</b> מדביקים רשימת מספרי זהות + שדה/ערך → עדכון כל ההתאמות בבת אחת.</p>
       <div class="gd-tip">💡 שימושי לסימון גן שלם ששילם ביטוח, או קבוצה שנרשמה לקייטנה.</div>` },
 
@@ -3539,7 +3632,12 @@ function viewStudents(root){
         <div class="field"><label>&nbsp;</label><button class="btn ghost" id="f-clear" type="button" title="ניקוי כל הסינון">🧹 ניקוי</button></div>
       </div>
     </div>
-    <div id="stuTable"></div>
+    <div id="stuChips" class="fchips"></div>
+    <div class="stu-stage">
+      <div id="stuTable"></div>
+      <aside id="stuQuick" class="stu-quick empty-state" aria-label="תיק מקוצר"></aside>
+    </div>
+    <div id="stuSelBar"></div>
   </div>`;
 
   { const b=$("#stuMsg"); if(b) b.onclick=()=>openMessages({ audience:"parents", tplId:"placement",
@@ -3629,9 +3727,15 @@ function sortStudents(list){
 }
 
 function docDots(s){
-  const d=s.docs;
-  const mk=(on,t)=>`<span class="doc-dot ${on?'on':'off'}" title="${t}">${on?'✓':'·'}</span>`;
-  return `<span class="dot-list">${mk(d.nispach,'נספח')}${mk(d.idCopy,'צילום ת"ז')}${mk(d.takanon,'תקנון')}</span>`;
+  const d=s.docs||{};
+  const mk=(on,short,t)=>`<span class="docchip ${on?'on':''}" title="${esc(t)}${on?' — התקבל':' — חסר'}">${esc(short)}</span>`;
+  return `<span class="docchips">${mk(d.nispach,'נס','נספח')}${mk(d.idCopy,'ת״ז','צילום תעודת זהות')}${mk(d.takanon,'תק','תקנון')}</span>`;
+}
+/* עמודת "סימונים" — תוכניות · שונות · חיווי הערה, במקום שלוש עמודות נפרדות */
+function stuTagCell(s){
+  const parts=[programBadges(s), specialBadges(s)].filter(Boolean);
+  if(String(s.notes||"").trim()) parts.push('<span class="pill warn" title="יש הערה — לצפייה פתחו את התיק">📝</span>');
+  return parts.length ? `<div class="tags">${parts.join(" ")}</div>` : '<span style="color:var(--muted)">—</span>';
 }
 function specialBadges(s){
   const b=[]; const sp=s.special||{};
@@ -3683,6 +3787,204 @@ function renderStuSummary(){
     ${flagTile}
   </div>`;
 }
+/* ============================================================
+   תיק מקוצר בצד (Quick view) — לחיצה על שורה בטבלת התלמידות פותחת
+   כאן את עיקרי התיק, בלי לחסום את המסך. "פתיחת התיק המלא" פותחת את
+   הטופס המלא לעריכה, בדיוק כמו קודם.
+   ============================================================ */
+let stuQuickId=null;           // התלמידה המוצגת כרגע בתיק המקוצר
+/* ראשי תיבות לאייקון הזהות (אות ראשונה מהמשפחה + מהפרטי) */
+function initialsOf(s){
+  const a=String(s.lastName||"").trim(), b=String(s.firstName||"").trim();
+  return ((a[0]||"")+(b[0]||"")) || (a[0]||b[0]||"?");
+}
+function fullName(s){ return [s.lastName,s.firstName].filter(Boolean).join(" ") || "תלמידה"; }
+/* שדה בתיק המקוצר */
+function qField(k,v,extra){
+  const val=String(v==null?"":v).trim();
+  return `<div class="qf"><div class="k">${esc(k)}</div>`
+    +`<div class="v${val?"":" dim"}">${val?esc(val):"—"}${(val&&extra)?(" "+extra):""}</div></div>`;
+}
+function closeStuQuick(){ stuQuickId=null; renderStuQuick(); paintQuickSelection(); }
+function openStuQuick(id){ stuQuickId=id; renderStuQuick(); paintQuickSelection(); }
+/* סימון השורה הנבחרת בטבלה בלי לבנות אותה מחדש */
+function paintQuickSelection(){
+  const host=$("#stuTable"); if(!host) return;
+  host.querySelectorAll("tr[data-sid]").forEach(tr=>tr.classList.toggle("sel", tr.dataset.sid===stuQuickId));
+}
+function renderStuQuick(){
+  const box=$("#stuQuick"); if(!box) return;
+  const s = stuQuickId ? DB.students.find(x=>x.id===stuQuickId) : null;
+  if(!s){ box.className="stu-quick empty-state"; box.innerHTML=""; return; }
+  box.className="stu-quick";
+  const g = s.ganId ? ganById(s.ganId) : null;
+  const placed = s.placed!==false;
+  const ageTxt = s.age ? ("בת "+s.age) : "";
+  const phone = p=> p ? phoneCell(p) : "";
+  const docs = STUDENT_DOCS.map(([k,lbl])=>{
+    const on=!!(s.docs&&s.docs[k]); const f=(s.docFiles||{})[k];
+    return `<div class="qdoc ${on?'on':'off'}"><span class="mark">${on?'✓':'○'}</span><span>${esc(lbl)}</span>`
+      +(f&&f.link?`<a class="grow" href="${esc(f.link)}" target="_blank" rel="noopener" title="פתיחת הקובץ">📎 קובץ</a>`
+                 :`<span class="grow" style="color:var(--muted);font-weight:600">${on?'ללא קובץ':'חסר'}</span>`)
+      +`</div>`;
+  }).join("");
+  const sib=findSiblings(s); const sibs=(sib&&sib.list)||[];
+  const tags=[programBadges(s), specialBadges(s)].filter(Boolean).join(" ");
+
+  box.innerHTML=`
+  <div class="qcard">
+    <div class="qhead">
+      <span class="ini">${esc(initialsOf(s))}</span>
+      <div style="min-width:0">
+        <div class="qname">${esc(fullName(s))}</div>
+        <div class="qtz">${esc(s.tz||"ללא ת״ז")}${ageTxt?" · "+esc(ageTxt):""}</div>
+      </div>
+      <button class="qclose" id="q-close" title="סגירה" aria-label="סגירת התיק המקוצר">✕</button>
+    </div>
+
+    <div class="qgrid">
+      ${qField("גן", g?ganName(g.id):"— ללא שיבוץ —")}
+      ${qField("קמפוס", ganCampus(s.ganId)||s.campus||"")}
+      ${qField("שם האם", s.motherName)}
+      ${qField("נייד", s.momMobile||s.dadMobile||s.mobile||"", "")}
+    </div>
+    <div class="qgrid one" style="margin-top:10px">
+      ${qField("כתובת", [s.street,s.building,s.city].filter(Boolean).join(", "))}
+    </div>
+    ${(s.momMobile||s.dadMobile||s.mobile||s.phone)?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+      ${[["אם",s.momMobile],["אב",s.dadMobile],["בית",s.phone]].filter(x=>String(x[1]||"").trim())
+        .map(([lbl,p])=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;color:var(--muted);font-weight:700">${esc(lbl)} ${phone(p)}</span>`).join("")}
+    </div>`:""}
+
+    <div class="qsep"></div>
+    <div class="qsec">שיבוץ</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      ${s.ganId?`<button type="button" class="pill ${placed?'ok':'warn'}" id="q-place" style="cursor:pointer;border:none" title="לחיצה משנה בין 'משובצת' ל'ממתינה'">${placed?'✔ שיבוץ סופי':'⏳ ממתינה לשיבוץ'}</button>`
+               :'<span class="pill neutral">ללא גן</span>'}
+      <span class="pill ${s.absorbedMunicipality?'ok':'no'}">${s.absorbedMunicipality?'קלוט בעירייה':'לא קלוט'}</span>
+      ${eduBadge(s)}
+      <button type="button" class="btn ghost sm" id="q-prox" title="בדיקת קרבה לגנים">🧭 קרבה</button>
+    </div>
+    ${tags?`<div class="tags" style="margin-top:9px;max-width:none">${tags}</div>`:""}
+    ${String(s.notes||"").trim()?`<div style="margin-top:9px;padding:8px 10px;background:var(--warn-soft);border-radius:9px;font-size:.83rem;white-space:pre-wrap">📝 ${esc(s.notes)}</div>`:""}
+
+    <div class="qsep"></div>
+    <div class="qsec">מסמכים</div>
+    ${docs}
+
+    <button class="btn full" id="q-open" style="margin-top:12px">פתיחת התיק המלא</button>
+  </div>
+
+  ${sibs.length?`<div class="qcard">
+    <div class="qsec" style="margin-bottom:4px">אחים בקמפוס (${sibs.length})</div>
+    ${sibs.map(x=>`<div class="qsib" data-sib="${esc(x.id)}">
+      <span class="ini">${esc(initialsOf(x))}</span>
+      <div style="min-width:0">
+        <div class="qsib-nm">${esc(fullName(x))}</div>
+        <div class="qsib-sub">${esc(x.ganId?ganName(x.ganId):"ללא גן")}${(ganCampus(x.ganId)||x.campus)?" · "+esc(ganCampus(x.ganId)||x.campus):""}</div>
+      </div></div>`).join("")}
+  </div>`:""}`;
+
+  const bind=(sel,fn)=>{ const e=box.querySelector(sel); if(e) e.onclick=fn; };
+  bind("#q-close", closeStuQuick);
+  bind("#q-open", ()=>openStudentById(s.id));
+  bind("#q-prox", ()=>openProximityCheck(s));
+  bind("#q-place", ()=>{
+    if(!canEditRec(s)){ toast("אין הרשאת עריכה בחינוך זה"); return; }
+    if(s.placed===false && !assignGate(s.ganId, s)) return;
+    s.placed=(s.placed===false); save(); renderStuTable();
+    toast(s.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ");
+  });
+  box.querySelectorAll("[data-sib]").forEach(el=> el.onclick=()=>openStuQuick(el.dataset.sib));
+}
+
+/* ---------- צ׳יפים של הסינון הפעיל ---------- */
+/* כל צ׳יפ מתאר סינון פעיל אחד ויודע לנקות את עצמו */
+function stuFilterChips(){
+  const f=stuFilter, out=[];
+  const add=(key,label,clear)=>out.push({key,label,clear});
+  if(f.q) add("q",'חיפוש: "'+f.q+'"',()=>{ f.q=""; const e=$("#f-q"); if(e) e.value=""; });
+  if(f.gans&&f.gans.length) add("gans", ganFilterLabel(), ()=>{ f.gans=[]; });
+  if(f.age&&f.age.length) add("age","גיל "+f.age.join(", "), ()=>{ f.age=[]; });
+  if(f.city) add("city","עיר: "+f.city, ()=>{ f.city=""; });
+  if(f.street) add("street","רחוב: "+f.street, ()=>{ f.street=""; });
+  if(f.campus) add("campus","קמפוס: "+f.campus, ()=>{ f.campus=""; });
+  if(f.period) add("period","מועד "+f.period, ()=>{ f.period=""; });
+  if(f.edu) add("edu",f.edu, ()=>{ f.edu=""; });
+  if(f.muni) add("muni", f.muni==='yes'?"קלוט בעירייה":"לא קלוט בעירייה", ()=>{ f.muni=""; });
+  if(f.placed) add("placed", f.placed==='yes'?"משובצות":"ממתינות לשיבוץ", ()=>{ f.placed=""; });
+  if(f.flag && STU_FLAGS[f.flag]) add("flag", STU_FLAGS[f.flag].label, ()=>{ f.flag=""; });
+  if(f.status && f.status!=='active') add("status", f.status==='finished'?"שסיימו / יצאו":"כל הסטטוסים", ()=>{ f.status='active'; });
+  return out;
+}
+function renderStuChips(){
+  const box=$("#stuChips"); if(!box) return;
+  const chips=stuFilterChips();
+  if(!chips.length){ box.innerHTML=""; return; }
+  box.innerHTML=`<span style="font-size:.78rem;color:var(--muted);font-weight:700">סינון:</span>`
+    +chips.map((c,i)=>`<span class="fchip">${esc(c.label)}<button type="button" data-chip="${i}" title="הסרת הסינון" aria-label="הסרת הסינון">✕</button></span>`).join("")
+    +`<button type="button" class="clr" id="chips-clear">נקה הכל</button>`;
+  const refresh=()=>{ const root=$("#view"); if(root && active==="students") viewStudents(root); else renderStuTable(); };
+  box.querySelectorAll("[data-chip]").forEach(b=> b.onclick=()=>{ chips[+b.dataset.chip].clear(); refresh(); });
+  const c=$("#chips-clear"); if(c) c.onclick=()=>{ clearStuFilter(); refresh(); };
+}
+
+/* ---------- פס בחירה תחתון ---------- */
+function renderSelBar(list){
+  const bar=$("#stuSelBar"); if(!bar) return;
+  if(!bulkMode || !bulkSel.size){ bar.innerHTML=""; return; }
+  const n=bulkSel.size;
+  bar.innerHTML=`<div class="selbar">
+    <b>${n===1?"נבחרה תלמידה אחת":"נבחרו "+n+" תלמידות"}</b>
+    <button class="btn sm" id="sel-muni" type="button">סמן כקלוט</button>
+    <button class="btn sm light" id="sel-gan" type="button">שיבוץ לגן…</button>
+    <button class="btn sm" id="sel-msg" type="button">📣 שליחת הודעה</button>
+    <button class="btn sm" id="sel-clear" type="button">ניקוי</button>
+  </div>`;
+  $("#sel-muni").onclick=()=>applyBulk("absorbedMunicipality", true);
+  $("#sel-clear").onclick=()=>{ bulkSel.clear(); renderStuTable(); };
+  $("#sel-gan").onclick=openBulkAssignGan;
+  $("#sel-msg").onclick=()=>{
+    const ids=new Set(bulkSel);
+    const gans=[...new Set(list.filter(s=>ids.has(s.id)).map(s=>s.ganId).filter(Boolean))];
+    openMessages({ audience:"parents", tplId:"placement", parentFilter:{ gans, placed:"" } });
+  };
+}
+/* שיבוץ קבוצתי לגן — מהפס התחתון. מכבד הרשאות ואת רף השיבוץ, ומדווח מה נחסם. */
+function openBulkAssignGan(){
+  const ids=[...bulkSel];
+  if(!ids.length){ toast("לא סומנו תלמידות"); return; }
+  const gans=eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+  if(!gans.length){ toast("אין גנים פעילים"); return; }
+  modal(`<h3>שיבוץ ${ids.length} תלמידות לגן</h3>
+    <div class="sub">כל תלמידה תשובץ לגן שנבחר. תלמידה שהגן שלה מלא (רף שיבוץ) או שאין הרשאת עריכה בחינוך שלה — תדולג, ותקבלו דיווח.</div>
+    <div class="grid g2" style="margin-top:10px">
+      <div><label>גן</label><select id="bag-gan">${gans.map(g=>{ const room=ganAssignRoom(g);
+        return `<option value="${esc(g.id)}">${esc(ganName(g.id))}${isFinite(room)?` — ${room>0?("נותרו "+room):"מלא"}`:""}</option>`; }).join("")}</select></div>
+      <div style="align-self:end"><label class="check"><input type="checkbox" id="bag-placed" checked> לסמן גם "משובצת (שיבוץ סופי)"</label></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="bag-go" style="margin-inline-start:auto">שיבוץ</button>
+      <button class="btn ghost" id="bag-cancel">ביטול</button>
+    </div>`);
+  $("#bag-cancel").onclick=closeModal;
+  $("#bag-go").onclick=()=>{
+    const g=ganById($("#bag-gan").value); if(!g) return;
+    const markPlaced=$("#bag-placed").checked;
+    let n=0, blocked=0, full=0;
+    ids.forEach(id=>{
+      const st=DB.students.find(x=>x.id===id); if(!st) return;
+      if(!canEditRec(st)){ blocked++; return; }
+      if(markPlaced && !assignGate(g.id, st, true)){ full++; return; }
+      st.ganId=g.id; st.campus=ganCampus(g.id)||st.campus||"";
+      const ages=ganAges(g); if(ages.length===1) st.age=ages[0];
+      if(markPlaced) st.placed=true;
+      n++;
+    });
+    save(); closeModal(); bulkSel.clear(); renderStuTable();
+    toast(`שובצו ${n} ל${ganName(g.id)}`+(full?` · ${full} לא שובצו (הגן הגיע לרף)`:"")+(blocked?` · ${blocked} דולגו (אין הרשאה)`:""));
+  };
+}
 function renderBulkBar(list){
   const bar=$("#bulkBar"); if(!bar) return;
   if(!bulkMode){ bar.innerHTML=""; return; }
@@ -3721,6 +4023,7 @@ function renderStuTable(){
       <label class="check" style="margin:0"><input type="checkbox" id="stuGanOnepage"> התאם לעמוד אחד</label>
     </div>` : "";
   if(!list.length){ host.innerHTML = ganBar + `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`;
+    renderStuChips(); renderSelBar(list); stuQuickId=null; renderStuQuick();
     if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
       const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gans=[]; navToTab('gans'); };
       const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
@@ -3728,39 +4031,60 @@ function renderStuTable(){
     return; }
   const arr=k=> stuSort.key===k ? `<span class="arr">${stuSort.dir>0?'▲':'▼'}</span>` : "";
   const th=(k,lbl)=>`<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>`;
+  // עמודת החינוך מיותרת כשכבר בחרנו חינוך אחד — מפנה מקום לשאר העמודות
+  const showEdu = !(activeEdu || stuFilter.edu);
   host.innerHTML = ganBar + `<div class="table-wrap"><table><thead><tr>
     ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
-    ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}<th title="שיבוץ סופי בגן — לחיצה משנה בין 'משובצת' ל'ממתינה'">שיבוץ</th>${th("age",'גיל')}${th("street",'רחוב')}<th title="נייד אם / נייד אב / טלפון בית — עם חיוג, וואטסאפ ו-SMS">טלפון</th>${th("period",'מועד')}${th("edu",'חינוך')}
-    <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th title="סימון בלבד — תוכן ההערה בתוך התיק">הערות</th><th>סטטוס</th></tr></thead><tbody>
-    ${list.map(s=>`<tr data-sid="${esc(s.id)}" class="${bulkMode?'':'clickable'}"${bulkMode&&bulkSel.has(s.id)?' style="background:var(--good-soft)"':''}>
+    ${th("name",'תלמידה')}${th("gan",'גן ושיבוץ')}${th("street",'רחוב')}<th title="נייד אם / נייד אב / טלפון בית — כל הטלפונים בתיק המקוצר שבצד">טלפון</th>${th("period",'מועד')}${showEdu?th("edu",'חינוך'):''}
+    <th>מסמכים</th><th>עירייה</th><th title="תוכניות · שונות · הערה">סימונים</th><th>סטטוס</th></tr></thead><tbody>
+    ${list.map(s=>{
+      const over=ovf[s.id];
+      const placed=s.placed!==false;
+      const ph=[s.momMobile,s.dadMobile,s.mobile,s.phone].map(x=>String(x||"").trim()).find(Boolean);
+      return `<tr data-sid="${esc(s.id)}" class="${bulkMode?'':'clickable'}${s.id===stuQuickId?' sel':''}">
       ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
-      <td><b${ovf[s.id]?` style="color:${capColor(ovf[s.id])}" title="${ovf[s.id]==='over1'?'ילדה מעל הקיבולת (הראשונה מעל הקיבולת)':'ילדה מעל הקיבולת'}"`:''}>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
-      <td>${esc(s.tz)||'—'}</td>
-      <td>${esc(ganName(s.ganId))} <button type="button" class="act stu-prox" data-id="${esc(s.id)}" title="בדיקת קרבה לגנים — לאיזה גן היא קרובה יותר">🧭</button></td>
-      <td>${s.ganId?`<button type="button" class="pill ${s.placed!==false?'ok':'warn'} stu-place" data-id="${esc(s.id)}" style="cursor:pointer;border:none" title="לחצי כדי לשנות סטטוס שיבוץ">${s.placed!==false?'✔ משובצת':'⏳ ממתינה'}</button>`:'<span class="pill neutral" title="אין גן משובץ">—</span>'}</td>
-      <td>${esc(s.age)||'—'}</td>
+      <td><div class="idcell"><span class="ini">${esc(initialsOf(s))}</span><div style="min-width:0">
+        <div class="nm"${over?` style="color:${capColor(over)}" title="${over==='over1'?'ילדה מעל הקיבולת (הראשונה מעל הקיבולת)':'ילדה מעל הקיבולת'}"`:''}>${esc(fullName(s))}</div>
+        <div class="sub">${esc(s.tz||'ללא ת״ז')}${s.age?' · בת '+esc(s.age):''}</div>
+      </div></div></td>
+      <td><div class="gancell">
+        <div class="g">${esc(ganName(s.ganId))} <button type="button" class="act stu-prox" data-id="${esc(s.id)}" title="בדיקת קרבה לגנים — לאיזה גן היא קרובה יותר">🧭</button></div>
+        ${s.ganId?`<button type="button" class="st stu-place" data-id="${esc(s.id)}" style="cursor:pointer;border:none;background:none;padding:0;color:${placed?'var(--good)':'var(--warn)'}" title="לחצי כדי לשנות סטטוס שיבוץ">${placed?'✔ שיבוץ סופי':'⏳ ממתינה לשיבוץ'}</button>`
+                 :'<div class="st" style="color:var(--muted)">ללא שיבוץ</div>'}
+      </div></td>
       <td>${esc([s.street,s.building].filter(Boolean).join(" "))||'—'}</td>
-      <td>${(()=>{ const p=[s.momMobile,s.dadMobile,s.mobile,s.phone].map(x=>String(x||"").trim()).find(Boolean); return p?phoneCell(p):'—'; })()}</td>
-      <td><span class="pill neutral">${esc(s.period)}</span></td>
-      <td>${eduBadge(s)}</td>
+      <td>${ph?phoneCell(ph,true):'—'}</td>
+      <td>${esc(s.period)||'—'}</td>
+      ${showEdu?`<td>${eduBadge(s)}</td>`:''}
       <td>${docDots(s)}</td>
-      <td>${programBadges(s)||'<span class="pill neutral">—</span>'}</td>
-      <td>${specialBadges(s)||'<span class="pill neutral">—</span>'}</td>
-      <td>${s.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
-      <td>${noteMark(s)}</td>
+      <td><span style="font-weight:700;color:${s.absorbedMunicipality?'var(--good)':'var(--bad)'}">${s.absorbedMunicipality?'קלוט':'לא קלוט'}</span></td>
+      <td>${stuTagCell(s)}</td>
       <td>${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
-      </tr>`).join("")}
+      </tr>`; }).join("")}
   </tbody></table></div>
-  <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק.</div>`;
+  <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק המקוצר בצד · לחיצה כפולה פותחת את התיק המלא.</div>`;
+  renderSelBar(list);
+  renderStuChips();
+  // התלמידה שבתיק המקוצר כבר אינה ברשימה (סינון/מחיקה) → סגירה
+  if(stuQuickId && !list.some(x=>x.id===stuQuickId)) stuQuickId=null;
+  renderStuQuick();
   /* פס פעולות רשימת הגן — חזרה/הדפסה/שיתוף ישירות מתוך רשימת התלמידות המסוננת לגן */
   if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
     const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gans=[]; navToTab('gans'); };
     const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
     const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
   // לחיצה על שורה (מחוץ לכפתורים/תיבות סימון) פותחת את התיק (סעיף 8.4.3)
-  host.querySelectorAll("tr.clickable").forEach(tr=> tr.onclick=e=>{
-    if(e.target.closest("button,input,a,.stu-place")) return;
-    const s=DB.students.find(x=>x.id===tr.dataset.sid); if(s) openStudent(JSON.parse(JSON.stringify(s)));
+  /* לחיצה על שורה פותחת את התיק המקוצר בצד; לחיצה כפולה פותחת את התיק המלא */
+  host.querySelectorAll("tr.clickable").forEach(tr=>{
+    tr.onclick=e=>{
+      if(e.target.closest("button,input,a,.stu-place")) return;
+      const id=tr.dataset.sid;
+      if(stuQuickId===id) closeStuQuick(); else openStuQuick(id);
+    };
+    tr.ondblclick=e=>{
+      if(e.target.closest("button,input,a")) return;
+      const s=DB.students.find(x=>x.id===tr.dataset.sid); if(s) openStudent(JSON.parse(JSON.stringify(s)));
+    };
   });
   /* החלפת סטטוס שיבוץ בלחיצה אחת מהרשימה (משובצת ⇄ ממתינה) */
   host.querySelectorAll(".stu-prox").forEach(b=> b.onclick=e=>{ e.stopPropagation(); const st=DB.students.find(x=>x.id===b.dataset.id); if(st) openProximityCheck(st); });

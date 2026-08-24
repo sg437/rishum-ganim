@@ -34,7 +34,8 @@ const expose = `
 window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; };
 window.__get=k=> k==='active'?active : k==='DB'?DB : undefined;
 Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
-Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState,
+Object.defineProperty(window,'stuFilter',{get:()=>stuFilter,set:v=>{stuFilter=v},configurable:true});
+Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
   ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, phoneCell });
 window.__ready=true;
@@ -142,10 +143,37 @@ const server=require('http').createServer((req,res)=>{
   await step('לשונית הגנים מציגה עמודת "משובצות / רף"', ()=>pg.evaluate(()=>{
     __set('active','gans'); route();
     return document.body.innerText.includes('משובצות / רף') && document.body.innerText.includes('2 / 2'); }));
-  await step('טבלת התלמידות מציגה טלפון עם כפתורי פעולה + 🧭', ()=>pg.evaluate(()=>{
+  await step('טבלת התלמידות: תא זהות עם ראשי תיבות, חיוג ו-🧭', ()=>pg.evaluate(()=>{
     __set('active','students'); route();
-    return !!document.querySelector('.stu-prox') && !!document.querySelector('td a[href^="tel:"]')
-        && !!document.querySelector('td a[href^="https://wa.me/"]'); }));
+    return !!document.querySelector('.stu-prox')
+        && !!document.querySelector('td a[href^="tel:"]')
+        && !!document.querySelector('.idcell .ini')
+        && !!document.querySelector('.docchips .docchip'); }));
+  await step('לחיצה על שורה פותחת תיק מקוצר בצד, ולחיצה חוזרת סוגרת', ()=>pg.evaluate(()=>{
+    __set('active','students'); route();
+    const tr=document.querySelector('tr[data-sid]'); const id=tr.dataset.sid;
+    tr.click();
+    const box=document.querySelector('#stuQuick');
+    const opened = box.classList.contains('stu-quick') && !box.classList.contains('empty-state')
+      && !!box.querySelector('#q-open') && box.textContent.includes('פתיחת התיק המלא')
+      && document.querySelector('tr[data-sid="'+id+'"]').classList.contains('sel');
+    tr.click();
+    return opened && box.classList.contains('empty-state'); }));
+  await step('התיק המקוצר מציג גן, מסמכים וכל הטלפונים', ()=>pg.evaluate(()=>{
+    openStuQuick('s1'); const box=document.querySelector('#stuQuick');
+    return box.textContent.includes('גן הדקל') && box.querySelectorAll('.qdoc').length===3
+        && !!box.querySelector('a[href^="https://wa.me/"]') && !!box.querySelector('a[href^="tel:"]'); }));
+  await step('"פתיחת התיק המלא" פותחת את הטופס המלא', ()=>pg.evaluate(()=>{
+    openStuQuick('s1'); document.querySelector('#q-open').click();
+    const ok=!!document.querySelector('#s-ganId') && !!document.querySelector('#saveStu');
+    closeModal(); return ok; }));
+  await step('צ׳יפים של סינון פעיל — הסרה ו"נקה הכל"', ()=>pg.evaluate(()=>{
+    stuFilter.age=['4']; stuFilter.muni='no'; __set('active','students'); route();
+    const chips=document.querySelectorAll('#stuChips .fchip');
+    if(chips.length!==2) return 'צ׳יפים: '+chips.length;
+    document.querySelector('#chips-clear').click();
+    return document.querySelectorAll('#stuChips .fchip').length===0
+        && !stuFilter.muni && !stuFilter.age.length; }));
   await step('תיק הילדה נפתח עם חיווי רף שיבוץ ומקטע בדיקת קרבה', ()=>pg.evaluate(()=>{
     openStudentById('s4');
     const hint=document.querySelector('#s-gan-room'), fold=document.querySelector('#s-prox-fold');
