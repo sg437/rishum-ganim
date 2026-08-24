@@ -65,6 +65,8 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .fieldwrap{display:flex;gap:5px;align-items:stretch}
 .fieldwrap>input{flex:1;min-width:0}
 .fieldwrap>.act{width:38px;height:auto;cursor:pointer}
+.fieldwrap.tel>.act{width:30px;margin-inline-start:3px}
+.fieldwrap.tel>input{min-width:5.5em}
 .chip.year{background:var(--accent-soft);color:var(--accent-strong)}
 .chip.edu{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--border)}
 .chip.edu.reg{background:var(--good-soft);color:var(--good);border-color:transparent}
@@ -1612,7 +1614,7 @@ function ganOverflowMap(){
 function assignCapDefaults(){
   const d=(DB.settings&&DB.settings.assignCaps)||{};
   return { 'רגיל': d['רגיל']==null?"":d['רגיל'], 'ח"מ': d['ח"מ']==null?"":d['ח"מ'],
-           useCapacity: d.useCapacity!==false };   // ברירת מחדל: הקיבולת משמשת כרף כשאין ערך אחר
+           useCapacity: d.useCapacity===true };   // כבוי כברירת מחדל — כדי שהעדכון לא יתחיל לחסום שיבוצים קיימים מעצמו
 }
 /* הרף האפקטיבי של גן (0 = ללא הגבלה) */
 function ganAssignCap(g){
@@ -2471,7 +2473,8 @@ function guideContent(){
         <li><b>מספר הרשומות</b> נצבע לפי הקיבולת: <span class="gd-pill ok">בתוך הקיבולת</span> · חריגה של <b>ילדה אחת</b> (למשל 36 כשהקיבולת 35) <b>בסגול</b> — וגם הילדה שמעל הקיבולת נצבעת בסגול ברשימה · חריגה גדולה יותר <span class="gd-pill" style="background:#f5dcd9;color:#a5342b">אדום</span>.</li>
         <li><b>🚧 רף שיבוץ (חדש) — מגבלה קשיחה:</b> בכרטיס הגן, ליד "קיבולת", יש שדה <b>"רף שיבוץ"</b> — המספר המרבי של תלמידות שאפשר <b>לשבץ סופית</b> לגן. כשמגיעים אליו המערכת <b>חוסמת</b> שיבוץ נוסף ומציגה הודעה, בכל מקום שממנו משבצים (התיק, המפה, החלפת סטטוס מהטבלה, עדכון קבוצתי ושיבוץ אוטומטי).<br>
           <b>ההבדל מ"קיבולת":</b> הקיבולת היא חיווי צבע על ה<b>רישום</b> ומותר לחרוג ממנה; רף השיבוץ חוסם בפועל את ה<b>שיבוץ הסופי</b>. כך אפשר להמשיך לרשום לגן מעל למספר, אבל לא לשבץ מעליו.<br>
-          <b>ברירת מחדל לכל הגנים:</b> <b>הגדרות → רף שיבוץ</b> — קובעים מספר לחינוך רגיל (למשל 36) ולחינוך מיוחד, ואפשר לבחור שהקיבולת תשמש כרף כשלא הוגדר אחרת. רף שנקבע בכרטיס גן מסוים גובר תמיד.<br>
+          <b>ברירת מחדל לכל הגנים:</b> <b>הגדרות → רף שיבוץ</b> — קובעים מספר לחינוך רגיל (למשל 36) ולחינוך מיוחד. רף שנקבע בכרטיס גן מסוים גובר תמיד.<br>
+          <b>עד שמזינים מספר — אין שום הגבלה</b> והמערכת מתנהגת כמו קודם. יש גם אפשרות (כבויה כברירת מחדל) שה<b>קיבולת</b> הקיימת של כל גן תשמש כרף כשלא הוגדר אחרת.<br>
           עמודת <b>"משובצות / רף"</b> בטבלת הגנים מראה את המצב בכל רגע: ירוק = יש מקום · כתום = הגן מלא · אדום = חריגה.</li>
         <li><b>צפייה בתלמידות הגן</b> — <b>לחיצה על מספר הרשומות</b> בטבלה (או כפתור <b>🎒 צפייה בתלמידות</b> בתוך טופס הגן) פותחת את רשימת התלמידות מסוננת לאותו גן. מעל הרשימה המסוננת מופיע פס פעולות עם <b>🖨️ הדפסה</b> ו-<b>📎 שיתוף מסמך</b> (PDF) של רשימת הגן — כולל <b>"התאם לעמוד אחד"</b>.</li>
       </ul>` },
@@ -2655,7 +2658,7 @@ function guideContent(){
         <li><b>מיתוג</b> — כותרת, ו<b>העלאת קובץ לוגו</b> (מומלץ): התמונה מוטמעת במערכת ומופיעה בכותרת, בפאביקון וגם כ<b>אייקון האפליקציה</b> המותקנת.</li>
         <li><b>שנים</b> — הוספה/מחיקה, ו<b>מעבר שנה</b>.</li>
         <li><b>רשימות</b> — גילי ילדים, תפקידי צוות (צבע + שיוך חינוך), קמפוסים.</li>
-        <li><b>🚧 רף שיבוץ</b> — ברירת מחדל למספר המרבי של משובצות בגן, בנפרד לחינוך רגיל ולחינוך מיוחד (למשל 36 ו-12), עם אפשרות להשתמש ב<b>קיבולת</b> של הגן כרף כשלא הוגדר אחרת. רף שנקבע בכרטיס גן מסוים גובר. המסך מציג את מצב כל הגנים הפעילים (משובצות / רף).</li>
+        <li><b>🚧 רף שיבוץ</b> — ברירת מחדל למספר המרבי של משובצות בגן, בנפרד לחינוך רגיל ולחינוך מיוחד (למשל 36 ו-12). <b>עד שמזינים מספר אין הגבלה כלל.</b> יש גם אפשרות (כבויה כברירת מחדל) להשתמש ב<b>קיבולת</b> של הגן כרף כשלא הוגדר אחרת. רף שנקבע בכרטיס גן מסוים גובר. המסך מציג את מצב כל הגנים הפעילים (משובצות / רף).</li>
         <li><b>מנהלים ומשתמשים</b> — מי משנה הגדרות, והוספת משתמשי התחברות.</li>
         <li><b>הרשאות עריכה לפי חינוך</b> — מגבילים משתמש/ת ל<b>עריכת חינוך אחד בלבד</b> (רגיל או מיוחד): רואה את כל הנתונים, אך תיק תלמידה/גן/צוות בחינוך שאינו מורשה נפתח <b>לקריאה בלבד</b> (🔒), וכן שיבוץ / עדכון קבוצתי / כפתור "משובצת" חסומים. עדיין אפשר <b>להעביר</b> ילדה מהחינוך המורשה לחינוך השני. ההגבלה היא ברמת הממשק. למנהל מערכת בלבד.</li>
       </ul>` }
@@ -3805,9 +3808,9 @@ function openStudent(s){
       <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
-      <div><label>טלפון בית</label><div class="fieldwrap"><input id="s-phone" value="${esc(s.phone)}" inputmode="tel">${phoneFieldBtns("s-phone")}</div></div>
-      <div><label>נייד אב</label><div class="fieldwrap"><input id="s-dadMobile" value="${esc(s.dadMobile)}" inputmode="tel">${phoneFieldBtns("s-dadMobile")}</div></div>
-      <div><label>נייד אם</label><div class="fieldwrap"><input id="s-momMobile" value="${esc(s.momMobile || ((!s.dadMobile && !s.momMobile) ? (s.mobile||"") : ""))}" inputmode="tel">${phoneFieldBtns("s-momMobile")}</div></div>
+      <div><label>טלפון בית</label><div class="fieldwrap tel"><input id="s-phone" value="${esc(s.phone)}" inputmode="tel">${phoneFieldBtns("s-phone")}</div></div>
+      <div><label>נייד אב</label><div class="fieldwrap tel"><input id="s-dadMobile" value="${esc(s.dadMobile)}" inputmode="tel">${phoneFieldBtns("s-dadMobile")}</div></div>
+      <div><label>נייד אם</label><div class="fieldwrap tel"><input id="s-momMobile" value="${esc(s.momMobile || ((!s.dadMobile && !s.momMobile) ? (s.mobile||"") : ""))}" inputmode="tel">${phoneFieldBtns("s-momMobile")}</div></div>
       <div><label>דוא"ל</label><div class="fieldwrap"><input id="s-email" value="${esc(s.email)}" inputmode="email" dir="ltr" style="text-align:right"><button type="button" class="act" data-mail="s-email" title="שליחת מייל">✉️</button></div></div>
     </div>
   </fieldset>
@@ -4048,9 +4051,10 @@ function openStudent(s){
   ganRoomHint();
   /* בדיקת קרבה לגנים מתוך התיק (סעיף 3) — נבנית בפתיחה הראשונה של המקטע */
   { const fold=$("#s-prox-fold");
+    const fv=id=>{ const e=$("#"+id); return e? String(e.value||"").trim() : ""; };
     const curStudent=()=>Object.assign({}, s, {
-      street:val("s-street"), building:val("s-building"), city:val("s-city"),
-      education:val("s-education"), ganId:val("s-ganId"), age:val("s-age") });
+      street:fv("s-street"), building:fv("s-building"), city:fv("s-city"),
+      education:fv("s-education")||eduLabel(s), ganId:fv("s-ganId"), age:fv("s-age") });
     const build=()=>{
       const host=$("#s-prox-host"); if(!host) return;
       host.innerHTML=proxPanelHtml(curStudent(),"pxc");
@@ -5834,7 +5838,7 @@ function openGan(g){
   </fieldset>
   <fieldset><legend>טלפון</legend>
     <div class="grid g3">
-      <div><label>טלפון בגן</label><div class="fieldwrap"><input id="g-phoneGan" value="${esc(g.phoneGan)}" inputmode="tel">${phoneFieldBtns("g-phoneGan")}</div></div>
+      <div><label>טלפון בגן</label><div class="fieldwrap tel"><input id="g-phoneGan" value="${esc(g.phoneGan)}" inputmode="tel">${phoneFieldBtns("g-phoneGan")}</div></div>
     </div>
     <div class="note" style="margin-top:6px">פרטי הצוות (גננת, סייעת, ניידים) והשיבוץ נקבעים בלשונית "שיבוץ" לכל שנה בנפרד.</div>
   </fieldset>
@@ -7008,8 +7012,8 @@ function openStaff(m){
       <div><label>מייל</label><div class="row" style="gap:6px"><input id="st-email" value="${esc(m.email)}" type="email" inputmode="email" style="flex:1"><button type="button" class="btn ghost sm" id="st-email-send" title="שליחת מייל">✉️</button></div></div>
       <div><label>תפקיד</label><select id="st-role">${(m.role && !STAFF_ROLES.includes(m.role))?`<option selected>${esc(m.role)}</option>`:''}${STAFF_ROLES.map(r=>`<option ${m.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="st-education">${EDU_TYPES.map(t=>`<option ${eduLabel(m)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
-      <div><label>טלפון</label><div class="fieldwrap"><input id="st-phone" value="${esc(m.phone)}" inputmode="tel">${phoneFieldBtns("st-phone")}</div></div>
-      <div><label>נייד</label><div class="fieldwrap"><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel">${phoneFieldBtns("st-mobile")}</div></div>
+      <div><label>טלפון</label><div class="fieldwrap tel"><input id="st-phone" value="${esc(m.phone)}" inputmode="tel">${phoneFieldBtns("st-phone")}</div></div>
+      <div><label>נייד</label><div class="fieldwrap tel"><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel">${phoneFieldBtns("st-mobile")}</div></div>
       <div><label>רחוב</label><input id="st-street" value="${esc(m.street)}"></div>
       <div><label>מספר בית</label><input id="st-building" value="${esc(m.building)}"></div>
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
@@ -7934,8 +7938,8 @@ function openMgmt(m){
       <div><label>אגף / מחלקה</label><input id="m-dept" value="${esc(m.dept)}" placeholder="לדוגמה: רישום, כספים, פיקוח"></div>
       <div><label>שם</label><input id="m-name" value="${esc(m.name)}"></div>
       <div><label>תפקיד</label><input id="m-role" value="${esc(m.role)}"></div>
-      <div><label>טלפון</label><div class="fieldwrap"><input id="m-phone" value="${esc(m.phone)}" inputmode="tel">${phoneFieldBtns("m-phone")}</div></div>
-      <div><label>פלאפון</label><div class="fieldwrap"><input id="m-mobile" value="${esc(m.mobile)}" inputmode="tel">${phoneFieldBtns("m-mobile")}</div></div>
+      <div><label>טלפון</label><div class="fieldwrap tel"><input id="m-phone" value="${esc(m.phone)}" inputmode="tel">${phoneFieldBtns("m-phone")}</div></div>
+      <div><label>פלאפון</label><div class="fieldwrap tel"><input id="m-mobile" value="${esc(m.mobile)}" inputmode="tel">${phoneFieldBtns("m-mobile")}</div></div>
       <div><label>מייל</label><input id="m-email" value="${esc(m.email)}" type="email" inputmode="email"></div>
     </div>
     <div class="foot">${!isNew?'<button class="btn danger" id="delM">מחיקה</button>':''}<button class="btn" id="saveM" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="cancelM">ביטול</button></div>`);
@@ -8639,7 +8643,8 @@ function openAiHelp(){ aiOpen(); }
     try{ localStorage.setItem("rg-ai-w", String(w)); }catch(e){} };
   try{ const w=+localStorage.getItem("rg-ai-w"); if(w) setW(w); }catch(e){}
   grip.addEventListener("pointerdown",e=>{ drag=true; grip.setPointerCapture(e.pointerId); e.preventDefault(); });
-  grip.addEventListener("pointermove",e=>{ if(drag) setW(window.innerWidth - e.clientX); });
+  const isRtl=()=> getComputedStyle(document.documentElement).direction==="rtl";
+  grip.addEventListener("pointermove",e=>{ if(drag) setW(isRtl()? e.clientX : (window.innerWidth - e.clientX)); });
   grip.addEventListener("pointerup",()=>{ drag=false; });
   /* פתיחה מחדש אם הפאנל היה פתוח בביקור הקודם */
   try{ if(localStorage.getItem("rg-ai-open")==="1") setTimeout(()=>{ if(!document.body.classList.contains("locked")) aiOpen(); }, 800); }catch(e){}
@@ -9163,6 +9168,7 @@ function openMessages(opts){
   if(opts.audience) msgState.audience=opts.audience;
   if(opts.channel) msgState.channel=opts.channel;
   if(opts.parentFilter) Object.assign(msgState.parentFilter, opts.parentFilter);
+  if(active==="messages"){ route(); window.scrollTo(0,0); return; }
   navToTab("messages");
 }
 
@@ -9424,13 +9430,15 @@ function viewSettings(root){
 
   <div class="panel">
     <h2>רף שיבוץ — מקסימום משובצות בגן</h2>
-    <div class="sub">מגבלה <b>קשיחה</b> על השיבוץ הסופי: כשגן מגיע לרף, המערכת לא תאפשר לשבץ אליו עוד תלמידה ותציג הודעה.
+    <div class="sub"><b>כל עוד לא הוזן כאן מספר ולא הוגדר רף בכרטיס גן — אין שום הגבלה, והמערכת מתנהגת בדיוק כמו קודם.</b><br>
+      מגבלה <b>קשיחה</b> על השיבוץ הסופי: כשגן מגיע לרף, המערכת לא תאפשר לשבץ אליו עוד תלמידה ותציג הודעה.
       <b>הרישום אינו מוגבל</b> — אפשר לרשום לגן יותר ממה שהוגדר; המגבלה חלה רק על סימון "משובצת (שיבוץ סופי)".
       לגן מסוים אפשר לקבוע רף אחר בכרטיס הגן (לשונית גנים → "רף שיבוץ") — והוא גובר על ברירת המחדל כאן.</div>
     <div class="grid g3" style="margin-top:10px">
       <div><label>ברירת מחדל — חינוך רגיל</label><input id="ac-reg" inputmode="numeric" value="${esc(assignCapDefaults()['רגיל'])}" placeholder="למשל 36" ${dis}></div>
       <div><label>ברירת מחדל — חינוך מיוחד</label><input id="ac-spec" inputmode="numeric" value="${esc(assignCapDefaults()['ח"מ'])}" placeholder="למשל 12" ${dis}></div>
-      <div style="align-self:end"><label class="check"><input type="checkbox" id="ac-usecap" ${assignCapDefaults().useCapacity?'checked':''} ${dis}> אם אין רף — להשתמש ב<b>קיבולת</b> של הגן כרף</label></div>
+      <div style="align-self:end"><label class="check"><input type="checkbox" id="ac-usecap" ${assignCapDefaults().useCapacity?'checked':''} ${dis}> אם אין רף — להשתמש ב<b>קיבולת</b> של הגן כרף</label>
+        <div class="hint">כבוי כברירת מחדל. הפעלה תהפוך את הקיבולת הקיימת של כל גן למגבלה חוסמת.</div></div>
     </div>
     <div class="row" style="margin-top:10px"><button class="btn" id="saveAC" ${dis}>💾 שמירת רף השיבוץ</button></div>
     <div style="margin-top:12px">

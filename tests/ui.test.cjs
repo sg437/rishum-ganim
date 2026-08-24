@@ -1,0 +1,204 @@
+/* ============================================================================
+   בדיקת דפדפן לשדרוגים החדשים (Playwright + Chromium)
+   ----------------------------------------------------------------------------
+   טוענת את index.html האמיתי עם Firebase מדומה (בלי רשת), מזריקה נתוני בדיקה,
+   ומוודאת שהמסכים והלוגיקה החדשים עובדים בפועל:
+     • מרכז ההודעות — בנייה, מיזוג פרטי הגן לכל הורה, ערוצים, מצב ידני.
+     • רף שיבוץ — עמודה בטבלת הגנים, חיווי בתיק, וחסימת שמירה מעל הרף.
+     • בדיקת קרבה מהתיק · כפתורי טלפון בטבלה · חלון השיבוץ האוטומטי.
+     • העוזר החכם — פאנל הצד, כלי הקריאה, וכלי השינוי (כולל כיבוד הרף).
+   דרישות: playwright + Chromium מקומי. הרצה:
+     PW_CHROME=/path/to/chrome node tests/ui.test.cjs
+   ============================================================================ */
+
+const fs=require('fs'), path=require('path');
+let chromium;
+try{ ({chromium}=require('playwright')); }
+catch(e){
+  console.log('⏭️  דילוג: הבדיקה דורשת Playwright (בדיקה אופציונלית, לא נדרשת לשימוש בתוכנה).');
+  console.log('    התקנה:  npm i -D playwright && npx playwright install chromium');
+  console.log('    הרצה:   NODE_PATH=$(npm root) node tests/ui.test.cjs   [PW_CHROME=/path/to/chrome]');
+  process.exit(0);
+}
+const SRC=path.join(__dirname,'..','index.html');
+const TMP=fs.mkdtempSync(path.join(require('os').tmpdir(),'rg-ui-'));
+let html=fs.readFileSync(SRC,'utf8');
+
+// מחליפים את ייבוא Firebase בייבוא מקומי מדומה, ומסירים את ה-CSP (הבדיקה מקומית)
+html=html.replace(/<meta http-equiv="Content-Security-Policy"[\s\S]*?>/,'');
+html=html.replace(/https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.5\/firebase-[a-z-]+\.js/g,'./fbstub.js');
+// לא לטעון Leaflet מהרשת בבדיקה
+html=html.replace('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js','./noop.js');
+// הקוד רץ כמודול (scope נפרד) — חושפים לבדיקה את מה שנדרש
+const expose = `
+window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; };
+window.__get=k=> k==='active'?active : k==='DB'?DB : undefined;
+Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
+Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState,
+  msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
+  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, phoneCell });
+window.__ready=true;
+`;
+const endIdx=html.lastIndexOf('</script>');
+html=html.slice(0,endIdx)+expose+html.slice(endIdx);
+fs.writeFileSync(path.join(TMP,'app.html'),html);
+
+fs.writeFileSync(path.join(TMP,'noop.js'),'window.L=window.L||{};');
+fs.writeFileSync(path.join(TMP,'fbstub.js'),`
+const noop=()=>{}; const P=()=>Promise.resolve();
+export const initializeApp=()=>({name:'stub'});
+export const getAuth=()=>({currentUser:null});
+export const onAuthStateChanged=(a,cb)=>{ setTimeout(()=>cb(null),0); return noop; };
+export const signInWithEmailAndPassword=P, signOut=P, sendPasswordResetEmail=P, signInWithPopup=P;
+export class GoogleAuthProvider{ setCustomParameters(){} }
+export const initializeFirestore=()=>({stub:true});
+export const persistentLocalCache=()=>({}), persistentMultipleTabManager=()=>({});
+export const doc=()=>({}), setDoc=P, deleteDoc=P, collection=()=>({}), terminate=P,
+  clearIndexedDbPersistence=P, disableNetwork=P, enableNetwork=P;
+export const onSnapshot=()=>noop;
+export const writeBatch=()=>({set:noop,delete:noop,commit:P});
+export const runTransaction=P;
+export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}
+`);
+
+const PORT=8731;
+const server=require('http').createServer((req,res)=>{
+  const f=path.join(TMP, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/,''));
+  try{ const body=fs.readFileSync(f);
+    const ct = f.endsWith('.js')?'text/javascript':f.endsWith('.html')?'text/html; charset=utf-8':'text/plain';
+    res.writeHead(200,{'Content-Type':ct}); res.end(body);
+  }catch(e){ res.writeHead(404); res.end('nf'); }
+});
+(async()=>{
+  await new Promise(r=>server.listen(PORT,'127.0.0.1',r));
+  const b=await chromium.launch({ executablePath:process.env.PW_CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args:['--no-sandbox'] });
+  const pg=await b.newPage();
+  const errors=[];
+  pg.on('pageerror',e=>errors.push('pageerror: '+e.message));
+  pg.on('console',m=>{ if(m.type()==='error') errors.push('console: '+m.text()); });
+  await pg.route('**',r=>{ const u=r.request().url();
+    if(u.startsWith('http://127.0.0.1:'+PORT+'/')) return r.continue();
+    return r.abort(); });
+  await pg.goto('http://127.0.0.1:'+PORT+'/app.html');
+  await pg.waitForTimeout(700);
+
+  // נתוני בדיקה + פתיחת המסך
+  const setup=await pg.evaluate(()=>{
+    if(!window.__ready) return 'module-not-ready';
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[
+      {id:'g1',ganName:'גן הדקל',active:true,education:'רגיל',age:'4',capacity:'30',assignCap:'2',teacherName:'שרה לוי',campus:'מרכז',address:'הרב שך',building:'5',phoneGan:'08-9761234',geo:{lat:31.93,lng:35.04}},
+      {id:'g2',ganName:'גן הרימון',active:true,education:'רגיל',age:'4',capacity:'30',assignCap:'',teacherName:'מרים כהן',campus:'מרכז',address:'רשב"י',building:'3',phoneGan:'08-9765555',geo:{lat:31.94,lng:35.06}}
+    ];
+    DB.students=[1,2,3,4].map(i=>({id:'s'+i,year:'תשפ"ז',firstName:'ילדה'+i,lastName:'כהן',tz:'12345678'+i,
+      age:'4',education:'רגיל',ganId:i<4?'g1':'',placed:i<3,finished:false,street:'הרב שך',building:String(i),
+      city:'מודיעין עילית',momMobile:'050123456'+i,email:'p'+i+'@example.com',period:'א',
+      docs:{},docFiles:{},programs:{},programsPaid:{},special:{},support:{},geo:{lat:31.93+i/1000,lng:35.04}}));
+    DB.staff=[{id:'st1',lastName:'ברוך',firstName:'רחל',role:'גננת',education:'רגיל',mobile:'0521234567',email:'r@example.com',active:true}];
+    DB.management=[{id:'m1',dept:'כספים',name:'יוסי',role:'גזבר',phone:'08-9760000',mobile:'0501112222',email:'y@example.com'}];
+    DB.settings=DB.settings||{}; DB.settings.assignCaps={'רגיל':'36','ח"מ':'','useCapacity':false};
+    __set('eduPicked',true); __set('activeEdu',null);
+    document.body.classList.remove('locked');
+    return 'ok';
+  });
+  if(setup!=='ok'){ console.log('❌ טעינת האפליקציה נכשלה: '+setup); errors.forEach(e=>console.log('   '+e)); await b.close(); server.close(); process.exit(1); }
+
+  let fail=0;
+  const step=async(name,fn)=>{
+    const before=errors.length;
+    let r; try{ r=await fn(); }catch(e){ r='EX: '+e.message; }
+    const newErr=errors.slice(before);
+    const ok = r===true && !newErr.length;
+    if(!ok){ fail++; console.log('❌ '+name+(r!==true?(' → '+r):'')+(newErr.length?('\\n   '+newErr.join('\\n   ')):'')); }
+    else console.log('✅ '+name);
+  };
+
+  await step('לשונית "הודעות" קיימת בניווט', ()=>pg.evaluate(()=>TABS.some(t=>t.id==='messages')));
+  await step('מרכז ההודעות נבנה', ()=>pg.evaluate(()=>{ __set('active','messages'); route();
+    return !!document.querySelector('#msg-tpl') && !!document.querySelector('#msg-send'); }));
+  await step('תבנית השיבוץ ממזגת את פרטי הגן של כל תלמידה', ()=>pg.evaluate(()=>{
+    msgApplyTemplate('placement'); msgState.parentFilter={edu:'',gans:[],ages:[],campus:'',period:'',placed:'yes'};
+    msgState.channel='email';
+    const items=msgBuild(msgState);
+    return items.length===2 && items[0].text.includes('גן הדקל') && items[0].text.includes('שרה לוי')
+        && items[0].subject.includes('ילדה1') && !/\\{\\{/.test(items[0].text); }));
+  await step('ספירת נמענים לפי ערוץ', ()=>pg.evaluate(()=>{
+    msgState.channel='whatsapp'; const w=msgBuild(msgState).length;
+    msgState.channel='email';    const e=msgBuild(msgState).length;
+    return w===2 && e===2; }));
+  await step('הודעות לצוות ולהנהלה', ()=>pg.evaluate(()=>{
+    msgState.audience='staff'; msgApplyTemplate('staff-general');
+    const s=msgBuild(msgState);
+    msgState.audience='management'; const m=msgBuild(msgState);
+    msgState.audience='parents';
+    return s.length===1 && s[0].text.includes('רחל') && m.length===1 && m[0].to==='y@example.com'; }));
+  await step('מצב ידני לוואטסאפ נבנה עם קישורי wa.me', ()=>pg.evaluate(()=>{
+    __set('active','messages'); route(); msgState.channel='whatsapp'; msgApplyTemplate('placement');
+    const items=msgBuild(msgState);
+    msgManualPanel(document.querySelector('#msg-out'), items, 'whatsapp', true);
+    const a=document.querySelector('#msg-out .msg-open');
+    return !!a && a.getAttribute('href').startsWith('https://wa.me/9725'); }));
+
+  await step('לשונית הגנים מציגה עמודת "משובצות / רף"', ()=>pg.evaluate(()=>{
+    __set('active','gans'); route();
+    return document.body.innerText.includes('משובצות / רף') && document.body.innerText.includes('2 / 2'); }));
+  await step('טבלת התלמידות מציגה טלפון עם כפתורי פעולה + 🧭', ()=>pg.evaluate(()=>{
+    __set('active','students'); route();
+    return !!document.querySelector('.stu-prox') && !!document.querySelector('td a[href^="tel:"]')
+        && !!document.querySelector('td a[href^="https://wa.me/"]'); }));
+  await step('תיק הילדה נפתח עם חיווי רף שיבוץ ומקטע בדיקת קרבה', ()=>pg.evaluate(()=>{
+    openStudentById('s4');
+    const hint=document.querySelector('#s-gan-room'), fold=document.querySelector('#s-prox-fold');
+    document.querySelector('#s-ganId').value='g1';
+    document.querySelector('#s-ganId').dispatchEvent(new Event('change'));
+    return !!fold && !!hint && hint.textContent.includes('מלא'); }));
+  await step('מקטע בדיקת הקרבה נבנה בפתיחה', ()=>pg.evaluate(()=>{
+    const f=document.querySelector('#s-prox-fold'); f.open=true; f.dispatchEvent(new Event('toggle'));
+    return document.querySelectorAll('.pxc-gan').length===2; }));
+  await step('שמירת תיק מעל הרף נחסמת', ()=>pg.evaluate(()=>{
+    document.querySelector('#s-placed').checked=true;
+    document.querySelector('#saveStu').click();
+    const st=DB.students.find(x=>x.id==='s4');
+    return st.ganId==='' && document.querySelector('#toast').textContent.includes('מלא'); }));
+  await step('חלון השיבוץ האוטומטי נפתח ומחשב תצוגה מקדימה', ()=>pg.evaluate(()=>{
+    closeModal();
+    _mapState.inited=true; _mapState.edu=null; _mapState.city=null; _mapState.ganIds=new Set(['g1','g2']);
+    _mapState.allStudents=true;
+    openAutoAssign();
+    const t=document.querySelector('#aa-out').innerText;
+    return t.includes('נבדקו') && !!document.querySelector('#aa-apply'); }));
+  await step('הגדרות — מקטע רף שיבוץ', ()=>pg.evaluate(()=>{ closeModal();
+    __set('active','settings'); route();
+    return !!document.querySelector('#ac-reg') && !!document.querySelector('#saveAC'); }));
+  await step('פאנל העוזר נפתח ונסגר', ()=>pg.evaluate(()=>{
+    aiOpen(); const on=document.querySelector('#aiPanel').classList.contains('open')
+      && document.body.classList.contains('ai-docked') && !!document.querySelector('.aimsg');
+    aiClose(); const off=!document.querySelector('#aiPanel').classList.contains('open');
+    return on && off; }));
+  await step('כלי הקריאה של העוזר מחזירים נתוני אמת', ()=>pg.evaluate(()=>{
+    const s=AI_TOOLS.stats.run();
+    const g=AI_TOOLS.list_gans.run({});
+    const f=AI_TOOLS.find_students.run({ganName:'הדקל'});
+    return s['תלמידות_פעילות']===4 && g.length===2 && g[0]['רף_שיבוץ']===2 && f['סה_כ']===3; }));
+  await step('כלי שינוי של העוזר מכבד את רף השיבוץ', ()=>pg.evaluate(()=>{
+    const pv=AI_TOOLS.assign_student.preview({student:'ילדה4',gan:'גן הדקל'});
+    if(!pv.warn || !pv.warn.includes('מלא')) return 'לא הוצגה אזהרה';
+    const r=AI_TOOLS.assign_student.run({student:'ילדה4',gan:'גן הדקל'}, pv.ctx);
+    return !!r['שגיאה']; }));
+  await step('כלי שינוי מבצע כשיש מקום', ()=>pg.evaluate(()=>{
+    const pv=AI_TOOLS.assign_student.preview({student:'ילדה4',gan:'גן הרימון'});
+    const r=AI_TOOLS.assign_student.run({student:'ילדה4',gan:'גן הרימון'}, pv.ctx);
+    return !r['שגיאה'] && DB.students.find(x=>x.id==='s4').ganId==='g2'; }));
+  await step('פירוק בלוקי פעולה מתשובת המודל', ()=>pg.evaluate(()=>{
+    const p=aiParseActions('הנה התשובה\n```action\n{"tool":"stats","args":{}}\n```');
+    return p.actions.length===1 && p.actions[0].tool==='stats' && p.text==='הנה התשובה'; }));
+  await step('מדריך כולל את המקטעים החדשים', ()=>pg.evaluate(()=>{
+    __set('active','guide'); route();
+    const t=document.body.innerText;
+    return t.includes('מרכז ההודעות') && t.includes('עוזר חכם — פאנל צד שגם מבצע'); }));
+
+  console.log('============================================');
+  console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
+  await b.close(); server.close();
+  process.exit(fail?1:0);
+})();
