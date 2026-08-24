@@ -29,9 +29,17 @@ function grabAsync(name){
   return code.slice(a+1, e+2);
 }
 
+function grabConst(name){
+  const a=code.indexOf('\nconst '+name+' = {');
+  if(a<0) throw new Error('לא נמצא הקבוע: '+name);
+  const e=code.indexOf('\n};', a);
+  return code.slice(a+1, e+3);
+}
+
 const ctx={ console, MAP_CITY_RADIUS_KM:10, geocodeOnce:null };
 vm.createContext(ctx);
-vm.runInContext([grab('haversineKm'), grab('geoNearCity'), grabAsync('ensureGeo')].join('\n'), ctx);
+vm.runInContext([grab('haversineKm'), grab('geoNearCity'), grabAsync('ensureGeo'),
+                 grabConst('CITY_ALIASES'), grab('normCityName')].join('\n'), ctx);
 
 const MODIIN={lat:31.9330,lng:35.0400};      // מרכז מודיעין עילית
 const NEAR  ={lat:31.9380,lng:35.0455};      // רחוב באותה עיר (~0.7 ק"מ)
@@ -78,6 +86,16 @@ const ok=(c,msg)=>{ if(!c){fail++;console.log('❌ '+msg);} else console.log('�
   ent={ geo:{ lat:FAR.lat, lng:FAR.lng, manual:true, q:'__manual__', locType:'MANUAL', tried:true } };
   r=await ctx.ensureGeo(ent,q,false,'מודיעין עילית',MODIIN);
   ok(r && r.manual===true && called===0, 'מיקום ידני נשמר ולא נדרס');
+
+  /* 7. נרמול שם עיר — הכתיב שבתיק מפיל את נעילת העיר בגאוקודר */
+  ok(ctx.normCityName('מודיעין עלית')==='מודיעין עילית', 'מודיעין עלית → מודיעין עילית');
+  ok(ctx.normCityName('ביתר עלית')==='ביתר עילית', 'ביתר עלית → ביתר עילית');
+  ok(ctx.normCityName('קרית ספר')==='מודיעין עילית', 'קרית ספר → מודיעין עילית');
+  ok(ctx.normCityName('מודיעין עילית')==='מודיעין עילית', 'כתיב תקין נשאר כמו שהוא');
+  ok(ctx.normCityName('  מודיעין   עלית  ')==='מודיעין עילית', 'רווחים כפולים מנוקים');
+  ok(ctx.normCityName('ירושלים')==='ירושלים', 'עיר אחרת לא מושפעת');
+  ok(ctx.normCityName('עלית')==='עילית', '"עלית" כמילה עצמאית מתוקנת');
+  ok(ctx.normCityName('')==='', 'מחרוזת ריקה נשארת ריקה');
 
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל הבדיקות עברו ✅');
