@@ -1778,7 +1778,7 @@ function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill
 /* צבע רקע לפי גיל הגן: 3=ירוק בהיר · 4=סגול בהיר · 5=צהוב בהיר. דו-גילאי = מעבר בין שני הצבעים.
    נעשה שימוש ב-color-mix עם רקע המשטח כדי שהגוון יתאים גם למצב כהה. */
 const AGE_HUE = { "3":"#4c9a6a", "4":"#7a6bb0", "5":"#b08a2e" };
-const AGE_MIX = 14; // עוצמת הגוון (אחוז מהצבע המלא) — גוון עדין שמבדיל בין גלאים בלי לצעוק
+const AGE_MIX = 25; // עוצמת הגוון (אחוז מהצבע המלא) — מבדיל בין גלאים בבירור בלי לצעוק
 const AGE_MIX_SWATCH = 55; // ריבוע המקרא — חזק יותר, כדי שיהיה ברור מה מסמן כל צבע
 function ganAgeBg(gan){
   const ages=String(gan&&gan.age||"").split("/").map(x=>x.trim()).filter(Boolean);
