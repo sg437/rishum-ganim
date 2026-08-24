@@ -5804,18 +5804,19 @@ function proxPanelHtml(st, idp){
 }
 /* הפעלת הפאנל. getStudent() מחזיר תמונת מצב עדכנית של התלמידה (כולל עריכות שטרם נשמרו).
    onPick(gan) — מה לעשות בלחיצה על "שבץ"; ברירת מחדל: שיבוץ ישיר ב-DB. */
-/* פירוט טכני לאבחון מרחקים חריגים. בלי המספרים עצמם אי אפשר לדעת אם השתבשה
-   כתובת התלמידה, מיקום הגן, או נקודת העוגן של העיר — וכל אבחון הוא ניחוש. */
-function proxDiagHtml(st, sgeo, bias, suspect){
+/* פירוט טכני לבדיקת הקרבה. זמין תמיד — גם כשהבדיקה מצליחה — כי בלי המספרים
+   עצמם אי אפשר לדעת אם השתבשה כתובת התלמידה, מיקום הגן, או נקודת העוגן של העיר. */
+function proxDiagHtml(st, sgeo, bias, list){
   const co=p=>(p&&p.lat!=null)?(p.lat.toFixed(5)+", "+p.lng.toFixed(5)):"—";
+  const src=p=>!p||p.lat==null?"—":(p.manual?"ידני":esc(p.source||"אוטומטי"));
   const srcName={manual:"הגנים שהוצבו ידנית",geocode:"גאוקוד שם העיר",median:"חציון הנקודות"};
-  const anchor = bias ? `${co(bias)} · לפי ${esc(srcName[bias.src]||"לא ידוע")}` : "לא נקבע";
-  const rows = suspect.map(r=>`<tr><td class="wrap">${esc(ganName(r.g.id))}</td><td>${co(r.g.geo)}</td>
-      <td>${r.g.geo&&r.g.geo.manual?"ידני":esc((r.g.geo&&r.g.geo.source)||"אוטומטי")}</td>
-      <td>${r.km.toFixed(1)}</td></tr>`).join("");
-  return `<details style="margin-top:6px"><summary class="hint" style="cursor:pointer">🔬 פרטים טכניים (לשליחה לתמיכה)</summary>
+  const anchor=(bias&&bias.lat!=null)?`${co(bias)} · לפי ${esc(srcName[bias.src]||"לא ידוע")}`:"לא נקבע ⚠";
+  const rows=(list||[]).map(r=>`<tr><td class="wrap">${esc(ganName(r.g.id))}</td><td>${co(r.g.geo)}</td>
+      <td>${src(r.g.geo)}</td><td>${r.km==null?"—":r.km.toFixed(1)}</td></tr>`).join("");
+  return `<details style="margin-top:8px"><summary class="hint" style="cursor:pointer">🔬 פרטים טכניים (לשליחה לתמיכה)</summary>
     <div class="hint" style="margin-top:4px">
-      מיקום התלמידה: <b>${co(sgeo)}</b> · מקור: ${esc((sgeo&&(sgeo.manual?"ידני":sgeo.source))||"—")}<br>
+      כתובת שנבדקה: <b>${esc(proxAddrQuery(st)||"—")}</b><br>
+      מיקום התלמידה: <b>${co(sgeo)}</b> · מקור: ${src(sgeo)}<br>
       עוגן העיר: <b>${anchor}</b>
     </div>
     <div class="table-wrap"><table class="tbl-fit"><thead><tr><th>גן</th><th>מיקום</th><th>מקור</th><th>ק"מ</th></tr></thead>
@@ -5852,6 +5853,7 @@ function proxBind(host, getStudent, idp, onPick){
         out.innerHTML=`<div class="note">${outCity
           ? `הכתובת <b>"${esc(q)}"</b> זוהתה מחוץ ל${esc(city)} ולכן נדחתה — כנראה רחוב באותו שם בעיר אחרת.<br>אפשר לתקן את הרחוב/המספר/העיר בתיק ולנסות שוב.`
           : `לא נמצא מיקום לכתובת "${esc(q)}". אפשר לתקן את הרחוב/המספר בתיק ולנסות שוב.`}</div>`;
+        out.innerHTML+=proxDiagHtml(st, rec.geo, bias, picked.map(id=>({g:ganById(id)})).filter(x=>x.g));
         go.disabled=false; return; }
       const gans=picked.map(id=>ganById(id)).filter(Boolean);
       const missing=[];
@@ -5901,10 +5903,13 @@ function proxBind(host, getStudent, idp, onPick){
                  כשכולם רחוקים במידה דומה, הבעיה כמעט תמיד ב<b>כתובת התלמידה</b> ולא בגנים${anyManual?" (חלק מהגנים מוקמו ידנית, ולכן המיקום שלהם אמין)":""}.
                  כדאי לבדוק את הרחוב/המספר/העיר בתיק, ואז ללחוץ <b>"חישוב מחדש"</b>.</div>
                <div class="row" style="margin-top:6px"><button class="btn ghost sm" type="button" id="${idp}-refresh">🔄 חישוב מחדש של מיקום התלמידה</button></div>
-               ${proxDiagHtml(st, sgeo, bias, suspect)}`
+`
             : `<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ מרחק לא סביר (מעל ${MAP_CITY_RADIUS_KM} ק"מ) — כנראה כתובת שזוהתה בעיר אחרת, ולכן לא מוצגת: ${suspect.map(r=>esc(ganName(r.g.id))+" ("+r.km.toFixed(0)+' ק"מ)').join(" · ")}. כדאי לבדוק את הכתובת בכרטיס הגן, או למקם אותו ידנית בלשונית מפת שיבוץ.</div>`;
         }
         if(missing.length) html+=`<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ ללא מיקום (כתובת חסרה/לא זוהתה): ${missing.map(g=>esc(ganName(g.id))).join(" · ")} — אפשר למקם ידנית בלשונית מפת שיבוץ.</div>`;
+        // כל הגנים שנבחרו, גם אלה שהצליחו — כדי שאפשר יהיה להשוות מספרים בפועל
+        const byId=new Map([...rows,...suspect].map(r=>[r.g.id,r.km]));
+        html+=proxDiagHtml(st, sgeo, bias, gans.map(g=>({ g, km: byId.has(g.id)?byId.get(g.id):null })));
         out.innerHTML=html;
         { const rb=out.querySelector("#"+idp+"-refresh"); if(rb) rb.onclick=()=>{
             const rec2=DB.students.find(x=>x.id===st.id); if(rec2) rec2.geo=null;   // ניקוי המטמון של התלמידה בלבד
