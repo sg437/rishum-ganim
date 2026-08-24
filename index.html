@@ -4972,6 +4972,25 @@ function geoDefaultCity(){
   const c={}; DB.students.forEach(s=>{ const v=(s.city||"").trim(); if(v) c[v]=(c[v]||0)+1; });
   let best="", n=0; for(const k in c){ if(c[k]>n){ n=c[k]; best=k; } } return best;
 }
+/* נרמול שם עיר לצורך גאוקוד בלבד (הנתון בתיק לא משתנה).
+   כתיב חלופי נפוץ מפיל את נעילת העיר בגאוקודר — למשל "מודיעין עלית" (בלי יו"ד)
+   אינו מזוהה, ואז החיפוש נתפס על יישוב אחר באותו שם רחוב ("חפץ חיים" — מושב
+   במרכז הארץ) ומתקבל מרחק אבסורדי. */
+const CITY_ALIASES = {
+  "מודיעין עלית":"מודיעין עילית",
+  "ביתר עלית":"ביתר עילית",
+  "מודיעין עילת":"מודיעין עילית",
+  "קרית ספר":"מודיעין עילית",
+  "קריית ספר":"מודיעין עילית"
+};
+function normCityName(c){
+  let v=String(c||"").trim().replace(/["'\u05f3\u05f4]/g,"").replace(/\s+/g," ");
+  if(!v) return "";
+  if(CITY_ALIASES[v]) return CITY_ALIASES[v];
+  // כלל כללי: "עלית" כמילה עצמאית → "עילית"
+  v=v.replace(/(^|\s)עלית(?=\s|$)/g,"$1עילית");
+  return CITY_ALIASES[v] || v;
+}
 function ganAddrQuery(g){
   // שם הרחוב עשוי להיות בשדה "כתובת" או בשדה "רחוב"; המספר בשדה "מספר".
   // בוחרים כשם-רחוב את השדה שמכיל טקסט (אותיות), ומצרפים מספר אם עוד אין.
@@ -4980,14 +4999,14 @@ function ganAddrQuery(g){
   if(!streetName) return "";                          // אין שם רחוב (אותיות) → לא ניתן לגאוקד
   const num=String(g.building||"").trim();
   const base = /\d/.test(streetName) ? streetName : (streetName + (num?(" "+num):""));
-  const city=(_mapState&&_mapState.city)||geoDefaultCity();   // העיר הנבחרת במפה מנצחת
+  const city=normCityName((_mapState&&_mapState.city)||geoDefaultCity());   // העיר הנבחרת במפה מנצחת
   return base+(city?(", "+city):"")+", ישראל";
 }
 function studentAddrQuery(s){
   const base=[s.street,s.building].filter(Boolean).join(" ").trim();
   if(!base) return "";
   // אם נבחרה עיר במפה — היא הקובעת (כולם באותה עיר), אחרת עיר התלמידה
-  const city=(_mapState&&_mapState.city)||(s.city||"").trim()||geoDefaultCity();
+  const city=normCityName((_mapState&&_mapState.city)||(s.city||"").trim()||geoDefaultCity());
   return base+(city?(", "+city):"")+", ישראל";
 }
 /* גאוקוד: קודם Google דרך הגשר (דיוק גבוה, המפתח מוסתר); אם אין מפתח
@@ -5013,7 +5032,9 @@ async function geocodeGoogleBridge(q, city, bias){
 function geocodeOnce(q, city, bias){
   const run=async()=>{
     const g=await geocodeGoogleBridge(q, city, bias);
-    if(g) return { lat:g.lat, lng:g.lng, source:"google", partial:g.partial, locType:g.locType };
+    // bounds של Google היא העדפה רכה ולא הגבלה — תוצאה שנפלה בעיר אחרת נזנחת,
+    // וממשיכים ל-OSM שמוגבל בפועל לתיבת העיר (bounded=1).
+    if(g && geoNearCity(g, bias)) return { lat:g.lat, lng:g.lng, source:"google", partial:g.partial, locType:g.locType };
     await new Promise(r=>setTimeout(r,1100));   // כיבוד מדיניות Nominatim (≤1/שנייה)
     let url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=il&accept-language=he&q="+encodeURIComponent(q);
     // הגבלה לתיבת העיר הנבחרת — מונע התאמה לרחוב באותו שם בעיר רחוקה
@@ -5273,7 +5294,7 @@ function mapComputeCenter(){
    חציון הנקודות רק כגיבוי. מונע קיבוע מרכז שגוי כשמעט גנים והם התגאוקדו לא נכון. */
 async function mapEnsureCityCenter(city){
   if(_cityCenter && _cityCenter.city===city && _cityCenter.lat!=null) return _cityCenter;
-  let pt=null; try{ pt=await geocodeOnce(city+", ישראל"); }catch(e){ pt=null; }
+  let pt=null; try{ pt=await geocodeOnce(normCityName(city)+", ישראל"); }catch(e){ pt=null; }
   if(pt){ _cityCenter={ city, lat:pt.lat, lng:pt.lng }; return _cityCenter; }
   const med=mapComputeCenter();
   _cityCenter = med ? { city, lat:med.lat, lng:med.lng } : { city, lat:null, lng:null };
@@ -5701,7 +5722,7 @@ let _proxSel=null;   // בחירת הגנים האחרונה (Set של מזהי�
 function proxAddrQuery(st){
   const base=[st.street,st.building].filter(Boolean).join(" ").trim();
   if(!base) return "";
-  const city=(st.city||"").trim()||geoDefaultCity();
+  const city=normCityName((st.city||"").trim()||geoDefaultCity());
   return base+(city?(", "+city):"")+", ישראל";
 }
 /* כתובת גן לגאוקוד, עם עיר מפורשת (במקום להישען על _mapState) */
@@ -5711,7 +5732,8 @@ function proxGanQuery(g, city){
   if(!streetName) return "";
   const num=String(g.building||"").trim();
   const base = /\d/.test(streetName) ? streetName : (streetName + (num?(" "+num):""));
-  return base+(city?(", "+city):"")+", ישראל";
+  const c=normCityName(city);
+  return base+(c?(", "+c):"")+", ישראל";
 }
 /* גנים מועמדים לבדיקה — פעילים, בחינוך של התלמידה */
 function proxGanOptions(st){
