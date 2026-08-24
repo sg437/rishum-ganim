@@ -291,6 +291,52 @@ const server=require('http').createServer((req,res)=>{
     if(DB.gans[0].city!=='מודיעין עילית' || DB.gans[1].city!=='מודיעין עילית') return 'העיר לא הושלמה';
     return true; }));
 
+  /* ---- "שחזור מיקומי גנים בלבד" חייב לגעת אך ורק ב-geo ---- */
+  await step('שחזור מיקומים: תצוגה מקדימה, וביטול לא משנה כלום', ()=>pg.evaluate(async()=>{
+    DB.gans=[{id:'rg0',ganName:'א',active:true,education:'רגיל',city:'מודיעין עילית',geo:null}];
+    __set('active','tools'); route();
+    await new Promise(r=>setTimeout(r,300));           // viewTools מרנדר חלקים אסינכרונית
+    const inp=document.getElementById('restoreGeo');
+    if(!inp) return 'אין כפתור שחזור מיקומים';
+    const bk={ gans:[{id:'rg0',geo:{lat:31.9345,lng:35.0432,manual:true,q:'__manual__'}}] };
+    const dt=new DataTransfer(); dt.items.add(new File([JSON.stringify(bk)],'b.json',{type:'application/json'}));
+    inp.files=dt.files; inp.dispatchEvent(new Event('change'));
+    for(let i=0;i<40 && !document.getElementById('rgApply');i++) await new Promise(r=>setTimeout(r,50));
+    if(!document.getElementById('rgApply')) return 'לא הוצגה תצוגה מקדימה';
+    if(DB.gans[0].geo!==null) return 'הנתונים שונו כבר בתצוגה המקדימה';
+    document.getElementById('rgCancel').click();
+    await new Promise(r=>setTimeout(r,150));
+    if(DB.gans[0].geo!==null) return 'ביטול שינה נתונים';
+    return true; }));
+  await step('שחזור מיקומים: כותב geo בלבד, לא נוגע בשאר', ()=>pg.evaluate(async()=>{
+    DB.students=[{id:'rs0',year:DB.activeYear,lastName:'ת',firstName:'ח',notes:'הערה',ganId:'rg0',placed:true,
+      finished:false,docs:{},docFiles:{},programs:{},programsPaid:{},special:{},support:{},createdAt:''}];
+    DB.staff=[{id:'rst0',lastName:'צ',firstName:'ח',role:'גננת',active:true}];
+    DB.gans=[{id:'rg0',ganName:'שם חדש',active:true,education:'רגיל',city:'מודיעין עילית',
+      capacity:'30',assignCap:'36',teacherName:'גננת חדשה',address:'כתובת חדשה',campus:'קמפוס חדש',geo:null}];
+    __set('active','tools'); route();
+    await new Promise(r=>setTimeout(r,300));           // viewTools מרנדר חלקים אסינכרונית
+    const inp=document.getElementById('restoreGeo');
+    if(!inp) return 'אין כפתור שחזור מיקומים';
+    // הגיבוי מכיל ערכים ישנים בכל השדות — אסור שאף אחד מהם ייכנס
+    const bk={ gans:[{id:'rg0',ganName:'שם ישן',city:'עיר ישנה',capacity:'99',assignCap:'99',
+      teacherName:'גננת ישנה',address:'כתובת ישנה',campus:'קמפוס ישן',
+      geo:{lat:31.9345,lng:35.0432,manual:true,q:'__manual__'}}] };
+    const dt=new DataTransfer(); dt.items.add(new File([JSON.stringify(bk)],'b.json',{type:'application/json'}));
+    inp.files=dt.files; inp.dispatchEvent(new Event('change'));
+    for(let i=0;i<40 && !document.getElementById('rgApply');i++) await new Promise(r=>setTimeout(r,50));
+    const stuBefore=JSON.stringify(DB.students), staffBefore=JSON.stringify(DB.staff);
+    const btn=document.getElementById('rgApply'); if(!btn) return 'לא הוצגה תצוגה מקדימה';
+    btn.click();
+    const g=DB.gans[0];
+    if(!(g.geo && g.geo.lat===31.9345 && g.geo.manual===true)) return 'המיקום לא שוחזר';
+    if(g.ganName!=='שם חדש' || g.city!=='מודיעין עילית' || g.capacity!=='30' || g.assignCap!=='36'
+       || g.teacherName!=='גננת חדשה' || g.address!=='כתובת חדשה' || g.campus!=='קמפוס חדש')
+      return 'שדות אחרים של הגן נדרסו מהגיבוי';
+    if(JSON.stringify(DB.students)!==stuBefore) return 'תלמידות נגעו';
+    if(JSON.stringify(DB.staff)!==staffBefore) return 'צוות נגע';
+    return true; }));
+
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
   await b.close(); server.close();

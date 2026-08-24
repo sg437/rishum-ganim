@@ -9809,7 +9809,8 @@ function viewTools(root){
       }catch(e){ if(msg) msg.innerHTML='<b style="color:var(--bad)">שגיאת גיבוי: '+esc(String(e.message||e))+'</b>'; }
       finally{ bn.disabled=false; }
     }; }
-  /* שחזור כירורגי — רק שדה geo של הגנים, מתוך גיבוי של התוכנה או גיבוי גולמי של Firestore */
+  /* שחזור כירורגי — רק שדה geo של הגנים. שני שלבים: קודם בונים תוכנית ומציגים
+     תצוגה מקדימה, ורק בלחיצה מפורשת משנים בפועל. שום שדה אחר לא נוגע. */
   { const rg=$("#restoreGeo"); if(rg) rg.onchange=e=>{
       const f=e.target.files[0]; if(!f) return;
       const msg=$("#restoreGeoMsg");
@@ -9829,19 +9830,45 @@ function viewTools(root){
         }catch(_){}
         if(!Array.isArray(gans)){ msg.innerHTML='<b style="color:var(--bad)">הקובץ אינו גיבוי תקין (לא נמצאה רשימת גנים).</b>'; return; }
         const byId=new Map(gans.filter(g=>g&&g.id).map(g=>[g.id,g]));
-        let manual=0, auto=0, skipped=0;
+        // שלב 1 — תוכנית בלבד, בלי לגעת בנתונים
+        const plan=[], keep=[], none=[];
         DB.gans.forEach(g=>{
           const src=byId.get(g.id);
-          if(!src || !src.geo || src.geo.lat==null){ skipped++; return; }
-          if(g.geo && g.geo.manual && g.geo.lat!=null){ skipped++; return; }   // מיקום ידני קיים — לא נוגעים
-          g.geo=JSON.parse(JSON.stringify(src.geo));
-          if(src.geo.manual) manual++; else auto++;
+          if(!src || !src.geo || src.geo.lat==null){ none.push(g); return; }
+          if(g.geo && g.geo.manual && g.geo.lat!=null){ keep.push(g); return; }  // מיקום ידני קיים — לא נוגעים
+          plan.push({ g, geo:src.geo, manual:!!src.geo.manual });
         });
-        if(!manual && !auto){ msg.innerHTML='<b>לא נמצאו מיקומים לשחזור בקובץ הזה.</b> אפשר לנסות גיבוי מתאריך מוקדם יותר.'; return; }
-        if(!confirm(`לשחזר מיקומים ל-${manual+auto} גנים?\n\n${manual} מהם מיקומים שסומנו ידנית.\nשאר הנתונים לא ישתנו.`)){ msg.textContent=""; return; }
-        save(); route();
-        msg.innerHTML=`<b style="color:var(--good)">שוחזרו ${manual+auto} מיקומים</b> (${manual} ידניים · ${auto} אוטומטיים)${skipped?` · ${skipped} דולגו`:""}.`;
-        toast("מיקומי הגנים שוחזרו");
+        if(!plan.length){
+          msg.innerHTML='<b>אין מה לשחזר מהקובץ הזה</b> — לא נמצאו בו מיקומים לגנים שחסר להם מיקום.'
+            +(keep.length?` (${keep.length} גנים כבר יש להם מיקום ידני ולא נגעתי בהם.)`:'')
+            +' אפשר לנסות גיבוי מתאריך מוקדם יותר.';
+          return;
+        }
+        const nManual=plan.filter(x=>x.manual).length;
+        msg.innerHTML=`
+          <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:4px">
+            <b>תצוגה מקדימה — עדיין לא בוצע שינוי</b>
+            <div style="margin-top:6px">יוחזרו מיקומים ל-<b>${plan.length}</b> גנים${nManual?` · מתוכם <b>${nManual}</b> מיקומים שסומנו ידנית`:""}:</div>
+            <div style="max-height:150px;overflow:auto;margin-top:6px;font-size:.85rem">
+              ${plan.map(x=>`<div>• ${esc(ganName(x.g.id))}${x.manual?' <span class="pill ok">ידני</span>':''}</div>`).join("")}
+            </div>
+            ${keep.length?`<div class="hint" style="margin-top:6px">${keep.length} גנים כבר יש להם מיקום ידני — לא ייגעו.</div>`:""}
+            ${none.length?`<div class="hint" style="margin-top:2px">${none.length} גנים ללא מיקום בגיבוי — יישארו כמו שהם.</div>`:""}
+            <div class="note" style="margin-top:8px;font-size:.85rem"><b>מה לא ישתנה:</b> תלמידות, צוות, הנהלה, הגדרות, וכל שאר פרטי הגנים (שם, כתובת, עיר, קיבולת, רף שיבוץ, קמפוס). נכתב <b>אך ורק</b> מיקום הגן על המפה.</div>
+            <div class="row" style="gap:8px;margin-top:10px">
+              <button class="btn sm" id="rgApply" type="button">שחזור ${plan.length} מיקומים</button>
+              <button class="btn ghost sm" id="rgCancel" type="button">ביטול</button>
+            </div>
+          </div>`;
+        const cancel=$("#rgCancel"); if(cancel) cancel.onclick=()=>{ msg.textContent=""; };
+        const apply=$("#rgApply"); if(apply) apply.onclick=()=>{
+          // שלב 2 — כאן ורק כאן משנים
+          plan.forEach(x=>{ x.g.geo=JSON.parse(JSON.stringify(x.geo)); });
+          save(); route();
+          const m2=$("#restoreGeoMsg");
+          if(m2) m2.innerHTML=`<b style="color:var(--good)">שוחזרו ${plan.length} מיקומים</b>${nManual?` (${nManual} ידניים)`:""}. שאר הנתונים לא נגעו.`;
+          toast("מיקומי הגנים שוחזרו");
+        };
       });
       e.target.value="";
     }; }
