@@ -64,6 +64,7 @@ function doPost(e){
       case 'walk':           return json_(out, walk_(req.origin, req.dests));
       case 'sendMail':       return json_(out, sendMail_(req.to, req.subject, req.body));
       case 'sendMailBulk':   return json_(out, sendMailBulk_(req.items, req.opts));
+      case 'mailDoc':        return json_(out, mailDoc_(req.to, req.subject, req.body, req.fileName, req.mimeType, req.dataB64));
       case 'mailQuota':      return json_(out, mailQuota_());
       case 'msgGateway':     return json_(out, msgGateway_(req.channel, req.items));
       case 'msgGatewayStatus': return json_(out, msgGatewayStatus_());
@@ -210,6 +211,20 @@ function sendMail_(to, subject, body){
   if(!to) return { ok:false, error:'no-recipient' };
   MailApp.sendEmail(String(to), String(subject || '(ללא נושא)'), String(body || ''));
   return { ok:true };
+}
+
+/* שליחת מסמך (PDF) במייל עם קובץ מצורף — "שיתוף מסמך" בתוכנה שולח ישירות למייל,
+   במקום להוריד את הקובץ ולצרף אותו ידנית. to: כתובת אחת או כמה מופרדות בפסיק. */
+function mailDoc_(to, subject, body, fileName, mimeType, dataB64){
+  var list = String(to || '').split(/[,;\s]+/).filter(function(x){ return x; });
+  if(!list.length) return { ok:false, error:'no-recipient' };
+  var opts = {};
+  if(dataB64){
+    opts.attachments = [ Utilities.newBlob(Utilities.base64Decode(String(dataB64)),
+                          String(mimeType || 'application/pdf'), String(fileName || 'document.pdf')) ];
+  }
+  MailApp.sendEmail(list.join(','), String(subject || '(ללא נושא)'), String(body || ''), opts);
+  return { ok:true, sent:list.length };
 }
 
 /* מכסת המיילים שנותרה היום בחשבון הגשר (Gmail רגיל ~100 · Workspace ~1500) */

@@ -155,12 +155,40 @@ const server=require('http').createServer((req,res)=>{
   await step('לשונית הגנים מציגה עמודת "משובצות / רף"', ()=>pg.evaluate(()=>{
     __set('active','gans'); route();
     return document.body.innerText.includes('משובצות / רף') && document.body.innerText.includes('2 / 2'); }));
-  await step('טבלת התלמידות: תא זהות עם ראשי תיבות, חיוג ו-🧭', ()=>pg.evaluate(()=>{
+  await step('טבלת התלמידות: סדר העמודות החדש, בלי ראשי תיבות, עם 🧭 וטלפון', ()=>pg.evaluate(()=>{
     __set('active','students'); route();
+    const heads=[...document.querySelectorAll('#stuTable thead th')].map(t=>t.textContent.replace(/[▲▼]/g,'').trim());
+    const main=heads.slice(0,6).join('|');
     return !!document.querySelector('.stu-prox')
         && !!document.querySelector('td a[href^="tel:"]')
-        && !!document.querySelector('.idcell .ini')
+        && !document.querySelector('#stuTable .ini')          // ראשי התיבות ירדו מהרשימה
+        && !document.querySelector('#stuTable td .act[href^="tel:"]')  // בלי סמל הטלפון בטבלה
+        && main==='מספר זהות|שם|תאריך לידה|כתובת|טלפון|שיבוץ סופי'
         && !!document.querySelector('.docchips .docchip'); }));
+  await step('עמודות נוספות מוסתרות כברירת מחדל, והכפתור מציג אותן', ()=>pg.evaluate(()=>{
+    __set('active','students'); route();
+    const tbl=()=>document.querySelector('#stuTable table');
+    const hidden = tbl().classList.contains('hide-xcol')
+      && getComputedStyle(document.querySelector('#stuTable .xcol')).display==='none';
+    document.querySelector('#stuColsBtn').click();
+    const shown = !tbl().classList.contains('hide-xcol')
+      && getComputedStyle(document.querySelector('#stuTable .xcol')).display!=='none';
+    document.querySelector('#stuColsBtn').click();   // חזרה למצב ברירת המחדל
+    return hidden && shown; }));
+  await step('תגית מסמך עם קובץ מצורף היא קישור ישיר למסמך', ()=>pg.evaluate(()=>{
+    const s=DB.students.find(x=>x.id==='s1');
+    s.docs=Object.assign({}, s.docs, { idCopy:true });
+    s.docFiles=Object.assign({}, s.docFiles, { idCopy:{ name:'תז.pdf', link:'https://drive.google.com/file/d/abc/view' } });
+    renderStuTable();
+    const a=document.querySelector('#stuTable a.docchip.has-file');
+    return !!a && /^https:\/\/drive\.google\.com\//.test(a.getAttribute('href')); }));
+  await step('סינון גן נסגר בלחיצה במקום אחר במסך', ()=>pg.evaluate(()=>{
+    __set('active','students'); route();
+    const tg=document.querySelector('#stuFilterToggle'); if(!document.querySelector('#f-gan')) tg.click();
+    const d=document.querySelector('#f-gan'); if(!d) return false;
+    d.open=true;
+    document.querySelector('#stuTable').click();
+    return !d.open; }));
   await step('לחיצה על שורה פותחת תיק מקוצר בצד, ולחיצה חוזרת סוגרת', ()=>pg.evaluate(()=>{
     __set('active','students'); route();
     const tr=document.querySelector('tr[data-sid]'); const id=tr.dataset.sid;

@@ -266,6 +266,13 @@ table.tbl-fit{min-width:0}
   margin:16px -22px 0;padding:13px 22px;border-top:1px solid var(--border);flex-wrap:wrap}
 .modal>*:last-child:not(.foot){margin-bottom:20px}
 .modal h3{font-size:1.2rem}
+/* חלון שיתוף המסמך — עצמאי, נפתח גם מעל חלון פתוח (מסך היצוא/התבניות) */
+.sd-wrap{position:fixed;inset:0;background:rgba(6,18,22,.55);display:flex;align-items:center;justify-content:center;z-index:90;padding:12px}
+.sd-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
+  width:min(460px,100%);max-height:calc(100dvh - 24px);overflow:auto;padding:16px 18px}
+.sd-box h3{font-size:1.08rem;margin-bottom:2px}
+.sd-box .sd-title{color:var(--muted);font-weight:700;font-size:.86rem}
+.sd-foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 fieldset{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:0 0 12px}
 legend{font-weight:800;color:var(--accent-strong);padding:0 6px;font-size:.9rem}
 .check{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;cursor:pointer}
@@ -369,17 +376,24 @@ fieldset{border-radius:14px}
 .map-fold-body{padding:0 14px 14px}
 
 /* ---- לשונית התלמידות: טבלה נקייה + תיק מקוצר בצד ---- */
+/* פס הסיכום (הריבועים עם הנתונים) — נעוץ מתחת לכותרת ונשאר על המסך בזמן גלילה */
+#stuSummary.sticky{position:sticky;top:var(--top-h,61px);z-index:22;background:var(--surface);
+  margin:0 -18px 10px;padding:9px 18px 10px;border-bottom:1px solid var(--border)}
+#stuSummary.sticky .stats{grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
+#stuSummary.sticky .stat{padding:7px 10px;border-radius:10px}
+#stuSummary.sticky .stat .k{font-size:.72rem}
+#stuSummary.sticky .stat .v{font-size:1.28rem;margin-top:0}
 /* הבמה: הטבלה בצד אחד, התיק המקוצר בצד השני */
 .stu-stage{display:flex;gap:14px;align-items:flex-start}
 .stu-stage>#stuTable{flex:1 1 0;min-width:0}
-/* ראשי תיבות של התלמידה — מזהה ויזואלי שקט במקום צבע */
+/* ראשי תיבות — בתיק המקוצר בלבד (בטבלה עצמה השם מוצג בלי אייקון) */
 .ini{width:34px;height:34px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);
   color:var(--ink-soft);display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:0 0 auto;line-height:1}
-tr.sel .ini{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 34%,var(--border));color:var(--accent-strong)}
-/* תא הזהות: שם למעלה, ת"ז וגיל מתחת */
-.idcell{display:flex;align-items:center;gap:9px}
-.idcell .nm{font-weight:700;line-height:1.25}
-.idcell .sub{font-size:.74rem;color:var(--muted);font-weight:600;margin-top:1px}
+/* טבלת התלמידות: עמודות עיקריות תמיד גלויות · השאר ("עמודות נוספות") מוסתרות עד לחיצה */
+.stu-table .nm{font-weight:700;line-height:1.25}
+.stu-table .tzcell{font-weight:700;font-variant-numeric:tabular-nums}
+.stu-table.hide-xcol .xcol{display:none}
+.stu-table.hide-xcol{min-width:0}
 /* תא הגן: שם הגן ומתחתיו מצב השיבוץ */
 .gancell .g{font-weight:700}
 .gancell .st{font-size:.76rem;font-weight:700;margin-top:1px;display:inline-flex;align-items:center;gap:4px}
@@ -388,6 +402,9 @@ tr.sel .ini{background:var(--accent-soft);border-color:color-mix(in srgb,var(--a
 .docchip{min-width:26px;padding:1px 5px;border-radius:6px;font-size:.68rem;font-weight:700;text-align:center;
   background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
 .docchip.on{background:var(--good-soft);color:var(--good);border-color:color-mix(in srgb,var(--good) 28%,var(--border))}
+/* תגית שיש מאחוריה קובץ — קישור ישיר למסמך */
+a.docchip.has-file{text-decoration:none;cursor:pointer}
+a.docchip.has-file:hover{background:var(--good);color:#fff;border-color:var(--good)}
 /* עמודת "סימונים" — תגיות מאוחדות (תוכניות · שונות · הערה) */
 .tags{display:flex;flex-wrap:wrap;gap:3px;max-width:230px;white-space:normal}
 /* שורה נבחרת — פס מבטא בקצה, בלי צבע רועש */
@@ -415,7 +432,9 @@ tbody td{padding-block:8px}
 .selbar .btn.light{background:#fff;color:var(--accent-strong)}
 
 /* ---- תיק מקוצר בצד (Quick view) ---- */
-.stu-quick{flex:0 0 296px;width:296px;position:sticky;top:70px;max-height:calc(100vh - 92px);overflow:auto;
+.stu-quick{flex:0 0 296px;width:296px;position:sticky;
+  top:calc(var(--top-h,61px) + var(--stu-sum-h,9px) + 9px);
+  max-height:calc(100vh - var(--top-h,61px) - var(--stu-sum-h,9px) - 31px);overflow:auto;
   display:flex;flex-direction:column;gap:12px}
 .stu-quick.empty-state{display:none}
 .qcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
@@ -2531,6 +2550,15 @@ function guideContent(){
         <li><b>🚧 רף שיבוץ (חדש):</b> לכל גן אפשר להגדיר מספר מרבי של משובצות. כשהגן מגיע לרף — המערכת <b>לא תאפשר</b> לסמן "משובצת" לתלמידה נוספת ותציג הודעה ("הגן מלא 36/36"). <b>הרישום עצמו אינו מוגבל</b> — אפשר להמשיך לרשום לגן, רק לא לשבץ סופית. בתיק, מתחת לשדה "גן משובצת", מוצג חיווי חי: <b>"נותרו N מקומות"</b> או <b>"⛔ הגן מלא"</b>. ההגדרה: כרטיס הגן → "רף שיבוץ", וברירת מחדל לכולם ב<b>הגדרות → רף שיבוץ</b>.</li>
       </ul>` },
 
+    { icon:"📋", title:"טבלת התלמידות — עמודות ופס סיכום נעוץ", html:
+      `<p>הרשימה מציגה כברירת מחדל רק את <b>העמודות העיקריות</b>, בסדר קבוע:</p>
+      <ul>
+        <li><b>1. מספר זהות · 2. שם (משפחה ופרטי) · 3. תאריך לידה · 4. כתובת · 5. טלפון · 6. שיבוץ סופי.</b> ראשי התיבות של השם אינם מוצגים ברשימה (הם נשארו בתיק המקוצר), והטלפון מוצג כמספר לחיץ בלבד — <b>בלי סמל החיוג</b> (הסמל נשאר בתיק ובאפליקציה).</li>
+        <li><b>➕ עמודות נוספות</b> — כפתור מעל הטבלה מציג/מסתיר את שאר העמודות: <b>גיל · מועד · חינוך · מסמכים · עירייה · סימונים · סטטוס</b>. הבחירה נשמרת במכשיר.</li>
+        <li><b>לחיצה על תגית מסמך</b> (נס · ת״ז · תק) בעמודת המסמכים <b>פותחת מיד את הקובץ</b> שצורף בדרייב. תגית ירוקה בלי קישור = סומן שהתקבל אך לא צורף קובץ; תגית אפורה = חסר.</li>
+        <li><b>פס הסיכום</b> (רשומות · משובצות · ממתינות · קלוט · לא קלוט) <b>נעוץ בראש המסך</b> ונשאר גלוי בזמן גלילה ברשימה.</li>
+      </ul>` },
+
     { icon:"🗂️", title:"תיק מקוצר בצד — לחיצה על שורה", html:
       `<p><b>לחיצה על שורה</b> בטבלת התלמידות פותחת <b>תיק מקוצר בצד</b>, בלי לחסום את המסך ובלי לצאת מהרשימה. הרשימה נשארת לידו, ואפשר לדלג בין תלמידות בלחיצה.</p>
       <ul>
@@ -2545,7 +2573,7 @@ function guideContent(){
       illFilter+
       `<ul>
         <li><b>שורת חיפוש</b> עם 🔎 — לפי שם או ת"ז.</li>
-        <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: <b>גן — אפשר לבחור כמה גנים יחד</b> (כולל <b>"ללא גן (הוצאו)"</b>; ריק = כל הגנים), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים.</li>
+        <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: <b>גן — אפשר לבחור כמה גנים יחד</b> (כולל <b>"ללא גן (הוצאו)"</b>; ריק = כל הגנים), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים. <b>רשימת הגנים הנפתחת נסגרת בלחיצה בכל מקום אחר במסך</b> (או ב-Esc) — אין צורך ללחוץ שוב על הכותרת.</li>
         <li><b>לחיצה על שורה</b> פותחת את <b>התיק המקוצר בצד</b> (בגנים ובצוות — את הטופס המלא). לחיצה כפולה פותחת את התיק המלא.</li>
         <li><b>צ׳יפים של סינון פעיל</b> — מעל הטבלה מופיעה שורת צ׳יפים עם כל סינון שפעיל כרגע ("גיל 4", "לא קלוט בעירייה"…). ✕ על צ׳יפ מסיר את אותו סינון בלבד, ו<b>"נקה הכל"</b> מאפס את כולם — בלי לפתוח את חלון הסינון.</li>
         <li><b>מיון</b> — לחיצה על כותרת עמודה.</li>
@@ -2653,7 +2681,7 @@ function guideContent(){
         <li><b>ייצוא גנים</b> — מלשונית הגנים (📤 ייצוא / הדפסה). בין השדות לבחירה גם <b>סמל הגן</b> ו<b>גננת משובצת</b> (מהשיבוץ השנתי). הרשימה יוצאת <b>מסודרת לפי שם הגן ואז לפי גיל</b> (למשל אבני נזר 3, 4, 5). כפתור <b>🎨 אקסל צבעוני</b> מפיק קובץ אקסל שבו <b>שם הגן והגיל צבועים לפי צבע הגיל</b> (3 ירוק · 4 סגול · 5 צהוב; דו-גילאי לפי הגיל הראשון).</li>
         <li><b>יצוא ממותג</b> — בהדפסה/PDF מופיע <b>לוגו הרשת</b> בראש הדף, ומתחתיו <b>פרטי המקום</b> לפי הבחירה (למשל שם הגן · סמל · כתובת).</li>
         <li><b>"התאם לעמוד אחד"</b> — סימון שמכווץ אוטומטית רשימה ארוכה לעמוד יחיד.</li>
-        <li><b>📎 שיתוף מסמך</b> — יוצר <b>PDF ממותג</b> ומשתף אותו כקובץ (למייל / וואטסאפ וכו'). בדפדפנים שאינם תומכים בשיתוף קבצים — ה-PDF יורד למכשיר ואפשר לצרפו למייל.</li>
+        <li><b>📎 שיתוף מסמך</b> — יוצר <b>PDF ממותג</b> ו<b>שולח אותו ישירות למייל</b> כקובץ מצורף (בלי להוריד ולצרף ידנית): נפתח חלון קטן, מזינים כתובת (או כמה, מופרדות בפסיק) ולוחצים <b>📧 שליחה למייל</b>. בטלפון יש גם <b>📱 שיתוף במכשיר</b> (וואטסאפ וכו'), ותמיד אפשר <b>⬇️ הורדה</b>. השליחה דורשת חיבור לגשר.</li>
       </ul>` },
 
     { icon:"💾", title:"גיבוי ושחזור", html:
@@ -3425,6 +3453,10 @@ const STU_FLAGS = {
   retentionNext:{ label:"השארות לשנה הבאה", test:s=>!!s.retentionNext }
 };
 let stuSort = { key:"name", dir:1 }; // מיון לפי עמודה (סעיף 10)
+/* עמודות נוספות בטבלת התלמידות (מסמכים · עירייה · סימונים · סטטוס · מועד · חינוך · גיל).
+   ברירת המחדל: מוסתרות — על המסך נשארות רק העמודות העיקריות. ההעדפה נשמרת במכשיר. */
+let stuMoreCols = (()=>{ try{ return localStorage.getItem("rg-stu-cols")==="1"; }catch(e){ return false; } })();
+function setStuMoreCols(v){ stuMoreCols=!!v; try{ localStorage.setItem("rg-stu-cols", v?"1":"0"); }catch(e){} }
 
 /* ---------- עדכון קבוצתי (סימון מרובה + החלה על קבוצה) ---------- */
 let bulkMode=false;               // מצב בחירה מרובה פעיל
@@ -3602,7 +3634,7 @@ function viewStudents(root){
   root.innerHTML = `
   <div class="panel">
     <div class="section-title" style="margin-bottom:10px"><h2>תיקי התלמידות</h2></div>
-    <div id="stuSummary" style="margin:2px 0 12px"></div>
+    <div id="stuSummary" class="sticky"></div>
     <div class="row" style="gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
       <button class="btn" id="addStu">➕ הוספת ילדה</button>
       <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
@@ -3739,6 +3771,7 @@ function sortStudents(list){
   const val={
     name:s=>[s.lastName,s.firstName].filter(Boolean).join(" "),
     tz:s=>s.tz, gan:s=>ganName(s.ganId), age:s=>s.age, city:s=>s.city, street:s=>s.street,
+    dob:s=>normDateVal(s.dob)||"",
     period:s=>PERIODS.indexOf(s.period), edu:s=>eduLabel(s)
   };
   const getter=val[k]||val.name;
@@ -3746,10 +3779,19 @@ function sortStudents(list){
   return list.slice().sort((a,b)=>{ const r= numeric?cmpNum(getter(a),getter(b)):cmpTxt(getter(a),getter(b)); return r*d || cmpTxt(val.name(a),val.name(b)); });
 }
 
+/* תגיות המסמכים. כשמצורף קובץ — התגית היא קישור ישיר לפתיחת המסמך בדרייב
+   (לחיצה על "ת״ז" פותחת מיד את צילום התעודה), אחרת רק חיווי התקבל/חסר. */
+const DOC_CHIP_SHORT = { nispach:"נס", idCopy:'ת״ז', takanon:"תק" };
 function docDots(s){
-  const d=s.docs||{};
-  const mk=(on,short,t)=>`<span class="docchip ${on?'on':''}" title="${esc(t)}${on?' — התקבל':' — חסר'}">${esc(short)}</span>`;
-  return `<span class="docchips">${mk(d.nispach,'נס','נספח')}${mk(d.idCopy,'ת״ז','צילום תעודת זהות')}${mk(d.takanon,'תק','תקנון')}</span>`;
+  const d=s.docs||{}, files=s.docFiles||{};
+  const mk=(key,label)=>{
+    const short=DOC_CHIP_SHORT[key]||String(label||"").slice(0,3);
+    const link=String((files[key]||{}).link||"").trim();
+    const on=!!d[key]||!!link;
+    if(link) return `<a class="docchip on has-file" href="${esc(link)}" target="_blank" rel="noopener" title="${esc(label)} — פתיחת המסמך">${esc(short)}</a>`;
+    return `<span class="docchip ${on?'on':''}" title="${esc(label)}${on?' — התקבל (ללא קובץ מצורף)':' — חסר'}">${esc(short)}</span>`;
+  };
+  return `<span class="docchips">${STUDENT_DOCS.map(([k,lbl])=>mk(k,lbl)).join("")}</span>`;
 }
 /* עמודת "סימונים" — תוכניות · שונות · חיווי הערה, במקום שלוש עמודות נפרדות */
 function stuTagCell(s){
@@ -3806,6 +3848,8 @@ function renderStuSummary(){
     ${tile("לא קלוט", notAbsorbed, notAbsorbed>0?'var(--bad)':'var(--good)')}
     ${flagTile}
   </div>`;
+  /* גובה הפס הנעוץ — "תקרה" לתיק המקוצר שנעוץ אף הוא */
+  try{ document.documentElement.style.setProperty("--stu-sum-h", Math.round(el.getBoundingClientRect().height)+"px"); }catch(e){}
 }
 /* ============================================================
    תיק מקוצר בצד (Quick view) — לחיצה על שורה בטבלת התלמידות פותחת
@@ -4057,39 +4101,46 @@ function renderStuTable(){
       const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
     return; }
   const arr=k=> stuSort.key===k ? `<span class="arr">${stuSort.dir>0?'▲':'▼'}</span>` : "";
-  const th=(k,lbl)=>`<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>`;
+  const th=(k,lbl,extra)=>`<th class="sortable${extra?' xcol':''}" data-sort="${k}">${lbl}${arr(k)}</th>`;
   // עמודת החינוך מיותרת כשכבר בחרנו חינוך אחד — מפנה מקום לשאר העמודות
   const showEdu = !(activeEdu || stuFilter.edu);
-  host.innerHTML = ganBar + `<div class="table-wrap"><table><thead><tr>
+  /* כפתור הצגת/הסתרת העמודות הנוספות (מסמכים · עירייה · סימונים · סטטוס · מועד · חינוך · גיל) */
+  const colsBar = `<div class="row" style="justify-content:flex-end;margin-bottom:8px">
+      <button class="btn ghost sm" id="stuColsBtn" type="button" title="מסמכים · עירייה · סימונים · סטטוס · מועד · חינוך · גיל">${stuMoreCols?'➖ הסתרת עמודות נוספות':'➕ עמודות נוספות'}</button>
+    </div>`;
+  host.innerHTML = ganBar + colsBar + `<div class="table-wrap"><table class="stu-table${stuMoreCols?'':' hide-xcol'}"><thead><tr>
     ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
-    ${th("name",'תלמידה')}${th("gan",'גן ושיבוץ')}${th("street",'רחוב')}<th title="נייד אם / נייד אב / טלפון בית — כל הטלפונים בתיק המקוצר שבצד">טלפון</th>${th("period",'מועד')}${showEdu?th("edu",'חינוך'):''}
-    <th>מסמכים</th><th>עירייה</th><th title="תוכניות · שונות · הערה">סימונים</th><th>סטטוס</th></tr></thead><tbody>
+    ${th("tz",'מספר זהות')}${th("name",'שם')}${th("dob",'תאריך לידה')}${th("street",'כתובת')}<th title="נייד אם / נייד אב / טלפון בית — כל הטלפונים בתיק המקוצר שבצד">טלפון</th>${th("gan",'שיבוץ סופי')}
+    ${th("age",'גיל',1)}${th("period",'מועד',1)}${showEdu?th("edu",'חינוך',1):''}
+    <th class="xcol" title="לחיצה על תגית של מסמך מצורף פותחת אותו ישירות">מסמכים</th><th class="xcol">עירייה</th><th class="xcol" title="תוכניות · שונות · הערה">סימונים</th><th class="xcol">סטטוס</th></tr></thead><tbody>
     ${list.map(s=>{
       const over=ovf[s.id];
       const placed=s.placed!==false;
       const ph=[s.momMobile,s.dadMobile,s.mobile,s.phone].map(x=>String(x||"").trim()).find(Boolean);
+      const addr=[[s.street,s.building].filter(Boolean).join(" "), s.city].filter(Boolean).join(", ");
       return `<tr data-sid="${esc(s.id)}" class="${bulkMode?'':'clickable'}${s.id===stuQuickId?' sel':''}">
       ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
-      <td><div class="idcell"><span class="ini">${esc(initialsOf(s))}</span><div style="min-width:0">
-        <div class="nm"${over?` style="color:${capColor(over)}" title="${over==='over1'?'ילדה מעל הקיבולת (הראשונה מעל הקיבולת)':'ילדה מעל הקיבולת'}"`:''}>${esc(fullName(s))}</div>
-        <div class="sub">${esc(s.tz||'ללא ת״ז')}${s.age?' · בת '+esc(s.age):''}</div>
-      </div></div></td>
+      <td class="tzcell">${esc(s.tz)||'<span style="color:var(--muted)">ללא ת״ז</span>'}</td>
+      <td><div class="nm"${over?` style="color:${capColor(over)}" title="${over==='over1'?'ילדה מעל הקיבולת (הראשונה מעל הקיבולת)':'ילדה מעל הקיבולת'}"`:''}>${esc(fullName(s))}</div></td>
+      <td>${esc(fmtDate(s.dob))||'—'}</td>
+      <td>${esc(addr)||'—'}</td>
+      <td>${ph?`<a href="${telHref(ph)}" dir="ltr">${esc(ph)}</a>`:'—'}</td>
       <td><div class="gancell">
         <div class="g">${esc(ganName(s.ganId))} <button type="button" class="act stu-prox" data-id="${esc(s.id)}" title="בדיקת קרבה לגנים — לאיזה גן היא קרובה יותר">🧭</button></div>
         ${s.ganId?`<button type="button" class="st stu-place" data-id="${esc(s.id)}" style="cursor:pointer;border:none;background:none;padding:0;color:${placed?'var(--good)':'var(--warn)'}" title="לחצי כדי לשנות סטטוס שיבוץ">${placed?'✔ שיבוץ סופי':'⏳ ממתינה לשיבוץ'}</button>`
                  :'<div class="st" style="color:var(--muted)">ללא שיבוץ</div>'}
       </div></td>
-      <td>${esc([s.street,s.building].filter(Boolean).join(" "))||'—'}</td>
-      <td>${ph?phoneCell(ph,true):'—'}</td>
-      <td>${esc(s.period)||'—'}</td>
-      ${showEdu?`<td>${eduBadge(s)}</td>`:''}
-      <td>${docDots(s)}</td>
-      <td><span style="font-weight:700;color:${s.absorbedMunicipality?'var(--good)':'var(--bad)'}">${s.absorbedMunicipality?'קלוט':'לא קלוט'}</span></td>
-      <td>${stuTagCell(s)}</td>
-      <td>${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
+      <td class="xcol">${esc(s.age)||'—'}</td>
+      <td class="xcol">${esc(s.period)||'—'}</td>
+      ${showEdu?`<td class="xcol">${eduBadge(s)}</td>`:''}
+      <td class="xcol">${docDots(s)}</td>
+      <td class="xcol"><span style="font-weight:700;color:${s.absorbedMunicipality?'var(--good)':'var(--bad)'}">${s.absorbedMunicipality?'קלוט':'לא קלוט'}</span></td>
+      <td class="xcol">${stuTagCell(s)}</td>
+      <td class="xcol">${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
       </tr>`; }).join("")}
   </tbody></table></div>
   <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק המקוצר בצד · לחיצה כפולה פותחת את התיק המלא.</div>`;
+  { const cb=$("#stuColsBtn"); if(cb) cb.onclick=()=>{ setStuMoreCols(!stuMoreCols); renderStuTable(); }; }
   renderSelBar(list);
   renderStuChips();
   // התלמידה שבתיק המקוצר כבר אינה ברשימה (סינון/מחיקה) → סגירה
@@ -4143,9 +4194,25 @@ function viewGanStudents(ganId){
   }
 }
 /* טופס תיק ילדה */
+/* גנים לבחירה בשדה "גן משובצת" — רק גנים של אותו חינוך (רגיל / ח"מ) כמו הילדה,
+   כדי שבמצב "חינוך רגיל" לא יוצעו גני חינוך מיוחד (וההפך). הגן המשובץ כעת נשמר
+   ברשימה תמיד, גם אם הוא בחינוך אחר, כדי לא לאבד שיבוץ קיים. */
+function gansForEdu(edu, keepId){
+  const all = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+  if(!edu) return all;
+  const list = all.filter(g=> eduLabel(g)===edu || (keepId && g.id===keepId));
+  return list.length ? list : all;   // אין גנים בחינוך זה — לא חוסמים את הבחירה
+}
+/* אפשרויות שדה "גן משובצת" — נבנות מחדש כשמשנים את סוג החינוך בטופס */
+function ganOptsHtml(list, curGanId, stuId){
+  return `<option value="">— בחר/י גן —</option>`+list.map(g=>{
+    const full = ganAssignRoom(g, stuId)<=0;
+    return `<option value="${g.id}" ${curGanId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}${full?' — מלא':''}</option>`;
+  }).join("");
+}
 function openStudent(s){
   const isNew = !DB.students.some(x=>x.id===s.id);
-  const gans = DB.gans.slice().sort((a,b)=>(a.teacherName||"").localeCompare(b.teacherName||"","he"));
+  const gans = gansForEdu(eduLabel(s), s.ganId);
   const folderSuggest = suggestFolder(s);
   const streetList = uniqSortHe([...DB.students.map(x=>x.street), ...DB.gans.map(g=>g.street)]); // רחובות קיימים — השלמה אוטומטית
   const cityList   = uniqSortHe(DB.students.map(x=>x.city)); // ערים קיימות
@@ -4176,8 +4243,7 @@ function openStudent(s){
     <div class="grid g3">
       <div><label>קמפוס גנים</label><input id="s-campus" value="${esc(ganCampus(s.ganId)||s.campus||"")}" readonly placeholder="נקבע לפי הגן">
         <div class="hint">נקבע אוטומטית לפי הקמפוס של הגן (בלשונית גנים).</div></div>
-      <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>{ const room=ganAssignRoom(g,s.id); const full=room<=0;
-          return `<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}${full?' — מלא':''}</option>`; }).join("")}</select>
+      <div><label>גן משובצת</label><select id="s-ganId">${ganOptsHtml(gans, s.ganId, s.id)}</select>
         <div class="hint" id="s-gan-room"></div></div>
       <div><label>גיל</label><select id="s-age"><option value="">—</option>${(s.age && !CHILD_AGES.map(String).includes(String(s.age)))?`<option selected>${esc(s.age)}</option>`:''}${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select><div id="s-age-hint" class="hint"></div></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
@@ -4398,6 +4464,19 @@ function openStudent(s){
     h.style.fontWeight = room>0 ? "" : "700";
   }
   const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; applyGanAge(); ganRoomHint(); };
+  /* שינוי סוג החינוך בטופס → רשימת הגנים נבנית מחדש לחינוך הנבחר בלבד */
+  { const eduSel=$("#s-education");
+    if(eduSel) eduSel.addEventListener("change",()=>{
+      const gs=$("#s-ganId"); if(!gs) return;
+      const cur=gs.value;
+      const opts=gansForEdu(eduSel.value, s.ganId);   // שיבוץ שמור נשאר זמין גם בחינוך אחר
+      const keep=opts.some(g=>g.id===cur)?cur:"";
+      gs.innerHTML=ganOptsHtml(opts, keep, s.id);
+      gs.value=keep;
+      if(keep!==cur) toast("הגן הקודם אינו בחינוך זה — יש לבחור גן מחדש");
+      gs.dispatchEvent(new Event("change"));
+    });
+  }
   { const pc=$("#s-placed"); if(pc) pc.addEventListener("change", ganRoomHint); }
   ganRoomHint();
   /* בדיקת קרבה לגנים מתוך התיק (סעיף 3) — נבנית בפתיחה הראשונה של המקטע */
@@ -6876,30 +6955,93 @@ async function reportToPdfBlob(opts){
   }
   return pdf.output("blob");
 }
-/* שיתוף המסמך כ-PDF — קובץ אמיתי המצורף למייל/וואטסאפ דרך Web Share API.
-   נפילות: אם יצירת ה-PDF נכשלה → מסמך HTML; אם אין שיתוף קבצים → הורדה + מייל. */
-async function shareReportDoc(opts){
-  toast("מכין מסמך PDF…");
-  let file;
+/* ---------- שיתוף מסמך ----------
+   "📎 שיתוף מסמך" (מכל מקום בתוכנה) שולח את ה-PDF **ישירות למייל** דרך הגשר,
+   בלי להוריד ולצרף ידנית. נשארות גם האפשרויות "שיתוף במכשיר" (וואטסאפ וכד')
+   ו"הורדה". חלון השיתוף עצמאי מהחלון הראשי, כדי שאפשר לשתף גם מתוך מסך היצוא. */
+function shareMailTo(){ try{ return localStorage.getItem("rg-share-mail")||""; }catch(e){ return ""; } }
+function setShareMailTo(v){ try{ localStorage.setItem("rg-share-mail", String(v||"")); }catch(e){} }
+/* הפקת קובץ המסמך — PDF, ובנפילה מסמך HTML */
+async function reportToFile(opts){
   try{
     const blob=await reportToPdfBlob(opts);
-    file=new File([blob], safeFileName(opts.fileName||opts.title)+".pdf", { type:"application/pdf" });
+    return new File([blob], safeFileName(opts.fileName||opts.title)+".pdf", { type:"application/pdf" });
   }catch(e){
     console.error("pdf-fail", e);
-    const html=buildReportHtml(opts, { autoPrint:false });
-    file=new File([html], safeFileName(opts.fileName||opts.title)+".html", { type:"text/html" });
     toast("יצירת PDF נכשלה — משתף מסמך HTML במקום");
+    const html=buildReportHtml(opts, { autoPrint:false });
+    return new File([html], safeFileName(opts.fileName||opts.title)+".html", { type:"text/html" });
   }
-  try{
-    if(navigator.canShare && navigator.canShare({ files:[file] })){
-      await navigator.share({ title:opts.title, text:(opts.subtitle||opts.title||""), files:[file] });
-      return;
+}
+function shareDocClose(){ const w=$("#shareDocWrap"); if(w) w.remove(); }
+async function shareReportDoc(opts){
+  opts=opts||{};
+  shareDocClose();
+  const canDevice = !!(navigator.canShare && navigator.share);
+  const to = shareMailTo() || (currentUser && currentUser.email) || contactEmail() || "";
+  const wrap=document.createElement("div");
+  wrap.id="shareDocWrap"; wrap.className="sd-wrap";
+  wrap.innerHTML=`<div class="sd-box" role="dialog" aria-label="שיתוף המסמך">
+    <h3>📎 שיתוף מסמך</h3>
+    <div class="sd-title">${esc(opts.title||"מסמך")}</div>
+    ${DRIVE_READY?`<label style="margin-top:10px">לאיזו כתובת מייל לשלוח?</label>
+      <input id="sd-to" dir="ltr" style="text-align:right" inputmode="email" value="${esc(to)}" placeholder="name@example.com">
+      <div class="hint" style="margin-top:5px">המסמך יישלח מיד כקובץ PDF מצורף — בלי להוריד ולצרף ידנית. אפשר כמה כתובות מופרדות בפסיק.</div>`
+    :`<div class="note" style="margin-top:10px">שליחה ישירה למייל דורשת חיבור לגשר (Google Drive). בינתיים אפשר לשתף דרך המכשיר או להוריד את הקובץ.</div>`}
+    <div class="sd-foot">
+      ${DRIVE_READY?`<button class="btn" id="sd-send" type="button">📧 שליחה למייל</button>`:``}
+      ${canDevice?`<button class="btn ghost" id="sd-dev" type="button" title="וואטסאפ · מייל · כל אפליקציה במכשיר">📱 שיתוף במכשיר</button>`:``}
+      <button class="btn ghost" id="sd-dl" type="button">⬇️ הורדה</button>
+      <button class="btn ghost" id="sd-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
+    </div>
+    <div class="hint" id="sd-msg" style="margin-top:8px"></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.addEventListener("click",e=>{ if(e.target===wrap) shareDocClose(); });
+  const msg=t=>{ const m=$("#sd-msg"); if(m) m.innerHTML=t; };
+  const busy=on=>wrap.querySelectorAll("button").forEach(b=>b.disabled=on);
+  { const inp=$("#sd-to"); if(inp) setTimeout(()=>{ try{ inp.focus(); inp.select(); }catch(e){} },30); }
+  const cancel=$("#sd-cancel"); if(cancel) cancel.onclick=shareDocClose;
+
+  const dl=$("#sd-dl"); if(dl) dl.onclick=async ()=>{
+    busy(true); msg("מכין מסמך PDF…");
+    const file=await reportToFile(opts);
+    downloadBlob(file, file.name); shareDocClose(); toast("המסמך הורד ✓");
+  };
+  const dev=$("#sd-dev"); if(dev) dev.onclick=async ()=>{
+    busy(true); msg("מכין מסמך PDF…");
+    const file=await reportToFile(opts);
+    try{
+      if(navigator.canShare && navigator.canShare({ files:[file] })){
+        shareDocClose();
+        await navigator.share({ title:opts.title, text:(opts.subtitle||opts.title||""), files:[file] });
+        return;
+      }
+    }catch(e){ if(e && e.name==="AbortError") return; }
+    downloadBlob(file, file.name); shareDocClose(); toast("שיתוף במכשיר אינו נתמך — המסמך הורד");
+  };
+  const send=$("#sd-send"); if(send) send.onclick=async ()=>{
+    const raw=String(($("#sd-to")||{}).value||"").trim();
+    const list=raw.split(/[,;\s]+/).filter(Boolean);
+    if(!list.length || !list.every(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x))){ msg('<b style="color:var(--bad)">יש להזין כתובת מייל תקינה</b>'); return; }
+    busy(true); msg("מכין מסמך PDF…");
+    try{
+      const file=await reportToFile(opts);
+      msg("שולח למייל…");
+      const dataB64=await fileToB64(file);
+      await driveCall("mailDoc", { to:list.join(","), subject:(opts.title||"מסמך"),
+        body:[opts.subtitle||"", "", "מצורף: "+file.name, "", "נשלח ממערכת "+appTitle()+"."].join("\n"),
+        fileName:file.name, mimeType:file.type, dataB64 });
+      setShareMailTo(raw);
+      shareDocClose(); toast("המסמך נשלח אל "+list.join(", ")+" ✓");
+    }catch(e){
+      const m=String((e&&e.message)||e||"");
+      msg('<b style="color:var(--bad)">'+esc(m.indexOf("unknown-action")>=0
+        ? 'הגשר לא נפרס מחדש (חסרה פעולת mailDoc) — יש לפרוס גרסה חדשה של הגשר (ראה SETUP.md).'
+        : driveErrHe(e))+'</b>');
+      busy(false);
     }
-  }catch(e){ if(e && e.name==="AbortError") return; }
-  // נפילה — הורדת הקובץ + פתיחת מייל לצירוף ידני
-  downloadBlob(file, file.name);
-  toast("המסמך הורד — צרפ/י אותו למייל");
-  location.href="mailto:?subject="+encodeURIComponent(opts.title||"")+"&body="+encodeURIComponent((opts.subtitle||"")+"\n\n(הקובץ '"+file.name+"' הורד למכשיר — יש לצרפו למייל.)");
+  };
 }
 
 /* ============================================================
@@ -10640,7 +10782,17 @@ document.addEventListener("click",e=>{
   if(b.hasAttribute("data-sms-sib")){ location.href=smsHref(v); return; }
   location.href=telHref(v);
 });
-document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if($("#drawer").classList.contains("open")) closeDrawer(); else closeModal(); } });
+/* רשימות בחירה מרובה (סינון גן וכד') — לחיצה בכל מקום אחר במסך סוגרת את הרשימה,
+   בלי צורך ללחוץ שוב על הכותרת. Escape סוגר גם הוא. */
+document.addEventListener("click",e=>{
+  const inside=e.target.closest("details.msel");
+  document.querySelectorAll("details.msel[open]").forEach(d=>{ if(d!==inside) d.open=false; });
+}, true);
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){
+  if($("#shareDocWrap")){ shareDocClose(); return; }
+  const open=document.querySelectorAll("details.msel[open]");
+  if(open.length){ open.forEach(d=>d.open=false); return; }
+  if($("#drawer").classList.contains("open")) closeDrawer(); else closeModal(); } });
 
 $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ navToTab(b.dataset.tab); } });
 $("#backBtn").addEventListener("click", goBack);
@@ -10648,6 +10800,15 @@ $("#menuBtn").addEventListener("click",toggleDrawer);
 $("#drawerClose").addEventListener("click",closeDrawer);
 $("#scrim").addEventListener("click",closeDrawer);
 $("#yearSelect").addEventListener("change",e=>{ DB.activeYear=e.target.value; setYearPref(DB.activeYear); route(); }); // העדפה מקומית — ללא כתיבה לענן
+
+/* גובה הכותרת הנעוצה — משמש כ"תקרה" לפסים נעוצים אחרים (פס הסיכום בתיקי התלמידות) */
+(function(){
+  const hdr=document.querySelector("header.top");
+  const upd=()=>{ if(!hdr) return; const h=Math.round(hdr.getBoundingClientRect().height)||61;
+    document.documentElement.style.setProperty("--top-h", h+"px"); };
+  upd(); window.addEventListener("resize", upd);
+  if(window.ResizeObserver && hdr){ try{ new ResizeObserver(upd).observe(hdr); }catch(e){} }
+})();
 
 /* theme */
 (function(){ const KEY="rg-theme"; const saved=localStorage.getItem(KEY); if(saved)document.documentElement.dataset.theme=saved;
