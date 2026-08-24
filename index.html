@@ -5032,10 +5032,21 @@ function geocodeOnce(q, city, bias){
 }
 /* מוודא שלישות (גן/תלמידה) יש קואורדינטות במטמון עבור השאילתה הנוכחית.
    מחזיר {lat,lng} או null. מסמן ניסיון גם בכישלון (מונע גאוקוד חוזר אינסופי). */
+/* נקודה בתוך רדיוס העיר? (אין הטיה / אין מרכז ידוע → לא מסננים) */
+function geoNearCity(pt, bias){
+  if(!(bias && bias.lat!=null)) return true;
+  if(!(pt && pt.lat!=null)) return true;
+  return haversineKm(pt, bias) <= MAP_CITY_RADIUS_KM;
+}
 async function ensureGeo(ent, q, force, city, bias){
   if(!q) return null;
-  if(ent.geo && ent.geo.q===q && ent.geo.lat!=null) return ent.geo;
-  if(!force && ent.geo && ent.geo.q===q && ent.geo.tried) return null;   // ניסינו וקיבלנו ריק (אלא אם force)
+  if(ent.geo && ent.geo.manual && ent.geo.lat!=null) return ent.geo;      // מיקום ידני — תמיד מכובד
+  // מטמון תקף רק אם הוא גם בתוך רדיוס העיר. מיקום שגוי שנשמר בעבר (רחוב באותו
+  // שם בעיר אחרת) נזרק ומחושב מחדש — אחרת הוא ממשיך להחזיר מרחקים אבסורדיים.
+  if(ent.geo && ent.geo.q===q && ent.geo.lat!=null){
+    if(geoNearCity(ent.geo, bias)) return ent.geo;
+  }
+  else if(!force && ent.geo && ent.geo.q===q && ent.geo.tried) return null;   // ניסינו וקיבלנו ריק (אלא אם force)
   let pt=null; try{ pt=await geocodeOnce(q, city, bias); }catch(e){ pt=null; }
   // דחיית תוצאה שנפלה מחוץ לרדיוס העיר הנבחרת — עדיף "לא נמצא בעיר" מאשר
   // מיקום שגוי במרחק (רחוב באותו שם בעיר אחרת). כך "אם בחרנו עיר — כולם בעיר".
@@ -5754,21 +5765,34 @@ function proxBind(host, getStudent, idp, onPick){
     go.disabled=true; out.innerHTML=`<div class="hint">מחשב מרחקים… (${picked.length} גנים)</div>`;
     try{
       const city=(st.city||"").trim()||geoDefaultCity();
+      // הטיה למרכז העיר — גם רומזת לגאוקודר וגם דוחה תוצאה שנפלה בעיר אחרת
+      // (רחוב באותו שם במקום אחר בארץ). בלעדיה מתקבלים מרחקים אבסורדיים.
+      const cc=await mapEnsureCityCenter(city);
+      const bias=(cc && cc.lat!=null)?cc:null;
       // מיקום התלמידה — נשמר על הרשומה שבמסד כדי לא לגאוקד שוב בפעם הבאה
       const rec=DB.students.find(x=>x.id===st.id) || st;
-      const sgeo=await ensureGeo(rec, q, false, city, null);
-      if(!sgeo){ out.innerHTML=`<div class="note">לא נמצא מיקום לכתובת "${esc(q)}". אפשר לתקן את הרחוב/המספר בתיק ולנסות שוב.</div>`; go.disabled=false; return; }
+      const sgeo=await ensureGeo(rec, q, false, city, bias);
+      if(!sgeo){
+        const outCity=rec.geo && rec.geo.outCity;
+        out.innerHTML=`<div class="note">${outCity
+          ? `הכתובת <b>"${esc(q)}"</b> זוהתה מחוץ ל${esc(city)} ולכן נדחתה — כנראה רחוב באותו שם בעיר אחרת.<br>אפשר לתקן את הרחוב/המספר/העיר בתיק ולנסות שוב.`
+          : `לא נמצא מיקום לכתובת "${esc(q)}". אפשר לתקן את הרחוב/המספר בתיק ולנסות שוב.`}</div>`;
+        go.disabled=false; return; }
       const gans=picked.map(id=>ganById(id)).filter(Boolean);
       const missing=[];
       for(const g of gans){
         if(g.geo && g.geo.manual && g.geo.lat!=null) continue;
         const gq=proxGanQuery(g, city); if(!gq){ missing.push(g); continue; }
-        await ensureGeo(g, gq, false, city, null);
+        await ensureGeo(g, gq, false, city, bias);
         if(!(g.geo&&g.geo.lat!=null)) missing.push(g);
       }
       try{ save(); }catch(e){}
       const ok=gans.filter(g=>g.geo&&g.geo.lat!=null);
       let rows=ok.map(g=>({ g, km:haversineKm(sgeo,g.geo) })).sort((a,b)=>a.km-b.km);
+      // רשת ביטחון: מרחק גדול מרדיוס העיר אינו סביר לשני מקומות באותה עיר —
+      // סימן לגאוקוד שגוי. מציגים אזהרה במקום להציג מספר שנראה אמין.
+      const suspect=rows.filter(r=>r.km>MAP_CITY_RADIUS_KM);
+      rows=rows.filter(r=>r.km<=MAP_CITY_RADIUS_KM);
       const draw=()=>{
         let html=`<div class="hint" style="margin-bottom:4px">מהכתובת: <b>${esc([st.street,st.building,st.city].filter(Boolean).join(" "))}</b> · מהקרוב לרחוק</div>
           <div class="table-wrap"><table><thead><tr><th>#</th><th>גן</th><th>מרחק</th><th>משובצות / רף</th><th></th></tr></thead><tbody>`;
@@ -5788,6 +5812,8 @@ function proxBind(host, getStudent, idp, onPick){
                  : `<button class="btn sm ${idp}-pick" type="button" data-gid="${esc(r.g.id)}">שבץ</button>`}</td></tr>`;
         });
         html+=`</tbody></table></div>`;
+        if(!rows.length) html=`<div class="note">לא התקבל מרחק אמין לאף גן מהגנים שנבחרו.</div>`;
+        if(suspect.length) html+=`<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ מרחק לא סביר (מעל ${MAP_CITY_RADIUS_KM} ק"מ) — כנראה כתובת שזוהתה בעיר אחרת, ולכן לא מוצגת: ${suspect.map(r=>esc(ganName(r.g.id))+" ("+r.km.toFixed(0)+' ק"מ)').join(" · ")}. כדאי לבדוק את הכתובת בכרטיס הגן, או למקם אותו ידנית בלשונית מפת שיבוץ.</div>`;
         if(missing.length) html+=`<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ ללא מיקום (כתובת חסרה/לא זוהתה): ${missing.map(g=>esc(ganName(g.id))).join(" · ")} — אפשר למקם ידנית בלשונית מפת שיבוץ.</div>`;
         out.innerHTML=html;
         out.querySelectorAll("."+idp+"-pick").forEach(b=>b.onclick=()=>{
