@@ -205,9 +205,9 @@ function chat_(messages, system, model){
 function chatAnthropic_(messages, system, model, key){
   var payload = {
     model: /^claude/i.test(model) ? model : 'claude-haiku-4-5',
-    max_tokens: 1024,
+    max_tokens: 3000,
     system: String(system || ''),
-    messages: (messages || []).slice(-16)             // שומר את 16 ההודעות האחרונות
+    messages: (messages || []).slice(-24)             // שומר את 24 ההודעות האחרונות (כולל תוצאות כלים)
   };
   var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
     method: 'post', contentType: 'application/json',
@@ -230,11 +230,11 @@ function chatGemini_(messages, system, model, key){
   var OLD_GEMINI = { 'gemini-1.5-flash':1, 'gemini-1.5-pro':1, 'gemini-2.0-flash':1,
                      'gemini-2.0-flash-exp':1, 'gemini-2.5-flash':1, 'gemini-2.5-pro':1 };
   var gm = (/^gemini/i.test(model) && !OLD_GEMINI[model]) ? model : DEFAULT_GEMINI;
-  var contents = (messages || []).slice(-16).map(function(m){
+  var contents = (messages || []).slice(-24).map(function(m){
     return { role: (m.role === 'assistant' ? 'model' : 'user'),
              parts: [{ text: String((m && m.content) || '') }] };
   });
-  var payload = { contents: contents, generationConfig: { maxOutputTokens: 1024 } };
+  var payload = { contents: contents, generationConfig: { maxOutputTokens: 3000 } };
   if(system) payload.system_instruction = { parts: [{ text: String(system) }] };
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
             encodeURIComponent(gm) + ':generateContent?key=' + encodeURIComponent(key);

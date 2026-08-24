@@ -366,6 +366,36 @@ fieldset{border-radius:14px}
 .map-fold[open]>summary::before{transform:rotate(90deg)}
 .map-fold>summary:hover{color:var(--accent-strong)}
 .map-fold-body{padding:0 14px 14px}
+
+/* ---- עוזר חכם — פאנל צד נעוץ (סעיף 4) ---- */
+.aipanel{position:fixed;inset-block:0;inset-inline-end:0;width:var(--ai-w,380px);max-width:100vw;z-index:55;
+  background:var(--surface);border-inline-start:1px solid var(--border);box-shadow:-2px 0 18px rgba(0,0,0,.10);
+  display:none;flex-direction:column}
+.aipanel.open{display:flex}
+body.ai-docked{padding-inline-end:var(--ai-w,380px)}
+.aipanel-grip{position:absolute;inset-block:0;inset-inline-start:-3px;width:7px;cursor:ew-resize;z-index:2}
+.aipanel-grip:hover{background:var(--accent-soft)}
+.aipanel-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);flex:none}
+.aipanel-title{font-weight:800;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aipanel-btn{border:1px solid var(--border);background:var(--surface);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:.95rem;color:inherit;flex:none}
+.aipanel-btn:hover{border-color:var(--accent)}
+.aipanel-msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.aimsg{max-width:92%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;line-height:1.55;font-size:.92rem;word-break:break-word}
+.aimsg.user{align-self:flex-start;background:var(--accent-soft);color:var(--accent-strong)}
+.aimsg.bot{align-self:flex-end;background:var(--surface-2)}
+.aimsg.sys{align-self:center;background:transparent;color:var(--muted);font-size:.82rem;text-align:center;max-width:100%}
+.aiact{align-self:stretch;border:1px solid var(--accent);border-radius:12px;padding:9px 11px;background:var(--accent-soft);font-size:.88rem}
+.aiact b{display:block;margin-bottom:3px}
+.aiact .aiact-row{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.aiact.done{border-color:var(--good,#1a7f37);background:var(--good-soft,#e8f5ec)}
+.aiact.cancel{border-color:var(--border);background:var(--surface-2);opacity:.75}
+.aipanel-foot{flex:none;display:flex;gap:6px;align-items:flex-end;padding:10px 12px;border-top:1px solid var(--border);background:var(--surface-2)}
+.aipanel-foot textarea{flex:1;min-width:0;resize:none;max-height:120px}
+.aipanel-foot .btn{flex:none;padding:8px 14px}
+@media(max-width:900px){
+  .aipanel{width:100vw}
+  body.ai-docked{padding-inline-end:0}
+}
 </style>
 </head>
 <body>
@@ -431,6 +461,22 @@ fieldset{border-radius:14px}
 
 <div id="offlineBanner" style="display:none"></div>
 <main id="view"></main>
+
+<!-- עוזר חכם — פאנל צד נעוץ (סעיף 4) -->
+<aside class="aipanel" id="aiPanel" aria-label="עוזר חכם">
+  <div class="aipanel-grip" id="aiGrip" title="גרירה לשינוי רוחב"></div>
+  <div class="aipanel-head">
+    <span class="aipanel-title">🤖 עוזר חכם</span>
+    <span class="pill neutral" id="aiMode" title="מצב העוזר">…</span>
+    <button class="aipanel-btn" id="aiClear" title="שיחה חדשה">🗑️</button>
+    <button class="aipanel-btn" id="aiClose" title="סגירה" aria-label="סגירת העוזר">✕</button>
+  </div>
+  <div class="aipanel-msgs" id="aiMsgs"></div>
+  <div class="aipanel-foot">
+    <textarea id="aiInput" rows="2" placeholder="שאל/י שאלה — או בקש/י פעולה. למשל: כמה תלמידות בגן הדקל? · שבצי את שרה כהן לגן הדקל"></textarea>
+    <button class="btn" id="aiSend" title="שליחה (Enter)">➤</button>
+  </div>
+</aside>
 
 <!-- modal host -->
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
@@ -8098,48 +8144,440 @@ function guidePlainText(){
   const strip=h=>String(h||"").replace(/<[^>]+>/g," ").replace(/&[a-z]+;/gi," ").replace(/\s+/g," ").trim();
   return c.sections.map(s=>"### "+s.title+"\n"+strip(s.html)).join("\n\n");
 }
+/* ============================================================
+   עוזר חכם (סעיפים 4-5)
+   • פאנל צד נעוץ שנשאר פתוח בזמן העבודה בתוכנה (במקום חלון קופץ).
+   • שכבת "פעולות": העוזר יכול לקרוא נתונים אמיתיים מהמערכת ולבצע
+     שינויים — כל שינוי מוצג ככרטיס אישור, ומתבצע רק בלחיצה מפורשת.
+   ============================================================ */
+
+/* ---------- כלי הקריאה והכתיבה שהעוזר יכול להפעיל ---------- */
+/* read:true  → מתבצע לבד והתוצאה חוזרת לעוזר (אין שינוי בנתונים)
+   read:false → דורש אישור מפורש של המשתמש לפני ביצוע */
+const AI_TOOLS = {
+  /* ---- קריאה ---- */
+  stats: { read:true, desc:'סיכום כללי: כמה תלמידות, גנים, משובצות, ממתינות — לשנה הפעילה. ללא פרמטרים.',
+    run(){
+      const list=studentsOfYear().filter(s=>!s.finished);
+      const gans=DB.gans.filter(g=>g.active);
+      const by=e=>list.filter(s=>eduLabel(s)===e).length;
+      return { שנה:DB.activeYear, תלמידות_פעילות:list.length,
+        חינוך_רגיל:by('רגיל'), חינוך_מיוחד:by('ח"מ'),
+        משובצות:list.filter(s=>s.ganId&&s.placed!==false).length,
+        ממתינות_לשיבוץ:list.filter(s=>!s.ganId||s.placed===false).length,
+        ללא_גן:list.filter(s=>!s.ganId).length,
+        גנים_פעילים:gans.length,
+        קלוטות_בעירייה:list.filter(s=>s.absorbedMunicipality).length };
+    } },
+  list_gans: { read:true, desc:'רשימת הגנים עם גיל, גננת, קמפוס, כתובת, רשומות, משובצות ורף השיבוץ. פרמטרים אופציונליים: edu ("רגיל"/"ח\\"מ"), campus, age, onlyActive (ברירת מחדל true).',
+    run(a){
+      a=a||{};
+      let g=DB.gans.filter(x=> a.onlyActive===false ? true : x.active);
+      if(a.edu) g=g.filter(x=>eduLabel(x)===a.edu);
+      if(a.campus) g=g.filter(x=>String(x.campus||"").includes(a.campus));
+      if(a.age) g=g.filter(x=>String(x.age||"")===String(a.age));
+      return g.map(x=>({ id:x.id, שם:ganName(x.id), סמל:x.ganSymbol||x.internalSymbol||"", גיל:x.age||"",
+        חינוך:eduLabel(x), גננת:x.teacherName||"", קמפוס:x.campus||"",
+        כתובת:[x.address,x.building].filter(Boolean).join(" "), טלפון:x.phoneGan||"",
+        רשומות:studentsOfYear().filter(s=>s.ganId===x.id&&!s.finished).length,
+        משובצות:ganAssignedCount(x.id), רף_שיבוץ:ganAssignCap(x)||"ללא",
+        מקומות_פנויים:(ganAssignCap(x)?Math.max(0,ganAssignCap(x)-ganAssignedCount(x.id)):"ללא הגבלה") }));
+    } },
+  find_students: { read:true, desc:'חיפוש תלמידות בשנה הפעילה. פרמטרים (כולם אופציונליים): q (שם או ת"ז), ganName, ganId, age, edu, city, street, placed (true/false), noGan (true), campus, limit (ברירת מחדל 25).',
+    run(a){
+      a=a||{};
+      let l=studentsOfYear().filter(s=>!s.finished);
+      const q=String(a.q||"").trim().toLowerCase();
+      if(q) l=l.filter(s=>([s.firstName,s.lastName,s.tz].join(" ")).toLowerCase().includes(q));
+      if(a.ganId) l=l.filter(s=>s.ganId===a.ganId);
+      if(a.ganName){ const g=aiFindGan(a.ganName); if(g) l=l.filter(s=>s.ganId===g.id); else return { שגיאה:'לא נמצא גן בשם "'+a.ganName+'"' }; }
+      if(a.age!=null && a.age!=="") l=l.filter(s=>String(s.age||"")===String(a.age));
+      if(a.edu) l=l.filter(s=>eduLabel(s)===a.edu);
+      if(a.city) l=l.filter(s=>String(s.city||"").includes(a.city));
+      if(a.street) l=l.filter(s=>String(s.street||"").includes(a.street));
+      if(a.campus) l=l.filter(s=>String(ganCampus(s.ganId)||s.campus||"").includes(a.campus));
+      if(a.noGan===true) l=l.filter(s=>!s.ganId);
+      if(a.placed===true) l=l.filter(s=>s.ganId&&s.placed!==false);
+      if(a.placed===false) l=l.filter(s=>s.placed===false);
+      const total=l.length, lim=Math.min(+a.limit||25, 100);
+      return { סה_כ:total, מוצגות:Math.min(total,lim),
+        תלמידות:l.slice(0,lim).map(s=>aiStudentBrief(s)) };
+    } },
+  student_details: { read:true, desc:'כל פרטי תיק תלמידה. פרמטרים: id או tz או name (שם מלא/חלקי).',
+    run(a){ const s=aiFindStudent(a||{}); if(!s) return { שגיאה:"לא נמצאה תלמידה מתאימה" };
+      const sib=findSiblings(s);
+      return { id:s.id, שם:[s.lastName,s.firstName].filter(Boolean).join(" "), 'ת"ז':s.tz||"",
+        'תאריך לידה':s.dob||"", גיל:s.age||"", חינוך:eduLabel(s), מועד_רישום:s.period||"",
+        גן:s.ganId?ganName(s.ganId):"— ללא —", קמפוס:ganCampus(s.ganId)||s.campus||"",
+        שיבוץ_סופי:s.placed!==false, שם_אם:s.motherName||"", שם_אב:s.fatherName||"",
+        כתובת:[s.street,s.building,s.city].filter(Boolean).join(" "),
+        'נייד אם':s.momMobile||"", 'נייד אב':s.dadMobile||"", 'טלפון בית':s.phone||"", 'דוא"ל':s.email||"",
+        קלוט_בעירייה:!!s.absorbedMunicipality, נרשמה_על_ידינו:!!s.registeredByUs,
+        ביטוח_שולם:!!s.insurancePaid, מסמכים:s.docs||{}, תוכניות:s.programs||{},
+        אחיות_בכתובת:(sib.list||[]).map(x=>[x.lastName,x.firstName].filter(Boolean).join(" ")+(x.ganId?(" · "+ganName(x.ganId)):"")),
+        הערות:s.notes||"" };
+    } },
+  nearest_gans: { read:true, desc:'הגנים הקרובים לכתובת של תלמידה (מרחק אווירי בק"מ). פרמטרים: id/tz/name של התלמידה, ואופציונלית ganNames (מערך שמות גנים לבדיקה). דורש שכתובת התלמידה והגנים כבר מוקמו על המפה.',
+    run(a){ const s=aiFindStudent(a||{}); if(!s) return { שגיאה:"לא נמצאה תלמידה מתאימה" };
+      if(!(s.geo&&s.geo.lat!=null)) return { שגיאה:'לתלמידה עדיין אין מיקום על המפה. יש לפתוח את לשונית "מפת שיבוץ" וללחוץ "📍 טעינת מיקומי תלמידות", או להשתמש בכפתור 🧭 שבתיק.' };
+      let gans=DB.gans.filter(g=>g.active && eduLabel(g)===eduLabel(s) && g.geo && g.geo.lat!=null);
+      if(Array.isArray(a.ganNames)&&a.ganNames.length){
+        const ids=new Set(a.ganNames.map(n=>{ const g=aiFindGan(n); return g?g.id:null; }).filter(Boolean));
+        gans=gans.filter(g=>ids.has(g.id));
+      }
+      if(!gans.length) return { שגיאה:"אין גנים עם מיקום מתאים לבדיקה" };
+      return gans.map(g=>({ גן:ganName(g.id), 'מרחק_קמ':+haversineKm(s.geo,g.geo).toFixed(2),
+        משובצות:ganAssignedCount(g.id), רף:ganAssignCap(g)||"ללא" }))
+        .sort((x,y)=>x['מרחק_קמ']-y['מרחק_קמ']);
+    } },
+  list_staff: { read:true, desc:'רשימת אנשי הצוות. פרמטרים אופציונליים: role, edu, q (שם), limit.',
+    run(a){ a=a||{};
+      let l=(DB.staff||[]).filter(m=>m.active!==false);
+      if(a.role) l=l.filter(m=>String(m.role||"").includes(a.role));
+      if(a.edu) l=l.filter(m=>eduLabel(m)===a.edu);
+      const q=String(a.q||"").trim().toLowerCase();
+      if(q) l=l.filter(m=>(staffName(m)+" "+(m.tz||"")).toLowerCase().includes(q));
+      return l.slice(0,Math.min(+a.limit||30,100)).map(m=>({ id:m.id, שם:staffName(m), תפקיד:m.role||"",
+        חינוך:eduLabel(m), נייד:m.mobile||"", טלפון:m.phone||"", 'דוא"ל':m.email||"" }));
+    } },
+
+  /* ---- ניווט (בטוח — לא משנה נתונים) ---- */
+  open_tab: { read:true, desc:'מעבר ללשונית בתוכנה. פרמטר: tab — אחד מ: '+TABS.map(t=>t.id).join(", ")+'.',
+    run(a){ const t=(a&&a.tab)||""; if(!TABS.some(x=>x.id===t)) return { שגיאה:"לשונית לא מוכרת: "+t };
+      navToTab(t); return { בוצע:'עברנו ללשונית "'+(TABS.find(x=>x.id===t).label)+'"' }; } },
+  open_student: { read:true, desc:'פתיחת תיק תלמידה על המסך. פרמטרים: id או tz או name.',
+    run(a){ const s=aiFindStudent(a||{}); if(!s) return { שגיאה:"לא נמצאה תלמידה מתאימה" };
+      openStudentById(s.id); return { בוצע:'נפתח התיק של '+[s.lastName,s.firstName].filter(Boolean).join(" ") }; } },
+
+  /* ---- כתיבה (דורש אישור) ---- */
+  assign_student: { read:false, desc:'שיבוץ תלמידה לגן. פרמטרים: student (שם/ת"ז/id), gan (שם הגן), markPlaced (ברירת מחדל true — לסמן כשיבוץ סופי).',
+    preview(a){ const s=aiFindStudent({ name:a.student, tz:a.student, id:a.student }); const g=aiFindGan(a.gan);
+      if(!s) return { error:'לא נמצאה תלמידה בשם/ת"ז "'+(a.student||"")+'"' };
+      if(!g) return { error:'לא נמצא גן בשם "'+(a.gan||"")+'"' };
+      const gate=canAssignStudent(g,s);
+      return { text:'שיבוץ <b>'+esc([s.lastName,s.firstName].filter(Boolean).join(" "))+'</b> לגן <b>'+esc(ganName(g.id))+'</b>'
+        +(s.ganId&&s.ganId!==g.id?' (במקום '+esc(ganName(s.ganId))+')':'')
+        +(a.markPlaced===false?' — בלי לסמן שיבוץ סופי':' — כולל סימון "משובצת"'),
+        warn: gate.ok?"":gate.msg, ctx:{ sid:s.id, gid:g.id } };
+    },
+    run(a,ctx){ const s=DB.students.find(x=>x.id===ctx.sid), g=ganById(ctx.gid);
+      if(!s||!g) return { שגיאה:"הרשומה לא נמצאה" };
+      if(!canEditRec(s)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      if(a.markPlaced!==false){ const gate=canAssignStudent(g,s); if(!gate.ok) return { שגיאה:gate.msg }; }
+      s.ganId=g.id; s.campus=ganCampus(g.id)||s.campus||"";
+      const ages=ganAges(g); if(ages.length===1) s.age=ages[0];
+      if(a.markPlaced!==false) s.placed=true;
+      save(); try{ route(); }catch(e){}
+      return { בוצע:[s.lastName,s.firstName].filter(Boolean).join(" ")+" שובצה ל"+ganName(g.id) };
+    } },
+  unassign_student: { read:false, desc:'הסרת שיבוץ מתלמידה (הגן מתרוקן). פרמטר: student.',
+    preview(a){ const s=aiFindStudent({ name:a.student, tz:a.student, id:a.student });
+      if(!s) return { error:'לא נמצאה תלמידה "'+(a.student||"")+'"' };
+      if(!s.ganId) return { error:'ל'+[s.lastName,s.firstName].filter(Boolean).join(" ")+' ממילא אין גן משובץ' };
+      return { text:'הסרת השיבוץ של <b>'+esc([s.lastName,s.firstName].filter(Boolean).join(" "))+'</b> מגן <b>'+esc(ganName(s.ganId))+'</b>', ctx:{ sid:s.id } }; },
+    run(a,ctx){ const s=DB.students.find(x=>x.id===ctx.sid); if(!s) return { שגיאה:"לא נמצאה" };
+      if(!canEditRec(s)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      const was=ganName(s.ganId); s.ganId=""; s.placed=false; save(); try{ route(); }catch(e){}
+      return { בוצע:"הוסר השיבוץ מ"+was }; } },
+  update_student: { read:false, desc:'עדכון שדות בתיק תלמידה. פרמטרים: student (שם/ת"ז), fields — אובייקט עם שדות מתוך: firstName, lastName, tz, dob, motherName, fatherName, phone, momMobile, dadMobile, email, street, building, city, age, period, education, notes, placed, absorbedMunicipality, registeredByUs, insurancePaid, finished.',
+    preview(a){ const s=aiFindStudent({ name:a.student, tz:a.student, id:a.student });
+      if(!s) return { error:'לא נמצאה תלמידה "'+(a.student||"")+'"' };
+      const f=a.fields||{}; const ok=Object.keys(f).filter(k=>AI_STUDENT_FIELDS[k]);
+      const bad=Object.keys(f).filter(k=>!AI_STUDENT_FIELDS[k]);
+      if(!ok.length) return { error:"אין שדות מוכרים לעדכון"+(bad.length?(" (לא מוכרים: "+bad.join(", ")+")"):"") };
+      return { text:'עדכון התיק של <b>'+esc([s.lastName,s.firstName].filter(Boolean).join(" "))+'</b>:<br>'
+        +ok.map(k=>'• '+esc(AI_STUDENT_FIELDS[k])+': <b>'+esc(String(s[k]??"—"))+'</b> ← <b>'+esc(String(f[k]))+'</b>').join("<br>"),
+        warn: bad.length?("שדות שלא זוהו ולא יעודכנו: "+bad.join(", ")):"", ctx:{ sid:s.id, keys:ok } }; },
+    run(a,ctx){ const s=DB.students.find(x=>x.id===ctx.sid); if(!s) return { שגיאה:"לא נמצאה" };
+      if(!canEditRec(s)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      const f=a.fields||{};
+      ctx.keys.forEach(k=>{ let v=f[k];
+        if(["placed","absorbedMunicipality","registeredByUs","insurancePaid","finished"].includes(k)) v=!!v && v!=="false";
+        s[k]=v; });
+      if(ctx.keys.includes("momMobile")||ctx.keys.includes("dadMobile")) s.mobile=s.momMobile||s.dadMobile||"";
+      save(); try{ route(); }catch(e){}
+      return { בוצע:"התיק עודכן ("+ctx.keys.length+" שדות)" }; } },
+  set_gan_assign_cap: { read:false, desc:'קביעת רף השיבוץ (מקסימום משובצות) לגן. פרמטרים: gan (שם הגן), cap (מספר; 0 = ללא הגבלה).',
+    preview(a){ const g=aiFindGan(a.gan); if(!g) return { error:'לא נמצא גן "'+(a.gan||"")+'"' };
+      const cap=+String(a.cap??"").replace(/[^\d]/g,"")||0;
+      return { text:'קביעת רף שיבוץ לגן <b>'+esc(ganName(g.id))+'</b>: <b>'+(cap||"ללא הגבלה")+'</b> (כרגע '+(ganAssignCap(g)||"ללא")+', משובצות: '+ganAssignedCount(g.id)+')',
+        warn: (cap && cap<ganAssignedCount(g.id))?("שים/י לב: כבר משובצות "+ganAssignedCount(g.id)+" — הרף החדש נמוך מהמצב הקיים (השיבוץ הקיים לא ייפגע, אך לא ניתן יהיה להוסיף)."):"",
+        ctx:{ gid:g.id, cap } }; },
+    run(a,ctx){ const g=ganById(ctx.gid); if(!g) return { שגיאה:"הגן לא נמצא" };
+      if(!canEditRec(g)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      g.assignCap=ctx.cap?String(ctx.cap):""; save(); try{ route(); }catch(e){}
+      return { בוצע:"רף השיבוץ של "+ganName(g.id)+" נקבע ל-"+(ctx.cap||"ללא הגבלה") }; } },
+  update_gan: { read:false, desc:'עדכון שדות בכרטיס גן. פרמטרים: gan (שם), fields — מתוך: ganName, ganSymbol, internalSymbol, teacherName, age, education, address, building, street, zone, phoneGan, campus, capacity, assignCap, active.',
+    preview(a){ const g=aiFindGan(a.gan); if(!g) return { error:'לא נמצא גן "'+(a.gan||"")+'"' };
+      const f=a.fields||{}; const ok=Object.keys(f).filter(k=>AI_GAN_FIELDS[k]);
+      if(!ok.length) return { error:"אין שדות מוכרים לעדכון" };
+      return { text:'עדכון הגן <b>'+esc(ganName(g.id))+'</b>:<br>'
+        +ok.map(k=>'• '+esc(AI_GAN_FIELDS[k])+': <b>'+esc(String(g[k]??"—"))+'</b> ← <b>'+esc(String(f[k]))+'</b>').join("<br>"),
+        ctx:{ gid:g.id, keys:ok } }; },
+    run(a,ctx){ const g=ganById(ctx.gid); if(!g) return { שגיאה:"הגן לא נמצא" };
+      if(!canEditRec(g)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      const f=a.fields||{};
+      ctx.keys.forEach(k=>{ let v=f[k]; if(k==="active") v=!!v && v!=="false"; g[k]=v; });
+      save(); try{ route(); }catch(e){}
+      return { בוצע:"כרטיס הגן עודכן" }; } },
+  bulk_update_students: { read:false, desc:'עדכון קבוצתי של תלמידות. פרמטרים: filter (כמו ב-find_students), field — אחד מ: '+'placed, absorbedMunicipality, registeredByUs, insurancePaid'+', value (true/false).',
+    preview(a){ const f=a.filter||{}; const res=AI_TOOLS.find_students.run(Object.assign({limit:1000}, f));
+      if(res['שגיאה']) return { error:res['שגיאה'] };
+      const ids=(res['תלמידות']||[]).map(x=>x.id);
+      const allowed={ placed:'משובצת (שיבוץ סופי)', absorbedMunicipality:'קלוט בעירייה', registeredByUs:'נרשמה על ידינו', insurancePaid:'תשלום ביטוח' };
+      if(!allowed[a.field]) return { error:'שדה לא נתמך לעדכון קבוצתי: '+(a.field||"") };
+      if(!ids.length) return { error:"אף תלמידה לא תואמת את הסינון" };
+      const v=!!a.value && a.value!=="false";
+      return { text:'עדכון קבוצתי ל-<b>'+ids.length+'</b> תלמידות · <b>'+esc(allowed[a.field])+'</b> → <b>'+(v?'כן':'לא')+'</b>',
+        warn: ids.length>50 ? ("זהו עדכון רחב — "+ids.length+" תיקים.") : "", ctx:{ ids, field:a.field, val:v } }; },
+    run(a,ctx){ let n=0, blocked=0, full=0;
+      ctx.ids.forEach(id=>{ const s=DB.students.find(x=>x.id===id); if(!s) return;
+        if(!canEditRec(s)){ blocked++; return; }
+        if(ctx.field==='placed' && ctx.val && s.ganId && s.placed===false && !assignGate(s.ganId,s,true)){ full++; return; }
+        s[ctx.field]=ctx.val; n++; });
+      save(); try{ route(); }catch(e){}
+      return { בוצע:"עודכנו "+n+" תלמידות", דולגו_ללא_הרשאה:blocked, דולגו_גן_מלא:full }; } }
+};
+/* שדות מותרים לעדכון + התווית העברית שלהם */
+const AI_STUDENT_FIELDS = { firstName:"שם פרטי", lastName:"שם משפחה", tz:'ת"ז', dob:"תאריך לידה",
+  motherName:"שם האם", fatherName:"שם האב", phone:"טלפון בית", momMobile:"נייד אם", dadMobile:"נייד אב",
+  email:'דוא"ל', street:"רחוב", building:"מספר בניין", city:"עיר", age:"גיל", period:"מועד רישום",
+  education:"חינוך", notes:"הערות", placed:"משובצת (שיבוץ סופי)", absorbedMunicipality:"קלוט בעירייה",
+  registeredByUs:"נרשמה על ידינו", insurancePaid:"תשלום ביטוח", finished:"סיימה גן" };
+const AI_GAN_FIELDS = { ganName:"שם הגן", ganSymbol:"סמל הגן", internalSymbol:"סמל פנימי",
+  teacherName:"שם הגננת", age:"גיל", education:"חינוך", address:"כתובת", building:"מספר", street:"רחוב",
+  zone:"אזור", phoneGan:"טלפון בגן", campus:"קמפוס", capacity:"קיבולת", assignCap:"רף שיבוץ", active:"פעיל" };
+
+/* איתור גן לפי שם / סמל (התאמה מלאה קודמת, ואז הכלה) */
+function aiFindGan(name){
+  const q=String(name||"").trim(); if(!q) return null;
+  const all=DB.gans;
+  return all.find(g=>g.id===q)
+      || all.find(g=>ganName(g.id)===q)
+      || all.find(g=>String(g.ganSymbol||"")===q || String(g.internalSymbol||"")===q)
+      || all.find(g=>ganName(g.id).includes(q))
+      || all.find(g=>String(g.teacherName||"").includes(q))
+      || null;
+}
+/* איתור תלמידה לפי id / ת"ז / שם (בשנה הפעילה) */
+function aiFindStudent(a){
+  const list=studentsOfYear().filter(s=>!s.finished);
+  const one=v=>{ const q=String(v||"").trim(); if(!q) return null;
+    return list.find(s=>s.id===q)
+        || list.find(s=>String(s.tz||"")===q)
+        || list.find(s=>[s.lastName,s.firstName].filter(Boolean).join(" ")===q)
+        || list.find(s=>[s.firstName,s.lastName].filter(Boolean).join(" ")===q)
+        || list.find(s=>([s.firstName,s.lastName].join(" ")).includes(q))
+        || null; };
+  return one(a.id) || one(a.tz) || one(a.name) || one(a.student) || null;
+}
+function aiStudentBrief(s){
+  return { id:s.id, שם:[s.lastName,s.firstName].filter(Boolean).join(" "), 'ת"ז':s.tz||"", גיל:s.age||"",
+    גן:s.ganId?ganName(s.ganId):"—", שיבוץ_סופי:s.placed!==false, חינוך:eduLabel(s),
+    כתובת:[s.street,s.building].filter(Boolean).join(" "), עיר:s.city||"",
+    נייד:s.momMobile||s.dadMobile||s.mobile||"" };
+}
+
+/* ---------- הנחיית המערכת ---------- */
+function aiToolsSpec(){
+  return Object.keys(AI_TOOLS).map(k=>{
+    const t=AI_TOOLS[k];
+    return '• '+k+(t.read?' [קריאה — מתבצע מיד]':' [שינוי — דורש אישור המשתמש]')+': '+t.desc;
+  }).join('\n');
+}
+function aiContextBlock(){
+  const list=studentsOfYear().filter(s=>!s.finished);
+  const gans=eduScope(DB.gans.filter(g=>g.active));
+  return 'מצב נוכחי במסך: שנה פעילה '+DB.activeYear+' · חינוך נבחר: '+(activeEdu||'הכל')
+    +' · לשונית פתוחה: '+((TABS.find(t=>t.id===active)||{}).label||active)
+    +' · '+list.length+' תלמידות פעילות · '+gans.length+' גנים פעילים בתחום הנבחר.\n'
+    +'שמות הגנים הפעילים: '+gans.slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he")).map(g=>ganName(g.id)).join(' · ');
+}
 function aiSystemPrompt(){
   return 'אתה עוזר עברית ידידותי ומקצועי בתוך התוכנה "'+appTitle()+'" — מערכת לניהול רשת גני ילדים (רישום תלמידות, גנים, צוות, שיבוץ, מסמכים בדרייב, יצוא ודוחות).\n'
-    +'תפקידך: לעזור למשתמש להבין איך להשתמש בתוכנה — היכן כל דבר נמצא, איך לבצע פעולות, ומה המשמעות של מאפיינים. ענה בקצרה, בעברית פשוטה ומעשית, וצעד-אחר-צעד כשצריך. אם משהו לא קיים או שאינך יודע — אמור זאת בכנות, אל תמציא מאפיינים.\n\n'
+    +'תפקידך כפול: (א) להסביר איך להשתמש בתוכנה; (ב) לבצע פעולות בפועל על הנתונים באמצעות הכלים שלמטה.\n'
+    +'ענה בקצרה, בעברית פשוטה ומעשית. אם משהו לא קיים או שאינך יודע — אמור זאת בכנות, אל תמציא.\n\n'
+    +'== כלים ==\n'
+    +'כדי להפעיל כלי, כתוב בסוף התשובה בלוק בפורמט הבא (ואפשר יותר מאחד):\n'
+    +'```action\n{"tool":"שם_הכלי","args":{...}}\n```\n'
+    +'כללים חשובים:\n'
+    +'- אל תמציא נתונים. אם נשאלת שאלה על נתונים אמיתיים (כמה, מי, איפה) — הפעל כלי קריאה וחכה לתוצאה, ורק אז ענה.\n'
+    +'- כלי קריאה מתבצעים מיד והתוצאה תוחזר אליך בהודעה הבאה; אז נסח תשובה קצרה בעברית לפי התוצאה.\n'
+    +'- כלי שינוי מוצגים למשתמש ככרטיס אישור. אל תניח שהם בוצעו — המשתמש מאשר.\n'
+    +'- אל תדפיס את בלוק ה-action בתוך טקסט ההסבר; רק בסוף.\n'
+    +'- אם חסר לך פרט (איזו תלמידה בדיוק, איזה גן) — שאל, אל תנחש.\n\n'
+    +'רשימת הכלים:\n'+aiToolsSpec()+'\n\n'
+    +aiContextBlock()+'\n\n'
     +'להלן מבנה התוכנה והמדריך המלא:\n'+guidePlainText();
 }
 async function aiAsk(history){
   return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model:(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash" });
 }
-function openAiHelp(){
-  if(!DRIVE_READY){ modal(`<h3>🤖 עוזר חכם</h3><div class="note">העוזר פועל דרך גשר הדרייב, שאינו מוגדר עדיין. יש להשלים את חיבור הגשר (SETUP.md).</div><div class="foot"><button class="btn ghost" id="ai-close" style="margin-inline-start:auto">סגירה</button></div>`); $("#ai-close").onclick=closeModal; return; }
-  const convo=[];
-  modal(`<h3>🤖 עוזר חכם — שאל/י כל שאלה על התוכנה</h3>
-    <div class="sub">אני יכול להסביר איך לבצע פעולות, היכן דברים נמצאים, ומה המשמעות של מאפיינים.</div>
-    <div id="ai-msgs" style="margin-top:10px;max-height:48vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:4px"></div>
-    <div class="row" style="gap:8px;margin-top:10px;align-items:flex-end">
-      <div class="field grow"><textarea id="ai-input" rows="2" placeholder="למשל: איך מוסיפים גן חדש? איך מייבאים מסמכים מהדרייב?"></textarea></div>
-      <button class="btn" id="ai-send">שליחה</button>
-    </div>
-    <div class="foot"><button class="btn ghost" id="ai-close" style="margin-inline-start:auto">סגירה</button></div>`);
-  $("#ai-close").onclick=closeModal;
-  const msgs=$("#ai-msgs");
-  const bubble=(role,text)=>{ const d=document.createElement("div");
-    d.style.cssText="max-width:85%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;line-height:1.55;"+(role==='user'?"align-self:flex-start;background:var(--accent-soft);color:var(--accent-strong)":"align-self:flex-end;background:var(--surface-2)");
-    d.textContent=text; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; };
-  bubble("assistant","שלום! 👋 איך אפשר לעזור? כתוב/י שאלה על השימוש בתוכנה.");
-  async function send(){
-    const inp=$("#ai-input"); const q=inp.value.trim(); if(!q) return;
-    inp.value=""; bubble("user",q); convo.push({role:"user",content:q});
-    const sb=$("#ai-send"); sb.disabled=true;
-    const wait=bubble("assistant","… חושב");
-    try{ const res=await aiAsk(convo); wait.textContent=res.text||"(לא התקבלה תשובה)"; convo.push({role:"assistant",content:res.text||""}); }
-    catch(e){ const raw=((e&&e.message)||String(e||""));
-      let msg;
-      if(raw.indexOf("no-ai-key")>=0) msg="העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini, ראה כלים ושירותים → עוזר חכם).";
-      else if(/network|bad-response|drive-not-configured|unauthorized|token/.test(raw)) msg=driveErrHe(e);
-      else msg="שגיאה: "+raw;   // הודעת הספק המדויקת (Gemini/Claude) — לאבחון
-      wait.textContent=msg; }
-    finally{ sb.disabled=false; msgs.scrollTop=msgs.scrollHeight; }
-  }
-  $("#ai-send").onclick=send;
-  $("#ai-input").addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
+/* חילוץ בלוקי הפעולה מתשובת המודל; מחזיר { text, actions:[{tool,args}] } */
+function aiParseActions(raw){
+  const text=String(raw||""); const actions=[];
+  const clean=text.replace(/```(?:action|json_action)\s*([\s\S]*?)```/gi, (m, body)=>{
+    try{
+      const t=body.trim();
+      // ייתכן שהמודל שם כמה אובייקטים בזה אחר זה
+      const parts = t.startsWith("[") ? JSON.parse(t) : [JSON.parse(t)];
+      (Array.isArray(parts)?parts:[parts]).forEach(o=>{ if(o&&o.tool) actions.push({ tool:String(o.tool), args:o.args||{} }); });
+    }catch(e){ /* בלוק לא תקין — מוצג כטקסט */ return m; }
+    return "";
+  });
+  return { text:clean.replace(/\n{3,}/g,"\n\n").trim(), actions };
 }
+
+/* ---------- הפאנל ---------- */
+let aiConvo=[];              // היסטוריית השיחה (נשמרת כל עוד הכרטיסייה פתוחה)
+let aiBusy=false;
+function aiPanelOpen(){ return document.getElementById("aiPanel")?.classList.contains("open"); }
+function aiToggle(){ aiPanelOpen() ? aiClose() : aiOpen(); }
+function aiOpen(){
+  const p=$("#aiPanel"); if(!p) return;
+  p.classList.add("open"); document.body.classList.add("ai-docked");
+  aiRefreshMode();
+  if(!aiConvo.length && !$("#aiMsgs").children.length){
+    aiBubble("bot","שלום! 👋\nאפשר לשאול אותי איך עושים דברים בתוכנה — ואפשר גם לבקש ממני לבצע.\n\nלמשל:\n• כמה תלמידות משובצות בגן הדקל?\n• מי התלמידות שעדיין בלי גן?\n• קבעי רף שיבוץ 36 לגן הדקל\n• שבצי את שרה כהן לגן הדקל");
+  }
+  setTimeout(()=>{ const i=$("#aiInput"); if(i) i.focus(); },60);
+  try{ localStorage.setItem("rg-ai-open","1"); }catch(e){}
+}
+function aiClose(){
+  const p=$("#aiPanel"); if(!p) return;
+  p.classList.remove("open"); document.body.classList.remove("ai-docked");
+  try{ localStorage.setItem("rg-ai-open","0"); }catch(e){}
+}
+function aiRefreshMode(){
+  const m=$("#aiMode"); if(!m) return;
+  if(!DRIVE_READY){ m.textContent="דורש חיבור גשר"; m.className="pill warn"; }
+  else { m.textContent="פעיל · יכול לבצע"; m.className="pill ok"; }
+}
+function aiScroll(){ const b=$("#aiMsgs"); if(b) b.scrollTop=b.scrollHeight; }
+function aiBubble(kind, text){
+  const b=$("#aiMsgs"); if(!b) return null;
+  const d=document.createElement("div");
+  d.className="aimsg "+(kind==="user"?"user":kind==="sys"?"sys":"bot");
+  d.textContent=text; b.appendChild(d); aiScroll(); return d;
+}
+/* כרטיס פעולה הממתין לאישור */
+function aiActionCard(act){
+  const b=$("#aiMsgs"); if(!b) return;
+  const tool=AI_TOOLS[act.tool];
+  const card=document.createElement("div"); card.className="aiact";
+  if(!tool){ card.classList.add("cancel"); card.innerHTML=`<b>פעולה לא מוכרת</b>${esc(act.tool)}`; b.appendChild(card); aiScroll(); return; }
+  let pv={};
+  try{ pv = tool.preview ? tool.preview(act.args||{}) : { text:esc(tool.desc) }; }
+  catch(e){ pv={ error:"שגיאה בהכנת הפעולה: "+((e&&e.message)||e) }; }
+  if(pv.error){
+    card.classList.add("cancel");
+    card.innerHTML=`<b>⚠ לא ניתן לבצע</b>${esc(pv.error)}`;
+    b.appendChild(card); aiScroll();
+    aiFeedResult(act.tool, { שגיאה:pv.error });
+    return;
+  }
+  card.innerHTML=`<b>🛠️ בקשה לביצוע</b><div>${pv.text}</div>`
+    +(pv.warn?`<div style="color:var(--bad);margin-top:5px">⚠ ${esc(pv.warn)}</div>`:"")
+    +`<div class="aiact-row"><button class="btn sm" data-ai-do>✅ בצע</button><button class="btn ghost sm" data-ai-no>ביטול</button></div>`;
+  b.appendChild(card); aiScroll();
+  card.querySelector("[data-ai-do]").onclick=()=>{
+    let res;
+    try{ res=tool.run(act.args||{}, pv.ctx||{}); }
+    catch(e){ res={ שגיאה:((e&&e.message)||String(e)) }; }
+    card.classList.add(res && res['שגיאה'] ? "cancel" : "done");
+    card.innerHTML=`<b>${res && res['שגיאה'] ? "⚠ הפעולה נכשלה" : "✅ בוצע"}</b><div>${pv.text}</div>`
+      +`<div style="margin-top:5px">${esc(res && res['שגיאה'] ? res['שגיאה'] : (res && res['בוצע']) || "הושלם")}</div>`;
+    aiRefreshMode();
+    aiFeedResult(act.tool, res);
+  };
+  card.querySelector("[data-ai-no]").onclick=()=>{
+    card.classList.add("cancel");
+    card.innerHTML=`<b>בוטל</b><div>${pv.text}</div>`;
+    aiFeedResult(act.tool, { בוטל:"המשתמש ביטל את הפעולה" });
+  };
+}
+/* החזרת תוצאת פעולה לעוזר (בלי לקרוא לו שוב — רק מוסיף להיסטוריה) */
+function aiFeedResult(tool, res){
+  aiConvo.push({ role:"user", content:"[תוצאת הכלי "+tool+"]\n"+JSON.stringify(res, null, 1) });
+}
+/* מריץ את כלי הקריאה ומחזיר true אם צריך סבב נוסף מול המודל */
+function aiRunReadTools(actions){
+  let any=false;
+  actions.forEach(act=>{
+    const tool=AI_TOOLS[act.tool];
+    if(!tool || !tool.read) return;
+    let res;
+    try{ res=tool.run(act.args||{}); }
+    catch(e){ res={ שגיאה:((e&&e.message)||String(e)) }; }
+    const n = Array.isArray(res) ? res.length : (res && res['תלמידות'] ? res['תלמידות'].length : null);
+    aiBubble("sys","🔎 "+act.tool+(n!=null?(" · "+n+" תוצאות"):""));
+    aiFeedResult(act.tool, res);
+    any=true;
+  });
+  return any;
+}
+async function aiSend(){
+  if(aiBusy) return;
+  const inp=$("#aiInput"); const q=(inp.value||"").trim(); if(!q) return;
+  if(!DRIVE_READY){ aiBubble("sys","העוזר פועל דרך גשר הדרייב, שאינו מוגדר עדיין (ראה SETUP.md · כלים ושירותים)."); return; }
+  inp.value=""; inp.style.height="";
+  aiBubble("user",q); aiConvo.push({ role:"user", content:q });
+  aiBusy=true; const sendBtn=$("#aiSend"); if(sendBtn) sendBtn.disabled=true;
+  const wait=aiBubble("bot","… חושב");
+  try{
+    // עד 4 סבבים: המודל מבקש נתונים → אנחנו מריצים כלי קריאה → הוא עונה
+    for(let round=0; round<4; round++){
+      const res=await aiAsk(aiConvo);
+      const parsed=aiParseActions(res.text||"");
+      aiConvo.push({ role:"assistant", content:res.text||"" });
+      if(round===0) wait.remove();
+      if(parsed.text) aiBubble("bot", parsed.text);
+      const writes=parsed.actions.filter(a=>!(AI_TOOLS[a.tool]&&AI_TOOLS[a.tool].read));
+      const needMore=aiRunReadTools(parsed.actions);
+      writes.forEach(aiActionCard);
+      if(!needMore) break;
+      if(round===3) aiBubble("sys","(הופסק אחרי 4 סבבים כדי לא להיתקע)");
+    }
+  }catch(e){
+    const raw=((e&&e.message)||String(e||""));
+    let msg;
+    if(raw.indexOf("no-ai-key")>=0) msg="העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini · כלים ושירותים → עוזר חכם).";
+    else if(/network|bad-response|drive-not-configured|unauthorized|token/.test(raw)) msg=driveErrHe(e);
+    else msg="שגיאה: "+raw;
+    if(wait&&wait.parentNode) wait.textContent=msg; else aiBubble("bot",msg);
+  }finally{
+    aiBusy=false; if(sendBtn) sendBtn.disabled=false; aiScroll();
+    if(wait&&wait.parentNode&&wait.textContent==="… חושב") wait.remove();
+  }
+}
+function openAiHelp(){ aiOpen(); }
+/* חיווט הפאנל — פעם אחת בטעינה */
+(function aiPanelInit(){
+  const p=document.getElementById("aiPanel"); if(!p) return;
+  document.getElementById("aiClose").onclick=aiClose;
+  document.getElementById("aiSend").onclick=aiSend;
+  document.getElementById("aiClear").onclick=()=>{
+    if(aiConvo.length && !confirm("להתחיל שיחה חדשה? ההיסטוריה תימחק.")) return;
+    aiConvo=[]; document.getElementById("aiMsgs").innerHTML="";
+    aiBubble("bot","שיחה חדשה 🙂 במה אפשר לעזור?");
+  };
+  const inp=document.getElementById("aiInput");
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); aiSend(); } });
+  inp.addEventListener("input",()=>{ inp.style.height="auto"; inp.style.height=Math.min(inp.scrollHeight,120)+"px"; });
+  /* גרירת הידית לשינוי רוחב */
+  const grip=document.getElementById("aiGrip");
+  let drag=false;
+  const setW=w=>{ w=Math.max(300,Math.min(w, Math.round(window.innerWidth*0.7)));
+    document.documentElement.style.setProperty("--ai-w", w+"px");
+    try{ localStorage.setItem("rg-ai-w", String(w)); }catch(e){} };
+  try{ const w=+localStorage.getItem("rg-ai-w"); if(w) setW(w); }catch(e){}
+  grip.addEventListener("pointerdown",e=>{ drag=true; grip.setPointerCapture(e.pointerId); e.preventDefault(); });
+  grip.addEventListener("pointermove",e=>{ if(drag) setW(window.innerWidth - e.clientX); });
+  grip.addEventListener("pointerup",()=>{ drag=false; });
+  /* פתיחה מחדש אם הפאנל היה פתוח בביקור הקודם */
+  try{ if(localStorage.getItem("rg-ai-open")==="1") setTimeout(()=>{ if(!document.body.classList.contains("locked")) aiOpen(); }, 800); }catch(e){}
+})();
+
 /* ============================================================
    כלים ושירותים — חיבורים ופעולות תפעוליות (דרייב, טופס דיגיטלי, נדרים,
    עוזר AI, דיוק מפה, גיבוי) — הופרדו מ"הגדרות" לניהול נוח יותר.
