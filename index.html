@@ -5068,6 +5068,54 @@ function geoDropHouseNo(q){
   const head=q.slice(0,i).trim(), street=head.replace(/\s+\d+\s*[א-ת]?$/,"").trim();
   return (street && street!==head) ? street+q.slice(i) : "";
 }
+/* ===== מפת רחובות מקומית מהגנים שהוצבו ידנית ==============================
+   כשספקי המפות אינם מכסים את העיר, הידיעה האמינה היחידה היא של המשתמש עצמו:
+   כל גן שהוצב ידנית הוא נקודה מדויקת עם כתובת אמיתית. תלמידה שגרה באותו רחוב
+   מקבלת מיקום מקורב לפיו — טוב בהרבה מ"אין מיקום", ומסומן בבירור כמקורב. */
+function normStreet(v){
+  return String(v||"").trim().replace(/["'׳״]/g,"").replace(/\s+/g," ")
+    .replace(/^(רח['׳]?|רחוב)\s+/,"").trim();
+}
+/* פיצול "נתיבות המשפט 75" → {street:"נתיבות המשפט", no:75} */
+function splitStreetNo(v){
+  const t=normStreet(v); const m=t.match(/^(.*?)[\s,]+(\d+)\s*[א-ת]?$/);
+  return m ? { street:normStreet(m[1]), no:+m[2] } : { street:t, no:null };
+}
+function ganStreetParts(g){
+  const cand=[String(g.address||"").trim(), String(g.street||"").trim()];
+  const raw=cand.find(p=>p && /[א-ת]/.test(p)) || "";
+  if(!raw) return { street:"", no:null };
+  const p=splitStreetNo(raw);
+  if(p.no==null){ const n=String(g.building||"").trim(); if(/^\d+$/.test(n)) p.no=+n; }
+  return p;
+}
+/* נקודה מקורבת לרחוב, לפי הגנים שהוצבו ידנית באותו רחוב ובאותה עיר.
+   כשיש כמה — נבחר הגן שמספר הבית שלו הקרוב ביותר. */
+function streetPointFromGans(street, city, houseNo){
+  const s=normStreet(street); if(!s) return null;
+  const c=normCityName(city||"");
+  const hits=[];
+  (DB.gans||[]).forEach(g=>{
+    if(!(g.geo && g.geo.manual && g.geo.lat!=null)) return;
+    if(c && ganCity(g)!==c) return;
+    const p=ganStreetParts(g);
+    if(p.street && p.street===s) hits.push({ lat:g.geo.lat, lng:g.geo.lng, no:p.no, id:g.id });
+  });
+  if(!hits.length) return null;
+  const n=(houseNo==null)?null:+houseNo;
+  let best=hits[0];
+  if(n!=null && isFinite(n)){
+    let bd=Infinity;
+    hits.forEach(h=>{ const d=(h.no==null)?1e6:Math.abs(h.no-n); if(d<bd){ bd=d; best=h; } });
+  }
+  return { lat:best.lat, lng:best.lng, source:"רחוב מוכר", street:s, fromGan:best.id };
+}
+/* הסרת סיומת המדינה. ליישוב שהספק אינו משייך ל-IL, הסיומת מושכת את ההתאמה
+   דווקא למקום אחר בעל אותו שם בתוך ישראל — ההפך מהכוונה. */
+function geoStripCountry(q){
+  const t=String(q||"").replace(/,\s*(ישראל|israel)\s*$/i,"").trim();
+  return (t && t!==String(q||"").trim()) ? t : "";
+}
 /* החלפת שם העיר בתוך שאילתה בנויה ("רחוב 16, עיר, ישראל") */
 function geoSwapCity(q, city, alt){
   const c=normCityName(city);
@@ -5078,6 +5126,8 @@ function geoSwapCity(q, city, alt){
    נעצרים בראשון שנופל בתוך רדיוס העיר. */
 function geoQueryCandidates(q, city){
   const out=[{ q, city, relaxed:false, alt:false }];
+  const noCountry=geoStripCountry(q);
+  if(noCountry) out.push({ q:noCountry, city, relaxed:false, alt:false, noCountry:true });
   const bare=geoDropHouseNo(q);
   if(bare) out.push({ q:bare, city, relaxed:true, alt:false });
   (CITY_ALT_NAMES[normCityName(city)]||[]).forEach(a=>{
@@ -5095,10 +5145,13 @@ function geocodeOnce(q, city, bias){
     if(g && geoNearCity(g, bias)) return { lat:g.lat, lng:g.lng, source:"google", partial:g.partial, locType:g.locType };
     const gWhy = g ? "Google החזיר מיקום מחוץ לעיר" : ("Google — "+(_geoBridgeErr||"לא מצא"));
     await new Promise(r=>setTimeout(r,1100));   // כיבוד מדיניות Nominatim (≤1/שנייה)
-    let url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=il&accept-language=he&q="+encodeURIComponent(q);
-    // הגבלה לתיבת העיר הנבחרת — מונע התאמה לרחוב באותו שם בעיר רחוקה
+    let url="https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=he&q="+encodeURIComponent(q);
+    // הגבלה לתיבת העיר הנבחרת — מונע התאמה לרחוב באותו שם בעיר רחוקה.
+    // כשיש תיבה היא ההגבלה הגיאוגרפית, ובמכוון בלי countrycodes: יישובי יהודה
+    // ושומרון מסווגים אצל הספקים מחוץ ל-IL, וסינון מדינה מוחק אותם לגמרי.
     if(bias&&bias.lat!=null){ const dLat=0.06, dLng=0.07;
       url+="&bounded=1&viewbox="+(bias.lng-dLng)+","+(bias.lat+dLat)+","+(bias.lng+dLng)+","+(bias.lat-dLat); }
+    else url+="&countrycodes=il";   // בלי תיבה — סינון מדינה הוא הגבול היחיד
     const r=await fetch(url,{ headers:{ "Accept":"application/json" } });
     if(!r.ok) throw new Error("geocode-http-"+r.status);
     const arr=await r.json();
@@ -5130,12 +5183,23 @@ async function ensureGeo(ent, q, force, city, bias){
   let pt=null, why="", outCity=false;
   for(const cand of geoQueryCandidates(q, city)){
     let r=null; try{ r=await geocodeOnce(cand.q, cand.city, bias); }catch(e){ r=null; }
-    if(!r){ if(!why) why=_geoWhy; else if(cand.relaxed) why+=" · גם בלי מספר בית";
+    if(!r){ if(!why) why=_geoWhy; else if(cand.noCountry) why+=" · גם בלי סיומת המדינה";
+            else if(cand.relaxed) why+=" · גם בלי מספר בית";
             else if(cand.alt) why+=" · גם בשם "+cand.city; continue; }
     // דחיית תוצאה שנפלה מחוץ לרדיוס — עדיף להמשיך לניסיון הבא מאשר לקבוע
     // מיקום שגוי (רחוב באותו שם בעיר אחרת).
     if(bias && bias.lat!=null && haversineKm(r,bias) > MAP_CITY_RADIUS_KM){ outCity=true; continue; }
     pt=r; pt.relaxed=cand.relaxed; pt.altCity=cand.alt?cand.city:""; break;
+  }
+  // מוצא אחרון לפני ויתור: מפת הרחובות המקומית שנבנתה מהצבות ידניות.
+  if(!pt){
+    const parts=splitStreetNo(String(q||"").split(",")[0]);
+    const sp=streetPointFromGans(parts.street, city, parts.no);
+    if(sp && geoNearCity(sp, bias)){
+      ent.geo={ lat:sp.lat, lng:sp.lng, q, source:sp.source, locType:"STREET",
+                partial:true, approx:true, relaxed:false, altCity:"", byStreet:sp.street };
+      return ent.geo;
+    }
   }
   if(!pt && outCity){
     ent.geo = { lat:null, lng:null, q, tried:true, outCity:true,
@@ -5890,6 +5954,7 @@ function proxPanelHtml(st, idp){
 function proxDiagHtml(st, sgeo, bias, list){
   const co=p=>(p&&p.lat!=null)?(p.lat.toFixed(5)+", "+p.lng.toFixed(5)):"—";
   const src=p=>!p||p.lat==null?"—":(p.manual?"ידני":esc(p.source||"אוטומטי")
+    +(p.byStreet?" · לפי רחוב "+esc(p.byStreet)+" מהגנים":"")
     +(p.altCity?" · לפי השם "+esc(p.altCity):"")+(p.relaxed?" · מרכז הרחוב":(p.approx?" · מקורב":"")));
   const srcName={manual:"הגנים שהוצבו ידנית",geocode:"גאוקוד שם העיר",median:"חציון הנקודות"};
   const anchor=(bias&&bias.lat!=null)?`${co(bias)} · לפי ${esc(srcName[bias.src]||"לא ידוע")}`:"לא נקבע ⚠";

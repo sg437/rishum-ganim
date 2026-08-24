@@ -416,7 +416,9 @@ function geocode_(q, city, bias){
 function geocodeGoogleCall_(q, city, bias, key){
   var url = 'https://maps.googleapis.com/maps/api/geocode/json?region=il&language=he&address='
             + encodeURIComponent(q) + '&key=' + encodeURIComponent(key);
-  if(city) url += '&components=' + encodeURIComponent('locality:' + city + '|country:IL');
+  // נעילה לעיר בלבד, בלי country:IL — יישובי יהודה ושומרון מסווגים אצל Google
+  // מחוץ ל-IL, וסינון מדינה מחזיר ZERO_RESULTS לכל כתובת בהם.
+  if(city) url += '&components=' + encodeURIComponent('locality:' + city);
   if(bias && bias.lat != null && bias.lng != null){
     var dLat = 0.06, dLng = 0.07;   // ~6-8 ק"מ סביב מרכז העיר
     var sw = (bias.lat - dLat) + ',' + (bias.lng - dLng);
