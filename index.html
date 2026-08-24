@@ -3076,7 +3076,24 @@ async function driveCall(action, payload){
   }
   throw new Error("drive-error");
 }
-async function drivePing(){ const res=await driveCall("ping",{}); if(res.rootLink){ DB.settings.drive=DB.settings.drive||{}; DB.settings.drive.rootLink=res.rootLink; save(); } return res; }
+/* גרסת הגשר שממנה קיימת "שליחת מסמך למייל" (פעולת mailDoc).
+   הגרסה שנפרסה בפועל מוחזרת מ"ping" — כך אפשר לדעת בוודאות אם הפריסה נקלטה,
+   במקום לנחש (שמירת הקוד בעורך Apps Script אינה פריסה!). */
+const BRIDGE_VER_MAILDOC = "2026-08-25";
+let bridgeVersion = null;   // הגרסה החיה שהוחזרה מהגשר בבדיקת החיבור האחרונה
+function bridgeHasMailDoc(){ return !!bridgeVersion && String(bridgeVersion) >= BRIDGE_VER_MAILDOC; }
+async function drivePing(){
+  const res=await driveCall("ping",{});
+  bridgeVersion = res.version || "";   // גשר ישן אינו מחזיר גרסה כלל
+  if(res.rootLink){ DB.settings.drive=DB.settings.drive||{}; DB.settings.drive.rootLink=res.rootLink; save(); }
+  return res;
+}
+/* טקסט אבחון אחיד — למה "שליחה למייל" עדיין לא עובדת ומה לעשות */
+function bridgeRedeployHelp(){
+  return `הגשר שמותקן כרגע אינו מכיר את פעולת <b>mailDoc</b>${bridgeVersion?` (גרסת הגשר החיה: <b>${esc(bridgeVersion)}</b>, דרושה ${esc(BRIDGE_VER_MAILDOC)} ומעלה)`:` (הגשר החי אינו מדווח גרסה — כלומר נפרסה גרסה ישנה)`}.<br>
+  1. להעתיק את <b>APPS_SCRIPT.gs מענף main</b> (הקובץ העדכני) אל <b>Code.gs</b> — ולוודא שהשורה <code>case 'mailDoc'</code> אכן מופיעה בקובץ שהודבק.<br>
+  2. <b>Deploy → Manage deployments → ✏️ עריכה → Version: New version → Deploy</b>. שמירת הקוד בעורך <b>אינה</b> פריסה, וכתובת ה-exec חייבת להישאר אותה כתובת.`;
+}
 async function driveEnsureChildFolder(student){
   if(student.driveFolderId) return student.driveFolderId; // תיקייה קיימת — לא ליצור מחדש (שומר על מבנה קודם)
   const nm=([student.lastName,student.firstName].filter(Boolean).join(" ")+(student.tz?(" · "+student.tz):"")) || ("ילדה "+student.id);
@@ -3323,8 +3340,9 @@ function renderDriveBox(){
   const auto=!!DB.settings.sheetAuto;
   box.innerHTML=`
     <div class="note">✅ חיבור הדרייב פעיל דרך הגשר. כל משתמש בתוכנה יכול ליצור תיקיות, להעלות ולצפות במסמכים — מהמייל שלו, בלי חיבור Google אישי.</div>
+    <div id="drive-ver" class="hint" style="margin-top:8px"></div>
     <div class="row" style="margin-top:10px;flex-wrap:wrap">
-      <button class="btn ghost" id="drive-ping" type="button">🔄 בדיקת חיבור</button>
+      <button class="btn ghost" id="drive-ping" type="button">🔄 בדיקת חיבור וגרסה</button>
       ${d.rootLink?`<a class="btn ghost" href="${esc(d.rootLink)}" target="_blank">📂 פתח תיקיית האב בדרייב</a>`:''}
       <button class="btn ghost" id="drive-reorg" type="button" title="מבנה: חינוך → שנה → גן → ילדה">🗂️ ארגן תיקיות תלמידות לפי גן</button>
     </div>
@@ -3354,7 +3372,16 @@ function renderDriveBox(){
       </div>
       <div id="drive-shares" style="margin-top:8px"></div>
     </div>`;
-  $("#drive-ping").onclick=async ()=>{ try{ await drivePing(); toast("החיבור לגשר תקין ✓"); renderDriveBox(); }catch(e){ toast(driveErrHe(e)); } };
+  /* חיווי גרסת הגשר החיה — עונה על "פרסתי, למה זה עדיין לא עובד?" */
+  const paintVer=()=>{ const el=$("#drive-ver"); if(!el) return;
+    if(bridgeVersion===null){ el.innerHTML=`לחצ/י <b>🔄 בדיקת חיבור וגרסה</b> כדי לראות איזו גרסה של הגשר פרוסה בפועל.`; return; }
+    el.innerHTML = bridgeHasMailDoc()
+      ? `<b style="color:var(--good)">גרסת הגשר החיה: ${esc(bridgeVersion)} ✓</b> — שליחת מסמך למייל נתמכת.`
+      : `<b style="color:var(--bad)">שליחת מסמך למייל אינה נתמכת בגשר שפרוס כרגע.</b><br>${bridgeRedeployHelp()}`;
+  };
+  paintVer();
+  $("#drive-ping").onclick=async ()=>{ try{ await drivePing(); toast("החיבור לגשר תקין ✓"); renderDriveBox(); }
+    catch(e){ toast(driveErrHe(e)); } };
   { const rb=$("#drive-reorg"); if(rb) rb.onclick=openReorgFolders; }
   const sheetBtn=$("#sheet-sync"); if(sheetBtn) sheetBtn.onclick=()=>syncToSheets(false);
   const sheetAuto=$("#sheet-auto"); if(sheetAuto) sheetAuto.onchange=()=>{ DB.settings=DB.settings||{}; DB.settings.sheetAuto=sheetAuto.checked; save(); toast(sheetAuto.checked?"שיקוף אוטומטי הופעל":"שיקוף אוטומטי כובה"); };
@@ -7036,9 +7063,10 @@ async function shareReportDoc(opts){
       shareDocClose(); toast("המסמך נשלח אל "+list.join(", ")+" ✓");
     }catch(e){
       const m=String((e&&e.message)||e||"");
-      msg('<b style="color:var(--bad)">'+esc(m.indexOf("unknown-action")>=0
-        ? 'הגשר לא נפרס מחדש (חסרה פעולת mailDoc) — יש לפרוס גרסה חדשה של הגשר (ראה SETUP.md).'
-        : driveErrHe(e))+'</b>');
+      if(m.indexOf("unknown-action")>=0){
+        try{ await drivePing(); }catch(_){}          // לשלוף את גרסת הגשר החיה לצורך האבחון
+        msg('<div style="color:var(--bad);font-weight:700;line-height:1.6">'+bridgeRedeployHelp()+'</div>');
+      } else msg('<b style="color:var(--bad)">'+esc(driveErrHe(e))+'</b>');
       busy(false);
     }
   };

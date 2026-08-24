@@ -28,6 +28,11 @@ var FIREBASE_PROJECT_ID = 'rishum-ganim-fad40';
 // ב-firestore.rules. מיילים באותיות קטנות בלבד.
 var OWNER_EMAILS = ['7684252sg@gmail.com', 'sg@taharat.org'];
 
+// גרסת הגשר — מוחזרת ב"בדיקת חיבור" בתוכנה, כדי לדעת בוודאות איזו גרסה *נפרסה בפועל*
+// (שמירת הקוד בעורך אינה מספיקה — חייבים לפרוס גרסה חדשה). יש להעלות את התאריך
+// בכל שינוי שמוסיף/משנה פעולה בגשר.
+var BRIDGE_VERSION = '2026-08-25';
+
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
 
@@ -501,7 +506,7 @@ function sub_(parent, name){
 
 function ping_(){
   var r = root_();
-  return { ok:true, rootId:r.getId(), rootLink:r.getUrl() };
+  return { ok:true, rootId:r.getId(), rootLink:r.getUrl(), version:BRIDGE_VERSION };
 }
 /* שם תיקיית החינוך הראשית — חלוקה ל"חינוך רגיל" / "חינוך מיוחד" (סעיף 12) */
 function eduFolderName_(edu){

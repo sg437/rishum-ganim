@@ -47,7 +47,7 @@ Object.defineProperty(window,'_geoGoogle',{get:()=>_geoGoogle,set:v=>{_geoGoogle
 window.__setDriveCall=fn=>{ driveCall=fn; };   // הצהרת פונקציה — ניתנת להחלפה בתוך המודול
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, bridgeErrHe, mapPlaceSave, save });
+  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, drivePing, bridgeHasMailDoc, shareReportDoc, shareDocClose, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, bridgeErrHe, mapPlaceSave, save });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -87,7 +87,8 @@ const server=require('http').createServer((req,res)=>{
   const errors=[];
   pg.on('pageerror',e=>errors.push('pageerror: '+e.message));
   // בקשות רשת שנכשלות אינן תקלה: חלק מהבדיקות מריצות בכוונה את מסלול "הגאוקודר לא זמין"
-  const BENIGN=/Failed to load resource|net::ERR_/;
+  // ספריות ה-PDF נטענות מ-CDN שחסום בבדיקה — נפילת הטעינה צפויה כאן (יש נפילה למסמך HTML)
+  const BENIGN=/Failed to load resource|net::ERR_|pdf-fail/;
   pg.on('console',m=>{ if(m.type()==='error' && !BENIGN.test(m.text())) errors.push('console: '+m.text()); });
   await pg.route('**',r=>{ const u=r.request().url();
     if(u.startsWith('http://127.0.0.1:'+PORT+'/')) return r.continue();
@@ -802,6 +803,30 @@ const server=require('http').createServer((req,res)=>{
       if(!re.test(t)) return code+' → "'+t+'"'; 
       if(t===code) return code+' לא תורגם'; }
     if(/גרסה ישנה/.test(bridgeErrHe('bad-response:200:OK'))) return 'bad-response עדיין מאשים בגרסה ישנה';
+    return true; }));
+
+  await step('גרסת הגשר החיה קובעת אם "שליחה למייל" נתמכת', async()=>await pg.evaluate(async()=>{
+    __forceDriveReady();
+    // גשר ישן — אינו מדווח גרסה כלל
+    __setDriveCall(async a=> a==='ping' ? { ok:true, rootId:'r', rootLink:'https://drive/x' } : { ok:true });
+    await drivePing(); const oldBridge = bridgeHasMailDoc();
+    // גשר מעודכן
+    __setDriveCall(async a=> a==='ping' ? { ok:true, rootId:'r', rootLink:'https://drive/x', version:'2026-08-25' } : { ok:true });
+    await drivePing(); const newBridge = bridgeHasMailDoc();
+    return oldBridge===false && newBridge===true; }));
+  await step('כשל mailDoc מציג הנחיית פריסה מדויקת עם הגרסה החיה', async()=>await pg.evaluate(async()=>{
+    __forceDriveReady();
+    __setDriveCall(async a=>{ if(a==='ping') return { ok:true, rootId:'r', rootLink:'https://drive/x', version:'2026-01-01' };
+      throw new Error('unknown-action'); });
+    await shareReportDoc({ title:'בדיקה', subtitle:'', headers:['a'], rows:[['x']] });
+    const inp=document.querySelector('#sd-to'); inp.value='a@b.com';
+    document.querySelector('#sd-send').click();
+    await new Promise(r=>setTimeout(r,2500));
+    const t=document.querySelector('#sd-msg').textContent;
+    shareDocClose();
+    if(!t.includes('mailDoc')) return 'אין אזכור ל-mailDoc: '+t.slice(0,120);
+    if(!t.includes('2026-01-01')) return 'לא מוצגת גרסת הגשר החיה: '+t.slice(0,120);
+    if(!t.includes('New version')) return 'חסרה הנחיית הפריסה: '+t.slice(0,120);
     return true; }));
 
   /* ---- Distance Matrix מוגבל ל-25 יעדים בבקשה ---- */
