@@ -23,17 +23,11 @@
 <meta name="apple-mobile-web-app-title" content="רשת הגנים">
 <style>
 :root{
-  --bg:#f6f2e9;--surface:#fffdf7;--surface-2:#efe9db;--ink:#182b20;--ink-soft:#48594e;
-  --muted:#8a9488;--border:#e4dccb;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e0ecdf;
-  --brass:#a97f2e;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a2691c;--warn-soft:#f3e6cd;
-  --bad:#a5342b;--bad-soft:#f5dcd9;--over1:#7b3fb3;--over1-soft:#ece0f7;
-  --shadow:0 2px 6px rgba(24,43,32,.06),0 14px 34px rgba(24,43,32,.09);--radius:16px}
-@media(prefers-color-scheme:dark){:root{--bg:#0e150f;--surface:#15201a;--surface-2:#1c2a22;--ink:#edf3ec;
-  --ink-soft:#aebcae;--muted:#6f7d70;--border:#26362b;--accent:#4aa877;--accent-strong:#6fce9c;--accent-soft:#16281e;
-  --brass:#d3a956;--good:#54b888;--good-soft:#123527;--warn:#d3a45c;--warn-soft:#2e2411;
-  --bad:#e07b6f;--bad-soft:#3a1c18;--over1:#c39be8;--over1-soft:#2a1f3a;--shadow:0 2px 6px rgba(0,0,0,.4),0 16px 40px rgba(0,0,0,.5)}}
-:root[data-theme="light"]{--bg:#f6f2e9;--surface:#fffdf7;--surface-2:#efe9db;--ink:#182b20;--ink-soft:#48594e;--muted:#8a9488;--border:#e4dccb;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e0ecdf;--good:#2c7a52;--good-soft:#d7ecdf;--warn:#a2691c;--warn-soft:#f3e6cd;--bad:#a5342b;--bad-soft:#f5dcd9;--over1:#7b3fb3;--over1-soft:#ece0f7}
-:root[data-theme="dark"]{--bg:#0e150f;--surface:#15201a;--surface-2:#1c2a22;--ink:#edf3ec;--ink-soft:#aebcae;--muted:#6f7d70;--border:#26362b;--accent:#4aa877;--accent-strong:#6fce9c;--accent-soft:#16281e;--good:#54b888;--good-soft:#123527;--warn:#d3a45c;--warn-soft:#2e2411;--bad:#e07b6f;--bad-soft:#3a1c18;--over1:#c39be8;--over1-soft:#2a1f3a}
+  --bg:#f4f6f4;--surface:#ffffff;--surface-2:#f0f3f0;--ink:#17241d;--ink-soft:#4a564e;--muted:#7f8a82;--border:#e2e7e2;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e8f0ea;--brass:#9a7429;--good:#2f7a53;--good-soft:#e6f0e9;--warn:#96661f;--warn-soft:#f4ecdf;--bad:#a03b32;--bad-soft:#f6e7e5;--over1:#6b4c9a;--over1-soft:#ece8f4;
+  --shadow:0 1px 2px rgba(23,36,29,.04),0 6px 18px rgba(23,36,29,.06);--radius:14px}
+@media(prefers-color-scheme:dark){:root{--bg:#101614;--surface:#182019;--surface-2:#1e2823;--ink:#e9efea;--ink-soft:#a9b6ac;--muted:#74827a;--border:#2a352e;--accent:#4aa877;--accent-strong:#7ed2a3;--accent-soft:#1b2a22;--brass:#c9a35a;--good:#5cb98a;--good-soft:#16291f;--warn:#c9a163;--warn-soft:#2a2318;--bad:#d98478;--bad-soft:#33201d;--over1:#b09ad8;--over1-soft:#241f30;--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.42)}}
+:root[data-theme="light"]{--bg:#f4f6f4;--surface:#ffffff;--surface-2:#f0f3f0;--ink:#17241d;--ink-soft:#4a564e;--muted:#7f8a82;--border:#e2e7e2;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e8f0ea;--brass:#9a7429;--good:#2f7a53;--good-soft:#e6f0e9;--warn:#96661f;--warn-soft:#f4ecdf;--bad:#a03b32;--bad-soft:#f6e7e5;--over1:#6b4c9a;--over1-soft:#ece8f4}
+:root[data-theme="dark"]{--bg:#101614;--surface:#182019;--surface-2:#1e2823;--ink:#e9efea;--ink-soft:#a9b6ac;--muted:#74827a;--border:#2a352e;--accent:#4aa877;--accent-strong:#7ed2a3;--accent-soft:#1b2a22;--brass:#c9a35a;--good:#5cb98a;--good-soft:#16291f;--warn:#c9a163;--warn-soft:#2a2318;--bad:#d98478;--bad-soft:#33201d;--over1:#b09ad8;--over1-soft:#241f30}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);direction:rtl;line-height:1.55;
   font-family:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif;font-size:15px}
@@ -59,12 +53,14 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .top-chips{display:flex;align-items:center;gap:7px}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-weight:800;font-size:.84rem;white-space:nowrap}
 /* כפתורי פעולה קטנים: ניווט (Waze/מפות), חיוג, מייל */
-.act{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);text-decoration:none;font-size:.95rem;line-height:1;margin-inline-start:4px;vertical-align:middle;flex:0 0 auto}
+.act{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);text-decoration:none;font-size:.95rem;line-height:1;margin-inline-start:4px;vertical-align:middle;flex:0 0 auto;cursor:pointer;padding:0;color:inherit}
 .act:hover{border-color:var(--accent);background:var(--accent-soft,var(--surface))}
 .actgrp{display:inline-flex;align-items:center;gap:0}
 .fieldwrap{display:flex;gap:5px;align-items:stretch}
 .fieldwrap>input{flex:1;min-width:0}
 .fieldwrap>.act{width:38px;height:auto;cursor:pointer}
+.fieldwrap.tel>.act{width:30px;margin-inline-start:3px}
+.fieldwrap.tel>input{min-width:5.5em}
 .chip.year{background:var(--accent-soft);color:var(--accent-strong)}
 .chip.edu{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--border)}
 .chip.edu.reg{background:var(--good-soft);color:var(--good);border-color:transparent}
@@ -191,7 +187,7 @@ main{max-width:1200px;margin:0 auto;padding:18px 16px 80px}
 .filter-panel{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:var(--surface-2)}
 .filter-panel[hidden]{display:none}
 tbody tr.clickable{cursor:pointer}
-tbody tr.clickable:hover{background:var(--accent-soft)}
+tbody tr.clickable:hover{background:var(--surface-2)}
 
 /* toolbar */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
@@ -213,13 +209,13 @@ tbody tr.clickable:hover{background:var(--accent-soft)}
 
 /* table */
 .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
-table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:720px}
-th,td{padding:9px 11px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
-th{background:var(--surface-2);font-weight:800;color:var(--ink-soft);position:sticky;top:0}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:680px}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:var(--surface-2);font-weight:700;font-size:.79rem;color:var(--muted);letter-spacing:.02em;position:sticky;top:0}
 tbody tr:hover{background:var(--surface-2)}
 td.actions{white-space:nowrap}
 .empty{padding:34px;text-align:center;color:var(--muted)}
-.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.76rem;font-weight:800}
+.pill{display:inline-block;padding:2px 9px;border-radius:7px;font-size:.75rem;font-weight:700;letter-spacing:.01em}
 .pill.ok{background:var(--good-soft);color:var(--good)}
 .pill.no{background:var(--bad-soft);color:var(--bad)}
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
@@ -231,11 +227,11 @@ td.actions{white-space:nowrap}
 
 /* stat cards */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-.stat{background:linear-gradient(200deg,var(--surface-2),var(--surface));border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 15px}
 .stat .k{font-size:.78rem;color:var(--muted);font-weight:700}
 .stat .v{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin-top:2px}
 .stat .v small{font-size:.9rem;color:var(--muted);font-weight:700}
-.stat.hero{background:radial-gradient(120% 140% at 88% -20%,color-mix(in srgb,var(--accent) 26%,transparent),transparent 60%),linear-gradient(200deg,var(--surface-2),var(--surface))}
+.stat.hero{background:var(--surface);border-color:color-mix(in srgb,var(--accent) 32%,var(--border))}
 
 .bar{height:9px;background:var(--surface-2);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
 .bar > i{display:block;height:100%;background:var(--accent);border-radius:999px}
@@ -309,10 +305,9 @@ body.locked .top-chips,body.locked .hamburger,body.locked .backbtn{display:none!
 /* ===== Evergreen polish · phase 3 (refinement) ===== */
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
 .pill{display:inline-flex;align-items:center;gap:5px}
-.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
 .pill.neutral::before{opacity:.55}
 .table-wrap{border-radius:16px}
-.brand .logo,.drawer-head .logo{background:linear-gradient(145deg,var(--accent),var(--accent-strong))}
+.brand .logo,.drawer-head .logo{background:var(--accent-strong)}
 .icon-btn{transition:background .18s,border-color .18s,color .18s,transform .15s}
 .icon-btn:hover{border-color:var(--accent);color:var(--accent-strong);transform:translateY(-1px)}
 
@@ -366,6 +361,120 @@ fieldset{border-radius:14px}
 .map-fold[open]>summary::before{transform:rotate(90deg)}
 .map-fold>summary:hover{color:var(--accent-strong)}
 .map-fold-body{padding:0 14px 14px}
+
+/* ---- לשונית התלמידות: טבלה נקייה + תיק מקוצר בצד ---- */
+/* הבמה: הטבלה בצד אחד, התיק המקוצר בצד השני */
+.stu-stage{display:flex;gap:14px;align-items:flex-start}
+.stu-stage>#stuTable{flex:1 1 0;min-width:0}
+/* ראשי תיבות של התלמידה — מזהה ויזואלי שקט במקום צבע */
+.ini{width:34px;height:34px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);
+  color:var(--ink-soft);display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:0 0 auto;line-height:1}
+tr.sel .ini{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 34%,var(--border));color:var(--accent-strong)}
+/* תא הזהות: שם למעלה, ת"ז וגיל מתחת */
+.idcell{display:flex;align-items:center;gap:9px}
+.idcell .nm{font-weight:700;line-height:1.25}
+.idcell .sub{font-size:.74rem;color:var(--muted);font-weight:600;margin-top:1px}
+/* תא הגן: שם הגן ומתחתיו מצב השיבוץ */
+.gancell .g{font-weight:700}
+.gancell .st{font-size:.76rem;font-weight:700;margin-top:1px;display:inline-flex;align-items:center;gap:4px}
+/* תגיות מסמכים — קצרות במקום נקודות */
+.docchips{display:inline-flex;gap:3px}
+.docchip{min-width:26px;padding:1px 5px;border-radius:6px;font-size:.68rem;font-weight:700;text-align:center;
+  background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.docchip.on{background:var(--good-soft);color:var(--good);border-color:color-mix(in srgb,var(--good) 28%,var(--border))}
+/* עמודת "סימונים" — תגיות מאוחדות (תוכניות · שונות · הערה) */
+.tags{display:flex;flex-wrap:wrap;gap:3px;max-width:230px;white-space:normal}
+/* שורה נבחרת — פס מבטא בקצה, בלי צבע רועש */
+tbody tr.sel{background:var(--accent-soft)}
+tbody tr.sel>td:first-child{box-shadow:inset 3px 0 0 0 var(--accent)}
+html[dir="rtl"] tbody tr.sel>td:first-child{box-shadow:inset -3px 0 0 0 var(--accent)}
+td,th{vertical-align:middle}
+tbody td{padding-block:8px}
+
+/* צ׳יפים של סינון פעיל */
+.fchips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+.fchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700;
+  background:var(--accent-soft);color:var(--accent-strong);border:1px solid color-mix(in srgb,var(--accent) 26%,var(--border))}
+.fchip button{background:none;border:0;padding:0;color:inherit;font-size:.95rem;line-height:1;opacity:.7;cursor:pointer}
+.fchip button:hover{opacity:1}
+.fchips .clr{background:none;border:0;color:var(--muted);font-weight:700;font-size:.8rem;text-decoration:underline;cursor:pointer;padding:0 4px}
+.fchips .clr:hover{color:var(--accent-strong)}
+
+/* פס בחירה תחתון */
+.selbar{position:sticky;bottom:10px;z-index:5;margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--accent-strong);color:#fff;border-radius:12px;padding:10px 14px;box-shadow:var(--shadow)}
+.selbar b{margin-inline-end:auto}
+.selbar .btn{background:rgba(255,255,255,.14);color:#fff}
+.selbar .btn:hover{background:rgba(255,255,255,.24)}
+.selbar .btn.light{background:#fff;color:var(--accent-strong)}
+
+/* ---- תיק מקוצר בצד (Quick view) ---- */
+.stu-quick{flex:0 0 296px;width:296px;position:sticky;top:70px;max-height:calc(100vh - 92px);overflow:auto;
+  display:flex;flex-direction:column;gap:12px}
+.stu-quick.empty-state{display:none}
+.qcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.qhead{display:flex;align-items:flex-start;gap:10px}
+.qhead .ini{width:44px;height:44px;border-radius:11px;font-size:.95rem;background:var(--accent-soft);
+  border-color:color-mix(in srgb,var(--accent) 30%,var(--border));color:var(--accent-strong)}
+.qhead .qname{font-weight:800;font-size:1.02rem;line-height:1.3}
+.qhead .qtz{font-size:.78rem;color:var(--muted);font-weight:600}
+.qclose{margin-inline-start:auto;background:none;border:0;color:var(--muted);font-size:1rem;cursor:pointer;padding:2px 4px;line-height:1}
+.qclose:hover{color:var(--ink)}
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-top:12px}
+.qgrid.one{grid-template-columns:1fr}
+.qf .k{font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:1px}
+.qf .v{font-weight:700;font-size:.88rem;word-break:break-word}
+.qf .v.dim{color:var(--muted);font-weight:600}
+.qsep{height:1px;background:var(--border);margin:12px 0}
+.qsec{font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:7px}
+.qdoc{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border);border-radius:9px;
+  margin-bottom:6px;font-size:.85rem;font-weight:700}
+.qdoc .mark{width:15px;text-align:center;flex:0 0 auto}
+.qdoc.on{background:var(--good-soft);border-color:color-mix(in srgb,var(--good) 26%,var(--border));color:var(--good)}
+.qdoc.off{color:var(--muted);font-weight:600}
+.qdoc .grow{margin-inline-start:auto;font-size:.76rem;font-weight:700}
+.qsib{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.qsib:last-child{border-bottom:0}
+.qsib:hover .qsib-nm{color:var(--accent-strong)}
+.qsib .ini{width:30px;height:30px;border-radius:8px;font-size:.72rem}
+.qsib-nm{font-weight:700;font-size:.86rem;line-height:1.25}
+.qsib-sub{font-size:.74rem;color:var(--muted);font-weight:600}
+.stu-quick .btn.full{width:100%;justify-content:center;display:flex}
+
+@media(max-width:1100px){
+  .stu-stage{flex-direction:column}
+  .stu-quick{position:static;flex:1 1 auto;width:100%;max-height:none;order:-1}
+}
+
+/* ---- עוזר חכם — פאנל צד נעוץ (סעיף 4) ---- */
+.aipanel{position:fixed;inset-block:0;inset-inline-end:0;width:var(--ai-w,380px);max-width:100vw;z-index:55;
+  background:var(--surface);border-inline-start:1px solid var(--border);box-shadow:-2px 0 18px rgba(0,0,0,.10);
+  display:none;flex-direction:column}
+.aipanel.open{display:flex}
+body.ai-docked{padding-inline-end:var(--ai-w,380px)}
+.aipanel-grip{position:absolute;inset-block:0;inset-inline-start:-3px;width:7px;cursor:ew-resize;z-index:2}
+.aipanel-grip:hover{background:var(--accent-soft)}
+.aipanel-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);flex:none}
+.aipanel-title{font-weight:800;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aipanel-btn{border:1px solid var(--border);background:var(--surface);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:.95rem;color:inherit;flex:none}
+.aipanel-btn:hover{border-color:var(--accent)}
+.aipanel-msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.aimsg{max-width:92%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;line-height:1.55;font-size:.92rem;word-break:break-word}
+.aimsg.user{align-self:flex-start;background:var(--accent-soft);color:var(--accent-strong)}
+.aimsg.bot{align-self:flex-end;background:var(--surface-2)}
+.aimsg.sys{align-self:center;background:transparent;color:var(--muted);font-size:.82rem;text-align:center;max-width:100%}
+.aiact{align-self:stretch;border:1px solid var(--accent);border-radius:12px;padding:9px 11px;background:var(--accent-soft);font-size:.88rem}
+.aiact b{display:block;margin-bottom:3px}
+.aiact .aiact-row{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.aiact.done{border-color:var(--good,#1a7f37);background:var(--good-soft,#e8f5ec)}
+.aiact.cancel{border-color:var(--border);background:var(--surface-2);opacity:.75}
+.aipanel-foot{flex:none;display:flex;gap:6px;align-items:flex-end;padding:10px 12px;border-top:1px solid var(--border);background:var(--surface-2)}
+.aipanel-foot textarea{flex:1;min-width:0;resize:none;max-height:120px}
+.aipanel-foot .btn{flex:none;padding:8px 14px}
+@media(max-width:900px){
+  .aipanel{width:100vw}
+  body.ai-docked{padding-inline-end:0}
+}
 </style>
 </head>
 <body>
@@ -431,6 +540,22 @@ fieldset{border-radius:14px}
 
 <div id="offlineBanner" style="display:none"></div>
 <main id="view"></main>
+
+<!-- עוזר חכם — פאנל צד נעוץ (סעיף 4) -->
+<aside class="aipanel" id="aiPanel" aria-label="עוזר חכם">
+  <div class="aipanel-grip" id="aiGrip" title="גרירה לשינוי רוחב"></div>
+  <div class="aipanel-head">
+    <span class="aipanel-title">🤖 עוזר חכם</span>
+    <span class="pill neutral" id="aiMode" title="מצב העוזר">…</span>
+    <button class="aipanel-btn" id="aiClear" title="שיחה חדשה">🗑️</button>
+    <button class="aipanel-btn" id="aiClose" title="סגירה" aria-label="סגירת העוזר">✕</button>
+  </div>
+  <div class="aipanel-msgs" id="aiMsgs"></div>
+  <div class="aipanel-foot">
+    <textarea id="aiInput" rows="2" placeholder="שאל/י שאלה — או בקש/י פעולה. למשל: כמה תלמידות בגן הדקל? · שבצי את שרה כהן לגן הדקל"></textarea>
+    <button class="btn" id="aiSend" title="שליחה (Enter)">➤</button>
+  </div>
+</aside>
 
 <!-- modal host -->
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
@@ -1555,6 +1680,76 @@ function ganOverflowMap(){
   });
   return map;
 }
+
+/* ============================================================
+   רף שיבוץ (סעיף 2) — מגבלה קשיחה על מספר המשובצות בגן.
+   שונה מ"קיבולת": הקיבולת היא חיווי צבע על *הרישום* (מותר לחרוג),
+   ואילו רף השיבוץ חוסם בפועל שיבוץ סופי מעבר למספר שהוגדר.
+   סדר העדיפויות לרף של גן: assignCap של הגן → ברירת מחדל לפי חינוך
+   (הגדרות → רף שיבוץ) → הקיבולת של הגן. 0 / ריק = ללא הגבלה.
+   ============================================================ */
+function assignCapDefaults(){
+  const d=(DB.settings&&DB.settings.assignCaps)||{};
+  return { 'רגיל': d['רגיל']==null?"":d['רגיל'], 'ח"מ': d['ח"מ']==null?"":d['ח"מ'],
+           useCapacity: d.useCapacity===true };   // כבוי כברירת מחדל — כדי שהעדכון לא יתחיל לחסום שיבוצים קיימים מעצמו
+}
+/* הרף האפקטיבי של גן (0 = ללא הגבלה) */
+function ganAssignCap(g){
+  if(!g) return 0;
+  const own=+String(g.assignCap??"").replace(/[^\d]/g,"")||0;
+  if(own) return own;
+  const d=assignCapDefaults();
+  const byEdu=+String(d[eduLabel(g)]??"").replace(/[^\d]/g,"")||0;
+  if(byEdu) return byEdu;
+  if(d.useCapacity) return +String(g.capacity??"").replace(/[^\d]/g,"")||0;
+  return 0;
+}
+/* מקור הרף — לתצוגה ("של הגן" / "ברירת מחדל" / "קיבולת") */
+function ganAssignCapSource(g){
+  if(!g) return "";
+  if(+String(g.assignCap??"").replace(/[^\d]/g,"")) return "רף של הגן";
+  const d=assignCapDefaults();
+  if(+String(d[eduLabel(g)]??"").replace(/[^\d]/g,"")) return "ברירת מחדל ל"+eduLabel(g);
+  if(d.useCapacity && +String(g.capacity??"").replace(/[^\d]/g,"")) return "קיבולת הגן";
+  return "";
+}
+/* מספר המשובצות בפועל בגן בשנה הפעילה (שיבוץ סופי, לא כולל שסיימו) */
+function ganAssignedCount(ganId, excludeStudentId){
+  return studentsOfYear().filter(s=>!s.finished && s.ganId===ganId && s.placed!==false
+    && s.id!==excludeStudentId).length;
+}
+/* מקומות פנויים לשיבוץ (Infinity = ללא הגבלה) */
+function ganAssignRoom(g, excludeStudentId){
+  const cap=ganAssignCap(g); if(!cap) return Infinity;
+  return cap - ganAssignedCount(g.id, excludeStudentId);
+}
+/* האם מותר לשבץ תלמידה לגן. מחזיר {ok, cap, count, msg} */
+function canAssignStudent(g, student){
+  const cap=ganAssignCap(g);
+  const exclude=student&&student.id;
+  const count=ganAssignedCount(g.id, exclude);
+  if(!cap) return { ok:true, cap:0, count, msg:"" };
+  if(count>=cap) return { ok:false, cap, count,
+    msg:'אין אפשרות לשבץ ל'+ganName(g.id)+' — הגן מלא ('+count+'/'+cap+'). '
+       +'אפשר להעלות את הרף בכרטיס הגן (לשונית גנים → "רף שיבוץ").' };
+  return { ok:true, cap, count, msg:"" };
+}
+/* שער אכיפה אחיד: מחזיר true אם מותר; אחרת מציג הודעה ומחזיר false */
+function assignGate(ganId, student, silent){
+  const g=ganById(ganId); if(!g) return true;
+  const r=canAssignStudent(g, student);
+  if(!r.ok && !silent) toast(r.msg);
+  return r.ok;
+}
+/* תגית "משובצות / רף" עם צבע (ירוק=פנוי · כתום=מלא · אדום=חריגה) */
+function assignCapPill(g){
+  const cap=ganAssignCap(g); const cnt=ganAssignedCount(g.id);
+  if(!cap) return `<span class="pill neutral" title="לא הוגדר רף שיבוץ">${cnt} / ∞</span>`;
+  const cls = cnt>cap ? 'no' : 'ok';
+  const style = cnt===cap ? ' style="background:var(--over1-soft);color:var(--over1)"' : '';
+  const title = cnt>cap ? 'חריגה מרף השיבוץ' : cnt===cap ? 'הגן מלא — לא ניתן לשבץ עוד' : 'יש מקום לשיבוץ';
+  return `<span class="pill ${cls}"${style} title="${esc(title)}">${cnt} / ${cap}</span>`;
+}
 function digits(s){ return String(s||"").replace(/\D/g,""); }
 /* בדיקת תקינות ת"ז ישראלי (ספרת ביקורת). מחזיר: true תקין · false שגוי · null ריק/קצר מכדי לבדוק */
 function isValidIsraeliId(id){
@@ -1582,8 +1777,9 @@ function eduLabel(x){ return x && x.education ? x.education : "רגיל"; } // �
 function eduBadge(x){ const e=eduLabel(x); return e==='ח"מ'?'<span class="pill warn">ח"מ</span>':'<span class="pill neutral">רגיל</span>'; }
 /* צבע רקע לפי גיל הגן: 3=ירוק בהיר · 4=סגול בהיר · 5=צהוב בהיר. דו-גילאי = מעבר בין שני הצבעים.
    נעשה שימוש ב-color-mix עם רקע המשטח כדי שהגוון יתאים גם למצב כהה. */
-const AGE_HUE = { "3":"#37b24d", "4":"#8b4fd4", "5":"#f0c000" };
-const AGE_MIX = 48; // עוצמת הגוון (אחוז מהצבע המלא) — גבוה יותר = צבע חזק יותר
+const AGE_HUE = { "3":"#4c9a6a", "4":"#7a6bb0", "5":"#b08a2e" };
+const AGE_MIX = 25; // עוצמת הגוון (אחוז מהצבע המלא) — מבדיל בין גלאים בבירור בלי לצעוק
+const AGE_MIX_SWATCH = 55; // ריבוע המקרא — חזק יותר, כדי שיהיה ברור מה מסמן כל צבע
 function ganAgeBg(gan){
   const ages=String(gan&&gan.age||"").split("/").map(x=>x.trim()).filter(Boolean);
   const cols=ages.map(a=>AGE_HUE[a]).filter(Boolean);
@@ -1593,7 +1789,7 @@ function ganAgeBg(gan){
 }
 /* מקרא צבעי הגילאים — פס קטן להצגה מתחת לרשימות/כרטיסים */
 function ageLegendHtml(){
-  const item=(a,lbl)=>`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);background:color-mix(in srgb, ${AGE_HUE[a]} ${AGE_MIX}%, var(--surface))"></span>גיל ${lbl}</span>`;
+  const item=(a,lbl)=>`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);background:color-mix(in srgb, ${AGE_HUE[a]} ${AGE_MIX_SWATCH}%, var(--surface))"></span>גיל ${lbl}</span>`;
   return `<div class="hint" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">${item("3","3")} ${item("4","4")} ${item("5","5")} <span style="color:var(--muted)">· גן דו-גילאי במעבר צבעים</span></div>`;
 }
 /* איתור כפילות ת"ז באותה שנה — כולל בין סוגי חינוך שונים (מניעת רישום כפול). מחזיר את הרשומה הקיימת או null */
@@ -1710,7 +1906,47 @@ function navBtns(addr){
     `<a class="act" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener" title="פתיחה במפות Google">🗺️</a>`+
   `</span>`;
 }
+/* ============================================================
+   פעולות ליד כל מספר טלפון (סעיף 6) — חיוג · וואטסאפ · SMS
+   בלי להעתיק את המספר: כל מקום שמוצג בו טלפון מקבל את הכפתורים.
+   ============================================================ */
+/* נרמול לפורמט בינלאומי לוואטסאפ (ישראל: 05X… → 9725X…) */
+function waNumber(p){
+  let d=String(p||"").replace(/\D/g,"");
+  if(!d) return "";
+  if(d.slice(0,3)==="972") return d;
+  if(d[0]==="0") return "972"+d.slice(1);
+  if(d.length===9 && d[0]==="5") return "972"+d;
+  return d;
+}
+function waHref(p, text){ const n=waNumber(p); if(!n) return ""; return "https://wa.me/"+n+(text?("?text="+encodeURIComponent(text)):""); }
+function smsHref(p, text){ const t=String(p||"").replace(/[^\d+]/g,""); if(!t) return ""; return "sms:"+t+(text?("?&body="+encodeURIComponent(text)):""); }
+/* האם המספר נראה כמו נייד (רק אז מציגים וואטסאפ/SMS) */
+function isMobileNum(p){ const d=String(p||"").replace(/\D/g,""); return /^05\d{8}$/.test(d) || /^9725\d{8}$/.test(d) || /^5\d{8}$/.test(d); }
 function callBtn(p){ const t=String(p||"").trim(); if(!t) return ""; return `<a class="act" href="${telHref(t)}" title="חיוג ל-${esc(t)}">📞</a>`; }
+/* קבוצת פעולות מלאה למספר: חיוג + (לנייד) וואטסאפ ו-SMS */
+function phoneBtns(p){
+  const t=String(p||"").trim(); if(!t) return "";
+  let h=`<span class="actgrp"><a class="act" href="${telHref(t)}" title="חיוג ל-${esc(t)}">📞</a>`;
+  if(isMobileNum(t)){
+    h+=`<a class="act" href="${waHref(t)}" target="_blank" rel="noopener" title="וואטסאפ ל-${esc(t)}">💬</a>`;
+    h+=`<a class="act" href="${smsHref(t)}" title="SMS ל-${esc(t)}">✉️</a>`;
+  }
+  return h+`</span>`;
+}
+/* תא טלפון מוכן לטבלה: המספר (כקישור חיוג) + כפתורי הפעולה.
+   compact=true → רק כפתור חיוג, לטבלאות צפופות (וואטסאפ/SMS זמינים בתיק ובטפסים). */
+function phoneCell(p, compact){
+  const t=String(p||"").trim(); if(!t) return "—";
+  const btns = compact ? `<a class="act" href="${telHref(t)}" title="חיוג ל-${esc(t)}">📞</a>` : phoneBtns(t);
+  return `<span style="white-space:nowrap"><a href="${telHref(t)}" dir="ltr">${esc(t)}</a> ${btns}</span>`;
+}
+/* כפתורי פעולה לשדה קלט בטופס (קוראים את הערך הנוכחי בעת הלחיצה) */
+function phoneFieldBtns(id){
+  return `<button type="button" class="act" data-call="${esc(id)}" title="חיוג">📞</button>`
+       + `<button type="button" class="act" data-wa="${esc(id)}" title="וואטסאפ">💬</button>`
+       + `<button type="button" class="act" data-sms="${esc(id)}" title="SMS">✉️</button>`;
+}
 function mailBtn(e){ const t=String(e||"").trim(); if(!t) return ""; return `<a class="act" href="mailto:${esc(t)}" title="שליחת מייל אל ${esc(t)}">✉️</a>`; }
 function applyBranding(){
   const t=appTitle(), sub=appSubtitle(); document.title=t+" · "+sub;
@@ -1916,7 +2152,7 @@ function makeGan(){ return {
   address:"", building:"", street:"", zone:"", phoneGan:"", phoneHome:"",
   teacherMobile:"", assistantName:"", assistantMobile:"",
   campus:"",   // קמפוס הגן — מקור האמת; אצל התלמידות נגזר מהגן
-  capacity:"", active:true, docsNote:"", createdAt:new Date().toISOString()
+  capacity:"", assignCap:"", active:true, docsNote:"", createdAt:new Date().toISOString()
 };}
 
 /* ============================================================
@@ -1933,6 +2169,7 @@ const TABS = [
   {id:"reports",   label:"דוחות ואחוזים", icon:"📊"},
   {id:"municipality", label:"עירייה", icon:"🏛️"},
   {id:"management",label:"הנהלה", icon:"📞"},
+  {id:"messages",  label:"הודעות", icon:"📣"},
   {id:"tools",     label:"כלים ושירותים", icon:"🧰"},
   {id:"settings",  label:"הגדרות", icon:"⚙️"},
   {id:"guide",     label:"מדריך", icon:"📖"}
@@ -2259,7 +2496,7 @@ function guideContent(){
     { icon:"🧒", title:"תלמידות — הוספת תיק וכל השדות", html:
       `<ol class="gd-steps">
         <li><b>➕ הוספת ילדה</b> → נפתח תיק; ממלאים פרטים אישיים, הורים וכתובת.</li>
-        <li><b>חיוג ומייל בלחיצה</b> — ליד שדות הטלפון (בית / נייד אב / נייד אם) יש כפתור <b>📞 חיוג</b>, וליד הדוא"ל כפתור <b>✉️ שליחת מייל</b>. הכפתור מחייג/פותח מייל לפי הערך <b>המעודכן בשדה</b> באותו רגע.</li>
+        <li><b>חיוג · וואטסאפ · SMS · מייל בלחיצה</b> — ליד <b>כל מספר טלפון בתוכנה</b> (בתיק, בטבלאות, בכרטיס הגן, אצל הצוות, בספר הטלפונים ובמפה) יש כפתורים: <b>📞 חיוג</b>, ולמספר <b>נייד</b> גם <b>💬 וואטסאפ</b> ו-<b>✉️ SMS</b> — בלי להעתיק את המספר. ליד הדוא"ל יש <b>✉️ שליחת מייל</b>. בשדות הטופס הכפתור פועל לפי הערך <b>המעודכן בשדה</b> באותו רגע. המערכת ממירה לבד מספר ישראלי לפורמט הבינלאומי שוואטסאפ צריך (05X → 9725X).</li>
         <li><b>מספר זהות (ת"ז)</b> — אם הילדה כבר רשומה באותה שנה (גם בחינוך אחר!), תופיע <b style="color:var(--g-bad)">התראה מיד</b> והשמירה תיחסם — כדי למנוע רישום כפול. בהתראה יש כפתור <b>↩ פתיחת התיק</b> שמעביר ישירות לתיק הקיים.
           <div class="gd-line"><span class="gd-pill bad">⚠️ כבר רשומה בשנה זו: מיכל אבו · חינוך מיוחד · גן רבקה</span></div></li>
         <li><b>בדיקת תקינות ת"ז</b> <span class="gd-pill warn">חדש</span> — כשמסיימים להקליד מספר זהות, המערכת בודקת את <b>ספרת הביקורת</b> (החישוב הרשמי של תעודת הזהות). אם יש <b>טעות הקלדה</b> (ספרה שגויה או חסרה), תופיע התראה עדינה <span class="gd-pill warn">⚠️ מספר הזהות אינו תקין — ייתכן שיש טעות הקלדה</span> כדי לתקן במקום. זו התראה בלבד ואינה חוסמת שמירה.</li>
@@ -2269,6 +2506,7 @@ function guideContent(){
         <li><b>תשלום ביטוח תלמידים</b> · <b>סיוע והעשרה</b> · <b>שונות</b> (גרושים/חוץ/השארות/אחר).</li>
         <li><b>הערות</b> — טקסט חופשי בתוך התיק. ברשימת התלמידות מוצג רק <b>סימון</b> שיש הערה (<span class="gd-pill warn">📝 הערה</span>), בלי תוכן ההערה.</li>
         <li><b>🔎 בדיקת אחים/אחיות</b> — מאתר תיקים עם אותו שם משפחה + כתובת, לשיבוץ באותו קמפוס. לכל תוצאה יש כפתור <b>↩ פתיחת התיק</b>.</li>
+        <li><b>🧭 בדיקת קרבה לגנים (חדש)</b> — מקטע מתקפל בתוך התיק, ממש מתחת ל"בדיקת אחים/אחיות": מסמנים אילו גנים לבדוק (מקובצים לפי קמפוס, עם חיווי מי כבר מלא) ולוחצים <b>"📏 בדיקת המרחקים"</b> — ומקבלים <b>כאן בתיק</b> טבלת מרחקים ממוינת מהקרוב לרחוק, בלי לפתוח את המפה הגדולה. עם גשר Google מוצג גם <b>מרחק וזמן הליכה</b> אמיתיים. לחיצה על <b>"שבץ"</b> בוחרת את הגן בשדה "גן משובצת" (השמירה בכפתור <b>שמירה</b>).<br>אותה בדיקה זמינה גם בלי לפתוח את התיק — כפתור <b>🧭</b> בעמודת הגן בטבלת התלמידות.</li>
       </ol>`+
       `<div class="gd-tip">💡 סימון "סיימה/יצאה" נמצא <b>רק בתוך התיק</b> (לא ברשימה) — כדי לא להסיר ילדה בטעות.</div>` },
 
@@ -2279,6 +2517,17 @@ function guideContent(){
         <li>בתיק — סימון <b>"משובצת בגן (שיבוץ סופי)"</b>.</li>
         <li>ברשימה, בעמודת <b>שיבוץ</b> — כפתור שמחליף בין <b>משובצת</b> ל<b>ממתינה</b> בלחיצה.</li>
         <li>סינון לפי <b>משובצת / לא משובצת</b>.</li>
+        <li><b>🚧 רף שיבוץ (חדש):</b> לכל גן אפשר להגדיר מספר מרבי של משובצות. כשהגן מגיע לרף — המערכת <b>לא תאפשר</b> לסמן "משובצת" לתלמידה נוספת ותציג הודעה ("הגן מלא 36/36"). <b>הרישום עצמו אינו מוגבל</b> — אפשר להמשיך לרשום לגן, רק לא לשבץ סופית. בתיק, מתחת לשדה "גן משובצת", מוצג חיווי חי: <b>"נותרו N מקומות"</b> או <b>"⛔ הגן מלא"</b>. ההגדרה: כרטיס הגן → "רף שיבוץ", וברירת מחדל לכולם ב<b>הגדרות → רף שיבוץ</b>.</li>
+      </ul>` },
+
+    { icon:"🗂️", title:"תיק מקוצר בצד — לחיצה על שורה", html:
+      `<p><b>לחיצה על שורה</b> בטבלת התלמידות פותחת <b>תיק מקוצר בצד</b>, בלי לחסום את המסך ובלי לצאת מהרשימה. הרשימה נשארת לידו, ואפשר לדלג בין תלמידות בלחיצה.</p>
+      <ul>
+        <li><b>מה מוצג:</b> שם, ת"ז וגיל · הגן והקמפוס · שם האם והנייד · הכתובת · <b>כל הטלפונים</b> (אם / אב / בית) עם חיוג, וואטסאפ ו-SMS · מצב השיבוץ, העירייה והחינוך · תגיות התוכניות והשונות · ההערה שבתיק · ורשימת <b>המסמכים</b> עם סימון מה התקבל וקישור ישיר לקובץ בדרייב.</li>
+        <li><b>אחים בקמפוס</b> — כרטיס נפרד מתחת, עם האחים והאחיות באותה כתובת; לחיצה על אח/ות מחליפה אליו/ה את התיק המקוצר.</li>
+        <li><b>פעולות מהירות</b> — החלפת מצב השיבוץ (משובצת ⇄ ממתינה) בלחיצה, ו-<b>🧭 קרבה</b> לבדיקת המרחקים לגנים.</li>
+        <li><b>לעריכה</b> — כפתור <b>"פתיחת התיק המלא"</b> (או <b>לחיצה כפולה</b> על השורה) פותח את הטופס המלא כמו קודם. התיק המקוצר הוא לצפייה מהירה.</li>
+        <li><b>סגירה</b> — ✕ בפינה, או לחיצה חוזרת על אותה שורה. בנייד ובמסך צר התיק נפתח מעל הרשימה במקום בצד.</li>
       </ul>` },
 
     { icon:"🔎", title:"חיפוש, סינון ומיון ברשימה", html:
@@ -2286,10 +2535,12 @@ function guideContent(){
       `<ul>
         <li><b>שורת חיפוש</b> עם 🔎 — לפי שם או ת"ז.</li>
         <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: <b>גן — אפשר לבחור כמה גנים יחד</b> (כולל <b>"ללא גן (הוצאו)"</b>; ריק = כל הגנים), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, מאפיין (השארות/צהרון/קייטנות), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים.</li>
-        <li><b>לחיצה על שורה</b> פותחת את התיק (גם בגנים ובצוות).</li>
+        <li><b>לחיצה על שורה</b> פותחת את <b>התיק המקוצר בצד</b> (בגנים ובצוות — את הטופס המלא). לחיצה כפולה פותחת את התיק המלא.</li>
+        <li><b>צ׳יפים של סינון פעיל</b> — מעל הטבלה מופיעה שורת צ׳יפים עם כל סינון שפעיל כרגע ("גיל 4", "לא קלוט בעירייה"…). ✕ על צ׳יפ מסיר את אותו סינון בלבד, ו<b>"נקה הכל"</b> מאפס את כולם — בלי לפתוח את חלון הסינון.</li>
         <li><b>מיון</b> — לחיצה על כותרת עמודה.</li>
         <li><b>בחירת כמה גנים יחד</b> — סינון "גן" הוא <b>רשימה נפתחת</b>: לוחצים עליה ומסמנים בתיבות הסימון כמה גנים שרוצים (עם "בחר/י הכל" ו"ניקוי"). בחירת כמה גנים מציגה <b>רשימה מאוחדת</b> של התלמידות מכולם; ללא בחירה מוצגות כל התלמידות. כשנבחר <b>גן אחד בלבד</b> מופיע מעל הרשימה פס <b>🖨️ הדפסה / 📎 שיתוף</b> של רשימת אותו גן.</li>
         <li><b>עמודת רחוב</b> — בטבלה (וגם בתצוגת "תלמידות הגן") מוצג <b>הרחוב והבניין</b> של כל תלמידה במקום העיר — מזהה טוב יותר את התלמידות כשכולן באותה עיר.</li>
+        <li><b>מבנה הטבלה</b> — עמודת <b>תלמידה</b> מציגה את השם ומתחתיו ת"ז וגיל, עם ריבוע ראשי תיבות לזיהוי מהיר; עמודת <b>גן ושיבוץ</b> מאחדת את שם הגן ומצב השיבוץ; המסמכים מוצגים כשלוש תגיות קצרות (נס · ת"ז · תק) שמתמלאות כשהמסמך התקבל; ועמודת <b>סימונים</b> מאחדת תוכניות, שונות וחיווי הערה. עמודת החינוך מוסתרת כשכבר בחרתם חינוך אחד.</li>
         <li><b>פס סיכום</b> חכם מעל הטבלה מתעדכן לפי הסינון.</li>
       </ul>` },
 
@@ -2301,6 +2552,7 @@ function guideContent(){
         <li>מסמנים ילדות (או <b>"בחר הכל"</b> לפי הסינון).</li>
         <li>בוחרים <b>שדה</b> ו<b>ערך</b>, ולוחצים <b>סמן כן/לא</b>.</li>
       </ol>
+      <p><b>פס הבחירה התחתון:</b> ברגע שמסמנים תלמידות מופיע בתחתית המסך פס שנשאר גלוי בזמן הגלילה, עם מספר הנבחרות וקיצורי דרך: <b>סמן כקלוט</b> · <b>שיבוץ לגן…</b> (משבץ את כולן לגן אחד — מכבד את רף השיבוץ ואת הרשאות העריכה, ומדווח מי נחסמה) · <b>📣 שליחת הודעה</b> (עובר למרכז ההודעות עם הגנים של הנבחרות) · <b>ניקוי</b>.</p>
       <p><b>ייבוא לעדכון (לפי ת"ז):</b> מדביקים רשימת מספרי זהות + שדה/ערך → עדכון כל ההתאמות בבת אחת.</p>
       <div class="gd-tip">💡 שימושי לסימון גן שלם ששילם ביטוח, או קבוצה שנרשמה לקייטנה.</div>` },
 
@@ -2312,6 +2564,11 @@ function guideContent(){
         <li>גנים דו-גילאיים נתמכים (למשל 3/4, 4/5).</li>
         <li>הקמפוס של הגן קובע את הקמפוס של התלמידות שבו.</li>
         <li><b>מספר הרשומות</b> נצבע לפי הקיבולת: <span class="gd-pill ok">בתוך הקיבולת</span> · חריגה של <b>ילדה אחת</b> (למשל 36 כשהקיבולת 35) <b>בסגול</b> — וגם הילדה שמעל הקיבולת נצבעת בסגול ברשימה · חריגה גדולה יותר <span class="gd-pill" style="background:#f5dcd9;color:#a5342b">אדום</span>.</li>
+        <li><b>🚧 רף שיבוץ (חדש) — מגבלה קשיחה:</b> בכרטיס הגן, ליד "קיבולת", יש שדה <b>"רף שיבוץ"</b> — המספר המרבי של תלמידות שאפשר <b>לשבץ סופית</b> לגן. כשמגיעים אליו המערכת <b>חוסמת</b> שיבוץ נוסף ומציגה הודעה, בכל מקום שממנו משבצים (התיק, המפה, החלפת סטטוס מהטבלה, עדכון קבוצתי ושיבוץ אוטומטי).<br>
+          <b>ההבדל מ"קיבולת":</b> הקיבולת היא חיווי צבע על ה<b>רישום</b> ומותר לחרוג ממנה; רף השיבוץ חוסם בפועל את ה<b>שיבוץ הסופי</b>. כך אפשר להמשיך לרשום לגן מעל למספר, אבל לא לשבץ מעליו.<br>
+          <b>ברירת מחדל לכל הגנים:</b> <b>הגדרות → רף שיבוץ</b> — קובעים מספר לחינוך רגיל (למשל 36) ולחינוך מיוחד. רף שנקבע בכרטיס גן מסוים גובר תמיד.<br>
+          <b>עד שמזינים מספר — אין שום הגבלה</b> והמערכת מתנהגת כמו קודם. יש גם אפשרות (כבויה כברירת מחדל) שה<b>קיבולת</b> הקיימת של כל גן תשמש כרף כשלא הוגדר אחרת.<br>
+          עמודת <b>"משובצות / רף"</b> בטבלת הגנים מראה את המצב בכל רגע: ירוק = יש מקום · כתום = הגן מלא · אדום = חריגה.</li>
         <li><b>צפייה בתלמידות הגן</b> — <b>לחיצה על מספר הרשומות</b> בטבלה (או כפתור <b>🎒 צפייה בתלמידות</b> בתוך טופס הגן) פותחת את רשימת התלמידות מסוננת לאותו גן. מעל הרשימה המסוננת מופיע פס פעולות עם <b>🖨️ הדפסה</b> ו-<b>📎 שיתוף מסמך</b> (PDF) של רשימת הגן — כולל <b>"התאם לעמוד אחד"</b>.</li>
       </ul>` },
 
@@ -2330,6 +2587,7 @@ function guideContent(){
         <li><b>צביעה לפי גן:</b> בבורר "צבע התלמידות → לפי גן", כל תלמידה נצבעת בצבע הגן שאליו היא רשומה — כך רואים במבט מי רשומה לאן. אפשר לעבור ל"לפי מרחק".</li>
         <li><b>רשימת צד:</b> לאחר "הצג על המפה", בצד מופיעה רשימת <b>כל התלמידות הרשומות</b> לגנים שנבחרו, מקובצת לפי גן (בצבע הגן) — <b>מיד, גם לפני טעינת מיקומי התלמידות</b>. תלמידה שטרם מוקמה על המפה מסומנת ב-<b>○</b> ובעמעום, וכותרת הגן מציגה כמה כבר מוקמו מתוך הסך. <b>לחיצה על שם ממקדת את המפה על התלמידה</b> ופותחת את פירוט המרחקים.</li>
         <li>הכתובות מומרות למיקום פעם אחת ונשמרות (טעינה הבאה מהירה). הגנים ממוקמים אוטומטית; לתלמידות לוחצים <b>"טעינת מיקומי תלמידות"</b> (במקטע "כלים נוספים"). <b>"רענון מיקומים"</b> ממיר מחדש. דיוק המיקום תלוי בכתובת — אם שגוי, אפשר לתקן בתיק ולרענן, או להשתמש ב<b>מיקום ידני</b> לגן.</li>
+        <li><b>⚡ שיבוץ אוטומטי לפי קרבה (חדש):</b> מסמנים כמה גנים (למשל 3), לוחצים <b>"⚡ שיבוץ אוטומטי לפי קרבה"</b> — והמערכת משבצת <b>כל תלמידה לגן הקרוב אליה</b> מבין הגנים שנבחרו. בוחרים אילו תלמידות לכלול (רק מי שאין לה גן · גם הממתינות · הכל), והאם <b>לשמור אחיות באותו גן</b>, <b>לכבד את רף השיבוץ</b> של כל גן, ו<b>להתאים גיל</b> תלמידה לגיל הגן. תמיד מוצגת <b>תצוגה מקדימה</b> — כמה ישובצו לכל גן, מי ומה המרחק, ומי לא ישובצה ולמה — והשיבוץ מתבצע רק בלחיצת <b>"✅ ביצוע השיבוץ"</b>.<br>המערכת מעדיפה תלמידה שההפרש אצלה בין הגן הקרוב לשני הקרוב גדול, כדי שהיא לא תפסיד את הגן הקרוב לטובת מי שההבדל אצלה זניח.</li>
         <li><b>שדרוג דיוק (אופציונלי):</b> כברירת מחדל המפה חינמית (OpenStreetMap). אפשר לחבר מפתח <b>Google</b> לדיוק גבוה יותר (כלים ושירותים → "דיוק מפה") — ואז המיקומים מומרים דרך Google, עם נפילה חזרה ל-OpenStreetMap כשאין מפתח.</li>
       </ul>` },
 
@@ -2451,11 +2709,41 @@ function guideContent(){
       <ul>
         <li><b>🔗 חיבור Google Drive</b> — בדיקת חיבור, שיתוף, <b>שיקוף ל-Google Sheets</b>, ארגון תיקיות לפי גן, ו<b>📁 ייבוא מסמכים מהדרייב (לפי גן)</b>.</li>
         <li><b>📝 רישום דיגיטלי — טופס להורים</b> — טופס רישום ציבורי שהורים ממלאים אונליין (עם <b>חתימה דיגיטלית</b> והעלאת ת"ז + ספח). ממלאים את פרטי הבעלות (שם, סמל, כתובת, שם מורשה החתימה, שם המוסד) ו<b>מעלים תמונת חתימה+חותמת</b> (מופיעה בטופס ובמסמך ה-PDF), ולוחצים <b>"שמירה ופרסום"</b> — ומעבירים את הקישור להורים. כל רישום נכנס ל<b>"רישומים ממתינים"</b>; <b>"צור תיק"</b> פותח תיק ילדה מלא (גיל אוטומטי לפי הגן, מסמכים מסומנים, תיקיית דרייב), ומגיעה <b>התראה למייל עם ה-PDF הממותג</b>. דורש חיבור לגשר (דרייב).</li>
+        <li><b>✉️ מייל אישור אוטומטי לנרשם (חדש)</b> — בתוך מקטע הרישום הדיגיטלי. מסמנים <b>"להפעיל שליחה אוטומטית לנרשם"</b>, וכל הורה שמשלים רישום דרך הקישור מקבל מיד מייל אישור בנוסח שלכם. הנוסח נערך במקום (נושא + תוכן) עם שדות מיזוג: <code>{{שם הילדה}}</code> · <code>{{תז}}</code> · <code>{{גן}}</code> · <code>{{שם ההורה}}</code> · <code>{{שנה}}</code> · <code>{{שם המוסד}}</code> · <code>{{תאריך}}</code>. אפשר לצרף את <b>מסמך הרישום החתום (PDF)</b>, לקבוע <b>כתובת לתשובות</b>, לשלוח <b>מייל בדיקה</b> לעצמכם, ולהחזיר לנוסח ברירת המחדל. לאחר עריכה יש ללחוץ <b>"שמירה ופרסום הטופס"</b> כדי שהנוסח יישמר בגשר.</li>
         <li><b>🔗 נדרים פלוס</b> — הכנה לחיבור עתידי לרישום דרך נדרים פלוס (הממשק מוכן; החיבור הטכני בהמשך).</li>
-        <li><b>🤖 עוזר חכם (AI)</b> — הגדרת מפתח לצ'אט העזרה: <b>Google Gemini חינם</b> (מומלץ) או Anthropic Claude בתשלום.</li>
+        <li><b>🤖 עוזר חכם (AI)</b> — הגדרת מפתח לעוזר: <b>Google Gemini חינם</b> (מומלץ) או Anthropic Claude בתשלום.</li>
+        <li><b>✉️ מייל אישור אוטומטי לנרשם</b> (בתוך "רישום דיגיטלי") — מפעילים, כותבים נושא ותוכן עם שדות מיזוג, ולוחצים "שמירה ופרסום". פרטים במקטע "רישום דיגיטלי" למטה.</li>
         <li><b>🗺️ דיוק מפה (Google)</b> — חיבור מפתח Google לשדרוג דיוק מפת השיבוץ ומרחקי ההליכה (אופציונלי; בלעדיו המפה עובדת חינם דרך OpenStreetMap).</li>
         <li><b>💾 גיבוי ושחזור</b> — ייצוא גיבוי JSON ושחזור (כולל העברת נתונים מהגרסה הישנה).</li>
       </ul>` },
+
+    { icon:"📣", title:"מרכז ההודעות — מיילים · וואטסאפ · SMS · הודעות קוליות", html:
+      `<p>לשונית <b>📣 הודעות</b> שולחת הודעה מרוכזת להורים, לצוות או להנהלה. כותבים את התוכן <b>פעם אחת</b> עם שדות מיזוג, והמערכת ממלאת לכל נמענת את הפרטים שלה — כולל <b>הגן שאליו שובצה</b>.</p>
+      <ol class="gd-steps">
+        <li><b>למי שולחים</b> — 👪 הורי תלמידות (סינון לפי גנים, חינוך, קמפוס, גיל, מועד וסטטוס שיבוץ) · 👩‍🏫 צוות (לפי תפקיד וחינוך) · 📞 הנהלה (לפי אגף) · ✍️ רשימה ידנית (הדבקת שמות וכתובות/מספרים). המערכת מציגה מיד כמה נמענים יש וכמה מהם חסרי מייל/טלפון.</li>
+        <li><b>באיזה ערוץ</b> — ✉️ מייל · 💬 וואטסאפ · 📱 SMS · 📞 הודעה קולית.</li>
+        <li><b>מה שולחים</b> — בוחרים <b>תבנית</b> מוכנה (הודעת שיבוץ סופי · אישור רישום · תזכורת מסמכים · הודעה כללית · הודעה לצוות), עורכים, ואפשר <b>לשמור תבנית משלכם</b>. לחיצה על שדה מיזוג מוסיפה אותו לטקסט: <code>{{שם הילדה}}</code> · <code>{{גן}}</code> · <code>{{גננת}}</code> · <code>{{כתובת הגן}}</code> · <code>{{טלפון הגן}}</code> ועוד.</li>
+        <li><b>תצוגה מקדימה ושליחה</b> — <b>👁️ תצוגה מקדימה</b> מציגה שלוש הודעות אמיתיות כפי שיישלחו · <b>✉️ שליחת בדיקה</b> שולחת אליכם דוגמה · <b>📤 שליחה</b> מבצע.</li>
+      </ol>
+      <div class="gd-tip">💡 <b>הודעת שיבוץ בלחיצה אחת:</b> אחרי השיבוץ הסופי — לשונית התלמידות → <b>📣 שליחת הודעות</b> (הסינון הנוכחי עובר אוטומטית), תבנית <b>"הודעת שיבוץ סופי"</b> → תצוגה מקדימה → שליחה. כל הורה מקבל את הגן, הגננת, הכתובת והטלפון של הגן <b>שלו</b>.</div>
+      <ul>
+        <li><b>מיילים — ללא עלות.</b> נשלחים מחשבון הגשר. יש מכסה יומית (Gmail רגיל ≈ 100 נמענים ליום · Google Workspace ≈ 1,500). המספר שנותר להיום מוצג במסך, וכשהמכסה נגמרת השליחה נעצרת בעדינות ומדווחת כמה נשלחו.</li>
+        <li><b>וואטסאפ / SMS / קולי — דורשים ספק חיצוני.</b> אלה אינם שירותים חינמיים של Google. מי שמחבר ספק (019 · InforU · Cellact · Twilio וכד' — הגדרה חד-פעמית בגשר, ראה <b>SETUP.md → "שער הודעות"</b>) — השליחה מתבצעת אוטומטית.</li>
+        <li><b>בלי ספק — מצב ידני שעובד מיד:</b> המערכת מכינה את ההודעה האישית לכל נמענת ופותחת בלחיצה אחת צ׳אט וואטסאפ / הודעת SMS / חיוג, עם רשימה מסודרת, כפתור <b>"פתיחת הבא"</b> ומעקב מי כבר טופלה. בערוץ הקולי מוצג גם <b>התסריט</b> לכל שיחה.</li>
+        <li><b>🕘 היסטוריית שליחות</b> — מה נשלח, מתי, לכמה, באיזה ערוץ ועל ידי מי.</li>
+      </ul>` },
+
+    { icon:"🤖", title:"עוזר חכם — פאנל צד שגם מבצע", html:
+      `<p>העוזר נפתח מהתפריט (<b>🤖 עוזר חכם</b>) כ<b>פאנל נעוץ בצד המסך</b> — הוא נשאר פתוח בזמן שעובדים, כך שאפשר לקרוא את ההנחיה ולבצע אותה באותו רגע, בלי לצאת ולזכור.</p>
+      <ul>
+        <li><b>נשאר איתך</b> — הפאנל לא סוגר את המסך; אפשר לנווט בין לשוניות בזמן שהוא פתוח. הרוחב ניתן לגרירה ונשמר, השיחה נשמרת בין פתיחות, ויש כפתור <b>🗑️ שיחה חדשה</b>. בנייד הוא נפתח על כל הרוחב.</li>
+        <li><b>עונה לפי נתוני אמת</b> — כששואלים "כמה תלמידות משובצות בגן הדקל?" או "מי עדיין בלי גן?", העוזר <b>קורא את הנתונים מהמערכת</b> ועונה לפיהם. הוא לא מנחש ולא ממציא.</li>
+        <li><b>מבצע פעולות</b> — אפשר לבקש: <i>"שבצי את שרה כהן לגן הדקל"</i> · <i>"קבעי רף שיבוץ 36 לגן הדקל"</i> · <i>"עדכני את הטלפון של משפחת לוי ל-050…"</i> · <i>"סמני את כל תלמידות גן א כקלוטות בעירייה"</i>.</li>
+        <li><b>שום דבר לא קורה בלי אישור</b> — כל בקשת שינוי מוצגת ככרטיס עם תיאור מדויק של מה ישתנה (<b>לפני ← אחרי</b>) ואזהרות אם יש, ומתבצעת רק בלחיצה על <b>✅ בצע</b>. אפשר תמיד לבטל.</li>
+        <li><b>אותן מגבלות כמו ידנית</b> — הרשאות העריכה לפי חינוך ורף השיבוץ נאכפים גם על העוזר.</li>
+        <li><b>ניווט</b> — אפשר לבקש "פתחי לי את לשונית הגנים" או "פתחי את התיק של שרה כהן".</li>
+      </ul>
+      <div class="gd-tip">💡 העוזר פועל דרך הגשר עם מפתח AI (Google Gemini חינמי מספיק). הגדרה: <b>כלים ושירותים → עוזר חכם</b>.</div>` },
 
     { icon:"⚙️", title:"הגדרות ומיתוג", html:
       `<div class="gd-tip">💡 חיבורי הדרייב, הטופס הדיגיטלי, עוזר ה-AI, דיוק המפה והגיבוי עברו ללשונית <b>"כלים ושירותים"</b>.</div>
@@ -2463,6 +2751,7 @@ function guideContent(){
         <li><b>מיתוג</b> — כותרת, ו<b>העלאת קובץ לוגו</b> (מומלץ): התמונה מוטמעת במערכת ומופיעה בכותרת, בפאביקון וגם כ<b>אייקון האפליקציה</b> המותקנת.</li>
         <li><b>שנים</b> — הוספה/מחיקה, ו<b>מעבר שנה</b>.</li>
         <li><b>רשימות</b> — גילי ילדים, תפקידי צוות (צבע + שיוך חינוך), קמפוסים.</li>
+        <li><b>🚧 רף שיבוץ</b> — ברירת מחדל למספר המרבי של משובצות בגן, בנפרד לחינוך רגיל ולחינוך מיוחד (למשל 36 ו-12). <b>עד שמזינים מספר אין הגבלה כלל.</b> יש גם אפשרות (כבויה כברירת מחדל) להשתמש ב<b>קיבולת</b> של הגן כרף כשלא הוגדר אחרת. רף שנקבע בכרטיס גן מסוים גובר. המסך מציג את מצב כל הגנים הפעילים (משובצות / רף).</li>
         <li><b>מנהלים ומשתמשים</b> — מי משנה הגדרות, והוספת משתמשי התחברות.</li>
         <li><b>הרשאות עריכה לפי חינוך</b> — מגבילים משתמש/ת ל<b>עריכת חינוך אחד בלבד</b> (רגיל או מיוחד): רואה את כל הנתונים, אך תיק תלמידה/גן/צוות בחינוך שאינו מורשה נפתח <b>לקריאה בלבד</b> (🔒), וכן שיבוץ / עדכון קבוצתי / כפתור "משובצת" חסומים. עדיין אפשר <b>להעביר</b> ילדה מהחינוך המורשה לחינוך השני. ההגבלה היא ברמת הממשק. למנהל מערכת בלבד.</li>
       </ul>` }
@@ -2526,7 +2815,7 @@ function route(){
   const so=$("#signOutBtn"); if(so) so.style.display=currentUser?"flex":"none";
   const v = $("#view");
   ({home:viewHome, students:viewStudents, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
-    municipality:viewMunicipality, export:viewExport, management:viewManagement, tools:viewTools, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
+    municipality:viewMunicipality, export:viewExport, management:viewManagement, messages:viewMessages, tools:viewTools, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
 }
 
 /* ============================================================
@@ -2937,8 +3226,8 @@ function buildSheetPayload(){
   const yn=v=>v?"כן":"לא";
   const stuHeaders=["שנה","שם משפחה","שם פרטי",'ת"ז',"גן","קמפוס","גיל","מועד","חינוך","משובצת","קלוט בעירייה","נרשמה על ידינו","ביטוח שולם","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","בניין","עיר","סטטוס","הערות"];
   const stuRows=DB.students.map(s=>[s.year,s.lastName,s.firstName,s.tz,ganName(s.ganId),ganCampus(s.ganId)||s.campus||"",s.age,s.period,eduLabel(s),yn(s.placed!==false),yn(s.absorbedMunicipality),yn(s.registeredByUs),yn(s.insurancePaid),s.phone,s.dadMobile||"",s.momMobile||s.mobile||"",s.email||"",s.street,s.building,s.city,(s.finished?"סיימה":"פעילה"),s.notes]);
-  const ganHeaders=["שם הגן","סמל פנימי","סמל גן","גיל","חינוך","גננת","קמפוס","כתובת","בניין","אזור","טל' גן","נייד גננת","קיבולת","רשומות (שנה פעילה)","פעיל"];
-  const ganRows=DB.gans.map(g=>[g.ganName,g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.teacherName,g.campus,g.address,g.building,g.zone,g.phoneGan,g.teacherMobile,g.capacity,studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length,yn(g.active)]);
+  const ganHeaders=["שם הגן","סמל פנימי","סמל גן","גיל","חינוך","גננת","קמפוס","כתובת","בניין","אזור","טל' גן","נייד גננת","קיבולת","רף שיבוץ","משובצות (שנה פעילה)","רשומות (שנה פעילה)","פעיל"];
+  const ganRows=DB.gans.map(g=>[g.ganName,g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.teacherName,g.campus,g.address,g.building,g.zone,g.phoneGan,g.teacherMobile,g.capacity,(ganAssignCap(g)||""),ganAssignedCount(g.id),studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length,yn(g.active)]);
   const staffHeaders=["שם משפחה","שם פרטי",'ת"ז',"תפקיד","חינוך","טלפון","נייד","מייל","עיר","הערות"];
   const staffRows=DB.staff.map(m=>[m.lastName,m.firstName,m.tz,m.role,eduLabel(m),m.phone,m.mobile,m.email,m.city,m.notes]);
   const asgHeaders=["שנה","הקשר","גן","תפקיד","שם העובד/ת"];
@@ -3140,15 +3429,17 @@ const BULK_FIELDS = [
 function applyBulk(fieldKey, val){
   const f=BULK_FIELDS.find(x=>x.key===fieldKey); if(!f){ toast("בחר/י שדה"); return; }
   const ids=[...bulkSel]; if(!ids.length){ toast("לא סומנו תלמידות"); return; }
-  let n=0, transferred=0, failed=0, blocked=0;
+  let n=0, transferred=0, failed=0, blocked=0, full=0;
   ids.forEach(id=>{ const s=DB.students.find(x=>x.id===id); if(!s) return;
     if(!canEditRec(s)){ blocked++; return; } // הרשאת עריכה לפי חינוך
+    // רף שיבוץ (סעיף 2): סימון "משובצת" לא יעבור את הרף של הגן
+    if(f.key==='placed' && val && s.ganId && s.placed===false && !assignGate(s.ganId, s, true)){ full++; return; }
     const before = f.retention ? !!s.retentionNext : null;
     f.set(s, val); n++;
     if(f.retention && val && !before){ const r=ensureRetentionTransfer(s); r.ok?transferred++:failed++; }
   });
   save(); bulkSel.clear(); renderStuTable();
-  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}${blocked?` · ${blocked} דולגו (אין הרשאת חינוך)`:''}`);
+  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}${blocked?` · ${blocked} דולגו (אין הרשאת חינוך)`:''}${full?` · ${full} לא שובצו (הגן הגיע לרף השיבוץ)`:''}`);
 }
 
 /* ============================================================
@@ -3295,6 +3586,7 @@ function viewStudents(root){
     <div class="row" style="gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
       <button class="btn" id="addStu">➕ הוספת ילדה</button>
       <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
+      <button class="btn ghost" id="stuMsg" title="שליחת מיילים / וואטסאפ / SMS להורים לפי הסינון">📣 שליחת הודעות</button>
       <span style="flex:1;min-width:8px"></span>
       <span class="hint" style="align-self:center">ייבוא / יצוא:</span>
       <button class="btn ghost sm" id="exportStu">📤 יצוא</button>
@@ -3340,9 +3632,18 @@ function viewStudents(root){
         <div class="field"><label>&nbsp;</label><button class="btn ghost" id="f-clear" type="button" title="ניקוי כל הסינון">🧹 ניקוי</button></div>
       </div>
     </div>
-    <div id="stuTable"></div>
+    <div id="stuChips" class="fchips"></div>
+    <div class="stu-stage">
+      <div id="stuTable"></div>
+      <aside id="stuQuick" class="stu-quick empty-state" aria-label="תיק מקוצר"></aside>
+    </div>
+    <div id="stuSelBar"></div>
   </div>`;
 
+  { const b=$("#stuMsg"); if(b) b.onclick=()=>openMessages({ audience:"parents", tplId:"placement",
+      parentFilter:{ gans:(stuFilter.gans||[]).filter(x=>x&&x!=="__none__"), edu:stuFilter.edu||"", campus:stuFilter.campus||"",
+                     period:stuFilter.period||"", ages:(stuFilter.age||[]).map(String),
+                     placed: stuFilter.placed==='no' ? 'no' : 'yes' } }); }
   $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
   $("#exportStu").onclick = ()=> openExportModal();
   $("#importStu").onclick = ()=> openImport();
@@ -3426,9 +3727,15 @@ function sortStudents(list){
 }
 
 function docDots(s){
-  const d=s.docs;
-  const mk=(on,t)=>`<span class="doc-dot ${on?'on':'off'}" title="${t}">${on?'✓':'·'}</span>`;
-  return `<span class="dot-list">${mk(d.nispach,'נספח')}${mk(d.idCopy,'צילום ת"ז')}${mk(d.takanon,'תקנון')}</span>`;
+  const d=s.docs||{};
+  const mk=(on,short,t)=>`<span class="docchip ${on?'on':''}" title="${esc(t)}${on?' — התקבל':' — חסר'}">${esc(short)}</span>`;
+  return `<span class="docchips">${mk(d.nispach,'נס','נספח')}${mk(d.idCopy,'ת״ז','צילום תעודת זהות')}${mk(d.takanon,'תק','תקנון')}</span>`;
+}
+/* עמודת "סימונים" — תוכניות · שונות · חיווי הערה, במקום שלוש עמודות נפרדות */
+function stuTagCell(s){
+  const parts=[programBadges(s), specialBadges(s)].filter(Boolean);
+  if(String(s.notes||"").trim()) parts.push('<span class="pill warn" title="יש הערה — לצפייה פתחו את התיק">📝</span>');
+  return parts.length ? `<div class="tags">${parts.join(" ")}</div>` : '<span style="color:var(--muted)">—</span>';
 }
 function specialBadges(s){
   const b=[]; const sp=s.special||{};
@@ -3480,6 +3787,204 @@ function renderStuSummary(){
     ${flagTile}
   </div>`;
 }
+/* ============================================================
+   תיק מקוצר בצד (Quick view) — לחיצה על שורה בטבלת התלמידות פותחת
+   כאן את עיקרי התיק, בלי לחסום את המסך. "פתיחת התיק המלא" פותחת את
+   הטופס המלא לעריכה, בדיוק כמו קודם.
+   ============================================================ */
+let stuQuickId=null;           // התלמידה המוצגת כרגע בתיק המקוצר
+/* ראשי תיבות לאייקון הזהות (אות ראשונה מהמשפחה + מהפרטי) */
+function initialsOf(s){
+  const a=String(s.lastName||"").trim(), b=String(s.firstName||"").trim();
+  return ((a[0]||"")+(b[0]||"")) || (a[0]||b[0]||"?");
+}
+function fullName(s){ return [s.lastName,s.firstName].filter(Boolean).join(" ") || "תלמידה"; }
+/* שדה בתיק המקוצר */
+function qField(k,v,extra){
+  const val=String(v==null?"":v).trim();
+  return `<div class="qf"><div class="k">${esc(k)}</div>`
+    +`<div class="v${val?"":" dim"}">${val?esc(val):"—"}${(val&&extra)?(" "+extra):""}</div></div>`;
+}
+function closeStuQuick(){ stuQuickId=null; renderStuQuick(); paintQuickSelection(); }
+function openStuQuick(id){ stuQuickId=id; renderStuQuick(); paintQuickSelection(); }
+/* סימון השורה הנבחרת בטבלה בלי לבנות אותה מחדש */
+function paintQuickSelection(){
+  const host=$("#stuTable"); if(!host) return;
+  host.querySelectorAll("tr[data-sid]").forEach(tr=>tr.classList.toggle("sel", tr.dataset.sid===stuQuickId));
+}
+function renderStuQuick(){
+  const box=$("#stuQuick"); if(!box) return;
+  const s = stuQuickId ? DB.students.find(x=>x.id===stuQuickId) : null;
+  if(!s){ box.className="stu-quick empty-state"; box.innerHTML=""; return; }
+  box.className="stu-quick";
+  const g = s.ganId ? ganById(s.ganId) : null;
+  const placed = s.placed!==false;
+  const ageTxt = s.age ? ("בת "+s.age) : "";
+  const phone = p=> p ? phoneCell(p) : "";
+  const docs = STUDENT_DOCS.map(([k,lbl])=>{
+    const on=!!(s.docs&&s.docs[k]); const f=(s.docFiles||{})[k];
+    return `<div class="qdoc ${on?'on':'off'}"><span class="mark">${on?'✓':'○'}</span><span>${esc(lbl)}</span>`
+      +(f&&f.link?`<a class="grow" href="${esc(f.link)}" target="_blank" rel="noopener" title="פתיחת הקובץ">📎 קובץ</a>`
+                 :`<span class="grow" style="color:var(--muted);font-weight:600">${on?'ללא קובץ':'חסר'}</span>`)
+      +`</div>`;
+  }).join("");
+  const sib=findSiblings(s); const sibs=(sib&&sib.list)||[];
+  const tags=[programBadges(s), specialBadges(s)].filter(Boolean).join(" ");
+
+  box.innerHTML=`
+  <div class="qcard">
+    <div class="qhead">
+      <span class="ini">${esc(initialsOf(s))}</span>
+      <div style="min-width:0">
+        <div class="qname">${esc(fullName(s))}</div>
+        <div class="qtz">${esc(s.tz||"ללא ת״ז")}${ageTxt?" · "+esc(ageTxt):""}</div>
+      </div>
+      <button class="qclose" id="q-close" title="סגירה" aria-label="סגירת התיק המקוצר">✕</button>
+    </div>
+
+    <div class="qgrid">
+      ${qField("גן", g?ganName(g.id):"— ללא שיבוץ —")}
+      ${qField("קמפוס", ganCampus(s.ganId)||s.campus||"")}
+      ${qField("שם האם", s.motherName)}
+      ${qField("נייד", s.momMobile||s.dadMobile||s.mobile||"", "")}
+    </div>
+    <div class="qgrid one" style="margin-top:10px">
+      ${qField("כתובת", [s.street,s.building,s.city].filter(Boolean).join(", "))}
+    </div>
+    ${(s.momMobile||s.dadMobile||s.mobile||s.phone)?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+      ${[["אם",s.momMobile],["אב",s.dadMobile],["בית",s.phone]].filter(x=>String(x[1]||"").trim())
+        .map(([lbl,p])=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:.78rem;color:var(--muted);font-weight:700">${esc(lbl)} ${phone(p)}</span>`).join("")}
+    </div>`:""}
+
+    <div class="qsep"></div>
+    <div class="qsec">שיבוץ</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      ${s.ganId?`<button type="button" class="pill ${placed?'ok':'warn'}" id="q-place" style="cursor:pointer;border:none" title="לחיצה משנה בין 'משובצת' ל'ממתינה'">${placed?'✔ שיבוץ סופי':'⏳ ממתינה לשיבוץ'}</button>`
+               :'<span class="pill neutral">ללא גן</span>'}
+      <span class="pill ${s.absorbedMunicipality?'ok':'no'}">${s.absorbedMunicipality?'קלוט בעירייה':'לא קלוט'}</span>
+      ${eduBadge(s)}
+      <button type="button" class="btn ghost sm" id="q-prox" title="בדיקת קרבה לגנים">🧭 קרבה</button>
+    </div>
+    ${tags?`<div class="tags" style="margin-top:9px;max-width:none">${tags}</div>`:""}
+    ${String(s.notes||"").trim()?`<div style="margin-top:9px;padding:8px 10px;background:var(--warn-soft);border-radius:9px;font-size:.83rem;white-space:pre-wrap">📝 ${esc(s.notes)}</div>`:""}
+
+    <div class="qsep"></div>
+    <div class="qsec">מסמכים</div>
+    ${docs}
+
+    <button class="btn full" id="q-open" style="margin-top:12px">פתיחת התיק המלא</button>
+  </div>
+
+  ${sibs.length?`<div class="qcard">
+    <div class="qsec" style="margin-bottom:4px">אחים בקמפוס (${sibs.length})</div>
+    ${sibs.map(x=>`<div class="qsib" data-sib="${esc(x.id)}">
+      <span class="ini">${esc(initialsOf(x))}</span>
+      <div style="min-width:0">
+        <div class="qsib-nm">${esc(fullName(x))}</div>
+        <div class="qsib-sub">${esc(x.ganId?ganName(x.ganId):"ללא גן")}${(ganCampus(x.ganId)||x.campus)?" · "+esc(ganCampus(x.ganId)||x.campus):""}</div>
+      </div></div>`).join("")}
+  </div>`:""}`;
+
+  const bind=(sel,fn)=>{ const e=box.querySelector(sel); if(e) e.onclick=fn; };
+  bind("#q-close", closeStuQuick);
+  bind("#q-open", ()=>openStudentById(s.id));
+  bind("#q-prox", ()=>openProximityCheck(s));
+  bind("#q-place", ()=>{
+    if(!canEditRec(s)){ toast("אין הרשאת עריכה בחינוך זה"); return; }
+    if(s.placed===false && !assignGate(s.ganId, s)) return;
+    s.placed=(s.placed===false); save(); renderStuTable();
+    toast(s.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ");
+  });
+  box.querySelectorAll("[data-sib]").forEach(el=> el.onclick=()=>openStuQuick(el.dataset.sib));
+}
+
+/* ---------- צ׳יפים של הסינון הפעיל ---------- */
+/* כל צ׳יפ מתאר סינון פעיל אחד ויודע לנקות את עצמו */
+function stuFilterChips(){
+  const f=stuFilter, out=[];
+  const add=(key,label,clear)=>out.push({key,label,clear});
+  if(f.q) add("q",'חיפוש: "'+f.q+'"',()=>{ f.q=""; const e=$("#f-q"); if(e) e.value=""; });
+  if(f.gans&&f.gans.length) add("gans", ganFilterLabel(), ()=>{ f.gans=[]; });
+  if(f.age&&f.age.length) add("age","גיל "+f.age.join(", "), ()=>{ f.age=[]; });
+  if(f.city) add("city","עיר: "+f.city, ()=>{ f.city=""; });
+  if(f.street) add("street","רחוב: "+f.street, ()=>{ f.street=""; });
+  if(f.campus) add("campus","קמפוס: "+f.campus, ()=>{ f.campus=""; });
+  if(f.period) add("period","מועד "+f.period, ()=>{ f.period=""; });
+  if(f.edu) add("edu",f.edu, ()=>{ f.edu=""; });
+  if(f.muni) add("muni", f.muni==='yes'?"קלוט בעירייה":"לא קלוט בעירייה", ()=>{ f.muni=""; });
+  if(f.placed) add("placed", f.placed==='yes'?"משובצות":"ממתינות לשיבוץ", ()=>{ f.placed=""; });
+  if(f.flag && STU_FLAGS[f.flag]) add("flag", STU_FLAGS[f.flag].label, ()=>{ f.flag=""; });
+  if(f.status && f.status!=='active') add("status", f.status==='finished'?"שסיימו / יצאו":"כל הסטטוסים", ()=>{ f.status='active'; });
+  return out;
+}
+function renderStuChips(){
+  const box=$("#stuChips"); if(!box) return;
+  const chips=stuFilterChips();
+  if(!chips.length){ box.innerHTML=""; return; }
+  box.innerHTML=`<span style="font-size:.78rem;color:var(--muted);font-weight:700">סינון:</span>`
+    +chips.map((c,i)=>`<span class="fchip">${esc(c.label)}<button type="button" data-chip="${i}" title="הסרת הסינון" aria-label="הסרת הסינון">✕</button></span>`).join("")
+    +`<button type="button" class="clr" id="chips-clear">נקה הכל</button>`;
+  const refresh=()=>{ const root=$("#view"); if(root && active==="students") viewStudents(root); else renderStuTable(); };
+  box.querySelectorAll("[data-chip]").forEach(b=> b.onclick=()=>{ chips[+b.dataset.chip].clear(); refresh(); });
+  const c=$("#chips-clear"); if(c) c.onclick=()=>{ clearStuFilter(); refresh(); };
+}
+
+/* ---------- פס בחירה תחתון ---------- */
+function renderSelBar(list){
+  const bar=$("#stuSelBar"); if(!bar) return;
+  if(!bulkMode || !bulkSel.size){ bar.innerHTML=""; return; }
+  const n=bulkSel.size;
+  bar.innerHTML=`<div class="selbar">
+    <b>${n===1?"נבחרה תלמידה אחת":"נבחרו "+n+" תלמידות"}</b>
+    <button class="btn sm" id="sel-muni" type="button">סמן כקלוט</button>
+    <button class="btn sm light" id="sel-gan" type="button">שיבוץ לגן…</button>
+    <button class="btn sm" id="sel-msg" type="button">📣 שליחת הודעה</button>
+    <button class="btn sm" id="sel-clear" type="button">ניקוי</button>
+  </div>`;
+  $("#sel-muni").onclick=()=>applyBulk("absorbedMunicipality", true);
+  $("#sel-clear").onclick=()=>{ bulkSel.clear(); renderStuTable(); };
+  $("#sel-gan").onclick=openBulkAssignGan;
+  $("#sel-msg").onclick=()=>{
+    const ids=new Set(bulkSel);
+    const gans=[...new Set(list.filter(s=>ids.has(s.id)).map(s=>s.ganId).filter(Boolean))];
+    openMessages({ audience:"parents", tplId:"placement", parentFilter:{ gans, placed:"" } });
+  };
+}
+/* שיבוץ קבוצתי לגן — מהפס התחתון. מכבד הרשאות ואת רף השיבוץ, ומדווח מה נחסם. */
+function openBulkAssignGan(){
+  const ids=[...bulkSel];
+  if(!ids.length){ toast("לא סומנו תלמידות"); return; }
+  const gans=eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+  if(!gans.length){ toast("אין גנים פעילים"); return; }
+  modal(`<h3>שיבוץ ${ids.length} תלמידות לגן</h3>
+    <div class="sub">כל תלמידה תשובץ לגן שנבחר. תלמידה שהגן שלה מלא (רף שיבוץ) או שאין הרשאת עריכה בחינוך שלה — תדולג, ותקבלו דיווח.</div>
+    <div class="grid g2" style="margin-top:10px">
+      <div><label>גן</label><select id="bag-gan">${gans.map(g=>{ const room=ganAssignRoom(g);
+        return `<option value="${esc(g.id)}">${esc(ganName(g.id))}${isFinite(room)?` — ${room>0?("נותרו "+room):"מלא"}`:""}</option>`; }).join("")}</select></div>
+      <div style="align-self:end"><label class="check"><input type="checkbox" id="bag-placed" checked> לסמן גם "משובצת (שיבוץ סופי)"</label></div>
+    </div>
+    <div class="foot">
+      <button class="btn" id="bag-go" style="margin-inline-start:auto">שיבוץ</button>
+      <button class="btn ghost" id="bag-cancel">ביטול</button>
+    </div>`);
+  $("#bag-cancel").onclick=closeModal;
+  $("#bag-go").onclick=()=>{
+    const g=ganById($("#bag-gan").value); if(!g) return;
+    const markPlaced=$("#bag-placed").checked;
+    let n=0, blocked=0, full=0;
+    ids.forEach(id=>{
+      const st=DB.students.find(x=>x.id===id); if(!st) return;
+      if(!canEditRec(st)){ blocked++; return; }
+      if(markPlaced && !assignGate(g.id, st, true)){ full++; return; }
+      st.ganId=g.id; st.campus=ganCampus(g.id)||st.campus||"";
+      const ages=ganAges(g); if(ages.length===1) st.age=ages[0];
+      if(markPlaced) st.placed=true;
+      n++;
+    });
+    save(); closeModal(); bulkSel.clear(); renderStuTable();
+    toast(`שובצו ${n} ל${ganName(g.id)}`+(full?` · ${full} לא שובצו (הגן הגיע לרף)`:"")+(blocked?` · ${blocked} דולגו (אין הרשאה)`:""));
+  };
+}
 function renderBulkBar(list){
   const bar=$("#bulkBar"); if(!bar) return;
   if(!bulkMode){ bar.innerHTML=""; return; }
@@ -3518,6 +4023,7 @@ function renderStuTable(){
       <label class="check" style="margin:0"><input type="checkbox" id="stuGanOnepage"> התאם לעמוד אחד</label>
     </div>` : "";
   if(!list.length){ host.innerHTML = ganBar + `<div class="empty">אין תלמידות התואמות לסינון. לחצ/י "הוספת ילדה" כדי להתחיל.</div>`;
+    renderStuChips(); renderSelBar(list); stuQuickId=null; renderStuQuick();
     if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
       const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gans=[]; navToTab('gans'); };
       const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
@@ -3525,41 +4031,66 @@ function renderStuTable(){
     return; }
   const arr=k=> stuSort.key===k ? `<span class="arr">${stuSort.dir>0?'▲':'▼'}</span>` : "";
   const th=(k,lbl)=>`<th class="sortable" data-sort="${k}">${lbl}${arr(k)}</th>`;
+  // עמודת החינוך מיותרת כשכבר בחרנו חינוך אחד — מפנה מקום לשאר העמודות
+  const showEdu = !(activeEdu || stuFilter.edu);
   host.innerHTML = ganBar + `<div class="table-wrap"><table><thead><tr>
     ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
-    ${th("name",'שם מלא')}${th("tz",'ת"ז')}${th("gan",'גן')}<th title="שיבוץ סופי בגן — לחיצה משנה בין 'משובצת' ל'ממתינה'">שיבוץ</th>${th("age",'גיל')}${th("street",'רחוב')}${th("period",'מועד')}${th("edu",'חינוך')}
-    <th>מסמכים</th><th>תוכניות</th><th>שונות</th><th>עירייה</th><th title="סימון בלבד — תוכן ההערה בתוך התיק">הערות</th><th>סטטוס</th></tr></thead><tbody>
-    ${list.map(s=>`<tr data-sid="${esc(s.id)}" class="${bulkMode?'':'clickable'}"${bulkMode&&bulkSel.has(s.id)?' style="background:var(--good-soft)"':''}>
+    ${th("name",'תלמידה')}${th("gan",'גן ושיבוץ')}${th("street",'רחוב')}<th title="נייד אם / נייד אב / טלפון בית — כל הטלפונים בתיק המקוצר שבצד">טלפון</th>${th("period",'מועד')}${showEdu?th("edu",'חינוך'):''}
+    <th>מסמכים</th><th>עירייה</th><th title="תוכניות · שונות · הערה">סימונים</th><th>סטטוס</th></tr></thead><tbody>
+    ${list.map(s=>{
+      const over=ovf[s.id];
+      const placed=s.placed!==false;
+      const ph=[s.momMobile,s.dadMobile,s.mobile,s.phone].map(x=>String(x||"").trim()).find(Boolean);
+      return `<tr data-sid="${esc(s.id)}" class="${bulkMode?'':'clickable'}${s.id===stuQuickId?' sel':''}">
       ${bulkMode?`<td style="text-align:center"><input type="checkbox" class="bulk-cb" data-id="${esc(s.id)}" ${bulkSel.has(s.id)?'checked':''}></td>`:''}
-      <td><b${ovf[s.id]?` style="color:${capColor(ovf[s.id])}" title="${ovf[s.id]==='over1'?'ילדה מעל הקיבולת (הראשונה מעל הקיבולת)':'ילדה מעל הקיבולת'}"`:''}>${esc(s.lastName)} ${esc(s.firstName)}</b></td>
-      <td>${esc(s.tz)||'—'}</td>
-      <td>${esc(ganName(s.ganId))}</td>
-      <td>${s.ganId?`<button type="button" class="pill ${s.placed!==false?'ok':'warn'} stu-place" data-id="${esc(s.id)}" style="cursor:pointer;border:none" title="לחצי כדי לשנות סטטוס שיבוץ">${s.placed!==false?'✔ משובצת':'⏳ ממתינה'}</button>`:'<span class="pill neutral" title="אין גן משובץ">—</span>'}</td>
-      <td>${esc(s.age)||'—'}</td>
+      <td><div class="idcell"><span class="ini">${esc(initialsOf(s))}</span><div style="min-width:0">
+        <div class="nm"${over?` style="color:${capColor(over)}" title="${over==='over1'?'ילדה מעל הקיבולת (הראשונה מעל הקיבולת)':'ילדה מעל הקיבולת'}"`:''}>${esc(fullName(s))}</div>
+        <div class="sub">${esc(s.tz||'ללא ת״ז')}${s.age?' · בת '+esc(s.age):''}</div>
+      </div></div></td>
+      <td><div class="gancell">
+        <div class="g">${esc(ganName(s.ganId))} <button type="button" class="act stu-prox" data-id="${esc(s.id)}" title="בדיקת קרבה לגנים — לאיזה גן היא קרובה יותר">🧭</button></div>
+        ${s.ganId?`<button type="button" class="st stu-place" data-id="${esc(s.id)}" style="cursor:pointer;border:none;background:none;padding:0;color:${placed?'var(--good)':'var(--warn)'}" title="לחצי כדי לשנות סטטוס שיבוץ">${placed?'✔ שיבוץ סופי':'⏳ ממתינה לשיבוץ'}</button>`
+                 :'<div class="st" style="color:var(--muted)">ללא שיבוץ</div>'}
+      </div></td>
       <td>${esc([s.street,s.building].filter(Boolean).join(" "))||'—'}</td>
-      <td><span class="pill neutral">${esc(s.period)}</span></td>
-      <td>${eduBadge(s)}</td>
+      <td>${ph?phoneCell(ph,true):'—'}</td>
+      <td>${esc(s.period)||'—'}</td>
+      ${showEdu?`<td>${eduBadge(s)}</td>`:''}
       <td>${docDots(s)}</td>
-      <td>${programBadges(s)||'<span class="pill neutral">—</span>'}</td>
-      <td>${specialBadges(s)||'<span class="pill neutral">—</span>'}</td>
-      <td>${s.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
-      <td>${noteMark(s)}</td>
+      <td><span style="font-weight:700;color:${s.absorbedMunicipality?'var(--good)':'var(--bad)'}">${s.absorbedMunicipality?'קלוט':'לא קלוט'}</span></td>
+      <td>${stuTagCell(s)}</td>
       <td>${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
-      </tr>`).join("")}
+      </tr>`; }).join("")}
   </tbody></table></div>
-  <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק.</div>`;
+  <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק המקוצר בצד · לחיצה כפולה פותחת את התיק המלא.</div>`;
+  renderSelBar(list);
+  renderStuChips();
+  // התלמידה שבתיק המקוצר כבר אינה ברשימה (סינון/מחיקה) → סגירה
+  if(stuQuickId && !list.some(x=>x.id===stuQuickId)) stuQuickId=null;
+  renderStuQuick();
   /* פס פעולות רשימת הגן — חזרה/הדפסה/שיתוף ישירות מתוך רשימת התלמידות המסוננת לגן */
   if(selGan){ const op=()=>!!$("#stuGanOnepage")?.checked;
     const bk=$("#stuGanBack"); if(bk) bk.onclick=()=>{ stuFilter.gans=[]; navToTab('gans'); };
     const pb=$("#stuGanPrint"); if(pb) pb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op() });
     const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
   // לחיצה על שורה (מחוץ לכפתורים/תיבות סימון) פותחת את התיק (סעיף 8.4.3)
-  host.querySelectorAll("tr.clickable").forEach(tr=> tr.onclick=e=>{
-    if(e.target.closest("button,input,a,.stu-place")) return;
-    const s=DB.students.find(x=>x.id===tr.dataset.sid); if(s) openStudent(JSON.parse(JSON.stringify(s)));
+  /* לחיצה על שורה פותחת את התיק המקוצר בצד; לחיצה כפולה פותחת את התיק המלא */
+  host.querySelectorAll("tr.clickable").forEach(tr=>{
+    tr.onclick=e=>{
+      if(e.target.closest("button,input,a,.stu-place")) return;
+      const id=tr.dataset.sid;
+      if(stuQuickId===id) closeStuQuick(); else openStuQuick(id);
+    };
+    tr.ondblclick=e=>{
+      if(e.target.closest("button,input,a")) return;
+      const s=DB.students.find(x=>x.id===tr.dataset.sid); if(s) openStudent(JSON.parse(JSON.stringify(s)));
+    };
   });
   /* החלפת סטטוס שיבוץ בלחיצה אחת מהרשימה (משובצת ⇄ ממתינה) */
-  host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; if(!canEditRec(st)){ toast("אין הרשאת עריכה בחינוך זה"); return; } st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
+  host.querySelectorAll(".stu-prox").forEach(b=> b.onclick=e=>{ e.stopPropagation(); const st=DB.students.find(x=>x.id===b.dataset.id); if(st) openProximityCheck(st); });
+  host.querySelectorAll(".stu-place").forEach(b=> b.onclick=()=>{ const st=DB.students.find(x=>x.id===b.dataset.id); if(!st) return; if(!canEditRec(st)){ toast("אין הרשאת עריכה בחינוך זה"); return; }
+    if(st.placed===false && !assignGate(st.ganId, st)) return;   // רף שיבוץ (סעיף 2)
+    st.placed = (st.placed===false); save(); renderStuTable(); toast(st.placed?"סומן: משובצת":"סומן: ממתינה לשיבוץ"); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(stuSort.key===k) stuSort.dir*=-1; else { stuSort.key=k; stuSort.dir=1; } renderStuTable(); });
   /* עדכון קבוצתי — סימון שורות + בחירת הכל */
   host.querySelectorAll(".bulk-cb").forEach(cb=> cb.onchange=()=>{ cb.checked?bulkSel.add(cb.dataset.id):bulkSel.delete(cb.dataset.id); renderStuTable(); });
@@ -3601,9 +4132,9 @@ function openStudent(s){
       <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
-      <div><label>טלפון בית</label><div class="fieldwrap"><input id="s-phone" value="${esc(s.phone)}" inputmode="tel"><button type="button" class="act" data-call="s-phone" title="חיוג">📞</button></div></div>
-      <div><label>נייד אב</label><div class="fieldwrap"><input id="s-dadMobile" value="${esc(s.dadMobile)}" inputmode="tel"><button type="button" class="act" data-call="s-dadMobile" title="חיוג">📞</button></div></div>
-      <div><label>נייד אם</label><div class="fieldwrap"><input id="s-momMobile" value="${esc(s.momMobile || ((!s.dadMobile && !s.momMobile) ? (s.mobile||"") : ""))}" inputmode="tel"><button type="button" class="act" data-call="s-momMobile" title="חיוג">📞</button></div></div>
+      <div><label>טלפון בית</label><div class="fieldwrap tel"><input id="s-phone" value="${esc(s.phone)}" inputmode="tel">${phoneFieldBtns("s-phone")}</div></div>
+      <div><label>נייד אב</label><div class="fieldwrap tel"><input id="s-dadMobile" value="${esc(s.dadMobile)}" inputmode="tel">${phoneFieldBtns("s-dadMobile")}</div></div>
+      <div><label>נייד אם</label><div class="fieldwrap tel"><input id="s-momMobile" value="${esc(s.momMobile || ((!s.dadMobile && !s.momMobile) ? (s.mobile||"") : ""))}" inputmode="tel">${phoneFieldBtns("s-momMobile")}</div></div>
       <div><label>דוא"ל</label><div class="fieldwrap"><input id="s-email" value="${esc(s.email)}" inputmode="email" dir="ltr" style="text-align:right"><button type="button" class="act" data-mail="s-email" title="שליחת מייל">✉️</button></div></div>
     </div>
   </fieldset>
@@ -3618,16 +4149,25 @@ function openStudent(s){
     <div class="grid g3">
       <div><label>קמפוס גנים</label><input id="s-campus" value="${esc(ganCampus(s.ganId)||s.campus||"")}" readonly placeholder="נקבע לפי הגן">
         <div class="hint">נקבע אוטומטית לפי הקמפוס של הגן (בלשונית גנים).</div></div>
-      <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>`<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}</option>`).join("")}</select></div>
+      <div><label>גן משובצת</label><select id="s-ganId"><option value="">— בחר/י גן —</option>${gans.map(g=>{ const room=ganAssignRoom(g,s.id); const full=room<=0;
+          return `<option value="${g.id}" ${s.ganId===g.id?'selected':''}>${esc(ganName(g.id))} ${g.ganSymbol?('· '+esc(g.ganSymbol)):''}${full?' — מלא':''}</option>`; }).join("")}</select>
+        <div class="hint" id="s-gan-room"></div></div>
       <div><label>גיל</label><select id="s-age"><option value="">—</option>${(s.age && !CHILD_AGES.map(String).includes(String(s.age)))?`<option selected>${esc(s.age)}</option>`:''}${CHILD_AGES.map(a=>`<option ${String(s.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select><div id="s-age-hint" class="hint"></div></div>
       <div><label>מועד רישום</label><select id="s-period">${PERIODS.map(p=>`<option ${s.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="s-education">${EDU_TYPES.map(t=>`<option ${eduLabel(s)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
     </div>
-    <div class="row" style="margin-top:10px;gap:8px;align-items:center">
+    <div class="row" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn ghost sm" id="s-sibcheck" type="button">🔎 בדיקת אחים/אחיות בקמפוס</button>
       <span class="hint">איתור לפי שם משפחה + כתובת זהים בשנה זו — לשיבוץ באותו קמפוס.</span>
     </div>
     <div id="s-siblings" style="margin-top:8px"></div>
+    <details class="map-fold" id="s-prox-fold" style="margin-top:10px">
+      <summary>🧭 בדיקת קרבה לגנים — לאיזה גן היא קרובה יותר?</summary>
+      <div class="map-fold-body">
+        <div class="hint" style="margin-bottom:6px">בוחרים אילו גנים לבדוק ומקבלים כאן את המרחקים מהכתובת שבתיק — בלי לפתוח את המפה הגדולה. לחיצה על "שבץ" בוחרת את הגן בשדה "גן משובצת" למעלה (השמירה בכפתור "שמירה").</div>
+        <div id="s-prox-host"></div>
+      </div>
+    </details>
     <div class="checks" style="margin-top:10px">
       <label class="check"><input type="checkbox" id="s-placed" ${s.placed!==false?'checked':''}> משובצת בגן (שיבוץ סופי)</label>
       <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
@@ -3816,7 +4356,41 @@ function openStudent(s){
     if(ages.length===1){ ageSel.value=ages[0]; if(hint) hint.textContent="הגיל נקבע אוטומטית לפי הגן ("+ages[0]+")."; }
     else if(ages.length>=2){ if(!ages.includes(ageSel.value)) ageSel.value=""; if(hint) hint.textContent="גן דו-גילאי — בחר/י גיל: "+ages.join(" / "); }
   }
-  const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; applyGanAge(); };
+  /* חיווי חי של רף השיבוץ לגן הנבחר (סעיף 2) */
+  function ganRoomHint(){
+    const h=$("#s-gan-room"); if(!h) return;
+    const g=ganById(($("#s-ganId")||{}).value||""); if(!g){ h.textContent=""; h.style.color=""; return; }
+    const cap=ganAssignCap(g);
+    if(!cap){ h.textContent="לא הוגדר רף שיבוץ לגן זה."; h.style.color=""; return; }
+    const cnt=ganAssignedCount(g.id, s.id), room=cap-cnt;
+    const src=ganAssignCapSource(g);
+    h.textContent = room>0
+      ? `משובצות: ${cnt} מתוך ${cap} · נותרו ${room} מקומות${src?" ("+src+")":""}`
+      : `⛔ הגן מלא — ${cnt} מתוך ${cap}. לא ניתן לשבץ עוד${src?" ("+src+")":""}.`;
+    h.style.color = room>0 ? "" : "var(--bad)";
+    h.style.fontWeight = room>0 ? "" : "700";
+  }
+  const ganSel=$("#s-ganId"); if(ganSel) ganSel.onchange=()=>{ const el=$("#s-campus"); if(el) el.value=ganCampus(ganSel.value)||""; applyGanAge(); ganRoomHint(); };
+  { const pc=$("#s-placed"); if(pc) pc.addEventListener("change", ganRoomHint); }
+  ganRoomHint();
+  /* בדיקת קרבה לגנים מתוך התיק (סעיף 3) — נבנית בפתיחה הראשונה של המקטע */
+  { const fold=$("#s-prox-fold");
+    const fv=id=>{ const e=$("#"+id); return e? String(e.value||"").trim() : ""; };
+    const curStudent=()=>Object.assign({}, s, {
+      street:fv("s-street"), building:fv("s-building"), city:fv("s-city"),
+      education:fv("s-education")||eduLabel(s), ganId:fv("s-ganId"), age:fv("s-age") });
+    const build=()=>{
+      const host=$("#s-prox-host"); if(!host) return;
+      host.innerHTML=proxPanelHtml(curStudent(),"pxc");
+      proxBind(host, curStudent, "pxc", g=>{
+        const sel=$("#s-ganId"); if(!sel) return;
+        if(!assignGate(g.id, curStudent())) return;
+        sel.value=g.id; sel.dispatchEvent(new Event("change"));
+        toast("נבחר: "+ganName(g.id)+" — לחצ/י שמירה");
+      });
+    };
+    if(fold) fold.addEventListener("toggle",()=>{ if(fold.open) build(); }, false);
+  }
   /* עיר אוטומטית לפי רחוב — נלמד מתיקים קיימים; העיר מתמלאת רק אם ריקה, וניתן לתקן ידנית */
   { const streetCity={};
     DB.students.forEach(st=>{ const k=(st.street||"").trim(); if(k&&st.city){ (streetCity[k]=streetCity[k]||{})[st.city]=(streetCity[k][st.city]||0)+1; } });
@@ -3914,6 +4488,11 @@ function openStudent(s){
     const clash=tzClashInYear(data.tz, data.year, s.id);
     if(clash){ const w=$("#s-tz-warn"); if(w) w.textContent="⚠️ כבר רשומה בשנה זו: "+clashDesc(clash);
       toast('לא ניתן לרשום — הילדה כבר רשומה בשנה זו: '+clashDesc(clash)); return; }
+    /* רף שיבוץ (סעיף 2) — חוסם *שיבוץ סופי* מעבר לרף. רישום (בלי "משובצת") אינו מוגבל. */
+    if(data.ganId && data.placed!==false){
+      const gate=canAssignStudent(ganById(data.ganId), data);
+      if(!gate.ok){ toast(gate.msg); const h=$("#s-gan-room"); if(h){ h.scrollIntoView({block:"center"}); } return; }
+    }
     const i=DB.students.findIndex(x=>x.id===s.id);
     const hadRetention = i>=0 ? !!DB.students[i].retentionNext : false;
     if(i>=0) DB.students[i]=data; else DB.students.push(data);
@@ -4277,7 +4856,7 @@ function openImport(){
         <th>שם משפחה</th><th>שם פרטי</th><th>ת"ז</th><th>טלפון</th><th>עיר</th><th>גן</th><th>גיל</th><th>מועד</th><th>חינוך</th><th>קלוט</th><th>סטטוס</th></tr></thead><tbody>
         ${show.map(x=>`<tr style="${(x.fileDup||(x.dup&&skipdup))?'opacity:.5':''}">
           <td>${esc(x.st.lastName)||'—'}</td><td>${esc(x.st.firstName)||'—'}</td><td>${esc(x.st.tz)||'—'}</td>
-          <td>${esc(x.st.mobile||x.st.phone)||'—'}</td><td>${esc(x.st.city)||'—'}</td>
+          <td>${phoneCell(x.st.mobile||x.st.phone)}</td><td>${esc(x.st.city)||'—'}</td>
           <td>${x.st.ganId?esc(ganName(x.st.ganId)):(x.ganText?('<span class="pill warn">'+esc(x.ganText)+' ⚠</span>'):'—')}</td>
           <td>${esc(x.st.age)||'—'}</td><td><span class="pill neutral">${esc(x.st.period)}</span></td><td>${eduBadge(x.st)}</td>
           <td>${x.st.absorbedMunicipality?'<span class="pill ok">קלוט</span>':'<span class="pill no">לא</span>'}</td>
@@ -4306,11 +4885,12 @@ const GAN_SORT_VAL = {
   name:g=>ganName(g.id), internalSymbol:g=>g.internalSymbol, ganSymbol:g=>g.ganSymbol,
   age:g=>g.age, teacherName:g=>g.teacherName,
   address:g=>[g.address,g.building].filter(Boolean).join(" "), zone:g=>g.zone,
-  capacity:g=>+g.capacity||0, reg:g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length
+  capacity:g=>+g.capacity||0, reg:g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length,
+  assigned:g=>ganAssignedCount(g.id)
 };
 function sortGans(list){
   const k=ganSort.key, d=ganSort.dir, v=GAN_SORT_VAL[k]||GAN_SORT_VAL.name;
-  const numeric = k==='capacity' || k==='reg';
+  const numeric = k==='capacity' || k==='reg' || k==='assigned';
   return list.sort((a,b)=> numeric ? ((+v(a)||0)-(+v(b)||0))*d : String(v(a)||"").localeCompare(String(v(b)||""),"he")*d );
 }
 function gansScoped(){
@@ -4702,6 +5282,7 @@ function viewMap(root){
       <span class="pill neutral" id="map-status">טוען…</span>
       <div style="margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn sm" id="map-apply" type="button">🗺️ הצג על המפה</button>
+        <button class="btn sm" id="map-auto" type="button" title="שיבוץ כל התלמידות לגן הקרוב מבין הגנים שנבחרו">⚡ שיבוץ אוטומטי לפי קרבה</button>
         <button class="btn ghost sm" id="map-full-btn" type="button">⛶ מסך מלא</button>
       </div>
     </div>
@@ -4775,6 +5356,7 @@ function viewMap(root){
   const btnStu=$("#map-load-students"); if(btnStu) btnStu.onclick=mapLoadStudents;
   const btnRef=$("#map-refresh"); if(btnRef) btnRef.onclick=mapRefreshGeo;
   const btnFull=$("#map-full-btn"); if(btnFull) btnFull.onclick=mapToggleFull;
+  const btnAuto=$("#map-auto"); if(btnAuto) btnAuto.onclick=openAutoAssign;
   const childGo=$("#map-child-go"), childInp=$("#map-child-search");
   if(childGo) childGo.onclick=()=>mapFindChild(childInp?childInp.value:"");
   if(childInp) childInp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); mapFindChild(childInp.value); } });
@@ -5022,8 +5604,11 @@ function mapStudentPopup(s){
   const nm=[s.lastName,s.firstName].filter(Boolean).join(" ")||"תלמידה";
   const addr=[s.street,s.building].filter(Boolean).join(" ");
   const cur=s.ganId?ganName(s.ganId):"— ללא שיבוץ —";
+  const ph=[s.momMobile,s.dadMobile,s.mobile,s.phone].map(x=>String(x||"").trim()).filter(Boolean);
+  const uniqPh=[...new Set(ph)].slice(0,2);
   box.innerHTML=`<div style="font-weight:700">🎒 ${esc(nm)}</div>`
     +(addr?`<div style="color:#666">${esc(addr)}</div>`:"")
+    +(uniqPh.length?`<div style="margin:3px 0">${uniqPh.map(p=>phoneCell(p)).join(" ")}</div>`:"")
     +`<div style="margin:4px 0">גן נוכחי: <b>${esc(cur)}</b></div>`;
   if(s.geo&&s.geo.approx){ const w=document.createElement("div");
     w.style.cssText="color:#b26a00;font-size:.85em;margin:2px 0";
@@ -5085,7 +5670,341 @@ function mapStudentPopup(s){
   });
   return box;
 }
+/* ============================================================
+   בדיקת קרבה לגנים מתוך התיק (סעיף 3)
+   בוחרים גנים לבדיקה — ומקבלים מיד את המרחקים מהכתובת של התלמידה,
+   בלי לפתוח את המפה הגדולה. נגיש מתוך תיק הילדה ומטבלת התלמידות.
+   ============================================================ */
+let _proxSel=null;   // בחירת הגנים האחרונה (Set של מזהים) — נשמרת בין בדיקות
+/* כתובת התלמידה לגאוקוד, ללא תלות במסנן העיר של המפה */
+function proxAddrQuery(st){
+  const base=[st.street,st.building].filter(Boolean).join(" ").trim();
+  if(!base) return "";
+  const city=(st.city||"").trim()||geoDefaultCity();
+  return base+(city?(", "+city):"")+", ישראל";
+}
+/* כתובת גן לגאוקוד, עם עיר מפורשת (במקום להישען על _mapState) */
+function proxGanQuery(g, city){
+  const cand=[String(g.address||"").trim(), String(g.street||"").trim()];
+  const streetName = cand.find(p=>p && /[א-ת]/.test(p)) || "";
+  if(!streetName) return "";
+  const num=String(g.building||"").trim();
+  const base = /\d/.test(streetName) ? streetName : (streetName + (num?(" "+num):""));
+  return base+(city?(", "+city):"")+", ישראל";
+}
+/* גנים מועמדים לבדיקה — פעילים, בחינוך של התלמידה */
+function proxGanOptions(st){
+  return DB.gans.filter(g=>g.active && eduLabel(g)===eduLabel(st))
+    .slice().sort((a,b)=> (a.campus||"").localeCompare(b.campus||"","he") || ganName(a.id).localeCompare(ganName(b.id),"he"));
+}
+/* גוף הפאנל (בחירת גנים + אזור תוצאות) */
+function proxPanelHtml(st, idp){
+  const gans=proxGanOptions(st);
+  const byCampus=new Map();
+  gans.forEach(g=>{ const k=(g.campus||"").trim()||"— ללא קמפוס —"; if(!byCampus.has(k)) byCampus.set(k,[]); byCampus.get(k).push(g); });
+  const sel=_proxSel||new Set(st.ganId?[st.ganId]:[]);
+  let list="";
+  byCampus.forEach((arr,camp)=>{
+    list+=`<div style="margin-bottom:6px"><div style="font-weight:700;font-size:12px;color:var(--muted);margin-bottom:2px">${esc(camp)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 14px">`+
+      arr.map(g=>{ const room=ganAssignRoom(g, st.id); const cap=ganAssignCap(g);
+        const tag = cap ? (room>0 ? `<span style="color:var(--muted);font-size:11px">(${cap-room}/${cap})</span>`
+                                  : `<span style="color:var(--bad);font-size:11px">(מלא)</span>`) : "";
+        return `<label class="check" style="margin:0;font-size:13px"><input type="checkbox" class="${idp}-gan" value="${esc(g.id)}" ${sel.has(g.id)?'checked':''}> ${esc(ganName(g.id))} ${tag}</label>`; }).join("")+
+      `</div></div>`;
+  });
+  if(!gans.length) list=`<div class="hint">אין גנים פעילים בחינוך ${esc(eduLabel(st))}.</div>`;
+  return `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+      <b>🧭 אילו גנים לבדוק?</b>
+      <button class="btn ghost sm" type="button" id="${idp}-all">בחר הכל</button>
+      <button class="btn ghost sm" type="button" id="${idp}-none">נקה</button>
+      <button class="btn sm" type="button" id="${idp}-go" style="margin-inline-start:auto">📏 בדיקת המרחקים</button>
+    </div>
+    <div style="max-height:150px;overflow:auto;margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:10px">${list}</div>
+    <div id="${idp}-out" style="margin-top:8px"></div>`;
+}
+/* הפעלת הפאנל. getStudent() מחזיר תמונת מצב עדכנית של התלמידה (כולל עריכות שטרם נשמרו).
+   onPick(gan) — מה לעשות בלחיצה על "שבץ"; ברירת מחדל: שיבוץ ישיר ב-DB. */
+function proxBind(host, getStudent, idp, onPick){
+  const boxes=()=>[...host.querySelectorAll("."+idp+"-gan")];
+  const readSel=()=>new Set(boxes().filter(b=>b.checked).map(b=>b.value));
+  const setAll=v=>{ boxes().forEach(b=>b.checked=v); _proxSel=readSel(); };
+  const bAll=host.querySelector("#"+idp+"-all"); if(bAll) bAll.onclick=()=>setAll(true);
+  const bNone=host.querySelector("#"+idp+"-none"); if(bNone) bNone.onclick=()=>setAll(false);
+  boxes().forEach(b=>b.onchange=()=>{ _proxSel=readSel(); });
+  const out=host.querySelector("#"+idp+"-out");
+  const go=host.querySelector("#"+idp+"-go");
+  if(go) go.onclick=async()=>{
+    const st=getStudent();
+    _proxSel=readSel();
+    const picked=[..._proxSel];
+    if(!picked.length){ out.innerHTML=`<div class="hint">סמן/י לפחות גן אחד לבדיקה.</div>`; return; }
+    const q=proxAddrQuery(st);
+    if(!q){ out.innerHTML=`<div class="note">אין כתובת (רחוב + מספר) בתיק — לא ניתן לחשב מרחקים.</div>`; return; }
+    go.disabled=true; out.innerHTML=`<div class="hint">מחשב מרחקים… (${picked.length} גנים)</div>`;
+    try{
+      const city=(st.city||"").trim()||geoDefaultCity();
+      // מיקום התלמידה — נשמר על הרשומה שבמסד כדי לא לגאוקד שוב בפעם הבאה
+      const rec=DB.students.find(x=>x.id===st.id) || st;
+      const sgeo=await ensureGeo(rec, q, false, city, null);
+      if(!sgeo){ out.innerHTML=`<div class="note">לא נמצא מיקום לכתובת "${esc(q)}". אפשר לתקן את הרחוב/המספר בתיק ולנסות שוב.</div>`; go.disabled=false; return; }
+      const gans=picked.map(id=>ganById(id)).filter(Boolean);
+      const missing=[];
+      for(const g of gans){
+        if(g.geo && g.geo.manual && g.geo.lat!=null) continue;
+        const gq=proxGanQuery(g, city); if(!gq){ missing.push(g); continue; }
+        await ensureGeo(g, gq, false, city, null);
+        if(!(g.geo&&g.geo.lat!=null)) missing.push(g);
+      }
+      try{ save(); }catch(e){}
+      const ok=gans.filter(g=>g.geo&&g.geo.lat!=null);
+      let rows=ok.map(g=>({ g, km:haversineKm(sgeo,g.geo) })).sort((a,b)=>a.km-b.km);
+      const draw=()=>{
+        let html=`<div class="hint" style="margin-bottom:4px">מהכתובת: <b>${esc([st.street,st.building,st.city].filter(Boolean).join(" "))}</b> · מהקרוב לרחוק</div>
+          <div class="table-wrap"><table><thead><tr><th>#</th><th>גן</th><th>מרחק</th><th>משובצות / רף</th><th></th></tr></thead><tbody>`;
+        rows.forEach((r,i)=>{
+          const isCur=r.g.id===st.ganId;
+          const room=ganAssignRoom(r.g, st.id);
+          let dist, colorKm;
+          if(r.walk===undefined){ dist=`${r.km.toFixed(2)} ק"מ אווירי · 🚶…`; colorKm=r.km; }
+          else if(r.walk){ dist=`🚶 ${(r.walk.m/1000).toFixed(2)} ק"מ · ${Math.round(r.walk.sec/60)} דק' הליכה`; colorKm=r.walk.m/1000; }
+          else { dist=`${r.km.toFixed(2)} ק"מ אווירי`; colorKm=r.km; }
+          html+=`<tr><td>${i+1}</td>
+            <td><b style="color:${mapDistColor(colorKm)}">●</b> ${esc(ganName(r.g.id))}${r.g.teacherName?` <span class="hint" style="display:inline">· ${esc(r.g.teacherName)}</span>`:""}</td>
+            <td>${esc(dist)}</td>
+            <td>${assignCapPill(r.g)}</td>
+            <td>${isCur?'<span class="pill ok">משובצת כאן</span>'
+                 : room<=0 ? '<span class="pill neutral" title="הגן הגיע לרף השיבוץ">מלא</span>'
+                 : `<button class="btn sm ${idp}-pick" type="button" data-gid="${esc(r.g.id)}">שבץ</button>`}</td></tr>`;
+        });
+        html+=`</tbody></table></div>`;
+        if(missing.length) html+=`<div class="hint" style="margin-top:6px;color:var(--bad)">⚠ ללא מיקום (כתובת חסרה/לא זוהתה): ${missing.map(g=>esc(ganName(g.id))).join(" · ")} — אפשר למקם ידנית בלשונית מפת שיבוץ.</div>`;
+        out.innerHTML=html;
+        out.querySelectorAll("."+idp+"-pick").forEach(b=>b.onclick=()=>{
+          const g=ganById(b.dataset.gid); if(!g) return;
+          if(onPick) onPick(g); else mapAssign(DB.students.find(x=>x.id===st.id)||st, g);
+        });
+      };
+      draw();
+      go.disabled=false;
+      // שדרוג למרחקי הליכה אמיתיים כשיש גשר Google
+      mapWalk(sgeo, rows.map(r=>r.g)).then(walks=>{
+        let any=false; rows.forEach((r,i)=>{ r.walk=walks[i]||null; if(r.walk) any=true; });
+        if(any) rows=rows.slice().sort((a,b)=> ((a.walk?a.walk.m:a.km*1000) - (b.walk?b.walk.m:b.km*1000)));
+        draw();
+      }).catch(()=>{});
+    }catch(e){ out.innerHTML=`<div class="note">שגיאה בחישוב: ${esc((e&&e.message)||String(e))}</div>`; go.disabled=false; }
+  };
+}
+/* גרסת חלון — לשימוש מטבלת התלמידות (בלי לפתוח את התיק) */
+function openProximityCheck(st){
+  if(!st) return;
+  modal(`<h3>🧭 בדיקת קרבה לגנים · ${esc([st.lastName,st.firstName].filter(Boolean).join(" "))}</h3>
+    <div class="sub">כתובת: <b>${esc([st.street,st.building,st.city].filter(Boolean).join(" ")||"— חסרה —")}</b> · חינוך: ${esc(eduLabel(st))}</div>
+    <div id="prox-host" style="margin-top:10px">${proxPanelHtml(st,"pxm")}</div>
+    <div class="foot"><button class="btn ghost" id="prox-close" style="margin-inline-start:auto">סגירה</button></div>`);
+  $("#prox-close").onclick=closeModal;
+  proxBind($("#prox-host"), ()=>DB.students.find(x=>x.id===st.id)||st, "pxm", g=>{
+    const rec=DB.students.find(x=>x.id===st.id); if(!rec) return;
+    if(!canEditRec(rec)){ toast("אין הרשאת עריכה בחינוך זה"); return; }
+    if(!assignGate(g.id, rec)) return;
+    rec.ganId=g.id; rec.campus=ganCampus(g.id)||rec.campus||"";
+    const ages=ganAges(g); if(ages.length===1) rec.age=ages[0];
+    save(); toast("שובצה ל"+ganName(g.id)); closeModal();
+    try{ renderStuTable(); }catch(e){}
+  });
+}
+/* ============================================================
+   שיבוץ אוטומטי לפי קרבה (סעיף 1)
+   בוחרים כמה גנים במפה ולוחצים "שיבוץ אוטומטי" — המערכת משבצת כל תלמידה
+   לגן הקרוב אליה מבין הגנים שנבחרו, תוך כיבוד רף השיבוץ של כל גן,
+   התאמת חינוך/גיל, ושמירה על אחיות באותו גן. מוצגת תצוגה מקדימה לפני ביצוע.
+   ============================================================ */
+/* גילי הגן כמערך ("4/5" → ["4","5"]) */
+function ganAges(g){ return String((g&&g.age)||"").split("/").map(x=>x.trim()).filter(Boolean); }
+/* האם גיל התלמידה מתאים לגן (אם לא ידוע גיל — מתאים) */
+function ageFits(s, g){
+  const ages=ganAges(g); if(!ages.length) return true;
+  const a=String(s.age||"").trim(); if(!a) return true;
+  return ages.includes(a);
+}
+/* מפתח קיבוץ אחיות — שם משפחה + כתובת (כמו findSiblings) */
+function sibKey(s){
+  const ln=nameKey(s.lastName), ak=addrKey(s);
+  if(!ln || !ak.replace(/\|/g,"")) return null;
+  return ln+"||"+ak;
+}
+/* מנוע השיבוץ. opts: {scope, siblings, respectCap, markPlaced, matchAge}
+   מחזיר { plan:[{s,g,km}], skipped:[{s,why}], caps:Map(ganId→{cap,used}) } */
+function autoAssignPlan(students, gans, opts){
+  opts=opts||{};
+  const caps=new Map();
+  gans.forEach(g=>{
+    const cap=opts.respectCap===false ? 0 : ganAssignCap(g);
+    // התלמידות שכבר משובצות לגן ואינן חלק מהמאגר שמשבצים מחדש תופסות מקום
+    const ids=new Set(students.map(x=>x.id));
+    const used=studentsOfYear().filter(x=>!x.finished && x.ganId===g.id && x.placed!==false && !ids.has(x.id)).length;
+    caps.set(g.id, { cap, used });
+  });
+  const room=id=>{ const c=caps.get(id); if(!c) return 0; return c.cap ? (c.cap-c.used) : Infinity; };
+  const take=id=>{ const c=caps.get(id); if(c) c.used++; };
+
+  const plan=[], skipped=[];
+  /* מועמדים לתלמידה — גנים תואמים, ממוינים לפי מרחק אווירי */
+  const candsFor=s=> gans
+    .filter(g=> eduLabel(g)===eduLabel(s) && (opts.matchAge===false || ageFits(s,g)) && g.geo && g.geo.lat!=null)
+    .map(g=>({ g, km:haversineKm(s.geo, g.geo) }))
+    .sort((a,b)=>a.km-b.km);
+
+  /* קיבוץ לאחיות (אופציונלי) — כל הקבוצה לאותו גן */
+  const groups=[];
+  if(opts.siblings!==false){
+    const byKey=new Map();
+    students.forEach(s=>{ const k=sibKey(s);
+      if(!k){ groups.push([s]); return; }
+      if(!byKey.has(k)) byKey.set(k,[]); byKey.get(k).push(s); });
+    byKey.forEach(arr=>groups.push(arr));
+  } else students.forEach(s=>groups.push([s]));
+
+  /* מיון לפי "חרטה": קבוצה שההפרש בין הגן הקרוב לשני הקרוב אצלה גדול — קודמת,
+     כדי שהיא לא תפסיד את הגן הקרוב אליה לטובת מי שההבדל אצלו זניח. */
+  const scored=groups.map(arr=>{
+    const cands=arr.map(candsFor);
+    const usable=cands.filter(c=>c.length);
+    let regret=0, near=Infinity;
+    if(usable.length){
+      const first=usable[0];
+      near=first[0].km;
+      regret=(first[1]? first[1].km : first[0].km+5) - first[0].km;
+    }
+    return { arr, cands, regret, near };
+  }).sort((a,b)=> (b.regret-a.regret) || (a.near-b.near));
+
+  scored.forEach(item=>{
+    const arr=item.arr;
+    const noGeo=arr.filter(s=>!(s.geo&&s.geo.lat!=null));
+    if(noGeo.length===arr.length){ arr.forEach(s=>skipped.push({s,why:"אין מיקום על המפה (כתובת חסרה או לא זוהתה)"})); return; }
+    /* גן משותף לכל הקבוצה: סכום המרחקים המינימלי מבין הגנים שיש בהם מקום לכולם */
+    const located=arr.filter(s=>s.geo&&s.geo.lat!=null);
+    noGeo.forEach(s=>skipped.push({s,why:"אין מיקום על המפה (כתובת חסרה או לא זוהתה)"}));
+    let best=null;
+    gans.forEach(g=>{
+      const fit=located.every(s=> eduLabel(g)===eduLabel(s) && (opts.matchAge===false || ageFits(s,g)));
+      if(!fit || !(g.geo&&g.geo.lat!=null)) return;
+      if(room(g.id) < located.length) return;
+      const sum=located.reduce((t,s)=>t+haversineKm(s.geo,g.geo),0);
+      if(!best || sum<best.sum) best={ g, sum };
+    });
+    if(best){ located.forEach(s=>{ plan.push({ s, g:best.g, km:haversineKm(s.geo,best.g.geo) }); take(best.g.id); }); return; }
+    /* אין גן שמכיל את כל הקבוצה — משבצים כל אחת בנפרד לגן הקרוב הפנוי */
+    located.forEach(s=>{
+      const c=candsFor(s).find(c=>room(c.g.id)>0);
+      if(c){ plan.push({ s, g:c.g, km:c.km }); take(c.g.id); }
+      else {
+        const any=candsFor(s);
+        skipped.push({ s, why: any.length ? "כל הגנים המתאימים הגיעו לרף השיבוץ" : "אין גן מתאים מבין הגנים שנבחרו (חינוך/גיל/מיקום)" });
+      }
+    });
+  });
+  plan.sort((a,b)=> ganName(a.g.id).localeCompare(ganName(b.g.id),"he") || a.km-b.km);
+  return { plan, skipped, caps };
+}
+/* מאגר התלמידות לשיבוץ אוטומטי לפי היקף שנבחר */
+function autoAssignPool(scope){
+  let list=mapShownStudents();
+  if(scope==="unassigned") list=list.filter(s=>!s.ganId);
+  else if(scope==="waiting") list=list.filter(s=>!s.ganId || s.placed===false);
+  return list.filter(s=>canEditRec(s));
+}
+/* חלון השיבוץ האוטומטי */
+function openAutoAssign(){
+  const gans=mapSelectedGans().filter(mapGanShown);
+  if(gans.length<2){ toast("בחר/י לפחות שני גנים על המפה (עם מיקום תקין) לשיבוץ אוטומטי"); return; }
+  const st={ scope:"unassigned", siblings:true, respectCap:true, markPlaced:true, matchAge:true, result:null };
+  const opt=(v,l,cur)=>`<option value="${v}" ${cur===v?'selected':''}>${esc(l)}</option>`;
+  modal(`<h3>⚡ שיבוץ אוטומטי לפי קרבה</h3>
+    <div class="sub">כל תלמידה תשובץ ל<b>גן הקרוב אליה</b> מבין <b>${gans.length}</b> הגנים שנבחרו על המפה:
+      ${gans.map(g=>esc(ganName(g.id))).join(" · ")}</div>
+    <div class="grid g2" style="margin-top:10px">
+      <div><label>אילו תלמידות לשבץ</label>
+        <select id="aa-scope">
+          ${opt("unassigned","רק מי שאין לה גן",st.scope)}
+          ${opt("waiting","מי שאין לה גן או שממתינה לשיבוץ",st.scope)}
+          ${opt("all","כל התלמידות המוצגות (כולל שיבוץ מחדש)",st.scope)}
+        </select></div>
+      <div style="align-self:end;display:flex;flex-direction:column;gap:4px">
+        <label class="check"><input type="checkbox" id="aa-sib" checked> לשמור אחיות באותו גן</label>
+        <label class="check"><input type="checkbox" id="aa-cap" checked> לכבד את רף השיבוץ של כל גן</label>
+        <label class="check"><input type="checkbox" id="aa-age" checked> להתאים גיל תלמידה לגיל הגן</label>
+        <label class="check"><input type="checkbox" id="aa-placed" checked> לסמן "משובצת (שיבוץ סופי)"</label>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;gap:8px">
+      <button class="btn" id="aa-calc" type="button">🧮 חישוב תצוגה מקדימה</button>
+      <span class="hint" id="aa-hint">החישוב לא משנה נתונים — רק אחרי "ביצוע השיבוץ".</span>
+    </div>
+    <div id="aa-out" style="margin-top:10px;max-height:46vh;overflow:auto"></div>
+    <div class="foot">
+      <button class="btn" id="aa-apply" disabled style="margin-inline-start:auto">✅ ביצוע השיבוץ</button>
+      <button class="btn ghost" id="aa-close">סגירה</button>
+    </div>`);
+  $("#aa-close").onclick=closeModal;
+  const readOpts=()=>({ scope:$("#aa-scope").value, siblings:$("#aa-sib").checked, respectCap:$("#aa-cap").checked,
+                        matchAge:$("#aa-age").checked, markPlaced:$("#aa-placed").checked });
+  function calc(){
+    const o=readOpts();
+    const pool=autoAssignPool(o.scope);
+    const noGeo=pool.filter(s=>!(s.geo&&s.geo.lat!=null)).length;
+    const res=autoAssignPlan(pool, gans, o);
+    st.result={ res, o };
+    const byGan=new Map();
+    res.plan.forEach(x=>{ if(!byGan.has(x.g.id)) byGan.set(x.g.id,[]); byGan.get(x.g.id).push(x); });
+    let html=`<div class="note" style="margin-bottom:8px">נבדקו <b>${pool.length}</b> תלמידות · ישובצו <b>${res.plan.length}</b> · לא ישובצו <b>${res.skipped.length}</b>${noGeo?` · <b>${noGeo}</b> ללא מיקום — לחצ/י "📍 טעינת מיקומי תלמידות" במפה ואז חשב/י שוב`:""}</div>`;
+    if(byGan.size){
+      html+=`<div class="table-wrap"><table><thead><tr><th>גן</th><th>ישובצו</th><th>סה"כ אחרי השיבוץ</th><th>תלמידות</th></tr></thead><tbody>`;
+      gans.forEach(g=>{
+        const arr=byGan.get(g.id)||[]; if(!arr.length) return;
+        const c=res.caps.get(g.id)||{cap:0,used:0};
+        html+=`<tr><td><b>${esc(ganName(g.id))}</b></td><td>${arr.length}</td>
+          <td>${c.used}${c.cap?(" / "+c.cap):" / ∞"}</td>
+          <td style="font-size:12px">${arr.map(x=>esc([x.s.lastName,x.s.firstName].filter(Boolean).join(" "))+` <span style="color:var(--muted)">(${x.km.toFixed(1)} ק"מ)</span>`).join(" · ")}</td></tr>`;
+      });
+      html+=`</tbody></table></div>`;
+    } else html+=`<div class="hint">אין תלמידות לשיבוץ לפי הבחירה הנוכחית.</div>`;
+    if(res.skipped.length){
+      const byWhy=new Map();
+      res.skipped.forEach(x=>{ if(!byWhy.has(x.why)) byWhy.set(x.why,[]); byWhy.get(x.why).push(x.s); });
+      html+=`<div style="margin-top:10px;padding:8px;border:1px solid var(--border);border-radius:10px">
+        <b>⚠ לא ישובצו (${res.skipped.length}):</b>`;
+      byWhy.forEach((arr,why)=>{ html+=`<div style="margin-top:4px">• ${esc(why)} — <span style="font-size:12px">${arr.slice(0,25).map(s=>esc([s.lastName,s.firstName].filter(Boolean).join(" "))).join(" · ")}${arr.length>25?" …":""}</span></div>`; });
+      html+=`</div>`;
+    }
+    $("#aa-out").innerHTML=html;
+    $("#aa-apply").disabled=!res.plan.length;
+  }
+  $("#aa-calc").onclick=calc;
+  ["#aa-scope","#aa-sib","#aa-cap","#aa-age","#aa-placed"].forEach(sel=>{ const el=$(sel); if(el) el.onchange=()=>{ st.result=null; $("#aa-apply").disabled=true; $("#aa-out").innerHTML=`<div class="hint">ההגדרות השתנו — לחצ/י "חישוב תצוגה מקדימה".</div>`; }; });
+  $("#aa-apply").onclick=()=>{
+    if(!st.result || !st.result.res.plan.length){ toast("יש לחשב תצוגה מקדימה תחילה"); return; }
+    const { res, o }=st.result;
+    if(!confirm(`לשבץ ${res.plan.length} תלמידות לפי התצוגה המקדימה?`)) return;
+    let n=0;
+    res.plan.forEach(x=>{
+      const rec=DB.students.find(y=>y.id===x.s.id); if(!rec) return;
+      rec.ganId=x.g.id;
+      rec.campus=ganCampus(x.g.id)||rec.campus||"";
+      const ages=ganAges(x.g); if(ages.length===1) rec.age=ages[0];
+      if(o.markPlaced) rec.placed=true;
+      n++;
+    });
+    save(); closeModal();
+    toast("שובצו "+n+" תלמידות לפי קרבה");
+    try{ mapBuildGanColors(); mapPlotGans(); mapPlotStudents(); mapRenderSide(); mapStatusReport(); }catch(e){}
+  };
+  calc();
+}
 function mapAssign(s, g){
+  if(!assignGate(g.id, s)) return;             // רף שיבוץ (סעיף 2)
   s.ganId=g.id;
   s.campus=ganCampus(g.id)||s.campus||"";
   if(s.placed===false) s.placed=true;
@@ -5180,7 +6099,7 @@ function renderGanTable(){
   const eduNote = activeEdu ? ` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})` : "";
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
     ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${th("age","גיל")}${th("","חינוך")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("zone","אזור")}
-    ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("","סטטוס")}</tr></thead><tbody>
+    ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("assigned","משובצות / רף")}${th("","סטטוס")}</tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
       const ageBg=ganAgeBg(g);
@@ -5194,9 +6113,10 @@ function renderGanTable(){
         <td>${g.address?`${esc(g.address)} ${navBtns([g.address,g.building,g.zone].filter(Boolean).join(" "))}`:'—'}</td>
         <td>${esc(g.building)||'—'}</td>
         <td>${esc(g.zone)||'—'}</td>
-        <td>${g.phoneGan?`${esc(g.phoneGan)} ${callBtn(g.phoneGan)}`:'—'}</td>
+        <td>${phoneCell(g.phoneGan)}</td>
         <td>${esc(g.capacity)||'—'}</td>
         <td><button type="button" class="gan-reg-open" data-gid="${esc(g.id)}" title="צפייה בתלמידות הגן" style="background:none;border:none;padding:0;cursor:pointer">${capPill(reg, g.capacity)}</button></td>
+        <td>${assignCapPill(g)}</td>
         <td>${g.active?'<span class="pill ok">פעיל</span>':'<span class="pill neutral">כבוי</span>'}</td>
         </tr>`;
     }).join("")}
@@ -5222,7 +6142,12 @@ function openGan(g){
       <div><label>גיל</label><select id="g-age"><option value="">—</option>${GAN_AGES.map(a=>`<option ${String(g.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
-      <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}"></div>
+      <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}">
+        <div class="hint">חיווי בלבד על הרישום — חריגה נצבעת אך מותרת.</div></div>
+      <div><label>רף שיבוץ (מקסימום משובצות)</label><input id="g-assignCap" inputmode="numeric" value="${esc(g.assignCap||"")}" placeholder="${esc(String(ganAssignCap(g)||"ללא הגבלה"))}">
+        <div class="hint">${(()=>{ const cap=ganAssignCap(g), cnt=isNew?0:ganAssignedCount(g.id), src=ganAssignCapSource(g);
+          return cap ? `מלא = ${cnt} מתוך ${cap}${src?" ("+esc(src)+")":""} — מעבר לזה המערכת חוסמת שיבוץ. ריק = לפי ברירת המחדל בהגדרות.`
+                     : `ריק = ללא הגבלה. אפשר לקבוע ברירת מחדל לכל הגנים ב<b>הגדרות → רף שיבוץ</b>.`; })()}</div></div>
       <div><label>קמפוס</label><select id="g-campus"><option value="">— ללא —</option>${(g.campus && !CAMPUSES.includes(g.campus))?`<option selected>${esc(g.campus)}</option>`:''}${CAMPUSES.slice().sort((a,b)=>a.localeCompare(b,"he")).map(c=>`<option ${g.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select>
         <div class="hint">${CAMPUSES.length?'הקמפוס נקבע כאן — ואצל התלמידות בגן יתעדכן אוטומטית.':'להוספת קמפוסים: הגדרות → קמפוסים.'}</div></div>
     </div>
@@ -5237,7 +6162,7 @@ function openGan(g){
   </fieldset>
   <fieldset><legend>טלפון</legend>
     <div class="grid g3">
-      <div><label>טלפון בגן</label><div class="fieldwrap"><input id="g-phoneGan" value="${esc(g.phoneGan)}" inputmode="tel"><button type="button" class="act" data-call="g-phoneGan" title="חיוג">📞</button></div></div>
+      <div><label>טלפון בגן</label><div class="fieldwrap tel"><input id="g-phoneGan" value="${esc(g.phoneGan)}" inputmode="tel">${phoneFieldBtns("g-phoneGan")}</div></div>
     </div>
     <div class="note" style="margin-top:6px">פרטי הצוות (גננת, סייעת, ניידים) והשיבוץ נקבעים בלשונית "שיבוץ" לכל שנה בנפרד.</div>
   </fieldset>
@@ -5256,7 +6181,8 @@ function openGan(g){
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{
       ganName:val("g-ganName"),internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),education:val("g-education"),
-      teacherName:val("g-teacherName"),capacity:val("g-capacity"),campus:val("g-campus"),
+      teacherName:val("g-teacherName"),capacity:val("g-capacity"),
+      assignCap:String(val("g-assignCap")||"").replace(/[^\d]/g,""),campus:val("g-campus"),
       address:val("g-address"),building:val("g-building"),street:val("g-street"),zone:val("g-zone"),
       phoneGan:val("g-phoneGan"),docsNote:val("g-docsNote"),active:chk("g-active")
     });
@@ -5296,6 +6222,7 @@ const GAN_HEADER_MAP = {
   "שםסייעת":"assistantName","סייעת":"assistantName",
   "ניידסייעת":"assistantMobile","פלאפוןסייעת":"assistantMobile",
   "קיבולת":"capacity","מקומות":"capacity","מספרמקומות":"capacity","תקן":"capacity",
+  "רףשיבוץ":"assignCap","מקסימוםשיבוץ":"assignCap","מקסימוםמשובצות":"assignCap","גגלשיבוץ":"assignCap",
   "פעיל":"active","סטטוס":"active",
   "מסמכים":"docsNote","הערות":"docsNote","הערה":"docsNote"
 };
@@ -5322,7 +6249,7 @@ function buildGanImportRows(rows){
     gn.address=g("address"); gn.street=g("street"); gn.building=g("building"); gn.zone=g("zone");
     gn.phoneGan=g("phoneGan"); gn.phoneHome=g("phoneHome"); gn.teacherMobile=fixPhone(g("teacherMobile"));
     gn.assistantName=g("assistantName"); gn.assistantMobile=fixPhone(g("assistantMobile"));
-    gn.capacity=g("capacity").replace(/[^\d]/g,""); gn.docsNote=g("docsNote");
+    gn.capacity=g("capacity").replace(/[^\d]/g,""); gn.assignCap=g("assignCap").replace(/[^\d]/g,""); gn.docsNote=g("docsNote");
     if(idx.active!=null){ const av=g("active").trim(); gn.active=!/^(לא|כבוי|לאפעיל|0|false|no|off|inactive)$/i.test(av); }
     if(!gn.ganName && !gn.teacherName && !gn.ganSymbol && !gn.internalSymbol) continue; // שורה ריקה
     const key=(gn.ganSymbol||"")+"|"+(gn.internalSymbol||"")+"|"+(gn.ganName||gn.teacherName||"");
@@ -5332,7 +6259,7 @@ function buildGanImportRows(rows){
   return { list, mapped };
 }
 function ganTemplateCSV(){
-  const headers=["שם הגן","סמל פנימי","סמל הגן","שם הגננת","גיל","חינוך","כתובת","מספר","אזור","טלפון בגן","נייד גננת","שם סייעת","נייד סייעת","קיבולת","פעיל"];
+  const headers=["שם הגן","סמל פנימי","סמל הגן","שם הגננת","גיל","חינוך","כתובת","מספר","אזור","טלפון בגן","נייד גננת","שם סייעת","נייד סייעת","קיבולת","רף שיבוץ","פעיל"];
   const example=["גן הדקל","1234","567890","מרים כהן","3","רגיל","הרב קוק","12","מרכז","02-1234567","050-1234567","שרה לוי","052-7654321","35","כן"];
   const csv=[headers.map(csvCell).join(","), example.map(csvCell).join(",")].join("\r\n");
   downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `תבנית-ייבוא-גנים.csv`);
@@ -5712,7 +6639,7 @@ function makeAsgMainOffice(opts){
       let daysTxt=info.days.length?info.days.join(", "):asgExtraText(meta.role,c);
       if(free[meta.role] && free[meta.role].length) daysTxt=`🏖️ יום חופשי: ${free[meta.role].join(", ")}`;
       const col=roleColor(meta.role), bg=col?` style="background:${hexToRgba(col,.20)}"`:"";
-      return `<tr${bg}><td>${esc(meta.role)}</td><td><b>${esc(info.name)}</b></td><td>${esc(info.phone)}</td><td>${esc(daysTxt)}</td><td>${hours}</td></tr>`;
+      return `<tr${bg}><td>${esc(meta.role)}</td><td><b>${esc(info.name)}</b></td><td>${phoneCell(info.phone)}</td><td>${esc(daysTxt)}</td><td>${hours}</td></tr>`;
     }).filter(Boolean).join("");
     if(!rows) return "";
     const reg=studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length;
@@ -6354,11 +7281,13 @@ function viewStaff(root){
     </div>
     <div class="row" style="gap:8px;margin-bottom:12px">
       <button class="btn" id="addStaff">➕ הוספת איש/אשת צוות</button>
+      <button class="btn ghost" id="staffMsg" title="שליחת הודעה לצוות">📣 שליחת הודעות</button>
       <button class="btn ghost" id="impStaff">⬆️ ייבוא מקובץ</button>
     </div>
     <div id="staffTable"></div>
   </div>`;
   $("#addStaff").onclick=()=>openStaff(makeStaff());
+  { const b=$("#staffMsg"); if(b) b.onclick=()=>openMessages({ audience:"staff", tplId:"staff-general" }); }
   $("#impStaff").onclick=openStaffImport;
   $("#staffFilterToggle").onclick=()=>{ staffFiltersOpen=$("#staffFilterPanel").hasAttribute("hidden"); viewStaff(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ staffFilter[key]=e.value; renderStaffTable(); }; };
@@ -6380,8 +7309,8 @@ function renderStaffTable(){
       <td>${esc(m.tz)||'—'}</td>
       <td>${roleChip(m.role)}</td>
       <td>${eduBadge(m)}</td>
-      <td>${m.phone?`<a href="tel:${esc(m.phone)}">${esc(m.phone)}</a>`:'—'}</td>
-      <td>${m.mobile?`<a href="tel:${esc(m.mobile)}">${esc(m.mobile)}</a>`:'—'}</td>
+      <td>${phoneCell(m.phone)}</td>
+      <td>${phoneCell(m.mobile)}</td>
       <td>${m.email?`<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>`:'—'}</td>
       <td>${esc(m.city)||'—'}</td>
       </tr>`).join("")}
@@ -6407,8 +7336,8 @@ function openStaff(m){
       <div><label>מייל</label><div class="row" style="gap:6px"><input id="st-email" value="${esc(m.email)}" type="email" inputmode="email" style="flex:1"><button type="button" class="btn ghost sm" id="st-email-send" title="שליחת מייל">✉️</button></div></div>
       <div><label>תפקיד</label><select id="st-role">${(m.role && !STAFF_ROLES.includes(m.role))?`<option selected>${esc(m.role)}</option>`:''}${STAFF_ROLES.map(r=>`<option ${m.role===r?'selected':''}>${esc(r)}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="st-education">${EDU_TYPES.map(t=>`<option ${eduLabel(m)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
-      <div><label>טלפון</label><input id="st-phone" value="${esc(m.phone)}" inputmode="tel"></div>
-      <div><label>נייד</label><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
+      <div><label>טלפון</label><div class="fieldwrap tel"><input id="st-phone" value="${esc(m.phone)}" inputmode="tel">${phoneFieldBtns("st-phone")}</div></div>
+      <div><label>נייד</label><div class="fieldwrap tel"><input id="st-mobile" value="${esc(m.mobile)}" inputmode="tel">${phoneFieldBtns("st-mobile")}</div></div>
       <div><label>רחוב</label><input id="st-street" value="${esc(m.street)}"></div>
       <div><label>מספר בית</label><input id="st-building" value="${esc(m.building)}"></div>
       <div><label>עיר</label><input id="st-city" value="${esc(m.city)}"></div>
@@ -6674,7 +7603,7 @@ function openStaffImport(){
         <th>שם משפחה</th><th>שם פרטי</th><th>ת"ז</th><th>תפקיד</th><th>טלפון</th><th>נייד</th><th>מייל</th><th>עיר</th><th>סטטוס</th></tr></thead><tbody>
         ${show.map(x=>`<tr style="${(x.fileDup||(x.dup&&skip))?'opacity:.5':''}">
           <td>${esc(x.st.lastName)||'—'}</td><td>${esc(x.st.firstName)||'—'}</td><td>${esc(x.st.tz)||'—'}</td>
-          <td><span class="pill neutral">${esc(x.st.role)||'—'}</span></td><td>${esc(x.st.phone)||'—'}</td><td>${esc(x.st.mobile)||'—'}</td>
+          <td><span class="pill neutral">${esc(x.st.role)||'—'}</span></td><td>${phoneCell(x.st.phone)}</td><td>${phoneCell(x.st.mobile)}</td>
           <td>${esc(x.st.email)||'—'}</td><td>${esc(x.st.city)||'—'}</td>
           <td>${x.fileDup?'<span class="pill warn">כפול בקובץ</span>':(x.dup?'<span class="pill warn">כפול</span>':'<span class="pill ok">חדש</span>')}</td></tr>`).join("")}
       </tbody></table></div>
@@ -6832,7 +7761,7 @@ function viewAssign(root){
       const items=assignRoles().map(meta=>{ const cur=a[meta.role]; if(!cur||!(cur.name||cur.staffId)) return "";
         const extra=asgExtraText(meta.role,cur);
         const kids=asgStudentsLabel(meta.role, cur);
-        return `<div style="margin:2px 0">${roleChip(meta.role)} <b>${esc(cur.name||"")}</b>${cur.phone?` · ${esc(cur.phone)}`:""}${extra?` · <span style="color:var(--muted)">${esc(asgExtraLabel(meta.role))}: ${esc(extra)}</span>`:""}${kids?`<div style="margin-inline-start:14px;color:var(--accent-strong);font-size:.85rem">👧 ${esc(kids)}</div>`:""}</div>`;
+        return `<div style="margin:2px 0">${roleChip(meta.role)} <b>${esc(cur.name||"")}</b>${cur.phone?` · ${phoneCell(cur.phone)}`:""}${extra?` · <span style="color:var(--muted)">${esc(asgExtraLabel(meta.role))}: ${esc(extra)}</span>`:""}${kids?`<div style="margin-inline-start:14px;color:var(--accent-strong);font-size:.85rem">👧 ${esc(kids)}</div>`:""}</div>`;
       }).filter(Boolean).join("");
       const free=ganFreeDays(g.id, asgContext);
       const freeLine=Object.keys(free).length?`<div style="margin-top:4px;color:var(--accent-strong);font-size:.85rem">🏖️ יום חופשי: ${Object.keys(free).map(r=>esc(r)+" ("+esc(free[r].join(", "))+")").join(" · ")}</div>`:"";
@@ -6960,7 +7889,7 @@ function openGanAssign(ganId){
               <input class="asg-combo" value="${esc(display)}" placeholder="הקלד/י שם או בחר/י ▾" autocomplete="off">
               <div class="asg-drop" style="display:none"></div>
               <input type="hidden" class="asg-staffid" value="${esc(cur.staffId||'')}"></div>
-            <div class="field" style="min-width:130px"><label>טלפון</label><input class="asg-phone" value="${esc(cur.phone||"")}" inputmode="tel"></div>
+            <div class="field" style="min-width:130px"><label>טלפון</label><div class="fieldwrap"><input class="asg-phone" value="${esc(cur.phone||"")}" inputmode="tel"><button type="button" class="act" data-call-sib title="חיוג">📞</button><button type="button" class="act" data-wa-sib title="וואטסאפ">💬</button></div></div>
             ${extraHtml}
             ${HOURS_ROLES.includes(role)?`<div class="field" style="min-width:110px"><label>שעות שבועיות</label><input class="asg-hours" value="${esc(cur.hours||"")}" inputmode="numeric"></div>`:""}
             <button class="btn ghost sm asg-clear" type="button" title="הסרת השיבוץ בשורה זו">🗑️ הסר</button>
@@ -7303,10 +8232,12 @@ function viewManagement(root){
     <div class="section-title">
       <div><h2>טלפוני ההנהלה הראשית</h2><div class="sub">אנשי קשר לפי אגפים. ניתן לעדכן בהמשך.</div></div>
       <button class="btn" id="addM">➕ הוספת איש קשר</button>
+      <button class="btn ghost" id="mgmtMsg" title="שליחת הודעה לאנשי ההנהלה">📣 שליחת הודעות</button>
     </div>
     <div id="mTable"></div>
   </div>`;
   $("#addM").onclick=()=>openMgmt({id:uid(),dept:"",name:"",role:"",phone:"",mobile:"",email:""});
+  { const b=$("#mgmtMsg"); if(b) b.onclick=()=>openMessages({ audience:"management", tplId:"general" }); }
   renderMgmt();
 }
 function renderMgmt(){
@@ -7317,8 +8248,8 @@ function renderMgmt(){
     <h3 style="margin:14px 0 8px;color:var(--accent-strong)">${esc(d)}</h3>
     <div class="table-wrap"><table><thead><tr><th>שם</th><th>תפקיד</th><th>טלפון</th><th>פלאפון</th><th>מייל</th><th></th></tr></thead><tbody>
       ${byDept[d].map(m=>`<tr><td><b>${esc(m.name)}</b></td><td>${esc(m.role)||'—'}</td>
-        <td>${m.phone?`<a href="tel:${esc(m.phone)}">${esc(m.phone)}</a>`:'—'}</td>
-        <td>${m.mobile?`<a href="tel:${esc(m.mobile)}">${esc(m.mobile)}</a>`:'—'}</td>
+        <td>${phoneCell(m.phone)}</td>
+        <td>${phoneCell(m.mobile)}</td>
         <td>${m.email?`<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>`:'—'}</td>
         <td class="actions"><button class="btn ghost sm" data-em="${m.id}">עריכה</button></td></tr>`).join("")}
     </tbody></table></div>`).join("");
@@ -7331,8 +8262,8 @@ function openMgmt(m){
       <div><label>אגף / מחלקה</label><input id="m-dept" value="${esc(m.dept)}" placeholder="לדוגמה: רישום, כספים, פיקוח"></div>
       <div><label>שם</label><input id="m-name" value="${esc(m.name)}"></div>
       <div><label>תפקיד</label><input id="m-role" value="${esc(m.role)}"></div>
-      <div><label>טלפון</label><input id="m-phone" value="${esc(m.phone)}" inputmode="tel"></div>
-      <div><label>פלאפון</label><input id="m-mobile" value="${esc(m.mobile)}" inputmode="tel"></div>
+      <div><label>טלפון</label><div class="fieldwrap tel"><input id="m-phone" value="${esc(m.phone)}" inputmode="tel">${phoneFieldBtns("m-phone")}</div></div>
+      <div><label>פלאפון</label><div class="fieldwrap tel"><input id="m-mobile" value="${esc(m.mobile)}" inputmode="tel">${phoneFieldBtns("m-mobile")}</div></div>
       <div><label>מייל</label><input id="m-email" value="${esc(m.email)}" type="email" inputmode="email"></div>
     </div>
     <div class="foot">${!isNew?'<button class="btn danger" id="delM">מחיקה</button>':''}<button class="btn" id="saveM" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="cancelM">ביטול</button></div>`);
@@ -7504,6 +8435,17 @@ function openFeedback(){
   };
 }
 /* ---------- רישום דיגיטלי (טופס להורים) ---------- */
+/* נוסח ברירת המחדל של מייל האישור לנרשם (סעיף 7) */
+const REG_MAIL_DEFAULT={
+  subject:'אישור קבלת רישום · {{שם הילדה}}',
+  body:'שלום {{שם ההורה}},\n\n'
+      +'רישומה של {{שם הילדה}} (ת"ז {{תז}}) לגן {{גן}} לשנת {{שנה}} התקבל אצלנו בהצלחה.\n\n'
+      +'הרישום נקלט וממתין לעיבוד. נעדכן אתכם בהמשך לגבי השיבוץ הסופי.\n'
+      +'אם יש שאלות — אפשר להשיב למייל זה.\n\n'
+      +'בברכה,\n{{שם המוסד}}\n{{תאריך}}'
+};
+/* שדות המיזוג הזמינים במייל האישור */
+const REG_MAIL_VARS=["שם הילדה","תז","גן","סמל גן","שם ההורה","כתובת","שנה","שם המוסד","תאריך"];
 function regFormCfg(){ return (DB.settings&&DB.settings.regForm)||{}; }
 function publicFormUrl(){ try{ return location.origin + location.pathname.replace(/[^/]*$/, "") + "register.html"; }catch(e){ return "register.html"; } }
 async function regFormPublish(){
@@ -7516,6 +8458,14 @@ async function regFormPublish(){
     year: rf.year || DB.activeYear || "",
     logo: isImg? logo : "",
     notifyEmail: rf.notifyEmail || contactEmail() || "",
+    /* מייל אישור אוטומטי לנרשם (סעיף 7) — נשלח מהגשר מיד עם קליטת הרישום */
+    applicantMail: {
+      enabled: !!rf.applicantMailOn,
+      subject: rf.applicantMailSubject || REG_MAIL_DEFAULT.subject,
+      body:    rf.applicantMailBody    || REG_MAIL_DEFAULT.body,
+      replyTo: rf.applicantMailReplyTo || rf.notifyEmail || contactEmail() || "",
+      attachForm: rf.applicantMailAttach!==false
+    },
     ownership: { name:rf.ownName||"", symbol:rf.ownSymbol||"", address:rf.ownAddress||"",
       recognizedFrom:rf.recognizedFrom||"", signName:rf.signName||"", institutionName:rf.institutionName||rf.ownName||"",
       stampImage:rf.stampImage||"" },
@@ -7575,7 +8525,7 @@ function openRegReview(){
       <td style="white-space:nowrap">${esc(new Date(r.at).toLocaleDateString("he-IL"))}</td>
       <td><b>${esc([r.data.childLast,r.data.childFirst].filter(Boolean).join(" ")||r.data.childName||"")}</b>${r.data.childTz?`<div class="hint">${esc(r.data.childTz)}</div>`:''}</td>
       <td>${esc(r.data.ganName||"")} ${r.data.ganSymbol?`<span class="hint">(${esc(r.data.ganSymbol)})</span>`:''}</td>
-      <td>${esc(r.data.parentName||"")}${(r.data.momMobile||r.data.dadMobile)?`<div class="hint">${esc(r.data.momMobile||r.data.dadMobile)}</div>`:''}</td>
+      <td>${esc(r.data.parentName||"")}${(r.data.momMobile||r.data.dadMobile)?`<div>${phoneCell(r.data.momMobile||r.data.dadMobile)}</div>`:''}</td>
       <td><a class="btn ghost sm" href="${esc(r.folderLink||'#')}" target="_blank">📂 ${(r.files||[]).length} קבצים</a></td>
       <td style="white-space:nowrap"><button class="btn sm rr-approve" data-id="${esc(r.id)}">✔ צור תיק</button> <button class="btn ghost sm rr-del" data-id="${esc(r.id)}">🗑️</button></td></tr>`).join("")}</tbody></table></div>`;
     b.querySelectorAll(".rr-approve").forEach(x=> x.onclick=async ()=>{ const rec=items.find(r=>r.id===x.dataset.id); x.disabled=true; await approveReg(rec,()=>{ items=items.filter(r=>r.id!==rec.id); render(); }); });
@@ -7589,48 +8539,963 @@ function guidePlainText(){
   const strip=h=>String(h||"").replace(/<[^>]+>/g," ").replace(/&[a-z]+;/gi," ").replace(/\s+/g," ").trim();
   return c.sections.map(s=>"### "+s.title+"\n"+strip(s.html)).join("\n\n");
 }
+/* ============================================================
+   עוזר חכם (סעיפים 4-5)
+   • פאנל צד נעוץ שנשאר פתוח בזמן העבודה בתוכנה (במקום חלון קופץ).
+   • שכבת "פעולות": העוזר יכול לקרוא נתונים אמיתיים מהמערכת ולבצע
+     שינויים — כל שינוי מוצג ככרטיס אישור, ומתבצע רק בלחיצה מפורשת.
+   ============================================================ */
+
+/* ---------- כלי הקריאה והכתיבה שהעוזר יכול להפעיל ---------- */
+/* read:true  → מתבצע לבד והתוצאה חוזרת לעוזר (אין שינוי בנתונים)
+   read:false → דורש אישור מפורש של המשתמש לפני ביצוע */
+const AI_TOOLS = {
+  /* ---- קריאה ---- */
+  stats: { read:true, desc:'סיכום כללי: כמה תלמידות, גנים, משובצות, ממתינות — לשנה הפעילה. ללא פרמטרים.',
+    run(){
+      const list=studentsOfYear().filter(s=>!s.finished);
+      const gans=DB.gans.filter(g=>g.active);
+      const by=e=>list.filter(s=>eduLabel(s)===e).length;
+      return { שנה:DB.activeYear, תלמידות_פעילות:list.length,
+        חינוך_רגיל:by('רגיל'), חינוך_מיוחד:by('ח"מ'),
+        משובצות:list.filter(s=>s.ganId&&s.placed!==false).length,
+        ממתינות_לשיבוץ:list.filter(s=>!s.ganId||s.placed===false).length,
+        ללא_גן:list.filter(s=>!s.ganId).length,
+        גנים_פעילים:gans.length,
+        קלוטות_בעירייה:list.filter(s=>s.absorbedMunicipality).length };
+    } },
+  list_gans: { read:true, desc:'רשימת הגנים עם גיל, גננת, קמפוס, כתובת, רשומות, משובצות ורף השיבוץ. פרמטרים אופציונליים: edu ("רגיל"/"ח\\"מ"), campus, age, onlyActive (ברירת מחדל true).',
+    run(a){
+      a=a||{};
+      let g=DB.gans.filter(x=> a.onlyActive===false ? true : x.active);
+      if(a.edu) g=g.filter(x=>eduLabel(x)===a.edu);
+      if(a.campus) g=g.filter(x=>String(x.campus||"").includes(a.campus));
+      if(a.age) g=g.filter(x=>String(x.age||"")===String(a.age));
+      return g.map(x=>({ id:x.id, שם:ganName(x.id), סמל:x.ganSymbol||x.internalSymbol||"", גיל:x.age||"",
+        חינוך:eduLabel(x), גננת:x.teacherName||"", קמפוס:x.campus||"",
+        כתובת:[x.address,x.building].filter(Boolean).join(" "), טלפון:x.phoneGan||"",
+        רשומות:studentsOfYear().filter(s=>s.ganId===x.id&&!s.finished).length,
+        משובצות:ganAssignedCount(x.id), רף_שיבוץ:ganAssignCap(x)||"ללא",
+        מקומות_פנויים:(ganAssignCap(x)?Math.max(0,ganAssignCap(x)-ganAssignedCount(x.id)):"ללא הגבלה") }));
+    } },
+  find_students: { read:true, desc:'חיפוש תלמידות בשנה הפעילה. פרמטרים (כולם אופציונליים): q (שם או ת"ז), ganName, ganId, age, edu, city, street, placed (true/false), noGan (true), campus, limit (ברירת מחדל 25).',
+    run(a){
+      a=a||{};
+      let l=studentsOfYear().filter(s=>!s.finished);
+      const q=String(a.q||"").trim().toLowerCase();
+      if(q) l=l.filter(s=>([s.firstName,s.lastName,s.tz].join(" ")).toLowerCase().includes(q));
+      if(a.ganId) l=l.filter(s=>s.ganId===a.ganId);
+      if(a.ganName){ const g=aiFindGan(a.ganName); if(g) l=l.filter(s=>s.ganId===g.id); else return { שגיאה:'לא נמצא גן בשם "'+a.ganName+'"' }; }
+      if(a.age!=null && a.age!=="") l=l.filter(s=>String(s.age||"")===String(a.age));
+      if(a.edu) l=l.filter(s=>eduLabel(s)===a.edu);
+      if(a.city) l=l.filter(s=>String(s.city||"").includes(a.city));
+      if(a.street) l=l.filter(s=>String(s.street||"").includes(a.street));
+      if(a.campus) l=l.filter(s=>String(ganCampus(s.ganId)||s.campus||"").includes(a.campus));
+      if(a.noGan===true) l=l.filter(s=>!s.ganId);
+      if(a.placed===true) l=l.filter(s=>s.ganId&&s.placed!==false);
+      if(a.placed===false) l=l.filter(s=>s.placed===false);
+      const total=l.length, lim=Math.min(+a.limit||25, 100);
+      return { סה_כ:total, מוצגות:Math.min(total,lim),
+        תלמידות:l.slice(0,lim).map(s=>aiStudentBrief(s)) };
+    } },
+  student_details: { read:true, desc:'כל פרטי תיק תלמידה. פרמטרים: id או tz או name (שם מלא/חלקי).',
+    run(a){ const s=aiFindStudent(a||{}); if(!s) return { שגיאה:"לא נמצאה תלמידה מתאימה" };
+      const sib=findSiblings(s);
+      return { id:s.id, שם:[s.lastName,s.firstName].filter(Boolean).join(" "), 'ת"ז':s.tz||"",
+        'תאריך לידה':s.dob||"", גיל:s.age||"", חינוך:eduLabel(s), מועד_רישום:s.period||"",
+        גן:s.ganId?ganName(s.ganId):"— ללא —", קמפוס:ganCampus(s.ganId)||s.campus||"",
+        שיבוץ_סופי:s.placed!==false, שם_אם:s.motherName||"", שם_אב:s.fatherName||"",
+        כתובת:[s.street,s.building,s.city].filter(Boolean).join(" "),
+        'נייד אם':s.momMobile||"", 'נייד אב':s.dadMobile||"", 'טלפון בית':s.phone||"", 'דוא"ל':s.email||"",
+        קלוט_בעירייה:!!s.absorbedMunicipality, נרשמה_על_ידינו:!!s.registeredByUs,
+        ביטוח_שולם:!!s.insurancePaid, מסמכים:s.docs||{}, תוכניות:s.programs||{},
+        אחיות_בכתובת:(sib.list||[]).map(x=>[x.lastName,x.firstName].filter(Boolean).join(" ")+(x.ganId?(" · "+ganName(x.ganId)):"")),
+        הערות:s.notes||"" };
+    } },
+  nearest_gans: { read:true, desc:'הגנים הקרובים לכתובת של תלמידה (מרחק אווירי בק"מ). פרמטרים: id/tz/name של התלמידה, ואופציונלית ganNames (מערך שמות גנים לבדיקה). דורש שכתובת התלמידה והגנים כבר מוקמו על המפה.',
+    run(a){ const s=aiFindStudent(a||{}); if(!s) return { שגיאה:"לא נמצאה תלמידה מתאימה" };
+      if(!(s.geo&&s.geo.lat!=null)) return { שגיאה:'לתלמידה עדיין אין מיקום על המפה. יש לפתוח את לשונית "מפת שיבוץ" וללחוץ "📍 טעינת מיקומי תלמידות", או להשתמש בכפתור 🧭 שבתיק.' };
+      let gans=DB.gans.filter(g=>g.active && eduLabel(g)===eduLabel(s) && g.geo && g.geo.lat!=null);
+      if(Array.isArray(a.ganNames)&&a.ganNames.length){
+        const ids=new Set(a.ganNames.map(n=>{ const g=aiFindGan(n); return g?g.id:null; }).filter(Boolean));
+        gans=gans.filter(g=>ids.has(g.id));
+      }
+      if(!gans.length) return { שגיאה:"אין גנים עם מיקום מתאים לבדיקה" };
+      return gans.map(g=>({ גן:ganName(g.id), 'מרחק_קמ':+haversineKm(s.geo,g.geo).toFixed(2),
+        משובצות:ganAssignedCount(g.id), רף:ganAssignCap(g)||"ללא" }))
+        .sort((x,y)=>x['מרחק_קמ']-y['מרחק_קמ']);
+    } },
+  list_staff: { read:true, desc:'רשימת אנשי הצוות. פרמטרים אופציונליים: role, edu, q (שם), limit.',
+    run(a){ a=a||{};
+      let l=(DB.staff||[]).filter(m=>m.active!==false);
+      if(a.role) l=l.filter(m=>String(m.role||"").includes(a.role));
+      if(a.edu) l=l.filter(m=>eduLabel(m)===a.edu);
+      const q=String(a.q||"").trim().toLowerCase();
+      if(q) l=l.filter(m=>(staffName(m)+" "+(m.tz||"")).toLowerCase().includes(q));
+      return l.slice(0,Math.min(+a.limit||30,100)).map(m=>({ id:m.id, שם:staffName(m), תפקיד:m.role||"",
+        חינוך:eduLabel(m), נייד:m.mobile||"", טלפון:m.phone||"", 'דוא"ל':m.email||"" }));
+    } },
+
+  /* ---- ניווט (בטוח — לא משנה נתונים) ---- */
+  open_tab: { read:true, desc:'מעבר ללשונית בתוכנה. פרמטר: tab — אחד מ: '+TABS.map(t=>t.id).join(", ")+'.',
+    run(a){ const t=(a&&a.tab)||""; if(!TABS.some(x=>x.id===t)) return { שגיאה:"לשונית לא מוכרת: "+t };
+      navToTab(t); return { בוצע:'עברנו ללשונית "'+(TABS.find(x=>x.id===t).label)+'"' }; } },
+  open_student: { read:true, desc:'פתיחת תיק תלמידה על המסך. פרמטרים: id או tz או name.',
+    run(a){ const s=aiFindStudent(a||{}); if(!s) return { שגיאה:"לא נמצאה תלמידה מתאימה" };
+      openStudentById(s.id); return { בוצע:'נפתח התיק של '+[s.lastName,s.firstName].filter(Boolean).join(" ") }; } },
+
+  /* ---- כתיבה (דורש אישור) ---- */
+  assign_student: { read:false, desc:'שיבוץ תלמידה לגן. פרמטרים: student (שם/ת"ז/id), gan (שם הגן), markPlaced (ברירת מחדל true — לסמן כשיבוץ סופי).',
+    preview(a){ const s=aiFindStudent({ name:a.student, tz:a.student, id:a.student }); const g=aiFindGan(a.gan);
+      if(!s) return { error:'לא נמצאה תלמידה בשם/ת"ז "'+(a.student||"")+'"' };
+      if(!g) return { error:'לא נמצא גן בשם "'+(a.gan||"")+'"' };
+      const gate=canAssignStudent(g,s);
+      return { text:'שיבוץ <b>'+esc([s.lastName,s.firstName].filter(Boolean).join(" "))+'</b> לגן <b>'+esc(ganName(g.id))+'</b>'
+        +(s.ganId&&s.ganId!==g.id?' (במקום '+esc(ganName(s.ganId))+')':'')
+        +(a.markPlaced===false?' — בלי לסמן שיבוץ סופי':' — כולל סימון "משובצת"'),
+        warn: gate.ok?"":gate.msg, ctx:{ sid:s.id, gid:g.id } };
+    },
+    run(a,ctx){ const s=DB.students.find(x=>x.id===ctx.sid), g=ganById(ctx.gid);
+      if(!s||!g) return { שגיאה:"הרשומה לא נמצאה" };
+      if(!canEditRec(s)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      if(a.markPlaced!==false){ const gate=canAssignStudent(g,s); if(!gate.ok) return { שגיאה:gate.msg }; }
+      s.ganId=g.id; s.campus=ganCampus(g.id)||s.campus||"";
+      const ages=ganAges(g); if(ages.length===1) s.age=ages[0];
+      if(a.markPlaced!==false) s.placed=true;
+      save(); try{ route(); }catch(e){}
+      return { בוצע:[s.lastName,s.firstName].filter(Boolean).join(" ")+" שובצה ל"+ganName(g.id) };
+    } },
+  unassign_student: { read:false, desc:'הסרת שיבוץ מתלמידה (הגן מתרוקן). פרמטר: student.',
+    preview(a){ const s=aiFindStudent({ name:a.student, tz:a.student, id:a.student });
+      if(!s) return { error:'לא נמצאה תלמידה "'+(a.student||"")+'"' };
+      if(!s.ganId) return { error:'ל'+[s.lastName,s.firstName].filter(Boolean).join(" ")+' ממילא אין גן משובץ' };
+      return { text:'הסרת השיבוץ של <b>'+esc([s.lastName,s.firstName].filter(Boolean).join(" "))+'</b> מגן <b>'+esc(ganName(s.ganId))+'</b>', ctx:{ sid:s.id } }; },
+    run(a,ctx){ const s=DB.students.find(x=>x.id===ctx.sid); if(!s) return { שגיאה:"לא נמצאה" };
+      if(!canEditRec(s)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      const was=ganName(s.ganId); s.ganId=""; s.placed=false; save(); try{ route(); }catch(e){}
+      return { בוצע:"הוסר השיבוץ מ"+was }; } },
+  update_student: { read:false, desc:'עדכון שדות בתיק תלמידה. פרמטרים: student (שם/ת"ז), fields — אובייקט עם שדות מתוך: firstName, lastName, tz, dob, motherName, fatherName, phone, momMobile, dadMobile, email, street, building, city, age, period, education, notes, placed, absorbedMunicipality, registeredByUs, insurancePaid, finished.',
+    preview(a){ const s=aiFindStudent({ name:a.student, tz:a.student, id:a.student });
+      if(!s) return { error:'לא נמצאה תלמידה "'+(a.student||"")+'"' };
+      const f=a.fields||{}; const ok=Object.keys(f).filter(k=>AI_STUDENT_FIELDS[k]);
+      const bad=Object.keys(f).filter(k=>!AI_STUDENT_FIELDS[k]);
+      if(!ok.length) return { error:"אין שדות מוכרים לעדכון"+(bad.length?(" (לא מוכרים: "+bad.join(", ")+")"):"") };
+      return { text:'עדכון התיק של <b>'+esc([s.lastName,s.firstName].filter(Boolean).join(" "))+'</b>:<br>'
+        +ok.map(k=>'• '+esc(AI_STUDENT_FIELDS[k])+': <b>'+esc(String(s[k]??"—"))+'</b> ← <b>'+esc(String(f[k]))+'</b>').join("<br>"),
+        warn: bad.length?("שדות שלא זוהו ולא יעודכנו: "+bad.join(", ")):"", ctx:{ sid:s.id, keys:ok } }; },
+    run(a,ctx){ const s=DB.students.find(x=>x.id===ctx.sid); if(!s) return { שגיאה:"לא נמצאה" };
+      if(!canEditRec(s)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      const f=a.fields||{};
+      ctx.keys.forEach(k=>{ let v=f[k];
+        if(["placed","absorbedMunicipality","registeredByUs","insurancePaid","finished"].includes(k)) v=!!v && v!=="false";
+        s[k]=v; });
+      if(ctx.keys.includes("momMobile")||ctx.keys.includes("dadMobile")) s.mobile=s.momMobile||s.dadMobile||"";
+      save(); try{ route(); }catch(e){}
+      return { בוצע:"התיק עודכן ("+ctx.keys.length+" שדות)" }; } },
+  set_gan_assign_cap: { read:false, desc:'קביעת רף השיבוץ (מקסימום משובצות) לגן. פרמטרים: gan (שם הגן), cap (מספר; 0 = ללא הגבלה).',
+    preview(a){ const g=aiFindGan(a.gan); if(!g) return { error:'לא נמצא גן "'+(a.gan||"")+'"' };
+      const cap=+String(a.cap??"").replace(/[^\d]/g,"")||0;
+      return { text:'קביעת רף שיבוץ לגן <b>'+esc(ganName(g.id))+'</b>: <b>'+(cap||"ללא הגבלה")+'</b> (כרגע '+(ganAssignCap(g)||"ללא")+', משובצות: '+ganAssignedCount(g.id)+')',
+        warn: (cap && cap<ganAssignedCount(g.id))?("שים/י לב: כבר משובצות "+ganAssignedCount(g.id)+" — הרף החדש נמוך מהמצב הקיים (השיבוץ הקיים לא ייפגע, אך לא ניתן יהיה להוסיף)."):"",
+        ctx:{ gid:g.id, cap } }; },
+    run(a,ctx){ const g=ganById(ctx.gid); if(!g) return { שגיאה:"הגן לא נמצא" };
+      if(!canEditRec(g)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      g.assignCap=ctx.cap?String(ctx.cap):""; save(); try{ route(); }catch(e){}
+      return { בוצע:"רף השיבוץ של "+ganName(g.id)+" נקבע ל-"+(ctx.cap||"ללא הגבלה") }; } },
+  update_gan: { read:false, desc:'עדכון שדות בכרטיס גן. פרמטרים: gan (שם), fields — מתוך: ganName, ganSymbol, internalSymbol, teacherName, age, education, address, building, street, zone, phoneGan, campus, capacity, assignCap, active.',
+    preview(a){ const g=aiFindGan(a.gan); if(!g) return { error:'לא נמצא גן "'+(a.gan||"")+'"' };
+      const f=a.fields||{}; const ok=Object.keys(f).filter(k=>AI_GAN_FIELDS[k]);
+      if(!ok.length) return { error:"אין שדות מוכרים לעדכון" };
+      return { text:'עדכון הגן <b>'+esc(ganName(g.id))+'</b>:<br>'
+        +ok.map(k=>'• '+esc(AI_GAN_FIELDS[k])+': <b>'+esc(String(g[k]??"—"))+'</b> ← <b>'+esc(String(f[k]))+'</b>').join("<br>"),
+        ctx:{ gid:g.id, keys:ok } }; },
+    run(a,ctx){ const g=ganById(ctx.gid); if(!g) return { שגיאה:"הגן לא נמצא" };
+      if(!canEditRec(g)) return { שגיאה:"אין הרשאת עריכה בחינוך זה" };
+      const f=a.fields||{};
+      ctx.keys.forEach(k=>{ let v=f[k]; if(k==="active") v=!!v && v!=="false"; g[k]=v; });
+      save(); try{ route(); }catch(e){}
+      return { בוצע:"כרטיס הגן עודכן" }; } },
+  bulk_update_students: { read:false, desc:'עדכון קבוצתי של תלמידות. פרמטרים: filter (כמו ב-find_students), field — אחד מ: '+'placed, absorbedMunicipality, registeredByUs, insurancePaid'+', value (true/false).',
+    preview(a){ const f=a.filter||{}; const res=AI_TOOLS.find_students.run(Object.assign({limit:1000}, f));
+      if(res['שגיאה']) return { error:res['שגיאה'] };
+      const ids=(res['תלמידות']||[]).map(x=>x.id);
+      const allowed={ placed:'משובצת (שיבוץ סופי)', absorbedMunicipality:'קלוט בעירייה', registeredByUs:'נרשמה על ידינו', insurancePaid:'תשלום ביטוח' };
+      if(!allowed[a.field]) return { error:'שדה לא נתמך לעדכון קבוצתי: '+(a.field||"") };
+      if(!ids.length) return { error:"אף תלמידה לא תואמת את הסינון" };
+      const v=!!a.value && a.value!=="false";
+      return { text:'עדכון קבוצתי ל-<b>'+ids.length+'</b> תלמידות · <b>'+esc(allowed[a.field])+'</b> → <b>'+(v?'כן':'לא')+'</b>',
+        warn: ids.length>50 ? ("זהו עדכון רחב — "+ids.length+" תיקים.") : "", ctx:{ ids, field:a.field, val:v } }; },
+    run(a,ctx){ let n=0, blocked=0, full=0;
+      ctx.ids.forEach(id=>{ const s=DB.students.find(x=>x.id===id); if(!s) return;
+        if(!canEditRec(s)){ blocked++; return; }
+        if(ctx.field==='placed' && ctx.val && s.ganId && s.placed===false && !assignGate(s.ganId,s,true)){ full++; return; }
+        s[ctx.field]=ctx.val; n++; });
+      save(); try{ route(); }catch(e){}
+      return { בוצע:"עודכנו "+n+" תלמידות", דולגו_ללא_הרשאה:blocked, דולגו_גן_מלא:full }; } }
+};
+/* שדות מותרים לעדכון + התווית העברית שלהם */
+const AI_STUDENT_FIELDS = { firstName:"שם פרטי", lastName:"שם משפחה", tz:'ת"ז', dob:"תאריך לידה",
+  motherName:"שם האם", fatherName:"שם האב", phone:"טלפון בית", momMobile:"נייד אם", dadMobile:"נייד אב",
+  email:'דוא"ל', street:"רחוב", building:"מספר בניין", city:"עיר", age:"גיל", period:"מועד רישום",
+  education:"חינוך", notes:"הערות", placed:"משובצת (שיבוץ סופי)", absorbedMunicipality:"קלוט בעירייה",
+  registeredByUs:"נרשמה על ידינו", insurancePaid:"תשלום ביטוח", finished:"סיימה גן" };
+const AI_GAN_FIELDS = { ganName:"שם הגן", ganSymbol:"סמל הגן", internalSymbol:"סמל פנימי",
+  teacherName:"שם הגננת", age:"גיל", education:"חינוך", address:"כתובת", building:"מספר", street:"רחוב",
+  zone:"אזור", phoneGan:"טלפון בגן", campus:"קמפוס", capacity:"קיבולת", assignCap:"רף שיבוץ", active:"פעיל" };
+
+/* איתור גן לפי שם / סמל (התאמה מלאה קודמת, ואז הכלה) */
+function aiFindGan(name){
+  const q=String(name||"").trim(); if(!q) return null;
+  const all=DB.gans;
+  return all.find(g=>g.id===q)
+      || all.find(g=>ganName(g.id)===q)
+      || all.find(g=>String(g.ganSymbol||"")===q || String(g.internalSymbol||"")===q)
+      || all.find(g=>ganName(g.id).includes(q))
+      || all.find(g=>String(g.teacherName||"").includes(q))
+      || null;
+}
+/* איתור תלמידה לפי id / ת"ז / שם (בשנה הפעילה) */
+function aiFindStudent(a){
+  const list=studentsOfYear().filter(s=>!s.finished);
+  const one=v=>{ const q=String(v||"").trim(); if(!q) return null;
+    return list.find(s=>s.id===q)
+        || list.find(s=>String(s.tz||"")===q)
+        || list.find(s=>[s.lastName,s.firstName].filter(Boolean).join(" ")===q)
+        || list.find(s=>[s.firstName,s.lastName].filter(Boolean).join(" ")===q)
+        || list.find(s=>([s.firstName,s.lastName].join(" ")).includes(q))
+        || null; };
+  return one(a.id) || one(a.tz) || one(a.name) || one(a.student) || null;
+}
+function aiStudentBrief(s){
+  return { id:s.id, שם:[s.lastName,s.firstName].filter(Boolean).join(" "), 'ת"ז':s.tz||"", גיל:s.age||"",
+    גן:s.ganId?ganName(s.ganId):"—", שיבוץ_סופי:s.placed!==false, חינוך:eduLabel(s),
+    כתובת:[s.street,s.building].filter(Boolean).join(" "), עיר:s.city||"",
+    נייד:s.momMobile||s.dadMobile||s.mobile||"" };
+}
+
+/* ---------- הנחיית המערכת ---------- */
+function aiToolsSpec(){
+  return Object.keys(AI_TOOLS).map(k=>{
+    const t=AI_TOOLS[k];
+    return '• '+k+(t.read?' [קריאה — מתבצע מיד]':' [שינוי — דורש אישור המשתמש]')+': '+t.desc;
+  }).join('\n');
+}
+function aiContextBlock(){
+  const list=studentsOfYear().filter(s=>!s.finished);
+  const gans=eduScope(DB.gans.filter(g=>g.active));
+  return 'מצב נוכחי במסך: שנה פעילה '+DB.activeYear+' · חינוך נבחר: '+(activeEdu||'הכל')
+    +' · לשונית פתוחה: '+((TABS.find(t=>t.id===active)||{}).label||active)
+    +' · '+list.length+' תלמידות פעילות · '+gans.length+' גנים פעילים בתחום הנבחר.\n'
+    +'שמות הגנים הפעילים: '+gans.slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he")).map(g=>ganName(g.id)).join(' · ');
+}
 function aiSystemPrompt(){
   return 'אתה עוזר עברית ידידותי ומקצועי בתוך התוכנה "'+appTitle()+'" — מערכת לניהול רשת גני ילדים (רישום תלמידות, גנים, צוות, שיבוץ, מסמכים בדרייב, יצוא ודוחות).\n'
-    +'תפקידך: לעזור למשתמש להבין איך להשתמש בתוכנה — היכן כל דבר נמצא, איך לבצע פעולות, ומה המשמעות של מאפיינים. ענה בקצרה, בעברית פשוטה ומעשית, וצעד-אחר-צעד כשצריך. אם משהו לא קיים או שאינך יודע — אמור זאת בכנות, אל תמציא מאפיינים.\n\n'
+    +'תפקידך כפול: (א) להסביר איך להשתמש בתוכנה; (ב) לבצע פעולות בפועל על הנתונים באמצעות הכלים שלמטה.\n'
+    +'ענה בקצרה, בעברית פשוטה ומעשית. אם משהו לא קיים או שאינך יודע — אמור זאת בכנות, אל תמציא.\n\n'
+    +'== כלים ==\n'
+    +'כדי להפעיל כלי, כתוב בסוף התשובה בלוק בפורמט הבא (ואפשר יותר מאחד):\n'
+    +'```action\n{"tool":"שם_הכלי","args":{...}}\n```\n'
+    +'כללים חשובים:\n'
+    +'- אל תמציא נתונים. אם נשאלת שאלה על נתונים אמיתיים (כמה, מי, איפה) — הפעל כלי קריאה וחכה לתוצאה, ורק אז ענה.\n'
+    +'- כלי קריאה מתבצעים מיד והתוצאה תוחזר אליך בהודעה הבאה; אז נסח תשובה קצרה בעברית לפי התוצאה.\n'
+    +'- כלי שינוי מוצגים למשתמש ככרטיס אישור. אל תניח שהם בוצעו — המשתמש מאשר.\n'
+    +'- אל תדפיס את בלוק ה-action בתוך טקסט ההסבר; רק בסוף.\n'
+    +'- אם חסר לך פרט (איזו תלמידה בדיוק, איזה גן) — שאל, אל תנחש.\n\n'
+    +'רשימת הכלים:\n'+aiToolsSpec()+'\n\n'
+    +aiContextBlock()+'\n\n'
     +'להלן מבנה התוכנה והמדריך המלא:\n'+guidePlainText();
 }
 async function aiAsk(history){
   return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model:(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash" });
 }
-function openAiHelp(){
-  if(!DRIVE_READY){ modal(`<h3>🤖 עוזר חכם</h3><div class="note">העוזר פועל דרך גשר הדרייב, שאינו מוגדר עדיין. יש להשלים את חיבור הגשר (SETUP.md).</div><div class="foot"><button class="btn ghost" id="ai-close" style="margin-inline-start:auto">סגירה</button></div>`); $("#ai-close").onclick=closeModal; return; }
-  const convo=[];
-  modal(`<h3>🤖 עוזר חכם — שאל/י כל שאלה על התוכנה</h3>
-    <div class="sub">אני יכול להסביר איך לבצע פעולות, היכן דברים נמצאים, ומה המשמעות של מאפיינים.</div>
-    <div id="ai-msgs" style="margin-top:10px;max-height:48vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:4px"></div>
-    <div class="row" style="gap:8px;margin-top:10px;align-items:flex-end">
-      <div class="field grow"><textarea id="ai-input" rows="2" placeholder="למשל: איך מוסיפים גן חדש? איך מייבאים מסמכים מהדרייב?"></textarea></div>
-      <button class="btn" id="ai-send">שליחה</button>
-    </div>
-    <div class="foot"><button class="btn ghost" id="ai-close" style="margin-inline-start:auto">סגירה</button></div>`);
-  $("#ai-close").onclick=closeModal;
-  const msgs=$("#ai-msgs");
-  const bubble=(role,text)=>{ const d=document.createElement("div");
-    d.style.cssText="max-width:85%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;line-height:1.55;"+(role==='user'?"align-self:flex-start;background:var(--accent-soft);color:var(--accent-strong)":"align-self:flex-end;background:var(--surface-2)");
-    d.textContent=text; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; };
-  bubble("assistant","שלום! 👋 איך אפשר לעזור? כתוב/י שאלה על השימוש בתוכנה.");
-  async function send(){
-    const inp=$("#ai-input"); const q=inp.value.trim(); if(!q) return;
-    inp.value=""; bubble("user",q); convo.push({role:"user",content:q});
-    const sb=$("#ai-send"); sb.disabled=true;
-    const wait=bubble("assistant","… חושב");
-    try{ const res=await aiAsk(convo); wait.textContent=res.text||"(לא התקבלה תשובה)"; convo.push({role:"assistant",content:res.text||""}); }
-    catch(e){ const raw=((e&&e.message)||String(e||""));
-      let msg;
-      if(raw.indexOf("no-ai-key")>=0) msg="העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini, ראה כלים ושירותים → עוזר חכם).";
-      else if(/network|bad-response|drive-not-configured|unauthorized|token/.test(raw)) msg=driveErrHe(e);
-      else msg="שגיאה: "+raw;   // הודעת הספק המדויקת (Gemini/Claude) — לאבחון
-      wait.textContent=msg; }
-    finally{ sb.disabled=false; msgs.scrollTop=msgs.scrollHeight; }
-  }
-  $("#ai-send").onclick=send;
-  $("#ai-input").addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } });
+/* חילוץ בלוקי הפעולה מתשובת המודל; מחזיר { text, actions:[{tool,args}] } */
+function aiParseActions(raw){
+  const text=String(raw||""); const actions=[];
+  const clean=text.replace(/```(?:action|json_action)\s*([\s\S]*?)```/gi, (m, body)=>{
+    try{
+      const t=body.trim();
+      // ייתכן שהמודל שם כמה אובייקטים בזה אחר זה
+      const parts = t.startsWith("[") ? JSON.parse(t) : [JSON.parse(t)];
+      (Array.isArray(parts)?parts:[parts]).forEach(o=>{ if(o&&o.tool) actions.push({ tool:String(o.tool), args:o.args||{} }); });
+    }catch(e){ /* בלוק לא תקין — מוצג כטקסט */ return m; }
+    return "";
+  });
+  return { text:clean.replace(/\n{3,}/g,"\n\n").trim(), actions };
 }
+
+/* ---------- הפאנל ---------- */
+let aiConvo=[];              // היסטוריית השיחה (נשמרת כל עוד הכרטיסייה פתוחה)
+let aiBusy=false;
+function aiPanelOpen(){ return document.getElementById("aiPanel")?.classList.contains("open"); }
+function aiToggle(){ aiPanelOpen() ? aiClose() : aiOpen(); }
+function aiOpen(){
+  const p=$("#aiPanel"); if(!p) return;
+  p.classList.add("open"); document.body.classList.add("ai-docked");
+  aiRefreshMode();
+  if(!aiConvo.length && !$("#aiMsgs").children.length){
+    aiBubble("bot","שלום! 👋\nאפשר לשאול אותי איך עושים דברים בתוכנה — ואפשר גם לבקש ממני לבצע.\n\nלמשל:\n• כמה תלמידות משובצות בגן הדקל?\n• מי התלמידות שעדיין בלי גן?\n• קבעי רף שיבוץ 36 לגן הדקל\n• שבצי את שרה כהן לגן הדקל");
+  }
+  setTimeout(()=>{ const i=$("#aiInput"); if(i) i.focus(); },60);
+  try{ localStorage.setItem("rg-ai-open","1"); }catch(e){}
+}
+function aiClose(){
+  const p=$("#aiPanel"); if(!p) return;
+  p.classList.remove("open"); document.body.classList.remove("ai-docked");
+  try{ localStorage.setItem("rg-ai-open","0"); }catch(e){}
+}
+function aiRefreshMode(){
+  const m=$("#aiMode"); if(!m) return;
+  if(!DRIVE_READY){ m.textContent="דורש חיבור גשר"; m.className="pill warn"; }
+  else { m.textContent="פעיל · יכול לבצע"; m.className="pill ok"; }
+}
+function aiScroll(){ const b=$("#aiMsgs"); if(b) b.scrollTop=b.scrollHeight; }
+function aiBubble(kind, text){
+  const b=$("#aiMsgs"); if(!b) return null;
+  const d=document.createElement("div");
+  d.className="aimsg "+(kind==="user"?"user":kind==="sys"?"sys":"bot");
+  d.textContent=text; b.appendChild(d); aiScroll(); return d;
+}
+/* כרטיס פעולה הממתין לאישור */
+function aiActionCard(act){
+  const b=$("#aiMsgs"); if(!b) return;
+  const tool=AI_TOOLS[act.tool];
+  const card=document.createElement("div"); card.className="aiact";
+  if(!tool){ card.classList.add("cancel"); card.innerHTML=`<b>פעולה לא מוכרת</b>${esc(act.tool)}`; b.appendChild(card); aiScroll(); return; }
+  let pv={};
+  try{ pv = tool.preview ? tool.preview(act.args||{}) : { text:esc(tool.desc) }; }
+  catch(e){ pv={ error:"שגיאה בהכנת הפעולה: "+((e&&e.message)||e) }; }
+  if(pv.error){
+    card.classList.add("cancel");
+    card.innerHTML=`<b>⚠ לא ניתן לבצע</b>${esc(pv.error)}`;
+    b.appendChild(card); aiScroll();
+    aiFeedResult(act.tool, { שגיאה:pv.error });
+    return;
+  }
+  card.innerHTML=`<b>🛠️ בקשה לביצוע</b><div>${pv.text}</div>`
+    +(pv.warn?`<div style="color:var(--bad);margin-top:5px">⚠ ${esc(pv.warn)}</div>`:"")
+    +`<div class="aiact-row"><button class="btn sm" data-ai-do>✅ בצע</button><button class="btn ghost sm" data-ai-no>ביטול</button></div>`;
+  b.appendChild(card); aiScroll();
+  card.querySelector("[data-ai-do]").onclick=()=>{
+    let res;
+    try{ res=tool.run(act.args||{}, pv.ctx||{}); }
+    catch(e){ res={ שגיאה:((e&&e.message)||String(e)) }; }
+    card.classList.add(res && res['שגיאה'] ? "cancel" : "done");
+    card.innerHTML=`<b>${res && res['שגיאה'] ? "⚠ הפעולה נכשלה" : "✅ בוצע"}</b><div>${pv.text}</div>`
+      +`<div style="margin-top:5px">${esc(res && res['שגיאה'] ? res['שגיאה'] : (res && res['בוצע']) || "הושלם")}</div>`;
+    aiRefreshMode();
+    aiFeedResult(act.tool, res);
+  };
+  card.querySelector("[data-ai-no]").onclick=()=>{
+    card.classList.add("cancel");
+    card.innerHTML=`<b>בוטל</b><div>${pv.text}</div>`;
+    aiFeedResult(act.tool, { בוטל:"המשתמש ביטל את הפעולה" });
+  };
+}
+/* החזרת תוצאת פעולה לעוזר (בלי לקרוא לו שוב — רק מוסיף להיסטוריה) */
+function aiFeedResult(tool, res){
+  aiConvo.push({ role:"user", content:"[תוצאת הכלי "+tool+"]\n"+JSON.stringify(res, null, 1) });
+}
+/* מריץ את כלי הקריאה ומחזיר true אם צריך סבב נוסף מול המודל */
+function aiRunReadTools(actions){
+  let any=false;
+  actions.forEach(act=>{
+    const tool=AI_TOOLS[act.tool];
+    if(!tool || !tool.read) return;
+    let res;
+    try{ res=tool.run(act.args||{}); }
+    catch(e){ res={ שגיאה:((e&&e.message)||String(e)) }; }
+    const n = Array.isArray(res) ? res.length : (res && res['תלמידות'] ? res['תלמידות'].length : null);
+    aiBubble("sys","🔎 "+act.tool+(n!=null?(" · "+n+" תוצאות"):""));
+    aiFeedResult(act.tool, res);
+    any=true;
+  });
+  return any;
+}
+async function aiSend(){
+  if(aiBusy) return;
+  const inp=$("#aiInput"); const q=(inp.value||"").trim(); if(!q) return;
+  if(!DRIVE_READY){ aiBubble("sys","העוזר פועל דרך גשר הדרייב, שאינו מוגדר עדיין (ראה SETUP.md · כלים ושירותים)."); return; }
+  inp.value=""; inp.style.height="";
+  aiBubble("user",q); aiConvo.push({ role:"user", content:q });
+  aiBusy=true; const sendBtn=$("#aiSend"); if(sendBtn) sendBtn.disabled=true;
+  const wait=aiBubble("bot","… חושב");
+  try{
+    // עד 4 סבבים: המודל מבקש נתונים → אנחנו מריצים כלי קריאה → הוא עונה
+    for(let round=0; round<4; round++){
+      const res=await aiAsk(aiConvo);
+      const parsed=aiParseActions(res.text||"");
+      aiConvo.push({ role:"assistant", content:res.text||"" });
+      if(round===0) wait.remove();
+      if(parsed.text) aiBubble("bot", parsed.text);
+      const writes=parsed.actions.filter(a=>!(AI_TOOLS[a.tool]&&AI_TOOLS[a.tool].read));
+      const needMore=aiRunReadTools(parsed.actions);
+      writes.forEach(aiActionCard);
+      if(!needMore) break;
+      if(round===3) aiBubble("sys","(הופסק אחרי 4 סבבים כדי לא להיתקע)");
+    }
+  }catch(e){
+    const raw=((e&&e.message)||String(e||""));
+    let msg;
+    if(raw.indexOf("no-ai-key")>=0) msg="העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini · כלים ושירותים → עוזר חכם).";
+    else if(/network|bad-response|drive-not-configured|unauthorized|token/.test(raw)) msg=driveErrHe(e);
+    else msg="שגיאה: "+raw;
+    if(wait&&wait.parentNode) wait.textContent=msg; else aiBubble("bot",msg);
+  }finally{
+    aiBusy=false; if(sendBtn) sendBtn.disabled=false; aiScroll();
+    if(wait&&wait.parentNode&&wait.textContent==="… חושב") wait.remove();
+  }
+}
+function openAiHelp(){ aiOpen(); }
+/* חיווט הפאנל — פעם אחת בטעינה */
+(function aiPanelInit(){
+  const p=document.getElementById("aiPanel"); if(!p) return;
+  document.getElementById("aiClose").onclick=aiClose;
+  document.getElementById("aiSend").onclick=aiSend;
+  document.getElementById("aiClear").onclick=()=>{
+    if(aiConvo.length && !confirm("להתחיל שיחה חדשה? ההיסטוריה תימחק.")) return;
+    aiConvo=[]; document.getElementById("aiMsgs").innerHTML="";
+    aiBubble("bot","שיחה חדשה 🙂 במה אפשר לעזור?");
+  };
+  const inp=document.getElementById("aiInput");
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); aiSend(); } });
+  inp.addEventListener("input",()=>{ inp.style.height="auto"; inp.style.height=Math.min(inp.scrollHeight,120)+"px"; });
+  /* גרירת הידית לשינוי רוחב */
+  const grip=document.getElementById("aiGrip");
+  let drag=false;
+  const setW=w=>{ w=Math.max(300,Math.min(w, Math.round(window.innerWidth*0.7)));
+    document.documentElement.style.setProperty("--ai-w", w+"px");
+    try{ localStorage.setItem("rg-ai-w", String(w)); }catch(e){} };
+  try{ const w=+localStorage.getItem("rg-ai-w"); if(w) setW(w); }catch(e){}
+  grip.addEventListener("pointerdown",e=>{ drag=true; grip.setPointerCapture(e.pointerId); e.preventDefault(); });
+  const isRtl=()=> getComputedStyle(document.documentElement).direction==="rtl";
+  grip.addEventListener("pointermove",e=>{ if(drag) setW(isRtl()? e.clientX : (window.innerWidth - e.clientX)); });
+  grip.addEventListener("pointerup",()=>{ drag=false; });
+  /* פתיחה מחדש אם הפאנל היה פתוח בביקור הקודם */
+  try{ if(localStorage.getItem("rg-ai-open")==="1") setTimeout(()=>{ if(!document.body.classList.contains("locked")) aiOpen(); }, 800); }catch(e){}
+})();
+
+/* ============================================================
+   מרכז ההודעות (סעיפים 8-11)
+   שליחה מרוכזת להורי תלמידות / לצוות / להנהלה, בארבעה ערוצים:
+     ✉️ מייל          — נשלח מהשרת דרך גשר הדרייב (חינם, במסגרת מכסת Gmail)
+     💬 וואטסאפ       — דרך ספק חיצוני אם הוגדר, אחרת מצב ידני (פתיחת צ'אט לכל נמענת)
+     📱 SMS           — דרך ספק חיצוני אם הוגדר, אחרת מצב ידני
+     📞 הודעה קולית   — דרך ספק חיצוני; ללא ספק — רשימת חיוג מסודרת עם תסריט
+   כל הודעה נבנית מתבנית עם שדות מיזוג ({{שם הילדה}}, {{גן}} …), כך
+   שהמערכת ממלאת לבד את פרטי כל נמענת — כולל הגן שאליו שובצה.
+   ============================================================ */
+
+/* מיזוג שדות בתבנית: {{שדה}} → הערך; שדה שאינו קיים — מנוקה */
+function msgMerge(tpl, vars){
+  let t=String(tpl||"");
+  Object.keys(vars||{}).forEach(k=>{ t=t.split("{{"+k+"}}").join(String(vars[k]==null?"":vars[k])); });
+  return t.replace(/\{\{[^}]*\}\}/g,"");
+}
+/* שדות המיזוג לפי סוג הקהל */
+const MSG_VARS = {
+  parents:["שם הילדה","שם משפחה","שם מלא","תז","גיל","חינוך","מועד רישום","גן","גננת","סמל גן","כתובת הגן","טלפון הגן","קמפוס","שם האם","שם האב","כתובת","עיר","שנה","שם המוסד","תאריך"],
+  staff:["שם","שם פרטי","שם משפחה","תפקיד","חינוך","תז","שנה","שם המוסד","תאריך"],
+  management:["שם","תפקיד","אגף","שנה","שם המוסד","תאריך"],
+  manual:["שם","שנה","שם המוסד","תאריך"]
+};
+function msgToday(){ try{ return new Date().toLocaleDateString("he-IL"); }catch(e){ return ""; } }
+function msgOrgName(){ const rf=regFormCfg(); return rf.institutionName||rf.ownName||appTitle(); }
+
+/* ---------- בניית רשימת הנמענים ---------- */
+function msgParentRecipients(f){
+  f=f||{};
+  let l=studentsOfYear().filter(s=>!s.finished);
+  l=eduScope(l);
+  if(f.edu) l=l.filter(s=>eduLabel(s)===f.edu);
+  if(f.gans&&f.gans.length) l=l.filter(s=>f.gans.includes(s.ganId));
+  if(f.ages&&f.ages.length) l=l.filter(s=>f.ages.includes(String(s.age||"")));
+  if(f.campus) l=l.filter(s=>String(ganCampus(s.ganId)||s.campus||"")===f.campus);
+  if(f.period) l=l.filter(s=>String(s.period||"")===f.period);
+  if(f.placed==="yes") l=l.filter(s=>s.ganId&&s.placed!==false);
+  if(f.placed==="no")  l=l.filter(s=>!s.ganId||s.placed===false);
+  if(f.withGanOnly) l=l.filter(s=>!!s.ganId);
+  return l.map(s=>{
+    const g=s.ganId?ganById(s.ganId):null;
+    return {
+      id:s.id, kind:"parents",
+      name:[s.lastName,s.firstName].filter(Boolean).join(" "),
+      email:String(s.email||"").trim(),
+      phone:String(s.momMobile||s.dadMobile||s.mobile||s.phone||"").trim(),
+      vars:{
+        "שם הילדה":s.firstName||"", "שם משפחה":s.lastName||"",
+        "שם מלא":[s.lastName,s.firstName].filter(Boolean).join(" "),
+        "תז":s.tz||"", "גיל":s.age||"", "חינוך":eduLabel(s), "מועד רישום":s.period||"",
+        "גן":g?ganName(g.id):"", "גננת":g?(g.teacherName||""):"",
+        "סמל גן":g?(g.ganSymbol||g.internalSymbol||""):"",
+        "כתובת הגן":g?[g.address,g.building].filter(Boolean).join(" "):"",
+        "טלפון הגן":g?(g.phoneGan||""):"",
+        "קמפוס":ganCampus(s.ganId)||s.campus||"",
+        "שם האם":s.motherName||"", "שם האב":s.fatherName||"",
+        "כתובת":[s.street,s.building].filter(Boolean).join(" "), "עיר":s.city||"",
+        "שנה":DB.activeYear||"", "שם המוסד":msgOrgName(), "תאריך":msgToday()
+      }
+    };
+  });
+}
+function msgStaffRecipients(f){
+  f=f||{};
+  let l=(DB.staff||[]).filter(m=>m.active!==false);
+  l=eduScope(l);
+  if(f.edu) l=l.filter(m=>eduLabel(m)===f.edu);
+  if(f.roles&&f.roles.length) l=l.filter(m=>f.roles.includes(m.role));
+  return l.map(m=>({
+    id:m.id, kind:"staff", name:staffName(m),
+    email:String(m.email||"").trim(),
+    phone:String(m.mobile||m.phone||"").trim(),
+    vars:{ "שם":staffName(m), "שם פרטי":m.firstName||"", "שם משפחה":m.lastName||"",
+      "תפקיד":m.role||"", "חינוך":eduLabel(m), "תז":m.tz||"",
+      "שנה":DB.activeYear||"", "שם המוסד":msgOrgName(), "תאריך":msgToday() }
+  }));
+}
+function msgMgmtRecipients(f){
+  f=f||{};
+  let l=(DB.management||[]);
+  if(f.dept) l=l.filter(m=>String(m.dept||"")===f.dept);
+  return l.map(m=>({
+    id:m.id, kind:"management", name:m.name||"",
+    email:String(m.email||"").trim(),
+    phone:String(m.mobile||m.phone||"").trim(),
+    vars:{ "שם":m.name||"", "תפקיד":m.role||"", "אגף":m.dept||"",
+      "שנה":DB.activeYear||"", "שם המוסד":msgOrgName(), "תאריך":msgToday() }
+  }));
+}
+/* רשימה ידנית: כל שורה — "שם, כתובת/מספר" או רק כתובת/מספר */
+function msgManualRecipients(text){
+  return String(text||"").split(/[\n;]+/).map(x=>x.trim()).filter(Boolean).map((line,i)=>{
+    const parts=line.split(/[,\t]/).map(x=>x.trim()).filter(Boolean);
+    const contact=parts.find(p=>/@/.test(p)||/\d{7,}/.test(p))||parts[parts.length-1]||"";
+    const name=parts.filter(p=>p!==contact).join(" ")||contact;
+    return { id:"m"+i, kind:"manual", name,
+      email:/@/.test(contact)?contact:"", phone:/@/.test(contact)?"":contact,
+      vars:{ "שם":name, "שנה":DB.activeYear||"", "שם המוסד":msgOrgName(), "תאריך":msgToday() } };
+  });
+}
+function msgRecipients(st){
+  if(st.audience==="staff")      return msgStaffRecipients(st.staffFilter);
+  if(st.audience==="management") return msgMgmtRecipients(st.mgmtFilter);
+  if(st.audience==="manual")     return msgManualRecipients(st.manualText);
+  return msgParentRecipients(st.parentFilter);
+}
+
+/* ---------- תבניות ---------- */
+const MSG_PRESETS = [
+  { id:"placement", name:"הודעת שיבוץ סופי", audience:"parents",
+    subject:"שיבוץ {{שם הילדה}} לשנת {{שנה}}",
+    body:'שלום רב,\n\nשמחים לעדכן כי {{שם הילדה}} {{שם משפחה}} שובצה לשנת {{שנה}} ל:\n\n'
+        +'🏫 גן {{גן}}\n👩‍🏫 גננת: {{גננת}}\n📍 כתובת: {{כתובת הגן}}\n📞 טלפון הגן: {{טלפון הגן}}\n\n'
+        +'נא לשמור הודעה זו. פרטים נוספים על פתיחת השנה יישלחו בהמשך.\n\n'
+        +'בברכה,\n{{שם המוסד}}\n{{תאריך}}' },
+  { id:"reg-ack", name:"אישור קבלת רישום", audience:"parents",
+    subject:"אישור קבלת רישום · {{שם הילדה}}",
+    body:'שלום רב,\n\nרישומה של {{שם הילדה}} {{שם משפחה}} (ת"ז {{תז}}) לשנת {{שנה}} התקבל אצלנו.\n\n'
+        +'הרישום ממתין לעיבוד ולשיבוץ. נעדכן אתכם בהמשך.\n\nבברכה,\n{{שם המוסד}}' },
+  { id:"docs", name:"תזכורת להשלמת מסמכים", audience:"parents",
+    subject:"השלמת מסמכים · {{שם הילדה}}",
+    body:'שלום רב,\n\nלצורך השלמת הרישום של {{שם הילדה}} {{שם משפחה}} חסרים לנו מסמכים.\n\n'
+        +'נודה להשלמתם בהקדם.\n\nבברכה,\n{{שם המוסד}}' },
+  { id:"general", name:"הודעה כללית להורים", audience:"parents",
+    subject:"הודעה מ{{שם המוסד}}",
+    body:'שלום רב,\n\n(כאן כותבים את תוכן ההודעה)\n\nבברכה,\n{{שם המוסד}}' },
+  { id:"staff-general", name:"הודעה לצוות", audience:"staff",
+    subject:"הודעה לצוות · {{שם המוסד}}",
+    body:'שלום {{שם}},\n\n(כאן כותבים את תוכן ההודעה)\n\nבברכה,\n{{שם המוסד}}' }
+];
+function msgSavedTemplates(){ return (DB.settings&&DB.settings.msgTemplates)||[]; }
+function msgAllTemplates(){ return MSG_PRESETS.concat(msgSavedTemplates()); }
+
+/* ---------- יומן שליחות ---------- */
+function msgLog(){ return (DB.settings&&DB.settings.msgLog)||[]; }
+function msgLogAdd(entry){
+  DB.settings=DB.settings||{};
+  DB.settings.msgLog=[Object.assign({ at:new Date().toISOString(), by:(currentUser&&currentUser.email)||"" }, entry)]
+    .concat(msgLog()).slice(0,40);
+  save();
+}
+
+/* ---------- שער ההודעות (ספק חיצוני) ---------- */
+let _msgGwStatus=null;
+async function msgGatewayStatus(){
+  if(_msgGwStatus) return _msgGwStatus;
+  if(!DRIVE_READY) return (_msgGwStatus={ sms:false, whatsapp:false, voice:false });
+  try{ const r=await driveCall("msgGatewayStatus",{}); _msgGwStatus=(r&&r.channels)||{ sms:false, whatsapp:false, voice:false }; }
+  catch(e){ _msgGwStatus={ sms:false, whatsapp:false, voice:false }; }
+  return _msgGwStatus;
+}
+
+/* ---------- המסך ---------- */
+const MSG_CHANNELS = [
+  { id:"email",    label:"✉️ מייל",         need:"email" },
+  { id:"whatsapp", label:"💬 וואטסאפ",      need:"phone" },
+  { id:"sms",      label:"📱 SMS",          need:"phone" },
+  { id:"voice",    label:"📞 הודעה קולית",  need:"phone" }
+];
+let msgState = {
+  audience:"parents", channel:"email",
+  parentFilter:{ edu:"", gans:[], ages:[], campus:"", period:"", placed:"yes", withGanOnly:false },
+  staffFilter:{ edu:"", roles:[] },
+  mgmtFilter:{ dept:"" },
+  manualText:"",
+  tplId:"placement", subject:"", body:"", inited:false
+};
+function msgApplyTemplate(id){
+  const t=msgAllTemplates().find(x=>x.id===id); if(!t) return;
+  msgState.tplId=id; msgState.subject=t.subject||""; msgState.body=t.body||"";
+  if(t.audience) msgState.audience=t.audience;
+}
+function viewMessages(root){
+  if(!msgState.inited){ msgState.inited=true; msgApplyTemplate("placement"); }
+  const gans=eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+  const ages=[...new Set(studentsOfYear().map(s=>String(s.age||"")).filter(Boolean))].sort();
+  const campuses=[...new Set(DB.gans.map(g=>(g.campus||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const depts=[...new Set((DB.management||[]).map(m=>(m.dept||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const roles=STAFF_ROLES.slice();
+  const pf=msgState.parentFilter, sf=msgState.staffFilter;
+  const vars=MSG_VARS[msgState.audience]||[];
+
+  root.innerHTML=`
+  <div class="panel">
+    <div class="section-title">
+      <div><h2>📣 מרכז ההודעות</h2>
+        <div class="sub">שליחה מרוכזת להורים, לצוות ולהנהלה — במייל, בוואטסאפ, ב-SMS ובהודעה קולית.
+          התוכן נכתב פעם אחת עם שדות מיזוג, והמערכת ממלאת לכל נמענת את הפרטים שלה (כולל הגן שאליו שובצה).</div></div>
+      <button class="btn ghost" id="msg-history">🕘 היסטוריית שליחות</button>
+    </div>
+
+    <fieldset><legend>1 · למי שולחים</legend>
+      <div class="row" style="gap:6px;flex-wrap:wrap">
+        ${[["parents","👪 הורי תלמידות"],["staff","👩‍🏫 צוות הגנים"],["management","📞 הנהלה"],["manual","✍️ רשימה ידנית"]]
+          .map(([v,l])=>`<button type="button" class="btn ${msgState.audience===v?'':'ghost'} sm msg-aud" data-v="${v}">${l}</button>`).join("")}
+      </div>
+
+      <div id="msg-aud-parents" style="margin-top:10px;${msgState.audience==='parents'?'':'display:none'}">
+        <div class="grid g4">
+          <div><label>חינוך</label><select id="mf-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${pf.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
+          <div><label>קמפוס</label><select id="mf-campus"><option value="">הכל</option>${campuses.map(c=>`<option ${pf.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
+          <div><label>מועד רישום</label><select id="mf-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${pf.period===p?'selected':''}>${esc(p)}</option>`).join("")}</select></div>
+          <div><label>סטטוס שיבוץ</label><select id="mf-placed">
+            <option value="yes" ${pf.placed==='yes'?'selected':''}>רק משובצות סופית</option>
+            <option value="no" ${pf.placed==='no'?'selected':''}>רק ממתינות לשיבוץ</option>
+            <option value="" ${pf.placed===''?'selected':''}>כולן</option></select></div>
+        </div>
+        <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <b>גנים</b><button class="btn ghost sm" type="button" id="mf-gan-all">בחר הכל</button>
+          <button class="btn ghost sm" type="button" id="mf-gan-none">נקה</button>
+          <span class="hint">לא נבחר גן = כל הגנים</span>
+        </div>
+        <div style="max-height:130px;overflow:auto;margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:10px;display:flex;flex-wrap:wrap;gap:4px 14px">
+          ${gans.map(g=>`<label class="check" style="margin:0;font-size:13px"><input type="checkbox" class="mf-gan" value="${esc(g.id)}" ${pf.gans.includes(g.id)?'checked':''}> ${esc(ganName(g.id))}</label>`).join("")||'<span class="hint">אין גנים פעילים</span>'}
+        </div>
+        <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <b>גיל</b>${ages.map(a=>`<label class="check" style="margin:0"><input type="checkbox" class="mf-age" value="${esc(a)}" ${pf.ages.includes(a)?'checked':''}> ${esc(a)}</label>`).join("")||'<span class="hint">—</span>'}
+        </div>
+      </div>
+
+      <div id="msg-aud-staff" style="margin-top:10px;${msgState.audience==='staff'?'':'display:none'}">
+        <div class="grid g2">
+          <div><label>חינוך</label><select id="sf-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${sf.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
+        </div>
+        <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px"><b>תפקידים</b><span class="hint">לא נבחר תפקיד = כל הצוות</span></div>
+        <div style="margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:10px;display:flex;flex-wrap:wrap;gap:4px 14px">
+          ${roles.map(r=>`<label class="check" style="margin:0;font-size:13px"><input type="checkbox" class="sf-role" value="${esc(r)}" ${sf.roles.includes(r)?'checked':''}> ${esc(r)}</label>`).join("")}
+        </div>
+      </div>
+
+      <div id="msg-aud-management" style="margin-top:10px;${msgState.audience==='management'?'':'display:none'}">
+        <div class="grid g2"><div><label>אגף</label><select id="gf-dept"><option value="">הכל</option>${depts.map(d=>`<option ${msgState.mgmtFilter.dept===d?'selected':''}>${esc(d)}</option>`).join("")}</select></div></div>
+      </div>
+
+      <div id="msg-aud-manual" style="margin-top:10px;${msgState.audience==='manual'?'':'display:none'}">
+        <label>רשימת נמענים — שורה לכל נמען: <b>שם, כתובת מייל או מספר נייד</b></label>
+        <textarea id="mf-manual" rows="5" placeholder="ישראל ישראלי, mail@example.com&#10;מרים כהן, 0501234567">${esc(msgState.manualText)}</textarea>
+      </div>
+
+      <div class="note" id="msg-count" style="margin-top:10px">…</div>
+    </fieldset>
+
+    <fieldset><legend>2 · באיזה ערוץ</legend>
+      <div class="row" style="gap:6px;flex-wrap:wrap">
+        ${MSG_CHANNELS.map(c=>`<button type="button" class="btn ${msgState.channel===c.id?'':'ghost'} sm msg-ch" data-v="${c.id}">${c.label}</button>`).join("")}
+      </div>
+      <div class="hint" id="msg-ch-note" style="margin-top:8px"></div>
+    </fieldset>
+
+    <fieldset><legend>3 · מה שולחים</legend>
+      <div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field" style="min-width:220px"><label>תבנית</label>
+          <select id="msg-tpl">${msgAllTemplates().map(t=>`<option value="${esc(t.id)}" ${msgState.tplId===t.id?'selected':''}>${esc(t.name)}</option>`).join("")}</select></div>
+        <button class="btn ghost sm" type="button" id="msg-tpl-save">💾 שמירה כתבנית חדשה</button>
+        <button class="btn ghost sm" type="button" id="msg-tpl-del">🗑️ מחיקת תבנית שמורה</button>
+      </div>
+      <div style="margin-top:10px" id="msg-subject-wrap">
+        <label>נושא (למייל)</label><input id="msg-subject" value="${esc(msgState.subject)}"></div>
+      <div style="margin-top:10px"><label>תוכן ההודעה</label>
+        <textarea id="msg-body" rows="10">${esc(msgState.body)}</textarea></div>
+      <div style="margin-top:8px">
+        <div class="hint" style="margin-bottom:4px">שדות מיזוג — לחיצה מוסיפה לתוכן במקום הסמן:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          ${vars.map(v=>`<button type="button" class="btn ghost sm msg-var" data-v="${esc(v)}" style="padding:1px 8px;font-size:12px">{{${esc(v)}}}</button>`).join("")}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>4 · תצוגה מקדימה ושליחה</legend>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button class="btn" type="button" id="msg-preview">👁️ תצוגה מקדימה</button>
+        <button class="btn" type="button" id="msg-send" style="background:var(--good,#1a7f37)">📤 שליחה</button>
+        <button class="btn ghost" type="button" id="msg-test">✉️ שליחת בדיקה אליי</button>
+      </div>
+      <div id="msg-out" style="margin-top:10px"></div>
+    </fieldset>
+  </div>`;
+
+  /* ---- חיווט ---- */
+  const readParentFilter=()=>{
+    pf.edu=$("#mf-edu").value; pf.campus=$("#mf-campus").value; pf.period=$("#mf-period").value;
+    pf.placed=$("#mf-placed").value;
+    pf.gans=[...root.querySelectorAll(".mf-gan")].filter(b=>b.checked).map(b=>b.value);
+    pf.ages=[...root.querySelectorAll(".mf-age")].filter(b=>b.checked).map(b=>b.value);
+  };
+  const readStaffFilter=()=>{
+    sf.edu=$("#sf-edu").value;
+    sf.roles=[...root.querySelectorAll(".sf-role")].filter(b=>b.checked).map(b=>b.value);
+  };
+  const readAll=()=>{
+    if(msgState.audience==="parents") readParentFilter();
+    if(msgState.audience==="staff") readStaffFilter();
+    if(msgState.audience==="management") msgState.mgmtFilter.dept=$("#gf-dept").value;
+    if(msgState.audience==="manual") msgState.manualText=$("#mf-manual").value;
+    msgState.subject=$("#msg-subject").value; msgState.body=$("#msg-body").value;
+  };
+  const need=()=> (MSG_CHANNELS.find(c=>c.id===msgState.channel)||{}).need||"email";
+  const updateCount=()=>{
+    readAll();
+    const all=msgRecipients(msgState);
+    const k=need();
+    const ok=all.filter(r=>r[k]);
+    const miss=all.length-ok.length;
+    $("#msg-count").innerHTML=`נמענים לפי הסינון: <b>${all.length}</b> · עם ${k==='email'?'כתובת מייל':'מספר טלפון'}: <b>${ok.length}</b>`
+      +(miss?` · <span style="color:var(--bad)">${miss} ללא ${k==='email'?'מייל':'טלפון'} — יידלגו</span>`:"");
+  };
+  root.querySelectorAll(".msg-aud").forEach(b=>b.onclick=()=>{ readAll(); msgState.audience=b.dataset.v; viewMessages(root); });
+  root.querySelectorAll(".msg-ch").forEach(b=>b.onclick=()=>{ readAll(); msgState.channel=b.dataset.v; viewMessages(root); });
+  ["#mf-edu","#mf-campus","#mf-period","#mf-placed","#sf-edu","#gf-dept"].forEach(id=>{ const e=$(id); if(e) e.onchange=updateCount; });
+  root.querySelectorAll(".mf-gan,.mf-age,.sf-role").forEach(b=>b.onchange=updateCount);
+  { const t=$("#mf-manual"); if(t) t.oninput=updateCount; }
+  { const a=$("#mf-gan-all"); if(a) a.onclick=()=>{ root.querySelectorAll(".mf-gan").forEach(b=>b.checked=true); updateCount(); };
+    const n=$("#mf-gan-none"); if(n) n.onclick=()=>{ root.querySelectorAll(".mf-gan").forEach(b=>b.checked=false); updateCount(); }; }
+  $("#msg-tpl").onchange=e=>{ msgApplyTemplate(e.target.value); viewMessages(root); };
+  root.querySelectorAll(".msg-var").forEach(b=>b.onclick=()=>{
+    const ta=$("#msg-body"); const tag="{{"+b.dataset.v+"}}";
+    const st=ta.selectionStart||0, en=ta.selectionEnd||0;
+    ta.value=ta.value.slice(0,st)+tag+ta.value.slice(en);
+    ta.focus(); ta.selectionStart=ta.selectionEnd=st+tag.length; msgState.body=ta.value;
+  });
+  $("#msg-tpl-save").onclick=()=>{
+    readAll();
+    const nm=prompt("שם לתבנית החדשה:", (msgAllTemplates().find(t=>t.id===msgState.tplId)||{}).name||"תבנית שלי");
+    if(!nm) return;
+    DB.settings=DB.settings||{};
+    DB.settings.msgTemplates=(DB.settings.msgTemplates||[]).concat([{ id:"t"+uid(), name:nm,
+      audience:msgState.audience, subject:msgState.subject, body:msgState.body }]);
+    save(); toast("התבנית נשמרה"); viewMessages(root);
+  };
+  $("#msg-tpl-del").onclick=()=>{
+    const t=msgSavedTemplates().find(x=>x.id===msgState.tplId);
+    if(!t){ toast("אפשר למחוק רק תבנית שנשמרה על ידיכם"); return; }
+    if(!confirm('למחוק את התבנית "'+t.name+'"?')) return;
+    DB.settings.msgTemplates=msgSavedTemplates().filter(x=>x.id!==t.id); save();
+    msgApplyTemplate("placement"); viewMessages(root); toast("נמחקה");
+  };
+  $("#msg-preview").onclick=()=>msgPreview(root);
+  $("#msg-send").onclick=()=>msgSend(root);
+  $("#msg-test").onclick=()=>msgSendTest(root);
+  $("#msg-history").onclick=msgOpenHistory;
+
+  /* הערת ערוץ + זמינות ספק */
+  const note=$("#msg-ch-note");
+  const subjWrap=$("#msg-subject-wrap");
+  if(subjWrap) subjWrap.style.display = msgState.channel==="email" ? "" : "none";
+  if(msgState.channel==="email"){
+    note.innerHTML=`המיילים נשלחים מחשבון הגשר (Google), ולכן <b>ללא עלות</b>. יש מכסה יומית (חשבון Gmail רגיל ~100 נמענים ביום · חשבון Workspace ~1,500). מעל המכסה — השליחה נעצרת והמערכת תדווח כמה נשלחו.`;
+    if(DRIVE_READY) driveCall("mailQuota",{}).then(r=>{ if(r&&r.remaining>=0) note.innerHTML+=` <b>נותרו היום: ${r.remaining} מיילים.</b>`; }).catch(()=>{});
+  } else {
+    note.textContent="בודק אם מוגדר ספק חיצוני…";
+    msgGatewayStatus().then(st=>{
+      const on=!!st[msgState.channel];
+      const chLabel=(MSG_CHANNELS.find(c=>c.id===msgState.channel)||{}).label||"";
+      note.innerHTML = on
+        ? `<span style="color:var(--good,#1a7f37)">✅ מוגדר ספק חיצוני לערוץ ${esc(chLabel)} — השליחה תתבצע אוטומטית.</span>`
+        : `<b>אין ספק חיצוני מוגדר לערוץ זה.</b> ${esc(chLabel)} אינו שירות חינמי של Google, ולכן נדרש חיבור לספק (למשל 019 · InforU · Cellact · Twilio) —
+           ההגדרה נעשית פעם אחת ב-Script Properties של הגשר (ראה SETUP.md, מקטע "שער הודעות").<br>
+           <b>בינתיים ניתן לשלוח במצב ידני:</b> המערכת תכין את ההודעה האישית לכל נמענת ותפתח עבורכם ${msgState.channel==='whatsapp'?'צ׳אט וואטסאפ':msgState.channel==='sms'?'הודעת SMS':'חיוג'} בלחיצה אחת, עם מעקב מי כבר טופלה.`;
+    });
+  }
+  updateCount();
+}
+
+/* בניית ההודעות בפועל לכל נמענת */
+function msgBuild(st){
+  const k=(MSG_CHANNELS.find(c=>c.id===st.channel)||{}).need||"email";
+  return msgRecipients(st).filter(r=>r[k]).map(r=>({
+    to: r[k], name:r.name,
+    subject: msgMerge(st.subject, r.vars),
+    text: msgMerge(st.body, r.vars)
+  }));
+}
+function msgPreview(root){
+  const st=msgState;
+  st.subject=$("#msg-subject").value; st.body=$("#msg-body").value;
+  const items=msgBuild(st);
+  const out=$("#msg-out");
+  if(!items.length){ out.innerHTML=`<div class="note">אין נמענים מתאימים לפי הסינון והערוץ שנבחרו.</div>`; return; }
+  out.innerHTML=`<div class="note" style="margin-bottom:8px">${items.length} הודעות ייווצרו. להלן ${Math.min(3,items.length)} דוגמאות:</div>`
+    +items.slice(0,3).map(it=>`<div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
+        <div class="hint">אל: <b>${esc(it.name)}</b> · <span dir="ltr">${esc(it.to)}</span></div>
+        ${st.channel==='email'?`<div style="font-weight:700;margin-top:4px">${esc(it.subject)}</div>`:""}
+        <div style="white-space:pre-wrap;margin-top:4px">${esc(it.text)}</div></div>`).join("");
+}
+async function msgSendTest(root){
+  const st=msgState; st.subject=$("#msg-subject").value; st.body=$("#msg-body").value;
+  const items=msgBuild(st);
+  if(!items.length){ toast("אין נמענים — אין ממה לבנות דוגמה"); return; }
+  const sample=items[0];
+  if(st.channel!=="email"){
+    msgManualPanel($("#msg-out"), [Object.assign({}, sample, { to:(prompt("מספר נייד לבדיקה:", "")||"").trim() })].filter(x=>x.to), st.channel, true);
+    return;
+  }
+  const to=prompt("לאיזו כתובת לשלוח את הבדיקה?", contactEmail()||"");
+  if(!to) return;
+  if(!DRIVE_READY){ toast("שליחת מייל דורשת חיבור גשר"); return; }
+  try{
+    await driveCall("sendMail",{ to, subject:"[בדיקה] "+sample.subject, body:sample.text });
+    toast("נשלח מייל בדיקה אל "+to);
+  }catch(e){ toast(driveErrHe(e)); }
+}
+async function msgSend(root){
+  const st=msgState; st.subject=$("#msg-subject").value; st.body=$("#msg-body").value;
+  const items=msgBuild(st);
+  const out=$("#msg-out");
+  if(!items.length){ out.innerHTML=`<div class="note">אין נמענים מתאימים לפי הסינון והערוץ שנבחרו.</div>`; return; }
+  const chLabel=(MSG_CHANNELS.find(c=>c.id===st.channel)||{}).label||"";
+  if(st.channel==="email"){
+    if(!DRIVE_READY){ out.innerHTML=`<div class="note">שליחת מיילים פועלת דרך גשר הדרייב, שאינו מוגדר עדיין (ראה SETUP.md).</div>`; return; }
+    if(!confirm(`לשלוח ${items.length} מיילים?\n\nנושא: ${st.subject}`)) return;
+    const btn=$("#msg-send"); btn.disabled=true;
+    let sent=0, failed=0, stopped=false; const errs=[];
+    out.innerHTML=`<div class="note" id="msg-prog">שולח… 0 / ${items.length}</div>`;
+    const CH=35;
+    for(let i=0;i<items.length;i+=CH){
+      const chunk=items.slice(i,i+CH).map(x=>({ to:x.to, subject:x.subject, body:x.text }));
+      try{
+        const r=await driveCall("sendMailBulk",{ items:chunk, opts:{ fromName:msgOrgName(), replyTo:contactEmail()||"" } });
+        sent+=r.sent||0; failed+=r.failed||0; (r.errors||[]).forEach(e=>errs.push(e));
+        if(r.stopped){ stopped=true; break; }
+      }catch(e){ failed+=chunk.length; errs.push({ to:"(מנה)", error:(e&&e.message)||String(e) }); break; }
+      $("#msg-prog").textContent=`שולח… ${sent} / ${items.length}`;
+    }
+    btn.disabled=false;
+    out.innerHTML=`<div class="note" style="background:var(--good-soft,#e8f5ec)">
+        ✅ נשלחו <b>${sent}</b> מתוך ${items.length}${failed?` · נכשלו ${failed}`:""}${stopped?` · <b style="color:var(--bad)">השליחה נעצרה — נגמרה המכסה היומית של חשבון הגשר. אפשר להמשיך מחר, או לשדרג ל-Google Workspace.</b>`:""}
+      </div>`
+      +(errs.length?`<div class="hint" style="margin-top:6px">שגיאות: ${errs.slice(0,10).map(e=>esc(e.to)+" — "+esc(e.error)).join(" · ")}</div>`:"");
+    msgLogAdd({ channel:"email", audience:st.audience, count:items.length, sent, failed, subject:st.subject });
+    return;
+  }
+  /* SMS / וואטסאפ / קולי */
+  const gw=await msgGatewayStatus();
+  if(gw[st.channel]){
+    if(!confirm(`לשלוח ${items.length} הודעות בערוץ ${chLabel} דרך הספק החיצוני?`)) return;
+    const btn=$("#msg-send"); btn.disabled=true;
+    out.innerHTML=`<div class="note">שולח דרך הספק…</div>`;
+    let sent=0, failed=0; const errs=[];
+    const CH=50;
+    for(let i=0;i<items.length;i+=CH){
+      const chunk=items.slice(i,i+CH).map(x=>({ to:x.to, text:x.text }));
+      try{ const r=await driveCall("msgGateway",{ channel:st.channel, items:chunk });
+        sent+=r.sent||0; failed+=r.failed||0; (r.errors||[]).forEach(e=>errs.push(e)); }
+      catch(e){ failed+=chunk.length; errs.push({ to:"(מנה)", error:(e&&e.message)||String(e) }); break; }
+    }
+    btn.disabled=false;
+    out.innerHTML=`<div class="note" style="background:var(--good-soft,#e8f5ec)">✅ נשלחו <b>${sent}</b> מתוך ${items.length}${failed?` · נכשלו ${failed}`:""}</div>`
+      +(errs.length?`<div class="hint" style="margin-top:6px">שגיאות: ${errs.slice(0,10).map(e=>esc(e.to)+" — "+esc(e.error)).join(" · ")}</div>`:"");
+    msgLogAdd({ channel:st.channel, audience:st.audience, count:items.length, sent, failed, subject:st.subject });
+    return;
+  }
+  msgManualPanel(out, items, st.channel, false);
+}
+/* מצב ידני — ללא ספק חיצוני: פותחים לכל נמענת בלחיצה, עם מעקב */
+function msgManualPanel(out, items, channel, isTest){
+  if(!items.length){ out.innerHTML=`<div class="note">אין נמענים.</div>`; return; }
+  const label = channel==='whatsapp' ? "וואטסאפ" : channel==='sms' ? "SMS" : "חיוג";
+  const icon  = channel==='whatsapp' ? "💬" : channel==='sms' ? "📱" : "📞";
+  const done=new Set();
+  const linkFor=it=> channel==='whatsapp' ? waHref(it.to, it.text)
+                   : channel==='sms'      ? smsHref(it.to, it.text)
+                   : telHref(it.to);
+  const draw=()=>{
+    out.innerHTML=`<div class="note" style="margin-bottom:8px">
+        <b>${icon} מצב ידני — ${esc(label)}</b> · ${items.length} נמענים · טופלו: <b id="msg-done">${done.size}</b>
+        ${channel==='voice'?'<br>אין ספק חיצוני מוגדר, ולכן ההודעה הקולית אינה נשלחת אוטומטית. להלן רשימת חיוג מסודרת עם התסריט האישי לכל שיחה.'
+                           :'<br>לחיצה על הכפתור פותחת את ההודעה מוכנה לשליחה — רק ללחוץ "שלח".'}
+      </div>
+      ${channel==='voice'?`<div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px"><b>תסריט לדוגמה:</b><div style="white-space:pre-wrap;margin-top:4px">${esc(items[0].text)}</div></div>`:""}
+      <div class="row" style="gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="btn sm" type="button" id="msg-next">${icon} פתיחת הבא</button>
+        <button class="btn ghost sm" type="button" id="msg-copy">📋 העתקת הרשימה</button>
+      </div>
+      <div class="table-wrap" style="max-height:50vh;overflow:auto"><table><thead><tr><th></th><th>נמען</th><th>${channel==='voice'?'טלפון':'נייד'}</th><th>הודעה</th><th></th></tr></thead><tbody>
+      ${items.map((it,i)=>`<tr${done.has(i)?' style="opacity:.5"':''}>
+        <td style="text-align:center"><input type="checkbox" class="msg-dn" data-i="${i}" ${done.has(i)?'checked':''} title="סמן/י כטופל"></td>
+        <td>${esc(it.name)}</td><td dir="ltr">${esc(it.to)}</td>
+        <td style="font-size:12px;max-width:340px">${esc(it.text.slice(0,120))}${it.text.length>120?'…':''}</td>
+        <td><a class="btn sm msg-open" data-i="${i}" href="${esc(linkFor(it))}" ${channel==='whatsapp'?'target="_blank" rel="noopener"':''}>${icon} ${esc(label)}</a></td>
+      </tr>`).join("")}
+      </tbody></table></div>`;
+    out.querySelectorAll(".msg-dn").forEach(cb=>cb.onchange=()=>{ cb.checked?done.add(+cb.dataset.i):done.delete(+cb.dataset.i); const d=$("#msg-done"); if(d) d.textContent=done.size; cb.closest("tr").style.opacity=cb.checked?.5:1; });
+    out.querySelectorAll(".msg-open").forEach(a=>a.addEventListener("click",()=>{ done.add(+a.dataset.i); const cb=out.querySelector('.msg-dn[data-i="'+a.dataset.i+'"]'); if(cb){ cb.checked=true; cb.closest("tr").style.opacity=.5; } const d=$("#msg-done"); if(d) d.textContent=done.size; }));
+    const nx=$("#msg-next"); if(nx) nx.onclick=()=>{
+      const i=items.findIndex((_,k)=>!done.has(k));
+      if(i<0){ toast("כל הנמענים טופלו ✅"); return; }
+      const a=out.querySelector('.msg-open[data-i="'+i+'"]'); if(a) a.click();
+    };
+    const cp=$("#msg-copy"); if(cp) cp.onclick=()=>{
+      const txt=items.map(it=>it.name+"\t"+it.to+"\t"+it.text.replace(/\n/g," ")).join("\n");
+      navigator.clipboard?.writeText(txt).then(()=>toast("הרשימה הועתקה"),()=>toast("לא ניתן להעתיק"));
+    };
+  };
+  draw();
+  if(!isTest) msgLogAdd({ channel, audience:msgState.audience, count:items.length, sent:0, failed:0, manual:true, subject:msgState.subject });
+}
+function msgOpenHistory(){
+  const log=msgLog();
+  modal(`<h3>🕘 היסטוריית שליחות</h3>
+    ${log.length?`<div class="table-wrap"><table><thead><tr><th>מתי</th><th>ערוץ</th><th>קהל</th><th>נמענים</th><th>נשלחו</th><th>נושא</th><th>מי</th></tr></thead><tbody>
+      ${log.map(e=>`<tr><td>${esc(new Date(e.at).toLocaleString("he-IL"))}</td>
+        <td>${esc((MSG_CHANNELS.find(c=>c.id===e.channel)||{}).label||e.channel)}</td>
+        <td>${esc({parents:"הורים",staff:"צוות",management:"הנהלה",manual:"ידני"}[e.audience]||e.audience)}</td>
+        <td>${e.count||0}</td><td>${e.manual?'ידני':(e.sent||0)}${e.failed?` <span style="color:var(--bad)">(${e.failed} נכשלו)</span>`:''}</td>
+        <td style="font-size:12px">${esc(e.subject||"")}</td><td style="font-size:12px">${esc(e.by||"")}</td></tr>`).join("")}
+      </tbody></table></div>`:'<div class="hint">עדיין לא נשלחו הודעות מהמערכת.</div>'}
+    <div class="foot"><button class="btn ghost" id="mh-close" style="margin-inline-start:auto">סגירה</button></div>`);
+  $("#mh-close").onclick=closeModal;
+}
+/* פתיחת מרכז ההודעות עם קהל/תבנית מוכנים — לקיצורי דרך מלשוניות אחרות */
+function openMessages(opts){
+  opts=opts||{};
+  msgState.inited=true;
+  if(opts.tplId) msgApplyTemplate(opts.tplId);
+  if(opts.audience) msgState.audience=opts.audience;
+  if(opts.channel) msgState.channel=opts.channel;
+  if(opts.parentFilter) Object.assign(msgState.parentFilter, opts.parentFilter);
+  if(active==="messages"){ route(); window.scrollTo(0,0); return; }
+  navToTab("messages");
+}
+
 /* ============================================================
    כלים ושירותים — חיבורים ופעולות תפעוליות (דרייב, טופס דיגיטלי, נדרים,
    עוזר AI, דיוק מפה, גיבוי) — הופרדו מ"הגדרות" לניהול נוח יותר.
@@ -7686,6 +9551,24 @@ function viewTools(root){
       </div>
       <div class="hint" style="margin-top:4px">התמונה (חתימה + חותמת הבעלות) תופיע בהצהרת הבעלות בטופס ובמסמך ה-PDF — בדיוק כפי שתעלו אותה. מומלץ צילום/סריקה נקי על רקע לבן.</div>
     </div>
+    <fieldset style="margin-top:14px"><legend>✉️ מייל אישור אוטומטי לנרשם (סעיף 7)</legend>
+      <div class="hint" style="margin-bottom:8px">כשהורה משלים רישום דרך הקישור — המערכת שולחת לו מיד מייל אישור, בנוסח שנקבע כאן.
+        המייל נשלח מחשבון הגשר. שדות למיזוג: ${REG_MAIL_VARS.map(v=>`<code>{{${esc(v)}}}</code>`).join(" · ")}</div>
+      <label class="check"><input type="checkbox" id="rf-am-on" ${rf.applicantMailOn?'checked':''}> להפעיל שליחה אוטומטית לנרשם</label>
+      <div class="grid g2" style="margin-top:8px">
+        <div><label>נושא המייל</label><input id="rf-am-subject" value="${esc(rf.applicantMailSubject||REG_MAIL_DEFAULT.subject)}"></div>
+        <div><label>כתובת לתשובות (Reply-To)</label><input id="rf-am-reply" dir="ltr" style="text-align:right" value="${esc(rf.applicantMailReplyTo||rf.notifyEmail||contactEmail()||"")}"></div>
+      </div>
+      <div style="margin-top:8px"><label>נוסח ההודעה</label>
+        <textarea id="rf-am-body" rows="8">${esc(rf.applicantMailBody||REG_MAIL_DEFAULT.body)}</textarea></div>
+      <label class="check" style="margin-top:8px"><input type="checkbox" id="rf-am-attach" ${rf.applicantMailAttach!==false?'checked':''}> לצרף למייל את מסמך הרישום שנחתם (PDF)</label>
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost sm" type="button" id="rf-am-test">📤 שליחת מייל בדיקה אליי</button>
+        <button class="btn ghost sm" type="button" id="rf-am-reset">↺ החזרה לנוסח ברירת המחדל</button>
+        <span class="hint" style="flex:1;min-width:180px">לאחר עריכה יש ללחוץ <b>"שמירה ופרסום הטופס"</b> — הנוסח נשמר בגשר יחד עם שאר הגדרות הטופס.</span>
+      </div>
+    </fieldset>
+
     <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
       <button class="btn" id="rf-publish">💾 שמירה ופרסום הטופס</button>
       <button class="btn ghost" id="rf-review">🗂️ רישומים ממתינים</button>
@@ -7767,6 +9650,11 @@ function viewTools(root){
         const r=new FileReader(); r.onload=()=>{ stampVal=String(r.result||""); if(stImg){ stImg.src=stampVal; stImg.style.display=""; } if(stClr) stClr.style.display=""; }; r.readAsDataURL(f); };
       if(stClr) stClr.onclick=()=>{ stampVal=""; if(stImg){ stImg.src=""; stImg.style.display="none"; } stClr.style.display="none"; if(stFile) stFile.value=""; };
       const collect=()=>({ year:($("#rf-year").value||"").trim(), notifyEmail:($("#rf-notify").value||"").trim(),
+        applicantMailOn: !!($("#rf-am-on")||{}).checked,
+        applicantMailSubject: (($("#rf-am-subject")||{}).value||"").trim(),
+        applicantMailBody: (($("#rf-am-body")||{}).value||""),
+        applicantMailReplyTo: (($("#rf-am-reply")||{}).value||"").trim(),
+        applicantMailAttach: !!($("#rf-am-attach")||{}).checked,
         ownName:($("#rf-ownName").value||"").trim(), ownSymbol:($("#rf-ownSymbol").value||"").trim(), ownAddress:($("#rf-ownAddress").value||"").trim(),
         recognizedFrom:($("#rf-recognizedFrom").value||"").trim(), signName:($("#rf-signName").value||"").trim(), institutionName:($("#rf-institutionName").value||"").trim(),
         stampImage:stampVal });
@@ -7779,6 +9667,24 @@ function viewTools(root){
         finally{ pub.disabled=false; pub.textContent=old; }
       };
       const rv=$("#rf-review"); if(rv) rv.onclick=openRegReview;
+      /* מייל אישור לנרשם — איפוס נוסח ובדיקה */
+      { const rs=$("#rf-am-reset"); if(rs) rs.onclick=()=>{
+          $("#rf-am-subject").value=REG_MAIL_DEFAULT.subject; $("#rf-am-body").value=REG_MAIL_DEFAULT.body;
+          toast("הוחזר נוסח ברירת המחדל — לחצ/י שמירה ופרסום"); };
+        const tb=$("#rf-am-test"); if(tb) tb.onclick=async()=>{
+          const to=(($("#rf-am-reply")||{}).value||"").trim()||contactEmail();
+          if(!to){ toast('יש להזין כתובת לתשובות / אימייל להתראות'); return; }
+          if(!DRIVE_READY){ toast("שליחת מייל דורשת חיבור גשר"); return; }
+          const vars={ "שם הילדה":"שרה כהן", "תז":"123456789", "גן":"גן הדקל", "סמל גן":"567890",
+            "שם ההורה":"משפחת כהן", "כתובת":"רחוב הרב שך 12", "שנה":($("#rf-year").value||DB.activeYear||""),
+            "שם המוסד":(($("#rf-institutionName")||{}).value||($("#rf-ownName")||{}).value||appTitle()),
+            "תאריך":new Date().toLocaleDateString("he-IL") };
+          tb.disabled=true; const ot=tb.textContent; tb.textContent="שולח…";
+          try{ await driveCall("sendMail",{ to, subject:"[בדיקה] "+msgMerge($("#rf-am-subject").value||REG_MAIL_DEFAULT.subject, vars),
+                 body:msgMerge($("#rf-am-body").value||REG_MAIL_DEFAULT.body, vars) });
+               toast("נשלח מייל בדיקה אל "+to); }
+          catch(e){ toast(driveErrHe(e)); }
+          finally{ tb.disabled=false; tb.textContent=ot; } }; }
       const cp=$("#rf-copy"); if(cp) cp.onclick=async ()=>{ const t=$("#rf-link"); try{ await navigator.clipboard.writeText(t.value); toast("הקישור הועתק"); }catch(e){ t.select(); document.execCommand&&document.execCommand("copy"); toast("הקישור הועתק"); } };
     } }
 
@@ -7844,6 +9750,27 @@ function viewSettings(root){
     <h2>התקנה כאפליקציה — טלפון או מחשב</h2>
     <div class="sub">אפשר להתקין את המערכת כאפליקציה עצמאית — על המחשב (חלון נפרד עם אייקון בשולחן העבודה) או במסך הבית של הטלפון — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג". כניסה ישירה לתוכנה בלי לפתוח דפדפן.</div>
     <div id="install-box"></div>
+  </div>
+
+  <div class="panel">
+    <h2>רף שיבוץ — מקסימום משובצות בגן</h2>
+    <div class="sub"><b>כל עוד לא הוזן כאן מספר ולא הוגדר רף בכרטיס גן — אין שום הגבלה, והמערכת מתנהגת בדיוק כמו קודם.</b><br>
+      מגבלה <b>קשיחה</b> על השיבוץ הסופי: כשגן מגיע לרף, המערכת לא תאפשר לשבץ אליו עוד תלמידה ותציג הודעה.
+      <b>הרישום אינו מוגבל</b> — אפשר לרשום לגן יותר ממה שהוגדר; המגבלה חלה רק על סימון "משובצת (שיבוץ סופי)".
+      לגן מסוים אפשר לקבוע רף אחר בכרטיס הגן (לשונית גנים → "רף שיבוץ") — והוא גובר על ברירת המחדל כאן.</div>
+    <div class="grid g3" style="margin-top:10px">
+      <div><label>ברירת מחדל — חינוך רגיל</label><input id="ac-reg" inputmode="numeric" value="${esc(assignCapDefaults()['רגיל'])}" placeholder="למשל 36" ${dis}></div>
+      <div><label>ברירת מחדל — חינוך מיוחד</label><input id="ac-spec" inputmode="numeric" value="${esc(assignCapDefaults()['ח"מ'])}" placeholder="למשל 12" ${dis}></div>
+      <div style="align-self:end"><label class="check"><input type="checkbox" id="ac-usecap" ${assignCapDefaults().useCapacity?'checked':''} ${dis}> אם אין רף — להשתמש ב<b>קיבולת</b> של הגן כרף</label>
+        <div class="hint">כבוי כברירת מחדל. הפעלה תהפוך את הקיבולת הקיימת של כל גן למגבלה חוסמת.</div></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="saveAC" ${dis}>💾 שמירת רף השיבוץ</button></div>
+    <div style="margin-top:12px">
+      <div class="hint" style="margin-bottom:6px">מצב הגנים הפעילים כרגע (משובצות / רף):</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${eduScope(DB.gans.filter(g=>g.active)).slice()
+        .sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"))
+        .map(g=>`<span style="display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px">${esc(ganName(g.id))} ${assignCapPill(g)}</span>`).join("") || '<span class="hint">אין גנים פעילים.</span>'}</div>
+    </div>
   </div>
 
   <div class="panel">
@@ -8098,6 +10025,14 @@ function viewSettings(root){
       _brandMigrated=true; saveBranding().catch(e=>console.error(e)); save(); route(); toast("הוחזר לברירת מחדל"); };
   }
 
+  // רף שיבוץ — ברירות מחדל (סעיף 2)
+  { const b=$("#saveAC");
+    if(b && admin) b.onclick=()=>{
+      const num=id=>String(($("#"+id)||{}).value||"").replace(/[^\d]/g,"");
+      DB.settings.assignCaps={ 'רגיל':num("ac-reg"), 'ח"מ':num("ac-spec"), useCapacity: !!($("#ac-usecap")||{}).checked };
+      save(); toast("רף השיבוץ נשמר"); viewSettings(root);
+    }; }
+
   // מנהלי מערכת
   const ab=$("#admins-box");
   const admins=(DB.settings.admins||[]);
@@ -8263,8 +10198,21 @@ $("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeMod
 /* כפתורי פעולה בתוך טפסים (חיוג/מייל/ניווט) — קוראים את הערך *הנוכחי* של השדה בעת הלחיצה */
 $("#modal").addEventListener("click",e=>{
   const cb=e.target.closest("[data-call]"); if(cb){ const el=$("#"+cb.dataset.call); const v=el?el.value.trim():""; if(v) location.href=telHref(v); else toast("אין מספר טלפון בשדה"); return; }
+  const wb=e.target.closest("[data-wa]"); if(wb){ const el=$("#"+wb.dataset.wa); const v=el?el.value.trim():""; const h=waHref(v); if(h) window.open(h,"_blank","noopener"); else toast("אין מספר נייד תקין בשדה"); return; }
+  const sb=e.target.closest("[data-sms]"); if(sb){ const el=$("#"+sb.dataset.sms); const v=el?el.value.trim():""; const h=smsHref(v); if(h) location.href=h; else toast("אין מספר טלפון בשדה"); return; }
   const mb=e.target.closest("[data-mail]"); if(mb){ const el=$("#"+mb.dataset.mail); const v=el?el.value.trim():""; if(v) location.href="mailto:"+encodeURIComponent(v); else toast("אין כתובת מייל בשדה"); return; }
   const nb=e.target.closest("[data-nav]"); if(nb){ const el=$("#"+nb.dataset.nav); const v=el?el.value.trim():""; if(v) window.open("https://waze.com/ul?q="+encodeURIComponent(v)+"&navigate=yes","_blank","noopener"); else toast("אין כתובת בשדה"); return; }
+});
+/* פעולות טלפון לשדות ללא מזהה (למשל טלפון בשיבוץ הצוות) — קוראים את שדה הקלט הסמוך */
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-call-sib],[data-wa-sib],[data-sms-sib]"); if(!b) return;
+  const wrap=b.closest(".fieldwrap")||b.parentElement;
+  const inp=wrap?wrap.querySelector("input"):null;
+  const v=inp?String(inp.value||"").trim():"";
+  if(!v){ toast("אין מספר טלפון בשדה"); return; }
+  if(b.hasAttribute("data-wa-sib")){ const h=waHref(v); if(h) window.open(h,"_blank","noopener"); else toast("אין מספר נייד תקין בשדה"); return; }
+  if(b.hasAttribute("data-sms-sib")){ location.href=smsHref(v); return; }
+  location.href=telHref(v);
 });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ if($("#drawer").classList.contains("open")) closeDrawer(); else closeModal(); } });
 
