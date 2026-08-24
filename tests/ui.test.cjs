@@ -38,7 +38,7 @@ Object.defineProperty(window,'stuFilter',{get:()=>stuFilter,set:v=>{stuFilter=v}
 Object.defineProperty(window,'_cityCenter',{get:()=>_cityCenter,set:v=>{_cityCenter=v},configurable:true});
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, save });
+  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, save });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -414,6 +414,47 @@ const server=require('http').createServer((req,res)=>{
     if(r.overflow) return 'גלישה אופקית בטלפון';
     if(r.refresh!==true) return 'חישוב מחדש: '+r.refresh;
     return true; });
+
+  /* ---- גאוקוד שגוי של שם העיר לא יקבע עוגן כשיש גנים שהוצבו ידנית ---- */
+  await step('הגנים הידניים גוברים על גאוקוד שם העיר בקביעת עוגן העיר', ()=>pg.evaluate(async()=>{
+    window._cityCenter=null;
+    DB.gans=[1,2,3].map(i=>({id:'mc'+i,ganName:'גן '+i,active:true,education:'רגיל',city:'מודיעין עילית',
+      geo:{lat:31.930+i/1000,lng:35.040+i/1000,manual:true,q:'__manual__'}}));
+    const c=await mapEnsureCityCenter('מודיעין עילית');
+    if(!(c && c.lat!=null)) return 'לא נקבע עוגן';
+    if(c.src!=='manual') return 'העוגן לא נלקח מהגנים הידניים (src='+c.src+')';
+    if(Math.abs(c.lat-31.932)>0.01) return 'העוגן רחוק מהגנים הידניים: '+c.lat;
+    return true; }));
+
+  /* הליבה: גאוקוד שמצליח אך מחזיר עיר שגויה. זה המקרה שקרה בשטח — עוגן שגוי
+     מקבל את כתובת התלמידה שנפלה לידו, ומודד אותה מול הגנים האמיתיים כ-100 ק"מ. */
+  await step('גאוקוד שמחזיר עיר שגויה לא גובר על הגנים הידניים', async()=>{
+    await pg.route(/nominatim/, r=>r.fulfill({ status:200, contentType:'application/json',
+      body: JSON.stringify([{lat:'32.8184', lon:'34.9885'}]) }));   // חיפה — כ-100 ק"מ משם
+    try{
+      return await pg.evaluate(async()=>{
+        window._cityCenter=null;
+        DB.gans=[1,2,3].map(i=>({id:'wc'+i,ganName:'גן '+i,active:true,education:'רגיל',city:'מודיעין עילית',
+          geo:{lat:31.930+i/1000,lng:35.040+i/1000,manual:true,q:'__manual__'}}));
+        const c=await mapEnsureCityCenter('מודיעין עילית');
+        if(!(c && c.lat!=null)) return 'לא נקבע עוגן';
+        if(c.lat>32) return 'העוגן נקבע לפי הגאוקוד השגוי ('+c.lat.toFixed(3)+') במקום לפי הגנים הידניים';
+        // ועכשיו הבדיקה שמכל זה נובעת: כתובת שנפלה ליד העוגן השגוי חייבת להידחות
+        const stu={id:'wc9',year:DB.activeYear,lastName:'א',firstName:'ב',city:'מודיעין עילית',
+          street:'רחוב',building:'1',geo:{lat:32.8184,lng:34.9885,q:'רחוב 1, מודיעין עילית, ישראל'},
+          finished:false,docs:{},docFiles:{},programs:{},programsPaid:{},special:{},support:{},createdAt:''};
+        const r=await ensureGeo(stu,'רחוב 1, מודיעין עילית, ישראל',false,'מודיעין עילית',c);
+        if(r && r.lat!=null && r.lat>32) return 'מיקום שגוי של התלמידה עדיין התקבל';
+        return true; });
+    } finally { await pg.unroute(/nominatim/); }
+  });
+
+  await step('בלי גנים ידניים — עדיין נופלים לגאוקוד/חציון', ()=>pg.evaluate(async()=>{
+    window._cityCenter=null;
+    DB.gans=[{id:'na',ganName:'א',active:true,education:'רגיל',city:'מודיעין עילית',geo:null}];
+    const c=await mapEnsureCityCenter('מודיעין עילית');
+    if(c && c.src==='manual') return 'נבחר מקור ידני בלי גנים ידניים';
+    return true; }));
 
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
