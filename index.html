@@ -5044,12 +5044,24 @@ async function geocodeGoogleBridge(q, city, bias){
     return null;                                                             // רשת/אחר → נפילה ל-OSM
   }
 }
+let _geoWhy="";   // סיבת הכישלון האחרונה של הגאוקודר — מוצגת ב"פרטים טכניים"
+/* הורדת מספר הבית מהשאילתה: "חפץ חיים 16, מודיעין עילית, ישראל" → "חפץ חיים, …".
+   מרכז הרחוב מספיק בהחלט לבדיקת קרבה בתוך עיר, ועדיף בהרבה על "לא נמצא מיקום"
+   שמשאיר את התיק בלי שום מרחק בגלל מספר בית שהגאוקודר לא מכיר. */
+function geoDropHouseNo(q){
+  const i=String(q||"").indexOf(",");
+  if(i<0) return "";
+  const head=q.slice(0,i).trim(), street=head.replace(/\s+\d+\s*[א-ת]?$/,"").trim();
+  return (street && street!==head) ? street+q.slice(i) : "";
+}
 function geocodeOnce(q, city, bias){
   const run=async()=>{
+    _geoWhy="";
     const g=await geocodeGoogleBridge(q, city, bias);
     // bounds של Google היא העדפה רכה ולא הגבלה — תוצאה שנפלה בעיר אחרת נזנחת,
     // וממשיכים ל-OSM שמוגבל בפועל לתיבת העיר (bounded=1).
     if(g && geoNearCity(g, bias)) return { lat:g.lat, lng:g.lng, source:"google", partial:g.partial, locType:g.locType };
+    const gWhy = _geoGoogle===false ? "Google לא זמין" : (g ? "Google החזיר מיקום מחוץ לעיר" : "Google לא מצא");
     await new Promise(r=>setTimeout(r,1100));   // כיבוד מדיניות Nominatim (≤1/שנייה)
     let url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=il&accept-language=he&q="+encodeURIComponent(q);
     // הגבלה לתיבת העיר הנבחרת — מונע התאמה לרחוב באותו שם בעיר רחוקה
@@ -5058,7 +5070,7 @@ function geocodeOnce(q, city, bias){
     const r=await fetch(url,{ headers:{ "Accept":"application/json" } });
     if(!r.ok) throw new Error("geocode-http-"+r.status);
     const arr=await r.json();
-    if(!arr||!arr.length) return null;
+    if(!arr||!arr.length){ _geoWhy=gWhy+" · OpenStreetMap לא מצא"; return null; }
     const lat=parseFloat(arr[0].lat), lng=parseFloat(arr[0].lon);
     return (isFinite(lat)&&isFinite(lng))? { lat, lng, source:"osm" } : null;
   };
@@ -5083,18 +5095,26 @@ async function ensureGeo(ent, q, force, city, bias){
     if(geoNearCity(ent.geo, bias)) return ent.geo;
   }
   else if(!force && ent.geo && ent.geo.q===q && ent.geo.tried) return null;   // ניסינו וקיבלנו ריק (אלא אם force)
-  let pt=null; try{ pt=await geocodeOnce(q, city, bias); }catch(e){ pt=null; }
+  let pt=null, why="";
+  try{ pt=await geocodeOnce(q, city, bias); }catch(e){ pt=null; }
+  if(!pt){
+    why=_geoWhy;
+    const relaxed=geoDropHouseNo(q);
+    if(relaxed){ try{ pt=await geocodeOnce(relaxed, city, bias); }catch(e){ pt=null; }
+      if(pt) pt.relaxed=true; else why=why+" · גם בלי מספר בית"; }
+  }
   // דחיית תוצאה שנפלה מחוץ לרדיוס העיר הנבחרת — עדיף "לא נמצא בעיר" מאשר
   // מיקום שגוי במרחק (רחוב באותו שם בעיר אחרת). כך "אם בחרנו עיר — כולם בעיר".
   if(pt && bias && bias.lat!=null && haversineKm(pt,bias) > MAP_CITY_RADIUS_KM){
-    ent.geo = { lat:null, lng:null, q, tried:true, outCity:true };
+    ent.geo = { lat:null, lng:null, q, tried:true, outCity:true, why:"התקבל מיקום מחוץ לרדיוס העיר" };
     return null;
   }
   const locType = pt ? (pt.locType||"") : "";
   const partial = pt ? !!pt.partial : false;
   // "משוער" רך (סימון ⚠) = מרכז רחוב/אזור או התאמה חלקית
-  const approx = pt ? (partial || locType==="APPROXIMATE" || locType==="GEOMETRIC_CENTER") : false;
-  ent.geo = pt ? { lat:pt.lat, lng:pt.lng, q, source:pt.source, locType, partial, approx } : { lat:null, lng:null, q, tried:true };
+  const approx = pt ? (partial || !!pt.relaxed || locType==="APPROXIMATE" || locType==="GEOMETRIC_CENTER") : false;
+  ent.geo = pt ? { lat:pt.lat, lng:pt.lng, q, source:pt.source, locType, partial, approx, relaxed:!!pt.relaxed }
+               : { lat:null, lng:null, q, tried:true, why };
   return ent.geo.lat!=null ? ent.geo : null;
 }
 function mapProviderSuffix(){ return _geoGoogle===true?" · דיוק Google":(_geoGoogle===false?" · OpenStreetMap":""); }
@@ -5808,7 +5828,7 @@ function proxPanelHtml(st, idp){
    עצמם אי אפשר לדעת אם השתבשה כתובת התלמידה, מיקום הגן, או נקודת העוגן של העיר. */
 function proxDiagHtml(st, sgeo, bias, list){
   const co=p=>(p&&p.lat!=null)?(p.lat.toFixed(5)+", "+p.lng.toFixed(5)):"—";
-  const src=p=>!p||p.lat==null?"—":(p.manual?"ידני":esc(p.source||"אוטומטי"));
+  const src=p=>!p||p.lat==null?"—":(p.manual?"ידני":esc(p.source||"אוטומטי")+(p.relaxed?" · מרכז הרחוב":(p.approx?" · מקורב":"")));
   const srcName={manual:"הגנים שהוצבו ידנית",geocode:"גאוקוד שם העיר",median:"חציון הנקודות"};
   const anchor=(bias&&bias.lat!=null)?`${co(bias)} · לפי ${esc(srcName[bias.src]||"לא ידוע")}`:"לא נקבע ⚠";
   const rows=(list||[]).map(r=>`<tr><td class="wrap">${esc(ganName(r.g.id))}</td><td>${co(r.g.geo)}</td>
@@ -5816,7 +5836,7 @@ function proxDiagHtml(st, sgeo, bias, list){
   return `<details style="margin-top:8px"><summary class="hint" style="cursor:pointer">🔬 פרטים טכניים (לשליחה לתמיכה)</summary>
     <div class="hint" style="margin-top:4px">
       כתובת שנבדקה: <b>${esc(proxAddrQuery(st)||"—")}</b><br>
-      מיקום התלמידה: <b>${co(sgeo)}</b> · מקור: ${src(sgeo)}<br>
+      מיקום התלמידה: <b>${co(sgeo)}</b> · מקור: ${src(sgeo)}${(sgeo&&sgeo.lat==null&&sgeo.why)?`<br>סיבת הכישלון: <b>${esc(sgeo.why)}</b>`:""}<br>
       עוגן העיר: <b>${anchor}</b>
     </div>
     <div class="table-wrap"><table class="tbl-fit"><thead><tr><th>גן</th><th>מיקום</th><th>מקור</th><th>ק"מ</th></tr></thead>
@@ -5839,6 +5859,14 @@ function proxBind(host, getStudent, idp, onPick){
     const q=proxAddrQuery(st);
     if(!q){ out.innerHTML=`<div class="note">אין כתובת (רחוב + מספר) בתיק — לא ניתן לחשב מרחקים.</div>`; return; }
     go.disabled=true; out.innerHTML=`<div class="hint">מחשב מרחקים… (${picked.length} גנים)</div>`;
+    const bindRefresh=()=>{
+      const rb=out.querySelector("#"+idp+"-refresh"); if(!rb) return;
+      rb.onclick=()=>{
+        const rec2=DB.students.find(x=>x.id===st.id); if(rec2) rec2.geo=null;   // ניקוי המטמון של התלמידה בלבד
+        try{ save(); }catch(e){}
+        go.click();
+      };
+    };
     try{
       const city=(st.city||"").trim()||geoDefaultCity();
       // הטיה למרכז העיר — גם רומזת לגאוקודר וגם דוחה תוצאה שנפלה בעיר אחרת
@@ -5853,7 +5881,11 @@ function proxBind(host, getStudent, idp, onPick){
         out.innerHTML=`<div class="note">${outCity
           ? `הכתובת <b>"${esc(q)}"</b> זוהתה מחוץ ל${esc(city)} ולכן נדחתה — כנראה רחוב באותו שם בעיר אחרת.<br>אפשר לתקן את הרחוב/המספר/העיר בתיק ולנסות שוב.`
           : `לא נמצא מיקום לכתובת "${esc(q)}". אפשר לתקן את הרחוב/המספר בתיק ולנסות שוב.`}</div>`;
+        // כישלון נשמר במטמון (tried), ולכן בלי כפתור מפורש אין דרך לנסות שוב
+        // מהמסך הזה — גם לא אחרי שהכתובת בתיק תוקנה.
+        out.innerHTML+=`<div class="row" style="margin-top:6px"><button class="btn ghost sm" type="button" id="${idp}-refresh">🔄 חישוב מחדש של מיקום התלמידה</button></div>`;
         out.innerHTML+=proxDiagHtml(st, rec.geo, bias, picked.map(id=>({g:ganById(id)})).filter(x=>x.g));
+        bindRefresh();
         go.disabled=false; return; }
       const gans=picked.map(id=>ganById(id)).filter(Boolean);
       const missing=[];
@@ -5911,11 +5943,7 @@ function proxBind(host, getStudent, idp, onPick){
         const byId=new Map([...rows,...suspect].map(r=>[r.g.id,r.km]));
         html+=proxDiagHtml(st, sgeo, bias, gans.map(g=>({ g, km: byId.has(g.id)?byId.get(g.id):null })));
         out.innerHTML=html;
-        { const rb=out.querySelector("#"+idp+"-refresh"); if(rb) rb.onclick=()=>{
-            const rec2=DB.students.find(x=>x.id===st.id); if(rec2) rec2.geo=null;   // ניקוי המטמון של התלמידה בלבד
-            try{ save(); }catch(e){}
-            go.click();
-          }; }
+        bindRefresh();
         out.querySelectorAll("."+idp+"-pick").forEach(b=>b.onclick=()=>{
           const g=ganById(b.dataset.gid); if(!g) return;
           if(onPick) onPick(g); else mapAssign(DB.students.find(x=>x.id===st.id)||st, g);
