@@ -5145,7 +5145,7 @@ function geocodeOnce(q, city, bias){
     // bounds של Google היא העדפה רכה ולא הגבלה — תוצאה שנפלה בעיר אחרת נזנחת,
     // וממשיכים ל-OSM שמוגבל בפועל לתיבת העיר (bounded=1).
     if(g && geoNearCity(g, bias)) return { lat:g.lat, lng:g.lng, source:"google", partial:g.partial, locType:g.locType };
-    const gWhy = g ? "Google החזיר מיקום מחוץ לעיר" : ("Google — "+(_geoBridgeErr||"לא מצא"));
+    const gWhy = g ? "Google החזיר מיקום מחוץ לעיר" : ("Google — "+(_geoBridgeErr?bridgeErrHe(_geoBridgeErr):"לא מצא"));
     await new Promise(r=>setTimeout(r,1100));   // כיבוד מדיניות Nominatim (≤1/שנייה)
     let url="https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=he&q="+encodeURIComponent(q);
     // הגבלה לתיבת העיר הנבחרת — מונע התאמה לרחוב באותו שם בעיר רחוקה.
@@ -5808,6 +5808,20 @@ function mapPlotStudents(){
 /* מרחק/זמן הליכה אמיתי דרך הגשר (Google Distance Matrix), עם מטמון בזיכרון.
    מקבל origin ומערך גנים; מחזיר מערך מקביל של {m,sec} או null. נפילה לאווירי כשאין. */
 let _walkCache=new Map(), _walkWhy="";   // סיבת הכישלון האחרונה של מרחקי ההליכה
+/* תרגום שגיאת גשר לשפה שאפשר לפעול לפיה. קודים כמו bad-response או
+   REQUEST_DENIED לא אומרים למשתמש דבר, וכל אחד מהם מצביע על תיקון אחר. */
+function bridgeErrHe(m){
+  m=String(m||"");
+  if(/unknown-action/.test(m))       return "הגשר ישן ואינו מכיר את הפעולה — יש לפרסם אותו מחדש";
+  if(/bad-response/.test(m))         return "הגשר החזיר תשובה שאינה תקינה — כנראה גרסה ישנה שפורסמה; יש לפרסם אותו מחדש";
+  if(/network/.test(m))              return "לא הצלחתי להגיע לגשר — בדוק/י חיבור";
+  if(/no-geo-key/.test(m))           return "אין מפתח Google בגשר";
+  if(/REQUEST_DENIED/i.test(m))      return "Google דחה את הבקשה — כנראה Distance Matrix API אינו מופעל בפרויקט";
+  if(/OVER_(QUERY_LIMIT|DAILY_LIMIT)/i.test(m)) return "חריגה ממכסת Google — נסה/י מאוחר יותר";
+  if(/unauthorized|token/.test(m))   return "בעיית הרשאה — התחבר/י מחדש למערכת";
+  if(/ZERO_RESULTS/i.test(m))        return "לא נמצא מסלול";
+  return m || "שגיאה לא ידועה";
+}
 function _walkKey(a,b){ return a.lat.toFixed(5)+","+a.lng.toFixed(5)+"|"+b.lat.toFixed(5)+","+b.lng.toFixed(5); }
 async function mapWalk(origin, gans){
   const out=new Array(gans.length).fill(null);
@@ -5827,9 +5841,7 @@ async function mapWalk(origin, gans){
       needIdx.forEach((gi,j)=>{ const r=arr[j]||null; out[gi]=r; _walkCache.set(_walkKey(origin,gans[gi].geo), r); });
     }catch(e){
       const m=String((e&&e.message)||e||"");
-      _walkWhy = /unknown-action/.test(m) ? "הגשר ישן — יש לפרסם אותו מחדש"
-               : /no-geo-key/.test(m)     ? "אין מפתח Google בגשר"
-               : (m||"שגיאה לא ידועה");
+      _walkWhy = bridgeErrHe(m);
     }
   }
   return out;

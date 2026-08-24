@@ -42,7 +42,7 @@ Object.defineProperty(window,'_placeKind',{get:()=>_placeKind,set:v=>{_placeKind
 Object.defineProperty(window,'_walkWhy',{get:()=>_walkWhy,configurable:true});
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, mapPlaceSave, save });
+  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, bridgeErrHe, mapPlaceSave, save });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -760,6 +760,15 @@ const server=require('http').createServer((req,res)=>{
     if(!/מרחק ההליכה אינו זמין/.test(r.txt)) return 'אין הסבר מדוע מוצג מרחק אווירי';
     if(!/מרחק הליכה לא זמין/.test(r.txt)) return 'הסיבה חסרה בפרטים הטכניים';
     return true; });
+
+  await step('קודי שגיאה של הגשר מתורגמים להנחיה מעשית', ()=>pg.evaluate(()=>{
+    const c=[['bad-response',/לפרסם אותו מחדש/],['unknown-action',/לפרסם אותו מחדש/],
+             ['REQUEST_DENIED',/Distance Matrix/],['no-geo-key',/אין מפתח/],
+             ['network',/חיבור/],['OVER_QUERY_LIMIT',/מכסת/]];
+    for(const [code,re] of c){ const t=bridgeErrHe(code);
+      if(!re.test(t)) return code+' → "'+t+'"'; 
+      if(t===code) return code+' לא תורגם'; }
+    return true; }));
 
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
