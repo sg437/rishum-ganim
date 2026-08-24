@@ -36,9 +36,12 @@ window.__get=k=> k==='active'?active : k==='DB'?DB : undefined;
 Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
 Object.defineProperty(window,'stuFilter',{get:()=>stuFilter,set:v=>{stuFilter=v},configurable:true});
 Object.defineProperty(window,'_cityCenter',{get:()=>_cityCenter,set:v=>{_cityCenter=v},configurable:true});
+Object.defineProperty(window,'_placeMarker',{get:()=>_placeMarker,set:v=>{_placeMarker=v},configurable:true});
+Object.defineProperty(window,'_placeGanId',{get:()=>_placeGanId,set:v=>{_placeGanId=v},configurable:true});
+Object.defineProperty(window,'_placeKind',{get:()=>_placeKind,set:v=>{_placeKind=v},configurable:true});
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, save });
+  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, mapPlaceSave, save });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -548,6 +551,45 @@ const server=require('http').createServer((req,res)=>{
         return true; });
     } finally { await pg.unroute(/nominatim/); }
   });
+
+  /* ---- מיקום ידני לתלמידה: המוצא היחיד כשכתובת לא מתגאוקדת ---- */
+  await step('בורר "גן / תלמידה" קיים בכלי המיקום הידני', ()=>pg.evaluate(async()=>{
+    DB.students=[{id:'pm1',year:DB.activeYear,lastName:'שטרן',firstName:'תמר',city:'מודיעין עילית',
+      street:'חפץ חיים',building:'16',geo:null,
+      finished:false,docs:{},docFiles:{},programs:{},programsPaid:{},special:{},support:{},createdAt:''}];
+    __set('active','map'); route(); await new Promise(r=>setTimeout(r,400));
+    const k=document.getElementById('place-kind'); if(!k) return 'אין בורר סוג רשומה';
+    const opts=[...k.options].map(o=>o.value).sort().join(',');
+    if(opts!=='gan,stu') return 'אפשרויות הבורר: '+opts;
+    return true; }));
+
+  await step('בחירת "תלמידה" ממלאת את הרשימה בתלמידות', ()=>pg.evaluate(()=>{
+    const k=document.getElementById('place-kind');
+    k.value='stu'; k.dispatchEvent(new Event('change'));
+    const sel=document.getElementById('place-gan');
+    const has=[...sel.options].some(o=>o.value==='pm1' && /שטרן/.test(o.textContent));
+    if(!has) return 'התלמידה לא מופיעה ברשימה: '+[...sel.options].map(o=>o.textContent).join('|');
+    if(!/⚠/.test([...sel.options].find(o=>o.value==='pm1').textContent)) return 'תלמידה בלי מיקום לא סומנה ב-⚠';
+    return true; }));
+
+  await step('"שמור מיקום" כותב geo ידני על התלמידה', ()=>pg.evaluate(()=>{
+    // Leaflet מנוטרל בבדיקה — מזריקים סמן מינימלי במקומו
+    window._placeKind='stu'; window._placeGanId='pm1';
+    window._placeMarker={ getLatLng:()=>({lat:31.9331,lng:35.0409}) };
+    try{ mapPlaceSave(); }catch(e){ return 'mapPlaceSave נפל: '+e.message; }
+    const s=DB.students.find(x=>x.id==='pm1');
+    if(!(s.geo && s.geo.manual===true)) return 'לא נשמר מיקום ידני על התלמידה';
+    if(s.geo.lat!==31.9331 || s.geo.lng!==35.0409) return 'נשמרו קואורדינטות שגויות';
+    if(DB.gans.some(g=>g.geo&&g.geo.lat===31.9331)) return 'המיקום נכתב בטעות על גן';
+    return true; }));
+
+  await step('מיקום ידני של תלמידה מנצח כל גאוקוד', ()=>pg.evaluate(async()=>{
+    const s=DB.students.find(x=>x.id==='pm1');
+    const bias={ city:'מודיעין עילית', lat:31.93102, lng:35.04723, src:'manual' };
+    const r=await ensureGeo(s,'חפץ חיים 16, מודיעין עילית, ישראל',true,'מודיעין עילית',bias);
+    if(!r || r.lat!==31.9331) return 'מיקום ידני של תלמידה לא כובד (force=true)';
+    if(!s.geo.manual) return 'הסימון הידני אבד';
+    return true; }));
 
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
