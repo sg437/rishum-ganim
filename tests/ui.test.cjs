@@ -456,6 +456,49 @@ const server=require('http').createServer((req,res)=>{
     if(c && c.src==='manual') return 'נבחר מקור ידני בלי גנים ידניים';
     return true; }));
 
+  /* ---- "פרטים טכניים" חייב להיות זמין בכל תוצאה, לא רק כשהכל רחוק ---- */
+  const proxDiag = (gans, stuGeo) => pg.evaluate(async(a)=>{
+    window._cityCenter=null; DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    const s={id:'dg9',year:'תשפ"ז',lastName:'ש',firstName:'ת',city:'מודיעין עילית',
+      street:'חפץ חיים',building:'16', geo:a.stuGeo,
+      finished:false,docs:{},docFiles:{},programs:{},programsPaid:{},special:{},support:{},createdAt:''};
+    DB.students=[s]; DB.gans=a.gans;
+    let host=document.getElementById('dgHost'); if(host) host.remove();
+    host=document.createElement('div'); host.id='dgHost'; document.body.appendChild(host);
+    host.innerHTML=proxPanelHtml(s,'dg'); proxBind(host,()=>s,'dg',null);
+    host.querySelectorAll('.dg-gan').forEach(c=>c.checked=true);
+    host.querySelector('#dg-go').click();
+    for(let i=0;i<80;i++){ await new Promise(r=>setTimeout(r,50));
+      const t=document.getElementById('dg-out').textContent; if(t && !/מחשב מרחקים/.test(t)) break; }
+    const out=document.getElementById('dg-out');
+    return { hasDetails:!!out.querySelector('details'), txt:out.textContent };
+  }, {gans, stuGeo});
+  const dgGan=(id,lat,lng,manual)=>({id,ganName:'גן '+id,active:true,education:'רגיל',city:'מודיעין עילית',
+    address:'רחוב',building:id, geo: manual?{lat,lng,manual:true,q:'__manual__'}:{lat,lng,q:'רחוב '+id}});
+  const threeManual=[dgGan('a',31.9345,35.0432,true),dgGan('b',31.9300,35.0380,true),dgGan('c',31.9360,35.0450,true)];
+
+  await step('פרטים טכניים מוצגים גם כשהבדיקה מצליחה', async()=>{
+    const r=await proxDiag(threeManual, {lat:31.9330,lng:35.0410,manual:true,q:'__manual__'});
+    if(!/ק"מ/.test(r.txt)) return 'הבדיקה לא הצליחה: '+r.txt.slice(0,120);
+    if(!r.hasDetails) return 'אין מקטע "פרטים טכניים" בתוצאה מוצלחת';
+    if(!/עוגן העיר/.test(r.txt)) return 'הפירוט לא כולל את עוגן העיר';
+    return true; });
+
+  await step('פרטים טכניים מוצגים גם כשכתובת התלמידה לא זוהתה', async()=>{
+    // המטמון רחוק → נדחה מול העוגן הידני, והגאוקוד מחדש נכשל (אין רשת)
+    const r=await proxDiag(threeManual, {lat:32.95,lng:35.30,q:'חפץ חיים 16, מודיעין עילית, ישראל'});
+    if(/ק"מ אווירי/.test(r.txt)) return 'הכתובת השגויה התקבלה במקום להידחות';
+    if(!r.hasDetails) return 'אין מקטע "פרטים טכניים" כשהכתובת נדחתה';
+    if(!/עוגן העיר/.test(r.txt)) return 'הפירוט לא כולל את עוגן העיר';
+    return true; });
+
+  await step('פרטים טכניים מוצגים גם כשכל הגנים רחוקים', async()=>{
+    const r=await proxDiag([dgGan('a',31.9345,35.0432,true),dgGan('b',31.9300,35.0380,true)],
+                           {lat:32.95,lng:35.30,q:'חפץ חיים 16, מודיעין עילית, ישראל'});
+    if(!/כל.{0,3} הגנים יצאו במרחק לא סביר/.test(r.txt)) return 'לא נוצר מצב "כל הגנים רחוקים"';
+    if(!r.hasDetails) return 'אין מקטע "פרטים טכניים" כשכל הגנים רחוקים';
+    return true; });
+
   console.log('============================================');
   console.log(fail? ('תוצאה: '+fail+' נכשלו') : 'תוצאה: כל בדיקות הדפדפן עברו ✅');
   await b.close(); server.close();
