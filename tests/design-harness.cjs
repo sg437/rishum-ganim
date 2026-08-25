@@ -21,7 +21,29 @@ const b=html.indexOf('</style>', a);
 if(a<0||b<0) throw new Error('לא נמצא בלוק ה-<style> ב-index.html');
 const style=html.slice(a, b+'</style>'.length);
 
+/* המגירה והרעלה — נלקחות כמות שהן מ-index.html, לא משוכפלות ביד */
+const ds=html.indexOf('<div class="scrim"');
+const de=html.indexOf('</aside>', ds);
+if(ds<0||de<0) throw new Error('לא נמצאה המגירה ב-index.html');
+const drawer=html.slice(ds, de+'</aside>'.length);
+
+/* לשוניות הניווט — נגזרות ממערך TABS האמיתי, כך שהמתקן לא מתיישן */
+const ta=html.indexOf('const TABS = [');
+const te=html.indexOf('];', ta);
+if(ta<0||te<0) throw new Error('לא נמצא מערך TABS ב-index.html');
+const tabs=[...html.slice(ta,te).matchAll(/\{id:"([^"]+)",\s*label:"([^"]+)",\s*icon:"([^"]*)"\}/g)]
+  .map(m=>({id:m[1],label:m[2],icon:m[3]}));
+if(!tabs.length) throw new Error('TABS נמצא אך לא נותח');
+/* מונים לדוגמה — renderTabs מציג אותם רק לתלמידות ולגנים */
+const demoCounts={students:412,gans:29};
+const navHtml=tabs.map(t=>{
+  const c=demoCounts[t.id]!=null?`<span class="count">${demoCounts[t.id]}</span>`:'';
+  return `<button data-tab="${t.id}" class="${t.id==='students'?'active':''}">`
+        +`<span class="ic">${t.icon}</span><span class="tl">${t.label}</span>${c}</button>`;
+}).join('');
+
 const demo=`
+${drawer}
 <header class="top"><div class="top-inner">
   <div class="brand"><span class="logo">🎒</span>
     <span class="txt"><span class="t1">מערכת ניהול</span><span class="t2">רשת הגנים מודיעין עילית</span></span></div>
@@ -88,9 +110,18 @@ const demo=`
   </div>
 </div>`;
 
+/* סטאב לוו הנתונים של המעבדה — במתקן אין Firebase */
+const stub=`<script>
+window.__uiLab={stats(){return {year:"תשפ\u05f4\u05d7",students:412,gansActive:24,gansTarget:30,
+  email:"user@example.org"};}};
+document.addEventListener('DOMContentLoaded',function(){
+  var n=document.getElementById('tabs'); if(n) n.innerHTML=${JSON.stringify(navHtml)};
+});
+<\/script>`;
+
 const page='<!doctype html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="utf-8">\n'
   +'<meta name="viewport" content="width=device-width,initial-scale=1">\n'
-  +'<title>מתקן בדיקה — עיצוב</title>\n'+style+'\n</head>\n<body>'+demo+'\n</body>\n</html>\n';
+  +'<title>מתקן בדיקה — עיצוב</title>\n'+style+'\n</head>\n<body>'+demo+stub+'\n</body>\n</html>\n';
 
 const out=process.argv[2]||path.join(require('os').tmpdir(),'design-harness.html');
 fs.writeFileSync(out,page);

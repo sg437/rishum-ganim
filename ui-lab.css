@@ -13,12 +13,12 @@
    ⚠️ הנתונים חיים. כל שמירה במעבדה נשמרת במסד האמיתי.
    ---------------------------------------------------------------------------
    מצב המימוש מול "סדר מימוש מוצע" שב-HANDOFF.md:
-     ✅ 1. טוקנים, טיפוגרפיה, רדיוסים וצפיפות   ← הקובץ הזה
-     ⬜ 2. סרגל צד קבוע + breakpoint למגירה
+     ✅ 1. טוקנים, טיפוגרפיה, רדיוסים וצפיפות
+     ✅ 2. סרגל צד קבוע + breakpoint למגירה (עם ui-lab.js)
      ⬜ 3. viewHome — כרטיסי KPI ופאנל "דורש טיפול"
      ⬜ 4. viewStudents — שבבי סינון, מד מסמכים, תיק בצד
      ⬜ 5. viewMap · 6. viewAssign · 7. השאר
-   שלבים 2 ומעלה דורשים שינוי מבנה ו-JS ב-index.html, ולא רק CSS.
+   שלבים 3 ומעלה דורשים בנייה מחדש של תוכן המסכים, ולא רק של המסגרת.
    =========================================================================== */
 
 
@@ -171,7 +171,108 @@ html.ui-lab input[type="tel"],
 html.ui-lab .fieldwrap.tel>input{ direction:ltr; text-align:right }
 
 
-/* ── 5. תג המעבדה ─────────────────────────────────────────────────────────
+
+/* ── 5. סרגל צד קבוע (שלב 2 ב-HANDOFF.md) ────────────────────────────────
+   דסקטופ (900px ומעלה): הסרגל קבוע ברוחב 236px, בלי המבורגר. המותג, בורר
+   השנה ובורר החינוך כבר יושבים בתוכו, ולכן הכותרת העליונה מתרוקנת ונשארת
+   רק כמאחזת לכפתור החזרה.
+   מובייל: אותו סרגל חוזר להתנהג כמגירה.                                     */
+
+/* הסרגל עובר לצד ההתחלה (ימין ב-RTL). הקוד הקיים מקבע left:0 כערך פיזי,
+   ולכן צריך לבטל אותו במפורש. התוכנה כולה RTL (<html dir="rtl">).
+   ה-transform מתהפך בהתאם: מוסתר ימינה, לא שמאלה.                          */
+html.ui-lab .drawer{
+  left:auto; right:0;
+  transform:translateX(103%);
+  border-right:0;
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+
+  /* טוקנים מקומיים — כל ילדי הסרגל מתלבשים לכהה בבת אחת,
+     בלי כלל נפרד לכל רכיב. color-mix גוזר את הגוונים מ---lab-deep,
+     כך שגם מצב הלילה מקבל סרגל תואם בלי סט ערכים שני.                      */
+  --surface:var(--lab-deep);
+  --surface-2:color-mix(in srgb, var(--lab-deep) 90%, #fff);
+  --border:color-mix(in srgb, var(--lab-deep) 82%, #fff);
+  --ink:#eef2ec;
+  --ink-soft:#c6d2c6;
+  --muted:#8ba392;
+  --accent-soft:color-mix(in srgb, var(--lab-deep) 88%, #fff);
+  --accent-strong:var(--lab-gold-on-deep);
+
+  background:var(--lab-deep); color:#eef2ec;
+}
+html.ui-lab .drawer.open{ transform:translateX(0) }
+
+/* התווית "ניווט" מיותרת מרגע שיש כותרות קבוצות */
+html.ui-lab .lab-navsec>.lbl{ display:none }
+
+/* שם הלשונית נשאר בשורה אחת — ב-236px עם תג מונה הוא נשבר לשתיים */
+html.ui-lab .drawer-nav button{ font-size:.9rem; gap:10px; padding:10px 11px }
+html.ui-lab .drawer-nav button .ic{ font-size:1.05rem; width:22px }
+html.ui-lab .drawer-nav button .tl{
+  min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+html.ui-lab .drawer-nav button .count{ flex:0 0 auto; padding:1px 7px; font-size:.72rem }
+
+/* כותרות קבוצות הניווט (מוזרקות ב-ui-lab.js) */
+html.ui-lab .lab-navgroup{
+  font-size:.7rem; font-weight:800; letter-spacing:.06em;
+  color:var(--muted); padding:15px 12px 6px;
+}
+html.ui-lab .drawer-nav>.lab-navgroup:first-child{ padding-top:2px }
+
+/* כרטיס היעד */
+html.ui-lab .lab-target{
+  background:color-mix(in srgb, var(--lab-deep) 88%, #fff);
+  border-radius:14px; padding:12px 14px; margin-bottom:4px;
+}
+html.ui-lab .lt-head{ display:flex; justify-content:space-between; align-items:baseline; gap:8px }
+html.ui-lab .lt-lbl,
+html.ui-lab .lt-year{ font-size:.74rem; font-weight:800; color:var(--muted) }
+html.ui-lab .lt-num{
+  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-size:1.7rem; font-weight:500; letter-spacing:-.03em; color:#eef2ec;
+  margin-top:2px;
+  /* כלל ה-bidi: יחס מספרי מבודד, אחרת 24/30 מוצג כ-30/24 */
+  direction:ltr; unicode-bidi:isolate; text-align:right;
+}
+html.ui-lab .lt-of{ font-size:.95rem; font-weight:700; color:var(--muted) }
+html.ui-lab .lt-bar{
+  height:6px; border-radius:999px; margin-top:9px; overflow:hidden;
+  background:rgba(255,255,255,.14);
+}
+html.ui-lab .lt-bar i{ display:block; height:100%; border-radius:999px; background:var(--lab-gold) }
+
+/* שורת המשתמש */
+html.ui-lab .lab-user{ display:flex; align-items:center; gap:9px; padding:8px 6px 2px; min-width:0 }
+html.ui-lab .lu-ini{
+  width:30px; height:30px; border-radius:10px; flex:0 0 auto;
+  background:var(--lab-gold); color:var(--lab-deep);
+  display:grid; place-items:center; font-weight:800; font-size:.78rem; direction:ltr;
+}
+html.ui-lab .lu-mail{
+  font-size:.76rem; font-weight:700; color:var(--muted); min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  direction:ltr; text-align:right;
+}
+
+/* ---- דסקטופ: הסרגל קבוע ---- */
+@media(min-width:900px){
+  html.ui-lab body        { padding-inline-start:236px }
+  html.ui-lab .drawer     { transform:none; width:236px; box-shadow:none; z-index:30 }
+  html.ui-lab .drawer-close,
+  html.ui-lab .hamburger,
+  html.ui-lab .scrim      { display:none }
+
+  /* הכותרת מתרוקנת — המותג והשבבים כפולים מול הסרגל */
+  html.ui-lab header.top  { position:static; background:transparent; border-bottom:0; box-shadow:none }
+  /* הכותרת התרוקנה, ולכן ה-padding שלה הוא כל הנשימה שנשארה מעל התוכן */
+  html.ui-lab .top-inner  { max-width:none; padding:18px 26px 0 }
+  html.ui-lab .brand,
+  html.ui-lab .top-chips  { display:none }
+}
+
+/* ── 6. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
 html.ui-lab .ui-lab-badge{

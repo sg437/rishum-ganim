@@ -31,6 +31,7 @@
   if(!localStorage.getItem('uiLab')) return;
   document.documentElement.classList.add('ui-lab');
   var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css'; document.head.appendChild(l);
+  var j=document.createElement('script'); j.src='ui-lab.js'; j.defer=true; document.head.appendChild(j);
   document.addEventListener('DOMContentLoaded',function(){
     var u=new URL(location.href); u.searchParams.set('ui','off');
     var a=document.createElement('a');
@@ -2233,6 +2234,25 @@ function renderTabs(){
     return `<button data-tab="${t.id}" class="${t.id===active?'active':''}"><span class="ic">${t.icon}</span><span class="tl">${esc(t.label)}</span>${c}</button>`;
   }).join("");
 }
+/* מעבדת עיצוב — חשיפת קריאה בלבד של מה שסרגל הצד צריך (יעד, מונים, משתמש).
+   פעיל רק כשהמעבדה דלוקה; בתוכנה הרגילה השורה הזו לא עושה דבר. ראה docs/UI_LAB.md.
+   קריאה בלבד: אין כאן שום נתיב כתיבה למסד. */
+if(document.documentElement.classList.contains("ui-lab")){
+  window.__uiLab = Object.freeze({
+    stats(){
+      try{
+        return {
+          year:        DB.activeYear || "",
+          students:    eduScope(studentsOfYear().filter(s=>!s.finished)).length,
+          gansActive:  eduScope(DB.gans.filter(g=>g.active)).length,
+          gansTarget:  Number(DB.settings && DB.settings.gansTarget) || 0,
+          email:       (currentUser && currentUser.email) || ""
+        };
+      }catch(e){ return null; }
+    }
+  });
+}
+
 function renderYearSelect(){
   const sel=$("#yearSelect"); if(sel) sel.innerHTML = DB.years.map(y=>`<option ${y===DB.activeYear?'selected':''}>${esc(y)}</option>`).join("");
   const chip=$("#yearChip"); if(chip) chip.innerHTML=`📅 ${esc(DB.activeYear||"")}`;
