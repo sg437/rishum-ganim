@@ -2249,6 +2249,91 @@ if(document.documentElement.classList.contains("ui-lab")){
           email:       (currentUser && currentUser.email) || ""
         };
       }catch(e){ return null; }
+    },
+
+    /* כל המספרים של מסך הבית (לוח 02 בקנבס), מחושבים מהנתונים החיים. */
+    home(){
+      try{
+        const stu   = eduScope(studentsOfYear().filter(s=>!s.finished));
+        const gans  = eduScope(DB.gans.filter(g=>g.active));
+        const total = stu.length;
+        const placed  = stu.filter(s=>s.ganId && s.placed!==false).length;
+        const waiting = total - placed;
+        const notMuni = stu.filter(s=>!s.absorbedMunicipality).length;
+
+        /* מסמך חסר = לפחות אחד מ-STUDENT_DOCS אינו מסומן */
+        const missingDocs = stu.filter(s=>{
+          const d = s.docs || {};
+          return STUDENT_DOCS.some(x=>!d[x[0]]);
+        }).length;
+        /* איזה מסמך חסר הכי הרבה — לשורת המשנה */
+        let topDoc="", topDocN=0;
+        STUDENT_DOCS.forEach(x=>{
+          const n = stu.filter(s=>!((s.docs||{})[x[0]])).length;
+          if(n>topDocN){ topDocN=n; topDoc=x[1]; }
+        });
+
+        const noTeacher = gans.filter(g=>!String(g.teacherName||"").trim());
+
+        /* הגיל השכיח בקרב הממתינות */
+        const ageN={};
+        stu.filter(s=>!(s.ganId && s.placed!==false))
+           .forEach(s=>{ const a=String(s.age||"").trim(); if(a) ageN[a]=(ageN[a]||0)+1; });
+        let topAge="", topAgeN=0;
+        Object.keys(ageN).forEach(a=>{ if(ageN[a]>topAgeN){ topAgeN=ageN[a]; topAge=a; } });
+
+        /* תפוסה לפי קמפוס — משובצות מול סכום רפי השיבוץ */
+        const camp={};
+        gans.forEach(g=>{
+          const c = String(g.campus||"").trim() || "ללא קמפוס";
+          const e = camp[c] || (camp[c]={name:c, cap:0, used:0, gans:0});
+          e.cap  += ganAssignCap(g)||0;
+          e.used += ganAssignedCount(g.id);
+          e.gans += 1;
+        });
+
+        /* גנים שקרובים לרף — לשורת המשנה של "ממתינות לשיבוץ" */
+        const nearFull = gans.filter(g=>{
+          const cap=ganAssignCap(g); if(!cap) return false;
+          return ganAssignedCount(g.id) >= cap-2;
+        }).map(g=>ganName(g.id));
+
+        /* פעילות אחרונה — אותו מקור של "יומן פעילות" שבהגדרות */
+        const ua = (DB.settings && DB.settings.userActivity) || {};
+        const names = (DB.settings && DB.settings.userNames) || {};
+        const activity = Object.keys(ua).map(em=>({
+            who:  names[em] || (ua[em] && typeof ua[em]==="object" && ua[em].name) || em,
+            ts:   uaTs(ua[em]) || 0,
+            what: uaLast(ua[em]) || ""
+          })).filter(r=>r.ts).sort((a,b)=>b.ts-a.ts).slice(0,4);
+
+        const myMail = (currentUser && currentUser.email) || "";
+        const myName = ((DB.settings && DB.settings.userNames) || {})[myMail] || "";
+
+        return {
+          year:DB.activeYear||"", activity, name:myName,
+          total, placed, waiting, notMuni, missingDocs, topDoc,
+          topAge, topAgeN,
+          noTeacherCount:noTeacher.length,
+          noTeacherCampus:[...new Set(noTeacher.map(g=>String(g.campus||"").trim()).filter(Boolean))],
+          campuses:Object.keys(camp).map(k=>camp[k]),
+          nearFull,
+          gansActive:gans.length
+        };
+      }catch(e){ return null; }
+    },
+
+    /* ניווט ללשונית, עם סינון מוקדם אופציונלי — "שורת דורש טיפול מנווטת
+       לרשימה מסוננת מראש" (HANDOFF.md). נוגע ב-state של הממשק בלבד. */
+    go(tab, filter){
+      try{
+        if(filter){
+          clearStuFilter();
+          Object.keys(filter).forEach(k=>{ stuFilter[k] = filter[k]; });
+        }
+        active = tab;
+        route();
+      }catch(e){}
     }
   });
 }

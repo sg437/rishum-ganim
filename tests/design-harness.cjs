@@ -38,7 +38,7 @@ if(!tabs.length) throw new Error('TABS נמצא אך לא נותח');
 const demoCounts={students:412,gans:29};
 const navHtml=tabs.map(t=>{
   const c=demoCounts[t.id]!=null?`<span class="count">${demoCounts[t.id]}</span>`:'';
-  return `<button data-tab="${t.id}" class="${t.id==='students'?'active':''}">`
+  return `<button data-tab="${t.id}" class="${t.id===(process.env.HARNESS_TAB||'home')?'active':''}">`
         +`<span class="ic">${t.icon}</span><span class="tl">${t.label}</span>${c}</button>`;
 }).join('');
 
@@ -52,7 +52,7 @@ ${drawer}
   <button class="hamburger"><span></span></button>
 </div></header>
 
-<div style="max-width:1200px;margin:0 auto;padding:18px 14px">
+<div id="view" style="max-width:1200px;margin:0 auto;padding:18px 14px">
   <div class="section-title">תיקי התלמידות · שנת תשפ״ח</div>
 
   <div class="stats" style="margin:14px 0 18px">
@@ -112,8 +112,20 @@ ${drawer}
 
 /* סטאב לוו הנתונים של המעבדה — במתקן אין Firebase */
 const stub=`<script>
-window.__uiLab={stats(){return {year:"תשפ\u05f4\u05d7",students:412,gansActive:24,gansTarget:30,
-  email:"user@example.org"};}};
+window.__uiLab={
+  stats(){return {year:"תשפ\u05f4\u05d7",students:412,gansActive:29,gansTarget:30,
+    email:"user@example.org"};},
+  home(){return {year:"תשפ\u05f4\u05d7",total:412,placed:361,waiting:51,notMuni:74,
+    missingDocs:28,topDoc:"תקנון",topAge:"3",topAgeN:33,
+    noTeacherCount:6,noTeacherCampus:["קמפוס דרום"],gansActive:29,
+    nearFull:["גן תפוח","גן דובדבן"],
+    campuses:[{name:"קמפוס צפון",cap:180,used:168},{name:"קמפוס מרכז",cap:175,used:147},
+              {name:"קמפוס דרום",cap:125,used:97}],
+    activity:[{who:"רכזת רישום",ts:Date.now()-3600e3,what:"12 תלמידות שובצו לגן רימון"},
+              {who:"מזכירות",ts:Date.now()-9e6,what:"ייבוא 34 רשומות ממועד ב׳"},
+              {who:"מזכירות",ts:Date.now()-9e7,what:"דוח עירייה לחודש אב הופק"}]};},
+  go(tab,filter){console.log('go',tab,JSON.stringify(filter||{}));}
+};
 document.addEventListener('DOMContentLoaded',function(){
   var n=document.getElementById('tabs'); if(n) n.innerHTML=${JSON.stringify(navHtml)};
 });

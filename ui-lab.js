@@ -138,12 +138,231 @@ function userRow(s){
   row.title = mail;
 }
 
+/* ===========================================================================
+   שלב 3 — מסך הבית (לוח 02 בקנבס)
+   ---------------------------------------------------------------------------
+   viewHome הקיים מרנדר לתוך #view. במקום לשנות אותו, המעבדה מחליפה את התוכן
+   אחרי שהוא נכתב — אותו עיקרון של MutationObserver כמו בניווט.
+   כל המספרים מגיעים מ-window.__uiLab.home(), שמחשב אותם מהנתונים החיים.
+   =========================================================================== */
+
+var view = document.getElementById("view");
+var homeBusy = false;
+
+function el(tag, cls, txt){
+  var e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(txt != null) e.textContent = txt;   /* תמיד textContent — לא innerHTML */
+  return e;
+}
+
+/* יחס מספרי מבודד. כלל ה-bidi ב-HANDOFF.md: בלי רווחים סביב הלוכסן,
+   אחרת 168 מתוך 180 מוצג כ-180 מתוך 168 (הקנבס עצמו נכשל בזה ב-15 מקומות). */
+function ratio(a, b){
+  var e = el("span", "lh-ratio");
+  e.textContent = a + "/" + b;
+  return e;
+}
+
+function greeting(){
+  var h = new Date().getHours();
+  if(h < 12) return "בוקר טוב";
+  if(h < 17) return "צהריים טובים";
+  if(h < 21) return "ערב טוב";
+  return "לילה טוב";
+}
+
+function kpi(opts){
+  var c = el("div", "lh-kpi" + (opts.dark ? " dark" : ""));
+  c.appendChild(el("div", "lh-k", opts.label));
+  var v = el("div", "lh-v", String(opts.value));
+  if(opts.tone) v.classList.add(opts.tone);
+  c.appendChild(v);
+  if(opts.sub) c.appendChild(el("div", "lh-sub" + (opts.subTone ? " " + opts.subTone : ""), opts.sub));
+  if(opts.bar != null){
+    var bar = el("div", "lh-bar"), i = el("i");
+    i.style.width = Math.max(0, Math.min(100, opts.bar)) + "%";
+    bar.appendChild(i); c.appendChild(bar);
+  }
+  if(opts.ring != null){
+    var pct = Math.max(0, Math.min(100, Math.round(opts.ring)));
+    var ring = el("div", "lh-ring");
+    ring.style.background = "conic-gradient(var(--lab-gold) 0 " + pct +
+                            "%, rgba(255,255,255,.14) " + pct + "% 100%)";
+    ring.appendChild(el("div", "lh-ring-in", pct + "%"));
+    var wrap = el("div", "lh-kpi-body");
+    while(c.firstChild) wrap.appendChild(c.firstChild);
+    c.appendChild(wrap); c.appendChild(el("div", "lh-spacer")); c.appendChild(ring);
+    c.classList.add("lh-kpi-ring");
+  }
+  return c;
+}
+
+function taskRow(n, tone, title, sub, btn, go){
+  var r = el("div", "lh-task");
+  var num = el("span", "lh-tnum " + tone, String(n));
+  var mid = el("div", "lh-tmid");
+  mid.appendChild(el("div", "lh-ttl", title));
+  if(sub) mid.appendChild(el("div", "lh-tsub", sub));
+  var b = el("button", "lh-tbtn" + (tone === "bad" ? " strong" : ""), btn);
+  b.onclick = go;
+  r.appendChild(num); r.appendChild(mid); r.appendChild(b);
+  return r;
+}
+
+function panel(title, link, onLink){
+  var p = el("div", "lh-panel");
+  var h = el("div", "lh-phead");
+  h.appendChild(el("h3", null, title));
+  if(link){ var a = el("button", "lh-plink", link); a.onclick = onLink; h.appendChild(a); }
+  p.appendChild(h);
+  return p;
+}
+
+function go(tab, filter){
+  if(window.__uiLab && window.__uiLab.go) window.__uiLab.go(tab, filter);
+}
+
+function renderHome(){
+  if(!view) return;
+  var d = (window.__uiLab && window.__uiLab.home) ? window.__uiLab.home() : null;
+  if(!d) return;
+
+  var root = el("div", "lab-home");
+
+  /* --- כותרת --- */
+  var head = el("div", "lh-head");
+  var left = el("div");
+  left.appendChild(el("div", "lh-date",
+    new Date().toLocaleDateString("he-IL", {weekday:"long", day:"numeric", month:"long"})));
+  left.appendChild(el("h2", "lh-greet", greeting() + (d.name ? ", " + d.name : "")));
+  var bits = [];
+  if(d.waiting) bits.push(d.waiting + " תלמידות ממתינות לשיבוץ");
+  if(d.notMuni) bits.push(d.notMuni + " תיקים לא נקלטו בעירייה");
+  left.appendChild(el("div", "lh-hsub", bits.length ? bits.join(", ") + "." : "אין משימות פתוחות."));
+  head.appendChild(left);
+  root.appendChild(head);
+
+  /* --- ארבעת כרטיסי ה-KPI --- */
+  var kpis = el("div", "lh-kpis");
+  kpis.appendChild(kpi({
+    dark:true, label:"סה״כ רשומות", value:d.total,
+    sub:d.gansActive ? d.gansActive + " גנים פעילים" : "",
+    ring: d.total ? d.placed / d.total * 100 : 0
+  }));
+  kpis.appendChild(kpi({
+    label:"משובצות סופית", value:d.placed, tone:"good",
+    bar: d.total ? d.placed / d.total * 100 : 0
+  }));
+  kpis.appendChild(kpi({
+    label:"ממתינות לשיבוץ", value:d.waiting,
+    sub: d.topAge ? d.topAgeN + " מהן בגיל " + d.topAge : ""
+  }));
+  var k4 = kpi({ label:"לא קלוט בעירייה", value:d.notMuni, tone:"bad" });
+  if(d.notMuni){
+    var lnk = el("button", "lh-klink", "דורש טיפול ←");
+    lnk.onclick = function(){ go("students", {muni:"no"}); };
+    k4.appendChild(lnk);
+  }
+  kpis.appendChild(k4);
+  root.appendChild(kpis);
+
+  /* --- שתי העמודות --- */
+  var cols = el("div", "lh-cols");
+
+  /* דורש טיפול */
+  var tasks = panel("דורש טיפול");
+  var any = false;
+  if(d.notMuni){ any = true; tasks.appendChild(taskRow(d.notMuni, "bad",
+    "תיקים שלא נקלטו בעירייה", "מתוך " + d.total + " תיקים פעילים", "טפל",
+    function(){ go("students", {muni:"no"}); })); }
+  if(d.waiting){ any = true; tasks.appendChild(taskRow(d.waiting, "warn",
+    "ממתינות לשיבוץ",
+    d.nearFull.length ? d.nearFull.slice(0,2).join(" ו") + " קרובים לתפוסה מלאה" : "",
+    "לשיבוץ", function(){ go("students", {placed:"no"}); })); }
+  if(d.missingDocs){ any = true; tasks.appendChild(taskRow(d.missingDocs, "warn",
+    "תיקים עם מסמך חסר", d.topDoc ? "החסר הנפוץ: " + d.topDoc : "", "רשימה",
+    function(){ go("students"); })); }
+  if(d.noTeacherCount){ any = true; tasks.appendChild(taskRow(d.noTeacherCount, "good",
+    "גנים ללא גננת משובצת",
+    (d.noTeacherCampus.length ? d.noTeacherCampus.join(" · ") + " · " : "") + "לשנת " + d.year,
+    "צוות", function(){ go("gans"); })); }
+  if(!any) tasks.appendChild(el("div", "lh-empty", "אין משימות פתוחות. הכול מטופל."));
+  cols.appendChild(tasks);
+
+  /* עמודה שנייה */
+  var side = el("div", "lh-side");
+
+  var camps = panel("תפוסה לפי קמפוס");
+  if(d.campuses.length){
+    d.campuses.forEach(function(c){
+      var row = el("div", "lh-camp");
+      var top = el("div", "lh-camp-top");
+      top.appendChild(el("b", null, c.name));
+      var r = el("span", "lh-camp-n");
+      r.appendChild(c.cap ? ratio(c.used, c.cap) : el("span", null, String(c.used)));
+      top.appendChild(r);
+      row.appendChild(top);
+      var bar = el("div", "lh-bar"), i = el("i");
+      var pct = c.cap ? Math.min(100, c.used / c.cap * 100) : 0;
+      i.style.width = pct + "%";
+      if(pct >= 95) i.classList.add("full");
+      else if(pct >= 85) i.classList.add("near");
+      bar.appendChild(i); row.appendChild(bar);
+      camps.appendChild(row);
+    });
+  } else {
+    camps.appendChild(el("div", "lh-empty", "לא הוגדרו קמפוסים."));
+  }
+  side.appendChild(camps);
+
+  var act = panel("פעילות אחרונה");
+  if(d.activity && d.activity.length){
+    d.activity.forEach(function(a){
+      var row = el("div", "lh-act");
+      row.appendChild(el("span", "lh-adot"));
+      var m = el("div");
+      m.appendChild(el("div", "lh-atxt", a.what || "עדכון"));
+      var when = new Date(a.ts);
+      m.appendChild(el("div", "lh-awho",
+        a.who + " · " + (isNaN(when) ? "" : when.toLocaleString("he-IL",
+          {day:"numeric", month:"numeric", hour:"2-digit", minute:"2-digit"}))));
+      row.appendChild(m);
+      act.appendChild(row);
+    });
+  } else {
+    act.appendChild(el("div", "lh-empty", "אין עדיין פעילות מתועדת."));
+  }
+  side.appendChild(act);
+
+  cols.appendChild(side);
+  root.appendChild(cols);
+
+  homeBusy = true;
+  view.innerHTML = "";
+  view.appendChild(root);
+  homeBusy = false;
+}
+
+function isHome(){
+  var b = nav.querySelector('[data-tab="home"]');
+  return !!(b && b.classList.contains("active"));
+}
+
+function maybeHome(){
+  if(homeBusy || !view) return;
+  if(!isHome()) return;
+  if(view.querySelector(".lab-home")) return;   /* כבר שלנו */
+  renderHome();
+}
+
 function paint(){
   if(busy) return;
   busy = true;
   try{
     groupNav();
     relabel();
+    maybeHome();
     var s = (window.__uiLab && window.__uiLab.stats) ? window.__uiLab.stats() : null;
     brandSub(s);
     if(foot){
@@ -155,6 +374,8 @@ function paint(){
 }
 
 new MutationObserver(paint).observe(nav, {childList:true});
+if(view) new MutationObserver(maybeHome).observe(view, {childList:true});
 paint();
+maybeHome();
 
 })();

@@ -15,7 +15,7 @@
    מצב המימוש מול "סדר מימוש מוצע" שב-HANDOFF.md:
      ✅ 1. טוקנים, טיפוגרפיה, רדיוסים וצפיפות
      ✅ 2. סרגל צד קבוע + breakpoint למגירה (עם ui-lab.js)
-     ⬜ 3. viewHome — כרטיסי KPI ופאנל "דורש טיפול"
+     ✅ 3. viewHome — כרטיסי KPI ופאנל "דורש טיפול"
      ⬜ 4. viewStudents — שבבי סינון, מד מסמכים, תיק בצד
      ⬜ 5. viewMap · 6. viewAssign · 7. השאר
    שלבים 3 ומעלה דורשים בנייה מחדש של תוכן המסכים, ולא רק של המסגרת.
@@ -203,8 +203,17 @@ html.ui-lab .drawer{
 }
 html.ui-lab .drawer.open{ transform:translateX(0) }
 
-/* התווית "ניווט" מיותרת מרגע שיש כותרות קבוצות */
-html.ui-lab .lab-navsec>.lbl{ display:none }
+/* בקנבס אין בסרגל בורר שנה ואין את ארבעת כפתורי התחתית — הם עברו למסך 12
+   (הגדרות): "שנים ומעבר שנה", "חשבון והתחברות", "פניות והצעות"; והעוזר החכם
+   למסך 13. מצב יום/לילה אינו מופיע בשום מסך, וממשיך לעבוד לפי הגדרת מערכת
+   ההפעלה (prefers-color-scheme). מוסתר, לא נמחק — ההחלטה הסופית פתוחה. */
+html.ui-lab .drawer-sec:has(> .drawer-year),
+html.ui-lab .drawer-foot .df-row{ display:none }
+html.ui-lab .drawer-foot{ border-top:0; padding-top:0 }
+
+/* בקנבס אין תוויות מעל מקטעי הסרגל — לא "ניווט" ולא "חינוך".
+   הקבוצות (יומיום / ניתוח והפקה) הן הכותרות היחידות. */
+html.ui-lab .drawer-sec>.lbl{ display:none }
 
 /* שם הלשונית נשאר בשורה אחת — ב-236px עם תג מונה הוא נשבר לשתיים */
 html.ui-lab .drawer-nav button{ font-size:.9rem; gap:10px; padding:10px 11px }
@@ -286,7 +295,138 @@ html.ui-lab .lu-mail{
   html.ui-lab .top-chips  { display:none }
 }
 
-/* ── 6. תג המעבדה ─────────────────────────────────────────────────────────
+
+/* ── 6. מסך הבית (שלב 3 — לוח 02 בקנבס) ──────────────────────────────────
+   מוזרק ע"י ui-lab.js. הערכים (רדיוס 16, gap 14, padding 26/30, KPI ראשי
+   2.6rem במשקל 500, טבעת 74px עם ליבה 56px) נמדדו מהלוח.                  */
+
+html.ui-lab .lab-home{ display:flex; flex-direction:column; gap:18px; padding:8px 0 32px }
+
+/* כותרת */
+html.ui-lab .lh-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap }
+html.ui-lab .lh-date{ font-size:.8rem; color:var(--muted); font-weight:600 }
+html.ui-lab .lh-greet{
+  margin:2px 0 0; font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-size:1.75rem; font-weight:600; letter-spacing:-.03em;
+}
+html.ui-lab .lh-hsub{ font-size:.9rem; color:var(--ink-soft); margin-top:2px }
+
+/* כרטיסי KPI */
+html.ui-lab .lh-kpis{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:14px }
+html.ui-lab .lh-kpi{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; padding:18px 20px; min-width:0;
+}
+html.ui-lab .lh-kpi.dark{
+  background:var(--lab-deep); border-color:transparent; color:#fff;
+  padding:20px 22px; display:flex; align-items:center; gap:18px;
+}
+html.ui-lab .lh-kpi-body{ min-width:0 }
+html.ui-lab .lh-spacer{ flex:1 }
+html.ui-lab .lh-k{ font-size:.79rem; color:var(--muted); font-weight:600 }
+html.ui-lab .lh-kpi.dark .lh-k{ color:rgba(255,255,255,.6); font-size:.8rem }
+html.ui-lab .lh-v{
+  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-size:2.1rem; font-weight:500; letter-spacing:-.03em; margin-top:2px; line-height:1.15;
+}
+html.ui-lab .lh-kpi.dark .lh-v{ font-size:2.6rem; letter-spacing:-.04em; line-height:1.1 }
+html.ui-lab .lh-v.good{ color:var(--good) }
+html.ui-lab .lh-v.bad { color:var(--bad) }
+html.ui-lab .lh-sub{ font-size:.79rem; color:var(--muted); font-weight:600 }
+html.ui-lab .lh-kpi.dark .lh-sub{ color:var(--lab-gold-on-deep); font-weight:700 }
+html.ui-lab .lh-klink{
+  background:none; border:0; padding:4px 0 0; cursor:pointer;
+  font-size:.79rem; font-weight:700; color:var(--bad);
+}
+html.ui-lab .lh-klink:hover{ text-decoration:underline }
+
+/* הטבעת */
+html.ui-lab .lh-ring{
+  width:74px; height:74px; border-radius:50%; flex:0 0 auto; display:grid; place-items:center;
+}
+html.ui-lab .lh-ring-in{
+  width:56px; height:56px; border-radius:50%; background:var(--lab-deep);
+  display:grid; place-items:center; font-size:.83rem; font-weight:700; color:#fff;
+  direction:ltr;
+}
+
+/* פסי התקדמות */
+html.ui-lab .lh-bar{
+  height:6px; border-radius:999px; margin-top:10px; overflow:hidden;
+  background:color-mix(in srgb, var(--border) 70%, var(--surface));
+}
+html.ui-lab .lh-bar i{ display:block; height:100%; border-radius:999px; background:var(--good) }
+html.ui-lab .lh-bar i.near{ background:var(--lab-gold) }
+html.ui-lab .lh-bar i.full{ background:var(--bad) }
+
+/* שתי העמודות */
+html.ui-lab .lh-cols{ display:grid; grid-template-columns:1.15fr 1fr; gap:18px; align-items:start }
+html.ui-lab .lh-side{ display:flex; flex-direction:column; gap:18px; min-width:0 }
+
+html.ui-lab .lh-panel{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:18px; padding:18px 22px 20px; min-width:0;
+}
+html.ui-lab .lh-phead{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:6px }
+html.ui-lab .lh-phead h3{
+  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-size:1.02rem; font-weight:600; letter-spacing:-.03em;
+}
+html.ui-lab .lh-plink{ background:none; border:0; padding:0; cursor:pointer; font-size:.8rem; font-weight:700; color:var(--accent) }
+
+/* שורת "דורש טיפול" */
+html.ui-lab .lh-task{
+  display:flex; align-items:center; gap:14px; padding:14px 0;
+  border-bottom:1px solid var(--lab-rule-row);
+}
+html.ui-lab .lh-task:last-child{ border-bottom:0; padding-bottom:2px }
+html.ui-lab .lh-tnum{
+  width:36px; height:36px; border-radius:11px; flex:0 0 auto;
+  display:grid; place-items:center; font-weight:700; font-size:.92rem; direction:ltr;
+}
+html.ui-lab .lh-tnum.bad { background:var(--bad-soft);  color:var(--bad) }
+html.ui-lab .lh-tnum.warn{ background:var(--warn-soft); color:var(--warn) }
+html.ui-lab .lh-tnum.good{ background:var(--good-soft); color:var(--good) }
+html.ui-lab .lh-tmid{ flex:1; min-width:0 }
+html.ui-lab .lh-ttl{ font-weight:700; font-size:.94rem }
+html.ui-lab .lh-tsub{ font-size:.79rem; color:var(--muted); margin-top:1px }
+html.ui-lab .lh-tbtn{
+  flex:0 0 auto; background:var(--surface); border:1px solid var(--border);
+  color:var(--ink-soft); padding:8px 15px; border-radius:10px; font-weight:600; font-size:.84rem;
+}
+html.ui-lab .lh-tbtn:hover{ border-color:var(--accent); color:var(--accent-strong) }
+html.ui-lab .lh-tbtn.strong{ background:var(--lab-deep); border-color:transparent; color:#fff }
+html.ui-lab .lh-tbtn.strong:hover{ color:#fff; opacity:.9 }
+
+/* תפוסה לפי קמפוס */
+html.ui-lab .lh-camp{ padding:9px 0 }
+html.ui-lab .lh-camp-top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px }
+html.ui-lab .lh-camp-n{ font-size:.8rem; color:var(--muted); font-weight:700 }
+/* יחס מבודד — בלי זה 168/180 מתהפך ב-RTL */
+html.ui-lab .lh-ratio{ direction:ltr; unicode-bidi:isolate }
+
+/* פעילות אחרונה */
+html.ui-lab .lh-act{ display:flex; gap:10px; padding:8px 0; align-items:flex-start }
+html.ui-lab .lh-adot{
+  width:7px; height:7px; border-radius:50%; background:var(--accent);
+  flex:0 0 auto; margin-top:7px;
+}
+html.ui-lab .lh-atxt{ font-weight:700; font-size:.88rem }
+html.ui-lab .lh-awho{ font-size:.78rem; color:var(--muted); margin-top:1px }
+
+html.ui-lab .lh-empty{ font-size:.85rem; color:var(--muted); padding:10px 0 }
+
+/* Responsive לפי HANDOFF.md */
+@media(max-width:1150px){
+  html.ui-lab .lh-kpis{ grid-template-columns:1fr 1fr }
+}
+@media(max-width:900px){
+  html.ui-lab .lh-kpis,
+  html.ui-lab .lh-cols{ grid-template-columns:1fr }
+  html.ui-lab .lh-tbtn{ min-height:44px }
+}
+
+/* ── 7. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
 html.ui-lab .ui-lab-badge{
