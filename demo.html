@@ -1,0 +1,1631 @@
+<!doctype html>
+<html lang="he" dir="rtl" class="ui-lab">
+<head>
+<meta charset="utf-8">
+<!-- ==========================================================================
+   מערכת ניהול רשת הגנים · גרסת דמו לעיצוב
+   Copyright © 2026 שמואל גולדמן (Shmuel Goldman). כל הזכויות שמורות.
+   תוכנה קניינית — תנאים מלאים בקובץ LICENSE שבשורש הפרויקט.
+
+   נוצר על ידי tests/build-demo.cjs — אין לערוך ידנית.
+   הנתונים בעמוד זה מומצאים במלואם ואינם קשורים לאף אדם או גן.
+   ========================================================================== -->
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#15342a">
+<title>רשת הגנים · דמו עיצוב</title>
+<style>
+:root{--rg-build:"rg-b05ea2eb";
+  --bg:#f4f6f4;--surface:#ffffff;--surface-2:#f0f3f0;--ink:#17241d;--ink-soft:#4a564e;--muted:#7f8a82;--border:#e2e7e2;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e8f0ea;--brass:#9a7429;--good:#2f7a53;--good-soft:#e6f0e9;--warn:#96661f;--warn-soft:#f4ecdf;--bad:#a03b32;--bad-soft:#f6e7e5;--over1:#6b4c9a;--over1-soft:#ece8f4;
+  --shadow:0 1px 2px rgba(23,36,29,.04),0 6px 18px rgba(23,36,29,.06);--radius:14px}
+@media(prefers-color-scheme:dark){:root{--bg:#101614;--surface:#182019;--surface-2:#1e2823;--ink:#e9efea;--ink-soft:#a9b6ac;--muted:#74827a;--border:#2a352e;--accent:#4aa877;--accent-strong:#7ed2a3;--accent-soft:#1b2a22;--brass:#c9a35a;--good:#5cb98a;--good-soft:#16291f;--warn:#c9a163;--warn-soft:#2a2318;--bad:#d98478;--bad-soft:#33201d;--over1:#b09ad8;--over1-soft:#241f30;--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.42)}}
+:root[data-theme="light"]{--bg:#f4f6f4;--surface:#ffffff;--surface-2:#f0f3f0;--ink:#17241d;--ink-soft:#4a564e;--muted:#7f8a82;--border:#e2e7e2;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e8f0ea;--brass:#9a7429;--good:#2f7a53;--good-soft:#e6f0e9;--warn:#96661f;--warn-soft:#f4ecdf;--bad:#a03b32;--bad-soft:#f6e7e5;--over1:#6b4c9a;--over1-soft:#ece8f4}
+:root[data-theme="dark"]{--bg:#101614;--surface:#182019;--surface-2:#1e2823;--ink:#e9efea;--ink-soft:#a9b6ac;--muted:#74827a;--border:#2a352e;--accent:#4aa877;--accent-strong:#7ed2a3;--accent-soft:#1b2a22;--brass:#c9a35a;--good:#5cb98a;--good-soft:#16291f;--warn:#c9a163;--warn-soft:#2a2318;--bad:#d98478;--bad-soft:#33201d;--over1:#b09ad8;--over1-soft:#241f30}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);direction:rtl;line-height:1.55;
+  font-family:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif;font-size:15px}
+h1,h2,h3{margin:0}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;font-weight:700}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);
+  border-radius:9px;padding:8px 10px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+label{font-size:.82rem;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:4px}
+a{color:var(--accent)}
+
+/* header */
+header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bottom:1px solid var(--border);
+  box-shadow:var(--shadow)}
+.top-inner{max-width:1200px;margin:0 auto;padding:9px 14px;display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand .logo{width:42px;height:42px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:1.3rem;flex:0 0 auto}
+.brand .logo img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+.brand .txt{display:flex;flex-direction:column;line-height:1.18;min-width:0}
+.brand .txt .t1{font-weight:800;font-size:1.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .txt .t2{font-weight:700;font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-spacer{flex:1}
+.top-chips{display:flex;align-items:center;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-weight:800;font-size:.84rem;white-space:nowrap}
+/* כפתורי פעולה קטנים: ניווט (Waze/מפות), חיוג, מייל */
+.act{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);text-decoration:none;font-size:.95rem;line-height:1;margin-inline-start:4px;vertical-align:middle;flex:0 0 auto;cursor:pointer;padding:0;color:inherit}
+.act:hover{border-color:var(--accent);background:var(--accent-soft,var(--surface))}
+.actgrp{display:inline-flex;align-items:center;gap:0}
+.fieldwrap{display:flex;gap:5px;align-items:stretch}
+.fieldwrap>input{flex:1;min-width:0}
+.fieldwrap>.act{width:38px;height:auto;cursor:pointer}
+.fieldwrap.tel>.act{width:30px;margin-inline-start:3px}
+.fieldwrap.tel>input{min-width:5.5em}
+.chip.year{background:var(--accent-soft);color:var(--accent-strong)}
+.chip.edu{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--border)}
+.chip.edu.reg{background:var(--good-soft);color:var(--good);border-color:transparent}
+.chip.edu.spec{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.hamburger{background:var(--surface-2);border:1px solid var(--border);width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto}
+.hamburger:hover{border-color:var(--accent)}
+.backbtn{background:var(--surface-2);border:1px solid var(--border);width:42px;height:42px;border-radius:12px;display:none;place-items:center;flex:0 0 auto;color:var(--ink-soft);cursor:pointer}
+.backbtn.show{display:grid}
+.backbtn:hover{border-color:var(--accent);color:var(--accent)}
+.backbtn svg{width:20px;height:20px;display:block}
+.hamburger span{display:block;width:19px;height:2px;background:var(--ink-soft);border-radius:2px;box-shadow:0 6px 0 var(--ink-soft),0 -6px 0 var(--ink-soft)}
+@media(max-width:560px){.brand .txt .t2{display:none}.brand .logo{width:38px;height:38px}.chip{padding:5px 9px;font-size:.78rem}.top-inner{gap:7px}}
+
+/* drawer (תפריט צד שמאל) */
+.scrim{position:fixed;inset:0;background:rgba(6,18,22,.5);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;left:0;width:min(330px,88vw);background:var(--surface);border-right:1px solid var(--border);
+  box-shadow:0 0 44px rgba(0,0,0,.28);z-index:55;display:flex;flex-direction:column;transform:translateX(-103%);
+  transition:transform .28s cubic-bezier(.4,0,.2,1)}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.drawer-head .logo{width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:1.15rem;flex:0 0 auto}
+.drawer-head .logo img{width:100%;height:100%;object-fit:cover;border-radius:11px}
+.drawer-head .txt{display:flex;flex-direction:column;line-height:1.15;min-width:0;flex:1}
+.drawer-head .txt .t1{font-weight:800;font-size:1rem}
+.drawer-head .txt .t2{font-weight:700;font-size:.72rem;color:var(--muted)}
+.drawer-close{background:var(--surface-2);border:1px solid var(--border);width:34px;height:34px;border-radius:9px;font-size:1.1rem;color:var(--ink-soft);flex:0 0 auto}
+.drawer-body{flex:1;overflow:auto;padding:14px 12px;-webkit-overflow-scrolling:touch}
+.drawer-sec{margin-bottom:16px}
+.drawer-sec>.lbl{font-size:.72rem;font-weight:800;color:var(--muted);margin:0 4px 7px;letter-spacing:.02em}
+.drawer-year{display:flex;align-items:center;gap:8px;background:var(--accent-soft);border-radius:12px;padding:9px 13px;font-weight:800;color:var(--accent-strong)}
+.drawer-year select{width:auto;flex:1;background:transparent;border:0;font-weight:800;color:var(--accent-strong);padding:2px}
+.drawer-edu{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.drawer-edu button{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);padding:9px 4px;border-radius:11px;font-weight:800;font-size:.83rem}
+.drawer-edu button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.drawer-edu button.reg.active{background:var(--good);border-color:var(--good)}
+.drawer-edu button.spec.active{background:var(--warn);border-color:var(--warn)}
+.drawer-nav{display:flex;flex-direction:column;gap:3px}
+.drawer-nav button{display:flex;align-items:center;gap:12px;width:100%;text-align:start;background:transparent;color:var(--ink-soft);padding:11px 12px;border-radius:11px;font-weight:700;font-size:.96rem}
+.drawer-nav button .ic{font-size:1.18rem;width:26px;text-align:center;flex:0 0 auto}
+.drawer-nav button .count{margin-inline-start:auto;background:var(--accent-soft);color:var(--accent-strong);border-radius:999px;padding:1px 9px;font-size:.76rem;font-weight:800}
+.drawer-nav button:hover{background:var(--surface-2)}
+.drawer-nav button.active{background:var(--accent);color:#fff;box-shadow:var(--shadow)}
+.drawer-nav button.active .count{background:rgba(255,255,255,.24);color:#fff}
+.drawer-foot{border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px}
+.drawer-foot .df-row{display:flex;gap:8px}
+.drawer-foot button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);padding:10px 10px;border-radius:11px;font-weight:800;font-size:.86rem}
+.drawer-foot button:hover{border-color:var(--accent);color:var(--accent-strong)}
+.drawer-foot #signOutBtn{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.drawer-sync{text-align:center;font-size:.82rem;font-weight:800;padding:2px}
+.doc-row{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:7px 10px;flex-wrap:wrap}
+.doc-row .lbl{display:flex;align-items:center;gap:8px;font-weight:600;flex:1;min-width:150px;cursor:pointer}
+.doc-row .lbl input{width:auto;margin:0}
+.doc-rows{display:grid;gap:8px;grid-template-columns:repeat(2,1fr)}
+@media(max-width:640px){.doc-rows{grid-template-columns:1fr}}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--accent-strong)}
+th.sortable .arr{font-size:.7rem;opacity:.7;margin-inline-start:3px}
+.icon-btn{background:var(--surface-2);border:1px solid var(--border);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:1.05rem}
+
+/* עמוד הבית */
+.home-empty{text-align:center;padding:60px 22px;color:var(--muted)}
+.home-empty .big{font-size:3.4rem;margin-bottom:12px}
+.home-empty h2{font-size:1.3rem;color:var(--ink);margin-bottom:8px}
+.home-empty .btn{margin-top:16px;display:inline-flex;align-items:center;gap:8px}
+.home-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.home-head h2{font-size:1.35rem}
+.home-head .hh-edu{font-weight:800;font-size:.9rem;padding:5px 12px;border-radius:999px}
+.hcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:20px}
+.hcard{border-radius:18px;padding:18px 20px;border:1px solid var(--border);box-shadow:var(--shadow);position:relative;overflow:hidden;background:linear-gradient(200deg,var(--surface-2),var(--surface))}
+.hcard .ic{position:absolute;inset-inline-end:16px;top:14px;font-size:1.7rem;opacity:.5}
+.hcard .k{font-size:.82rem;color:var(--muted);font-weight:800}
+.hcard .v{font-size:2.5rem;font-weight:800;letter-spacing:-.02em;margin-top:4px;line-height:1}
+.hcard .v small{font-size:.95rem;color:var(--muted);font-weight:700}
+.hcard .split{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap}
+.hcard .split .sp{display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:var(--ink-soft)}
+.hcard .split .sp b{font-size:1rem}
+.hcard .sp .dt{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+.hcard.acc{background:radial-gradient(120% 140% at 88% -20%,color-mix(in srgb,var(--accent) 24%,transparent),transparent 60%),linear-gradient(200deg,var(--surface-2),var(--surface))}
+.gan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:13px}
+.gan-card{background:var(--surface);border:1px solid var(--border);border-radius:15px;padding:14px 15px;box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s;cursor:default}
+.gan-card:hover{transform:translateY(-2px)}
+.gan-card .gc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.gan-card .gname{font-weight:800;font-size:.98rem;line-height:1.25}
+.gan-card .gmeta{font-size:.74rem;color:var(--muted);font-weight:700;margin-top:2px}
+.gan-card .gcount{font-size:1.7rem;font-weight:800;color:var(--accent-strong);line-height:1;white-space:nowrap}
+.gan-card .gcount small{font-size:.72rem;color:var(--muted);font-weight:700}
+.gan-card .gbar{height:8px;background:var(--surface-2);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
+.gan-card .gbar>i{display:block;height:100%;border-radius:999px;background:var(--accent)}
+.gan-card.spec .gcount{color:var(--warn)}
+.gan-card.spec .gbar>i{background:var(--warn)}
+.edu-tag{display:inline-block;font-size:.68rem;font-weight:800;padding:1px 7px;border-radius:999px;margin-inline-start:6px;vertical-align:middle}
+.edu-tag.reg{background:var(--good-soft);color:var(--good)}
+.edu-tag.spec{background:var(--warn-soft);color:var(--warn)}
+
+main{max-width:1200px;margin:0 auto;padding:18px 16px 80px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:16px}
+.panel h2{font-size:1.15rem;margin-bottom:4px}
+.panel .sub{color:var(--muted);font-size:.86rem;margin-bottom:14px}
+
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+.btn{background:var(--accent);color:#fff;padding:9px 16px}
+.btn:hover{background:var(--accent-strong)}
+.btn.ghost{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--border)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent-strong)}
+.btn.sm{padding:5px 11px;font-size:.85rem}
+.btn.danger{background:var(--bad-soft);color:var(--bad)}
+.btn.danger:hover{background:var(--bad);color:#fff}
+
+/* שורת חיפוש עם זכוכית מגדלת + סינון מתקדם נפתח */
+.searchbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.search-field{position:relative;flex:1;min-width:200px}
+.search-field .mag{position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:1rem}
+.search-field input{padding-inline-start:36px}
+.filter-toggle{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);padding:9px 14px;border-radius:10px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.filter-toggle.on{background:var(--accent-soft);color:var(--accent-strong);border-color:var(--accent)}
+.filter-toggle .fcount{background:var(--accent);color:#fff;border-radius:999px;font-size:.72rem;padding:0 7px}
+.filter-panel{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:var(--surface-2)}
+.filter-panel[hidden]{display:none}
+tbody tr.clickable{cursor:pointer}
+tbody tr.clickable:hover{background:var(--surface-2)}
+
+/* toolbar */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.toolbar .field{min-width:130px}
+.toolbar .field.grow{flex:1;min-width:180px}
+.toolbar .field label{margin-bottom:3px}
+
+/* בחירה מרובה בסגנון רשימה נפתחת (סינון גנים) */
+.msel{position:relative}
+.msel>summary{list-style:none;cursor:pointer;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;font-weight:600}
+.msel>summary::-webkit-details-marker{display:none}
+.msel>summary::after{content:"▾";color:var(--ink-soft);font-size:.75rem}
+.msel[open]>summary{outline:2px solid var(--accent);border-color:var(--accent)}
+.msel-menu{position:absolute;z-index:60;top:calc(100% + 4px);inset-inline-start:0;min-width:100%;max-height:260px;overflow:auto;background:var(--surface,#fff);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow,0 8px 24px rgba(0,0,0,.16));padding:6px}
+.msel-menu .msel-tools{display:flex;gap:6px;padding:2px 4px 6px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.msel-opt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-weight:600;white-space:nowrap}
+.msel-opt:hover{background:var(--surface-2)}
+.msel-opt input{width:auto;margin:0}
+
+/* table */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:680px}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:var(--surface-2);font-weight:700;font-size:.79rem;color:var(--muted);letter-spacing:.02em;position:sticky;top:0}
+tbody tr:hover{background:var(--surface-2)}
+td.actions{white-space:nowrap}
+.empty{padding:34px;text-align:center;color:var(--muted)}
+.pill{display:inline-block;padding:2px 9px;border-radius:7px;font-size:.75rem;font-weight:700;letter-spacing:.01em}
+.pill.ok{background:var(--good-soft);color:var(--good)}
+.pill.no{background:var(--bad-soft);color:var(--bad)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.neutral{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+/* טבלה צרה שמותר לה להצטמצם לרוחב המכל (במקום min-width הגלובלי של 680px),
+   לשימוש בחלונות כמו בדיקת הקרבה — שם עמודת המרחק נחתכה בטלפון. */
+table.tbl-fit{min-width:0}
+.tbl-fit th,.tbl-fit td{padding:8px 7px}
+.tbl-fit td.wrap{white-space:normal}
+@media(max-width:520px){ .tbl-fit th,.tbl-fit td{padding:7px 5px;font-size:.83rem} }
+.dot-list{display:flex;gap:3px}
+.doc-dot{width:16px;height:16px;border-radius:50%;font-size:10px;display:grid;place-items:center;font-weight:800}
+.doc-dot.on{background:var(--good);color:#fff}
+.doc-dot.off{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 15px}
+.stat .k{font-size:.78rem;color:var(--muted);font-weight:700}
+.stat .v{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin-top:2px}
+.stat .v small{font-size:.9rem;color:var(--muted);font-weight:700}
+.stat.hero{background:var(--surface);border-color:color-mix(in srgb,var(--accent) 32%,var(--border))}
+
+.bar{height:9px;background:var(--surface-2);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
+.bar > i{display:block;height:100%;background:var(--accent);border-radius:999px}
+
+/* עוגות (pie / donut) + מקרא */
+.pie-block{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.pie-svg{flex:0 0 auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,.08))}
+.pie-legend{flex:1 1 200px;min-width:180px;display:flex;flex-direction:column;gap:2px}
+.pie-leg-row{display:flex;align-items:center;gap:9px;font-size:.9rem;padding:5px 2px;border-bottom:1px dashed var(--border)}
+.pie-leg-row:last-child{border-bottom:0}
+.pie-dot{width:13px;height:13px;border-radius:4px;flex:0 0 auto;box-shadow:0 0 0 1px rgba(0,0,0,.08) inset}
+.pie-leg-label{font-weight:700;color:var(--ink-soft);flex:1;overflow:hidden;text-overflow:ellipsis}
+.pie-leg-val{font-weight:800;white-space:nowrap}
+.pie-leg-val small{color:var(--muted);font-weight:700;margin-inline-start:4px}
+.pie-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.pie-card{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.pie-card h4{font-size:1rem;margin-bottom:10px;color:var(--accent-strong)}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(6,18,22,.55);display:none;align-items:center;justify-content:center;z-index:60;padding:12px}
+.overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);width:min(760px,100%);
+  max-height:calc(100dvh - 24px);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;padding:0 22px}
+.modal>h3{position:sticky;top:0;z-index:3;background:var(--surface);font-size:1.2rem;margin:0 -22px 14px;padding:17px 22px 13px;border-bottom:1px solid var(--border)}
+.modal>.foot{position:sticky;bottom:0;z-index:3;background:var(--surface);display:flex;gap:10px;justify-content:flex-start;
+  margin:16px -22px 0;padding:13px 22px;border-top:1px solid var(--border);flex-wrap:wrap}
+.modal>*:last-child:not(.foot){margin-bottom:20px}
+.modal h3{font-size:1.2rem}
+/* חלון שיתוף המסמך — עצמאי, נפתח גם מעל חלון פתוח (מסך היצוא/התבניות) */
+.sd-wrap{position:fixed;inset:0;background:rgba(6,18,22,.55);display:flex;align-items:center;justify-content:center;z-index:90;padding:12px}
+.sd-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
+  width:min(460px,100%);max-height:calc(100dvh - 24px);overflow:auto;padding:16px 18px}
+.sd-box h3{font-size:1.08rem;margin-bottom:2px}
+.sd-box .sd-title{color:var(--muted);font-weight:700;font-size:.86rem}
+.sd-foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+fieldset{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:0 0 12px}
+legend{font-weight:800;color:var(--accent-strong);padding:0 6px;font-size:.9rem}
+.check{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;cursor:pointer}
+.check input{width:auto;margin:0}
+.checks{display:grid;gap:8px;grid-template-columns:repeat(2,1fr)}
+@media(max-width:640px){.checks{grid-template-columns:1fr}}
+.hidden{display:none!important}
+body.locked .top-chips,body.locked .hamburger,body.locked .backbtn{display:none!important}
+.login-card{max-width:420px;margin:6vh auto}
+.hint{font-size:.8rem;color:var(--muted);margin-top:6px}
+.note{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);color:var(--warn);
+  border-radius:10px;padding:9px 12px;font-size:.84rem;font-weight:600}
+.toast{position:fixed;bottom:20px;inset-inline-start:50%;transform:translateX(50%);background:var(--ink);color:var(--bg);
+  padding:11px 18px;border-radius:12px;font-weight:700;box-shadow:var(--shadow);z-index:90;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(50%) translateY(-4px)}
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+
+@media print{
+  header.top,.drawer,.scrim,.toolbar,.no-print{display:none!important}
+  body{background:#fff}
+  main{padding:0}
+  .panel{box-shadow:none;border:0}
+  th{position:static}
+}
+
+/* ===== Evergreen polish · phase 2 (additive, non-breaking) ===== */
+:root{--shadow-lg:0 10px 26px rgba(24,43,32,.12),0 34px 66px rgba(24,43,32,.18)}
+:root[data-theme="light"]{--shadow-lg:0 10px 26px rgba(24,43,32,.12),0 34px 66px rgba(24,43,32,.18)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--shadow-lg:0 12px 30px rgba(0,0,0,.5),0 40px 80px rgba(0,0,0,.62)}}
+:root[data-theme="dark"]{--shadow-lg:0 12px 30px rgba(0,0,0,.5),0 40px 80px rgba(0,0,0,.62)}
+.hcard,.stat{position:relative;overflow:hidden;transition:transform .28s cubic-bezier(.2,.7,.2,1),box-shadow .28s,border-color .28s}
+.hcard:hover,.stat:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:transparent}
+.hcard::after,.stat::after{content:"";position:absolute;inset-inline:0;top:0;height:3px;pointer-events:none;background:linear-gradient(90deg,var(--accent),var(--brass));transform:scaleX(0);transform-origin:100% 50%;transition:transform .4s cubic-bezier(.2,.7,.2,1)}
+.hcard:hover::after,.stat:hover::after{transform:scaleX(1)}
+.gan-card{transition:transform .26s cubic-bezier(.2,.7,.2,1),box-shadow .26s,border-color .26s}
+.gan-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:transparent}
+.drawer-nav button{transition:background .2s,color .2s,transform .15s}
+.drawer-nav button:hover{transform:translateX(-2px)}
+.btn{transition:background .2s,transform .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-1px)}
+@media (prefers-reduced-motion:reduce){.hcard,.stat,.gan-card,.btn,.drawer-nav button{transition:none}.hcard::after,.stat::after{transition:none}}
+
+/* ===== Evergreen polish · phase 3 (refinement) ===== */
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.pill{display:inline-flex;align-items:center;gap:5px}
+.pill.neutral::before{opacity:.55}
+.table-wrap{border-radius:16px}
+.brand .logo,.drawer-head .logo{background:var(--accent-strong)}
+.icon-btn{transition:background .18s,border-color .18s,color .18s,transform .15s}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent-strong);transform:translateY(-1px)}
+
+/* ===== Evergreen polish · phase 4 (depth) ===== */
+@keyframes rgModalIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.overlay.show .modal{animation:rgModalIn .26s cubic-bezier(.2,.7,.2,1)}
+fieldset{border-radius:14px}
+.check{transition:border-color .18s,background .18s}
+.check:hover{border-color:var(--accent)}
+.btn:active{transform:translateY(0)}
+.drawer-edu button{transition:all .18s}
+.drawer-edu button:hover:not(.active){border-color:var(--accent)}
+.bar>i,.gan-card .gbar>i{transition:width .8s cubic-bezier(.2,.7,.2,1)}
+.pie-card{transition:transform .26s,box-shadow .26s,border-color .26s}
+.pie-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:transparent}
+@media (prefers-reduced-motion:reduce){.overlay.show .modal{animation:none}.bar>i,.gan-card .gbar>i{transition:none}}
+/* מפת שיבוץ */
+#leaflet-map{touch-action:none;overscroll-behavior:contain}
+/* מרקר גן — דגל עם לוגו הרשת + שם הגן תמיד גלוי */
+.map-gan-divicon{background:none;border:none}
+.map-gan-flag{width:38px;height:38px;margin:0 auto;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#fff;border:3px solid #6f42c1;box-shadow:0 3px 8px rgba(0,0,0,.4);display:grid;place-items:center;overflow:hidden}
+.map-gan-flag>*{transform:rotate(45deg);font-size:19px;line-height:1}
+.map-gan-flag img{width:30px;height:30px;object-fit:cover;border-radius:50%}
+.map-gan-stem{width:3px;height:6px;margin:1px auto 0;background:#6f42c1;border-radius:2px}
+.leaflet-tooltip.map-gan-tip{background:none;border:0;box-shadow:none;padding:0;font-weight:700;font-size:12px;white-space:nowrap}
+.leaflet-tooltip.map-gan-tip::before{display:none}
+.map-side-kid:hover{background:var(--accent-soft);color:var(--accent-strong)}
+#leaflet-map.map-full{position:fixed;inset:0;z-index:9999;height:100dvh !important;min-height:100dvh !important;width:100vw !important;margin:0 !important;border-radius:0 !important;border:0 !important}
+#leaflet-map:fullscreen{width:100%;height:100%;border-radius:0;border:0;background:#e9eef2}
+/* מסך מלא לבמה (מפה + רשימת הצד יחד) — מחלקה מפורשת (חסינה לקידומות :fullscreen) */
+#map-stage.map-full-native{width:100%;height:100%;background:var(--surface);padding:10px;box-sizing:border-box;gap:10px;flex-wrap:nowrap}
+#map-stage.map-full-native #leaflet-map{height:100% !important;min-height:0 !important;flex:1 1 auto}
+#map-stage.map-full-native #map-side{max-height:100% !important;flex:0 0 280px}
+/* מסך מלא לבמה — Fullscreen API (גיבוי אם המחלקה לא הוחלה) */
+#map-stage:fullscreen{width:100%;height:100%;background:var(--surface);padding:10px;box-sizing:border-box;gap:10px;flex-wrap:nowrap}
+#map-stage:fullscreen #leaflet-map{height:100% !important;min-height:0 !important;flex:1 1 auto}
+#map-stage:fullscreen #map-side{max-height:100% !important;flex:0 0 280px}
+/* מסך מלא לבמה — גיבוי (ללא Fullscreen API) */
+#map-stage.map-full{position:fixed;inset:0;z-index:9999;height:100dvh !important;width:100vw !important;margin:0 !important;background:var(--surface);padding:10px;box-sizing:border-box;gap:10px;flex-wrap:nowrap;overflow:hidden}
+#map-stage.map-full #leaflet-map{height:auto !important;min-height:0 !important;flex:1 1 auto;border-radius:8px}
+#map-stage.map-full #map-side{max-height:100% !important;flex:0 0 280px}
+@media (max-width:640px){
+  #map-stage:fullscreen,#map-stage.map-full-native,#map-stage.map-full{flex-wrap:wrap}
+  #map-stage:fullscreen #map-side,#map-stage.map-full-native #map-side,#map-stage.map-full #map-side{flex-basis:100%;max-height:34% !important}
+}
+.leaflet-container{font:inherit}
+.map-fold{margin-top:10px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.map-fold>summary{cursor:pointer;padding:10px 14px;font-weight:700;list-style:none;user-select:none;display:flex;align-items:center;gap:8px}
+.map-fold>summary::-webkit-details-marker{display:none}
+.map-fold>summary::before{content:"▸";color:var(--muted);transition:transform .15s}
+.map-fold[open]>summary::before{transform:rotate(90deg)}
+.map-fold>summary:hover{color:var(--accent-strong)}
+.map-fold-body{padding:0 14px 14px}
+
+/* ---- לשונית התלמידות: טבלה נקייה + תיק מקוצר בצד ---- */
+/* פס הסיכום (הריבועים עם הנתונים) — נעוץ מתחת לכותרת ונשאר על המסך בזמן גלילה */
+#stuSummary.sticky{position:sticky;top:var(--top-h,61px);z-index:22;background:var(--surface);
+  margin:0 -18px 10px;padding:9px 18px 10px;border-bottom:1px solid var(--border)}
+#stuSummary.sticky .stats{grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
+#stuSummary.sticky .stat{padding:7px 10px;border-radius:10px}
+#stuSummary.sticky .stat .k{font-size:.72rem}
+#stuSummary.sticky .stat .v{font-size:1.28rem;margin-top:0}
+/* הבמה: הטבלה בצד אחד, התיק המקוצר בצד השני */
+.stu-stage{display:flex;gap:14px;align-items:flex-start}
+.stu-stage>#stuTable{flex:1 1 0;min-width:0}
+/* ראשי תיבות — בתיק המקוצר בלבד (בטבלה עצמה השם מוצג בלי אייקון) */
+.ini{width:34px;height:34px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);
+  color:var(--ink-soft);display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:0 0 auto;line-height:1}
+/* טבלת התלמידות: עמודות עיקריות תמיד גלויות · השאר ("עמודות נוספות") מוסתרות עד לחיצה */
+.stu-table .nm{font-weight:700;line-height:1.25}
+.stu-table .tzcell{font-weight:700;font-variant-numeric:tabular-nums}
+.stu-table.hide-xcol .xcol{display:none}
+.stu-table.hide-xcol{min-width:0}
+/* תא הגן: שם הגן ומתחתיו מצב השיבוץ */
+.gancell .g{font-weight:700}
+.gancell .st{font-size:.76rem;font-weight:700;margin-top:1px;display:inline-flex;align-items:center;gap:4px}
+/* תגיות מסמכים — קצרות במקום נקודות */
+.docchips{display:inline-flex;gap:3px}
+.docchip{min-width:26px;padding:1px 5px;border-radius:6px;font-size:.68rem;font-weight:700;text-align:center;
+  background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.docchip.on{background:var(--good-soft);color:var(--good);border-color:color-mix(in srgb,var(--good) 28%,var(--border))}
+/* תגית שיש מאחוריה קובץ — קישור ישיר למסמך */
+a.docchip.has-file{text-decoration:none;cursor:pointer}
+a.docchip.has-file:hover{background:var(--good);color:#fff;border-color:var(--good)}
+/* עמודת "סימונים" — תגיות מאוחדות (תוכניות · שונות · הערה) */
+.tags{display:flex;flex-wrap:wrap;gap:3px;max-width:230px;white-space:normal}
+/* שורה נבחרת — פס מבטא בקצה, בלי צבע רועש */
+tbody tr.sel{background:var(--accent-soft)}
+tbody tr.sel>td:first-child{box-shadow:inset 3px 0 0 0 var(--accent)}
+html[dir="rtl"] tbody tr.sel>td:first-child{box-shadow:inset -3px 0 0 0 var(--accent)}
+td,th{vertical-align:middle}
+tbody td{padding-block:8px}
+
+/* צ׳יפים של סינון פעיל */
+.fchips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+.fchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700;
+  background:var(--accent-soft);color:var(--accent-strong);border:1px solid color-mix(in srgb,var(--accent) 26%,var(--border))}
+.fchip button{background:none;border:0;padding:0;color:inherit;font-size:.95rem;line-height:1;opacity:.7;cursor:pointer}
+.fchip button:hover{opacity:1}
+.fchips .clr{background:none;border:0;color:var(--muted);font-weight:700;font-size:.8rem;text-decoration:underline;cursor:pointer;padding:0 4px}
+.fchips .clr:hover{color:var(--accent-strong)}
+
+/* פס בחירה תחתון */
+.selbar{position:sticky;bottom:10px;z-index:5;margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--accent-strong);color:#fff;border-radius:12px;padding:10px 14px;box-shadow:var(--shadow)}
+.selbar b{margin-inline-end:auto}
+.selbar .btn{background:rgba(255,255,255,.14);color:#fff}
+.selbar .btn:hover{background:rgba(255,255,255,.24)}
+.selbar .btn.light{background:#fff;color:var(--accent-strong)}
+
+/* ---- תיק מקוצר בצד (Quick view) ---- */
+.stu-quick{flex:0 0 296px;width:296px;position:sticky;
+  top:calc(var(--top-h,61px) + var(--stu-sum-h,9px) + 9px);
+  max-height:calc(100vh - var(--top-h,61px) - var(--stu-sum-h,9px) - 31px);overflow:auto;
+  display:flex;flex-direction:column;gap:12px}
+.stu-quick.empty-state{display:none}
+.qcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.qhead{display:flex;align-items:flex-start;gap:10px}
+.qhead .ini{width:44px;height:44px;border-radius:11px;font-size:.95rem;background:var(--accent-soft);
+  border-color:color-mix(in srgb,var(--accent) 30%,var(--border));color:var(--accent-strong)}
+.qhead .qname{font-weight:800;font-size:1.02rem;line-height:1.3}
+.qhead .qtz{font-size:.78rem;color:var(--muted);font-weight:600}
+.qclose{margin-inline-start:auto;background:none;border:0;color:var(--muted);font-size:1rem;cursor:pointer;padding:2px 4px;line-height:1}
+.qclose:hover{color:var(--ink)}
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-top:12px}
+.qgrid.one{grid-template-columns:1fr}
+.qf .k{font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:1px}
+.qf .v{font-weight:700;font-size:.88rem;word-break:break-word}
+.qf .v.dim{color:var(--muted);font-weight:600}
+.qsep{height:1px;background:var(--border);margin:12px 0}
+.qsec{font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:7px}
+.qdoc{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--border);border-radius:9px;
+  margin-bottom:6px;font-size:.85rem;font-weight:700}
+.qdoc .mark{width:15px;text-align:center;flex:0 0 auto}
+.qdoc.on{background:var(--good-soft);border-color:color-mix(in srgb,var(--good) 26%,var(--border));color:var(--good)}
+.qdoc.off{color:var(--muted);font-weight:600}
+.qdoc .grow{margin-inline-start:auto;font-size:.76rem;font-weight:700}
+.qsib{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.qsib:last-child{border-bottom:0}
+.qsib:hover .qsib-nm{color:var(--accent-strong)}
+.qsib .ini{width:30px;height:30px;border-radius:8px;font-size:.72rem}
+.qsib-nm{font-weight:700;font-size:.86rem;line-height:1.25}
+.qsib-sub{font-size:.74rem;color:var(--muted);font-weight:600}
+.stu-quick .btn.full{width:100%;justify-content:center;display:flex}
+
+@media(max-width:1100px){
+  /* בפריסת עמודה הציר הראשי אנכי — לכן flex/min-width כבר לא מגבילים את הרוחב.
+     בלי stretch הטבלה מתנפחת לרוחב התוכן שלה וגולשת מהמסך (בולט בטלפון). */
+  .stu-stage{flex-direction:column;align-items:stretch}
+  .stu-stage>#stuTable{width:100%;min-width:0;max-width:100%}
+  .stu-quick{position:static;flex:1 1 auto;width:100%;max-width:100%;min-width:0;max-height:none;order:-1}
+}
+
+/* ---- עוזר חכם — פאנל צד נעוץ (סעיף 4) ---- */
+.aipanel{position:fixed;inset-block:0;inset-inline-end:0;width:var(--ai-w,380px);max-width:100vw;z-index:55;
+  background:var(--surface);border-inline-start:1px solid var(--border);box-shadow:-2px 0 18px rgba(0,0,0,.10);
+  display:none;flex-direction:column}
+.aipanel.open{display:flex}
+body.ai-docked{padding-inline-end:var(--ai-w,380px)}
+.aipanel-grip{position:absolute;inset-block:0;inset-inline-start:-3px;width:7px;cursor:ew-resize;z-index:2}
+.aipanel-grip:hover{background:var(--accent-soft)}
+.aipanel-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);flex:none}
+.aipanel-title{font-weight:800;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aipanel-btn{border:1px solid var(--border);background:var(--surface);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:.95rem;color:inherit;flex:none}
+.aipanel-btn:hover{border-color:var(--accent)}
+.aipanel-msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.aimsg{max-width:92%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;line-height:1.55;font-size:.92rem;word-break:break-word}
+.aimsg.user{align-self:flex-start;background:var(--accent-soft);color:var(--accent-strong)}
+.aimsg.bot{align-self:flex-end;background:var(--surface-2)}
+.aimsg.sys{align-self:center;background:transparent;color:var(--muted);font-size:.82rem;text-align:center;max-width:100%}
+.aiact{align-self:stretch;border:1px solid var(--accent);border-radius:12px;padding:9px 11px;background:var(--accent-soft);font-size:.88rem}
+.aiact b{display:block;margin-bottom:3px}
+.aiact .aiact-row{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.aiact.done{border-color:var(--good,#1a7f37);background:var(--good-soft,#e8f5ec)}
+.aiact.cancel{border-color:var(--border);background:var(--surface-2);opacity:.75}
+.aipanel-foot{flex:none;display:flex;gap:6px;align-items:flex-end;padding:10px 12px;border-top:1px solid var(--border);background:var(--surface-2)}
+.aipanel-foot textarea{flex:1;min-width:0;resize:none;max-height:120px}
+.aipanel-foot .btn{flex:none;padding:8px 14px}
+@media(max-width:900px){
+  .aipanel{width:100vw}
+  body.ai-docked{padding-inline-end:0}
+}
+</style>
+<link rel="stylesheet" href="ui-lab.css">
+<style>
+/* רצועת הדמו — כדי שאיש לא יתבלבל ויחשוב שאלה נתונים אמיתיים.
+   הרצועה קבועה בראש המסך, ולכן *כל* האלמנטים הקבועים האחרים — הכותרת,
+   המגירה ופאנל העוזר — מוסטים באותו גובה. בלי זה הרצועה נוחתת על גבי
+   כותרת המגירה. */
+:root{ --demo-bar:30px }
+.demo-flag{position:fixed;inset-block-start:0;inset-inline:0;z-index:90;
+  background:#a97f2e;color:#fff;font-weight:700;font-size:.78rem;line-height:1.5;
+  padding:5px 14px;text-align:center;letter-spacing:-.01em}
+body{padding-block-start:var(--demo-bar)}
+header.top{inset-block-start:var(--demo-bar)}
+.drawer,.aipanel{inset-block-start:var(--demo-bar)}
+@media print{.demo-flag{display:none} body{padding-block-start:0}}
+</style>
+</head>
+<body>
+
+<div class="demo-flag">גרסת דמו · העיצוב החדש · כל הנתונים בעמוד מומצאים ואינם קשורים לאף אדם או גן</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <span class="drawer-brand-inner" id="drawerBrand" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+      <span class="logo">🎒</span>
+      <span class="txt"><span class="t1">מערכת ניהול</span><span class="t2">רשת הגנים מודיעין עילית</span></span>
+    </span>
+    <button class="drawer-close" id="drawerClose" title="סגירה" aria-label="סגירה">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-sec">
+      <div class="lbl">שנה</div>
+      <div class="drawer-year">📅 <select id="yearSelect"></select></div>
+    </div>
+    <div class="drawer-sec">
+      <div class="lbl">חינוך</div>
+      <div class="drawer-edu" id="drawerEdu"></div>
+    </div>
+    <div class="drawer-sec">
+      <div class="lbl">ניווט</div>
+      <nav class="drawer-nav" id="tabs"></nav>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <div class="drawer-sync"><span id="syncStatus" style="display:none"></span></div>
+    <div class="df-row">
+      <button id="themeBtn" title="מצב תצוגה">🌓 <span>מצב יום/לילה</span></button>
+    </div>
+    <div class="df-row">
+      <button id="aiHelpBtn" title="עוזר חכם — שאלות על התוכנה">🤖 <span>עוזר חכם</span></button>
+    </div>
+    <div class="df-row">
+      <button id="feedbackBtn" title="יצירת קשר / הצעת שיפור">💡 <span>יצירת קשר / הצעה</span></button>
+    </div>
+    <div class="df-row">
+      <button id="signOutBtn" style="display:none">⎋ <span>התנתקות</span></button>
+    </div>
+  </div>
+</aside>
+<header class="top">
+  <div class="top-inner">
+    <button class="backbtn" id="backBtn" title="חזרה למסך הקודם" aria-label="חזרה למסך הקודם">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <div class="brand" id="brandBox">
+      <span class="logo">🎒</span>
+      <span class="txt"><span class="t1">מערכת ניהול</span><span class="t2">רשת הגנים מודיעין עילית</span></span>
+    </div>
+    <div class="top-spacer"></div>
+    <div class="top-chips" id="topChips">
+      <span class="chip year" id="yearChip"></span>
+      <span class="chip edu" id="eduChip"></span>
+    </div>
+    <button class="hamburger" id="menuBtn" title="תפריט" aria-label="פתיחת תפריט"><span></span></button>
+  </div>
+</header>
+
+<main id="view"></main>
+
+<aside class="aipanel" id="aiPanel" aria-label="עוזר חכם">
+  <div class="aipanel-grip" id="aiGrip" title="גרירה לשינוי רוחב"></div>
+  <div class="aipanel-head">
+    <span class="aipanel-title">🤖 עוזר חכם</span>
+    <span class="pill neutral" id="aiMode" title="מצב העוזר">…</span>
+    <button class="aipanel-btn" id="aiClear" title="שיחה חדשה">🗑️</button>
+    <button class="aipanel-btn" id="aiClose" title="סגירה" aria-label="סגירת העוזר">✕</button>
+  </div>
+  <div class="aipanel-msgs" id="aiMsgs"></div>
+  <div class="aipanel-foot">
+    <textarea id="aiInput" rows="2" placeholder="שאל/י שאלה — או בקש/י פעולה. למשל: כמה תלמידות בגן הדקל? · שבצי את שרה כהן לגן הדקל"></textarea>
+    <button class="btn" id="aiSend" title="שליחה (Enter)">➤</button>
+  </div>
+</aside>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================================
+   demo-app.js — הנתונים והמסכים של גרסת הדמו
+   ----------------------------------------------------------------------------
+   הקובץ הזה מוזרק ל-demo.html על ידי tests/build-demo.cjs.
+   הכול כאן מומצא: 29 גנים, 412 תלמידות ו-58 אנשי צוות, מיוצרים מזרע קבוע
+   כדי שאותם מספרים יחזרו בכל טעינה ויהיו עקביים בין המסכים.
+   אין רשת, אין אחסון ואין כתיבה לשום מקום — לחיצה על פעולה מציגה הודעה בלבד.
+   ============================================================================ */
+(function(){
+"use strict";
+
+var AGE_HUE = { "3":"#4c9a6a", "4":"#7a6bb0", "5":"#b08a2e" };
+var TABS    = [{"id":"home","label":"עמוד הבית","icon":"🏠"},{"id":"students","label":"תיקי התלמידות","icon":"🎒"},{"id":"gans","label":"גנים","icon":"🏫"},{"id":"map","label":"מפת שיבוץ","icon":"🗺️"},{"id":"staff","label":"צוות הגנים","icon":"👩‍🏫"},{"id":"assign","label":"שיבוץ צוות","icon":"🧩"},{"id":"templates","label":"מסמכים ותבניות","icon":"📄"},{"id":"reports","label":"דוחות ואחוזים","icon":"📊"},{"id":"municipality","label":"עירייה","icon":"🏛️"},{"id":"management","label":"הנהלה","icon":"📞"},{"id":"messages","label":"הודעות","icon":"📣"},{"id":"tools","label":"כלים ושירותים","icon":"🧰"},{"id":"settings","label":"הגדרות","icon":"⚙️"},{"id":"guide","label":"מדריך","icon":"📖"}];
+
+/* ---------------------------------------------------------------- אקראי קבוע */
+var _s = 20260825;
+function rnd(){ _s = (_s * 1103515245 + 12345) & 0x7fffffff; return _s / 0x7fffffff; }
+function pick(a){ return a[Math.floor(rnd() * a.length)]; }
+function iRnd(a, b){ return a + Math.floor(rnd() * (b - a + 1)); }
+
+/* ------------------------------------------------------------- שמות לדוגמה */
+var LAST = ["אברמוביץ׳","גולדשטיין","וייס","כהן","פרידמן","לוינגר","ברקוביץ׳","רוזנברג",
+  "שטרן","הירש","פישר","גרוס","קליין","לנדא","זילברשטיין","נוימן","אדלר","שוורץ",
+  "בלוי","טננבוים","הלוי","מרגלית","שפירא","דרייפוס","ולדמן"];
+var GIRL = ["חנה'לה","מירי","שרה","רבקה","אסתי","ברכה","מלכי","חיה","דבורה","רחל",
+  "לאה","מרים","טובה","פייגי","שיינדל","גיטי","נחמי","בתיה","יוכי","עדינה"];
+var WOMAN = ["שרה","מלכה","רויזי","פייגי","נחמה","אסתי","חני","מירי","דבורה","רחל",
+  "טובה","ברכה","שיינדל","יוכי","חיה","גיטי","לאה","בתיה","עדינה","פנינה"];
+var CITY = [["ירושלים",52],["בית שמש",21],["מודיעין עילית",16],["ביתר עילית",8],["אחר",3]];
+var STREET = ["הרב סורוצקין","נחל לכיש","רשב״ם","חזון איש","אבני נזר","ר׳ עקיבא","הרב שך"];
+var CAMPUS = ["קמפוס צפון","קמפוס מרכז","קמפוס דרום"];
+var GANNAME = ["רימון","תפוח","דובדבן","שקד","זית","גפן","אגוז","אלון","תמר","הדס",
+  "ערבה","אתרוג","דקל","ברוש","אורן","לוטם","כלנית","רקפת","נרקיס","סחלב",
+  "יסמין","דפנה","מרווה","זעתר","אזוב","לבנדר","ורד","חבצלת","סביון"];
+var PERIODS = ["א׳","ב׳","ג׳","סופי"];
+var DOCS = [["form","נספח"],["id","צילום ת״ז"],["rules","תקנון"]];
+var ROLES = ["גננת","סייעת","סייעת ב׳","סייעת רפואית","סייעת צמודה","גננת משלימה"];
+
+function ini(name){
+  var w = String(name || "").trim().split(/\s+/).filter(Boolean);
+  return (w[0] ? w[0][0] : "") + (w[1] ? w[1][0] : "");
+}
+function ageInk(age){
+  var a = (String(age).match(/\d+/) || [])[0];
+  return (a && AGE_HUE[a]) || "";
+}
+
+/* ----------------------------------------------------------------- הגנים */
+var GANS = GANNAME.map(function(nm, i){
+  var age = ["3","4","5","3/4"][i % 4 === 3 ? 3 : i % 3];
+  var special = (i === 6 || i === 19);
+  var cap = special ? 14 : (age === "5" ? 32 : age === "3" ? 30 : 32);
+  return {
+    id: "g" + i,
+    name: "גן " + nm,
+    symbol: String(4402 + i * 3),
+    age: age,
+    edu: special ? 'ח״מ' : "רגיל",
+    campus: CAMPUS[i % 3],
+    cap: cap,
+    used: Math.min(cap, Math.max(6, cap - iRnd(0, 6))),
+    teacher: (i === 5 || i === 17) ? "" : (pick(WOMAN) + " " + pick(LAST)),
+    phone: "05" + iRnd(2, 4) + "-" + iRnd(1000000, 9999999),
+    ink: ageInk(age)
+  };
+});
+
+/* ------------------------------------------------------------- התלמידות */
+var STUDENTS = [];
+(function(){
+  var cityBag = [];
+  CITY.forEach(function(c){ for(var i = 0; i < c[1]; i++) cityBag.push(c[0]); });
+  for(var i = 0; i < 412; i++){
+    var g = GANS[i % GANS.length];
+    var placed = rnd() > 0.13;
+    var hasGan = rnd() > 0.05;
+    var docs = {};
+    DOCS.forEach(function(d, k){ docs[d[0]] = rnd() > (k === 2 ? 0.55 : 0.14); });
+    STUDENTS.push({
+      id: "s" + i,
+      last: pick(LAST), first: pick(GIRL),
+      tz: String(iRnd(320000000, 339999999)),
+      ganId: hasGan ? g.id : "",
+      placed: hasGan && placed,
+      age: g.age === "3/4" ? "4" : g.age,
+      period: pick(PERIODS),
+      city: pick(cityBag),
+      street: pick(STREET) + " " + iRnd(1, 60),
+      muni: rnd() > 0.18,
+      mother: pick(WOMAN) + " " + pick(LAST),
+      mobile: "05" + iRnd(2, 4) + "-" + iRnd(1000000, 9999999),
+      docs: docs
+    });
+  }
+})();
+function fullName(s){ return s.last + " " + s.first; }
+function ganById(id){ for(var i = 0; i < GANS.length; i++) if(GANS[i].id === id) return GANS[i]; return null; }
+function ganName(id){ var g = ganById(id); return g ? g.name : ""; }
+function docsDone(s){ var n = 0; DOCS.forEach(function(d){ if(s.docs[d[0]]) n++; }); return n; }
+
+/* --------------------------------------------------------------- הצוות */
+var STAFF = [];
+(function(){
+  for(var i = 0; i < 58; i++){
+    var role = i < 31 ? "גננת" : (i < 52 ? pick(["סייעת","סייעת","סייעת","סייעת רפואית","סייעת צמודה"]) : pick(ROLES));
+    var g = rnd() > 0.12 ? GANS[i % GANS.length] : null;
+    STAFF.push({
+      id: "m" + i, last: pick(LAST), first: pick(WOMAN),
+      tz: String(iRnd(30000000, 49999999)),
+      role: role,
+      edu: (g && g.edu) || "רגיל",
+      ganId: g ? g.id : "",
+      seniority: iRnd(1, 16),
+      mobile: "05" + iRnd(2, 4) + "-" + iRnd(1000000, 9999999),
+      cert: rnd() > 0.16,
+      active: true
+    });
+  }
+})();
+
+/* ------------------------------------------------------------- מצטברים */
+function totals(){
+  var placed = 0, muni = 0, allDocs = 0, cap = 0, used = 0;
+  STUDENTS.forEach(function(s){
+    if(s.ganId && s.placed) placed++;
+    if(s.muni) muni++;
+    if(docsDone(s) === DOCS.length) allDocs++;
+  });
+  GANS.forEach(function(g){ cap += g.cap; used += g.used; });
+  return { total: STUDENTS.length, placed: placed, waiting: STUDENTS.length - placed,
+           muni: muni, notMuni: STUDENTS.length - muni, allDocs: allDocs,
+           cap: cap, used: used, gans: GANS.length,
+           noTeacher: GANS.filter(function(g){ return !g.teacher; }).length };
+}
+var T = totals();
+var YEAR = "תשפ״ח", PREV = "תשפ״ז";
+
+/* =========================================================================
+   בניית DOM
+   ========================================================================= */
+function h(tag, attrs, kids){
+  var e = document.createElement(tag);
+  if(attrs) for(var k in attrs){
+    if(k === "class") e.className = attrs[k];
+    else if(k === "text") e.textContent = attrs[k];
+    else if(k === "html") e.innerHTML = attrs[k];
+    else if(k === "style") e.setAttribute("style", attrs[k]);
+    else if(k.indexOf("on") === 0) e[k] = attrs[k];
+    else e.setAttribute(k, attrs[k]);
+  }
+  (kids || []).forEach(function(c){ if(c) e.appendChild(c); });
+  return e;
+}
+function txt(tag, cls, t){ return h(tag, { "class": cls || null, text: t }); }
+
+function toast(msg){
+  var t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ t.classList.remove("show"); }, 2600);
+}
+function demoAction(what){
+  return function(e){
+    if(e) e.preventDefault();
+    toast("דמו — " + what + " אינה פעילה כאן. שום נתון לא נשמר.");
+  };
+}
+function btn(label, cls){
+  var b = h("button", { "class": "btn" + (cls ? " " + cls : ""), text: label });
+  b.onclick = demoAction(label.replace(/^[^֐-׿\w]+/, "").trim());
+  return b;
+}
+function table(cols, rows, cls){
+  var wrap = h("div", { "class": "table-wrap" });
+  var t = h("table", cls ? { "class": cls } : null), th = h("thead"), tr = h("tr");
+  cols.forEach(function(c){ tr.appendChild(txt("th", null, c)); });
+  th.appendChild(tr); t.appendChild(th);
+  var tb = h("tbody");
+  rows.forEach(function(r){
+    var x = h("tr");
+    r.forEach(function(c){ x.appendChild(c instanceof Node ? h("td", null, [c]) : txt("td", null, String(c))); });
+    tb.appendChild(x);
+  });
+  t.appendChild(tb); wrap.appendChild(t);
+  return wrap;
+}
+function searchbar(ph){
+  var f = h("div", { "class": "search-field" }, [
+    txt("span", "mag", "🔎"),
+    h("input", { placeholder: ph })
+  ]);
+  var tg = h("button", { "class": "filter-toggle", type: "button", html: "☰ סינון" });
+  tg.onclick = demoAction("פתיחת הסינון");
+  return h("div", { "class": "searchbar" }, [f, tg]);
+}
+function toolbar(labels){
+  var r = h("div", { "class": "toolbar" });
+  labels.forEach(function(l, i){ r.appendChild(btn(l, i ? "ghost" : "")); });
+  return r;
+}
+function statRow(items){
+  var s = h("div", { "class": "stats" });
+  items.forEach(function(it){
+    s.appendChild(h("div", { "class": "stat" + (it.hero ? " hero" : "") }, [
+      txt("div", "k", it.k),
+      h("div", { "class": "v", style: it.color ? "color:var(--" + it.color + ")" : null, text: String(it.v) })
+    ]));
+  });
+  return s;
+}
+
+/* =========================================================================
+   המסכים
+   ========================================================================= */
+var VIEW = {};
+
+VIEW.home = function(v){
+  /* מסך הבית נבנה כולו על ידי ui-lab.js מתוך __uiLab.home() */
+  v.appendChild(h("div", { "class": "panel" }, [ txt("h2", null, "עמוד הבית") ]));
+};
+
+VIEW.students = function(v){
+  var sum = h("div", { id: "stuSummary", "class": "sticky" }, [ statRow([
+    { k: "רשומות", v: T.total, hero: true },
+    { k: "משובצות", v: T.placed, color: "good" },
+    { k: "ממתינות לשיבוץ", v: T.waiting, color: "warn" },
+    { k: "קלוט בעירייה", v: T.muni },
+    { k: "לא קלוט", v: T.notMuni, color: "bad" }
+  ]) ]);
+
+  var rows = STUDENTS.slice(0, 60).map(function(s){
+    var g = ganById(s.ganId);
+    var d = docsDone(s);
+    var chips = h("span", { "class": "docchips" });
+    DOCS.forEach(function(x){
+      chips.appendChild(h("span", { "class": "docchip" + (s.docs[x[0]] ? " on" : ""), text: x[1].slice(0, 2) }));
+    });
+    return [
+      h("div", { "class": "nm", text: fullName(s) }),
+      h("span", { "class": "tzcell", text: s.tz }),
+      g ? g.name + " · " + g.age : "—",
+      h("span", { "class": "chip edu " + (s.placed ? "reg" : "spec"), text: s.placed ? "✔ משובצת" : "⏳ ממתינה" }),
+      s.age, s.city, chips,
+      h("span", { "class": "pill " + (s.muni ? "ok" : "no"), text: s.muni ? "קלוט" : "לא קלוט" })
+    ];
+  });
+
+  var stage = h("div", { "class": "stu-stage" }, [
+    h("div", { id: "stuTable", style: "flex:1 1 0;min-width:0" }, [
+      table(["שם מלא", "ת״ז", "גן", "שיבוץ", "גיל", "עיר", "מסמכים", "עירייה"], rows, "stu-table")
+    ]),
+    h("aside", { id: "stuQuick", "class": "stu-quick empty-state" })
+  ]);
+
+  v.appendChild(h("div", { "class": "panel" }, [
+    h("div", { "class": "section-title" }, [ txt("h2", null, "תיקי התלמידות") ]),
+    sum,
+    toolbar(["➕ הוספת ילדה", "✔️ עדכון קבוצתי", "📣 שליחת הודעות", "📤 יצוא", "⬆️ ייבוא מקובץ"]),
+    searchbar("חיפוש שם או ת״ז…"),
+    h("div", { id: "stuChips", "class": "fchips", html:
+      '<span style="font-size:.78rem;color:var(--muted);font-weight:700">סינון:</span>' +
+      '<span class="fchip">גיל 3–4<button type="button">✕</button></span>' +
+      '<span class="fchip">לא קלוט בעירייה<button type="button">✕</button></span>' +
+      '<button type="button" class="clr">נקה הכל</button>' }),
+    stage,
+    h("div", { id: "stuSelBar" })
+  ]));
+};
+
+VIEW.gans = function(v){
+  v.appendChild(h("div", { "class": "panel" }, [
+    h("div", { "class": "section-title" }, [ txt("h2", null, "רשימת הגנים") ]),
+    searchbar("חיפוש גן, גננת או כתובת…"),
+    toolbar(["➕ הוספת גן", "⬆️ ייבוא מקובץ", "📤 ייצוא / הדפסה"]),
+    h("div", { id: "ganTable" }, [
+      table(["שם הגן", "סמל", "גיל", "חינוך", "קמפוס", "גננת", "תפוסה"],
+        GANS.map(function(g){
+          return [g.name, g.symbol, g.age, g.edu, g.campus,
+                  g.teacher || h("span", { style: "color:var(--bad)", text: "ללא גננת" }),
+                  h("span", { style: "direction:ltr;unicode-bidi:isolate", text: g.used + "/" + g.cap })];
+        }))
+    ])
+  ]));
+};
+
+VIEW.staff = function(v){
+  v.appendChild(h("div", { "class": "panel" }, [
+    h("div", { "class": "section-title" }, [ txt("h2", null, "רשימת צוות הגנים") ]),
+    searchbar("חיפוש שם, ת״ז, טלפון או עיר…"),
+    toolbar(["➕ הוספת איש/אשת צוות", "📣 שליחת הודעות", "⬆️ ייבוא מקובץ"]),
+    h("div", { id: "staffTable" }, [
+      table(["איש/אשת צוות", "תפקיד", "משובצת ב־", "ותק", "נייד", "תעודה"],
+        STAFF.map(function(m){
+          return [
+            h("div", null, [ h("b", { text: m.last + " " + m.first }),
+                             h("div", { "class": "hint", style: "direction:ltr;unicode-bidi:isolate", text: m.tz }) ]),
+            h("span", { "class": "chip edu reg", text: m.role }),
+            m.ganId ? ganName(m.ganId) : "—",
+            m.seniority + " שנים",
+            h("span", { style: "direction:ltr;unicode-bidi:isolate", text: m.mobile }),
+            h("span", { "class": "pill " + (m.cert ? "ok" : "no"), text: m.cert ? "יש" : "חסרה" })
+          ];
+        }))
+    ])
+  ]));
+};
+
+VIEW.map = function(v){
+  var list = h("div", { id: "map-gan-list", style: "max-height:190px;overflow:auto;padding:9px;border:1px solid var(--border);border-radius:12px" });
+  CAMPUS.forEach(function(c){
+    var box = h("div", { style: "border-top:1px dashed var(--border);padding:7px 0;margin-top:5px" });
+    box.appendChild(h("label", { "class": "check", html:
+      '<input type="checkbox" data-camp="' + c + '" checked> 🏫 ' + c }));
+    var inner = h("div", { style: "display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:6px;padding-inline-start:18px" });
+    GANS.filter(function(g){ return g.campus === c; }).forEach(function(g){
+      inner.appendChild(h("label", { "class": "check", html:
+        '<input type="checkbox" data-gid="' + g.id + '" checked> ' + g.name }));
+    });
+    box.appendChild(inner); list.appendChild(box);
+  });
+  var stage = h("div", { id: "map-stage",
+    style: "height:420px;border-radius:16px;margin-top:14px;display:flex;align-items:center;" +
+           "justify-content:center;text-align:center;background:var(--surface-2);border:1px solid var(--border)" },
+    [ h("div", { "class": "hint", html:
+        "🗺️ המפה החיה (Leaflet + כתובות אמיתיות) אינה נטענת בדמו.<br>" +
+        "במערכת מוצגים כאן כל הגנים והתלמידות על מפה, עם שיבוץ אוטומטי לפי קרבה." }) ]);
+  v.appendChild(h("div", { "class": "panel" }, [
+    h("div", { "class": "section-title" }, [ txt("h2", null, "מפת שיבוץ") ]),
+    toolbar(["⚡ שיבוץ אוטומטי לפי קרבה", "📤 ייצוא"]),
+    h("details", { "class": "map-fold", open: "" }, [
+      h("summary", { text: "סינון וגנים להצגה" }),
+      h("div", { "class": "map-fold-body" }, [ list ])
+    ]),
+    stage
+  ]));
+};
+
+VIEW.assign = function(v){
+  var host = h("div", { id: "asgList" });
+  v.appendChild(h("div", { "class": "panel" }, [
+    h("div", { "class": "section-title" }, [ txt("h2", null, "שיבוץ צוות") ]),
+    h("div", { "class": "row", style: "gap:10px;flex-wrap:wrap;align-items:end" }, [
+      h("div", { "class": "field", style: "min-width:200px" }, [
+        txt("label", null, "הקשר"),
+        h("select", { id: "asgCtxSel", html:
+          "<option>פעילות הגן</option><option>קייטנה</option><option>שנת הלימודים</option>" })
+      ])
+    ]),
+    searchbar("חיפוש גן (שם / סמל / כתובת)…"),
+    host
+  ]));
+};
+
+VIEW.templates = function(v){
+  var f1 = h("fieldset", null, [
+    txt("legend", null, "📋 רשימת גן"),
+    txt("div", "hint", 'רשימת התלמידות בגן — שם, ת״ז, גיל, טלפונים וכתובת — להדפסה לגננת.'),
+    h("div", { "class": "row", style: "align-items:end;gap:10px;flex-wrap:wrap" }, [
+      h("div", { "class": "field", style: "min-width:220px" }, [
+        txt("label", null, "גן"),
+        h("select", { html: GANS.map(function(g){ return "<option>" + g.name + " · " + g.symbol + "</option>"; }).join("") })
+      ]),
+      btn("🖨️ הפקה והדפסה"), btn("📎 שיתוף מסמך", "ghost"),
+      h("label", { "class": "check", html: '<input type="checkbox"> התאם לעמוד אחד' })
+    ])
+  ]);
+  var sub = function(title, body, btns){
+    var d = h("div", { style: "padding:10px 12px;background:var(--surface-2);border-radius:12px;margin-bottom:10px" });
+    d.appendChild(h("b", { text: title }));
+    d.appendChild(document.createTextNode(" — " + body));
+    var r = h("div", { "class": "row", style: "gap:10px;flex-wrap:wrap;margin-top:8px" });
+    btns.forEach(function(b, i){ r.appendChild(btn(b, i ? "ghost" : "")); });
+    r.appendChild(h("label", { "class": "check", html: '<input type="checkbox"> התאם לעמוד אחד' }));
+    d.appendChild(r); return d;
+  };
+  var f2 = h("fieldset", null, [
+    txt("legend", null, "🧩 מצבת שיבוץ צוות"),
+    txt("div", "hint", 'יצוא מצבת השיבוץ (הקשר "פעילות הגן") בשתי תבניות.'),
+    sub("🏢 למשרד הראשי", "כל הגנים, מסודר לפי גן עם כל אנשי הצוות, ימים ושעות שבועיות, צבע לפי התפקיד + מקרא.",
+        ["🖨️ הפקה והדפסה", "🎨 אקסל צבעוני", "📎 שיתוף מסמך"]),
+    sub("🏛️ למשרד החינוך", 'תבנית "מצבת משרד החינוך" — שורה לכל גן, 32 עמודות. פרטי הרכז/ת והמנהל נשמרים ומופיעים בראש.',
+        ["⬇️ ייצוא לאקסל (CSV)", "✏️ פרטי כותרת", "🖨️ הדפסה / PDF"])
+  ]);
+  v.appendChild(h("div", { "class": "panel" }, [
+    h("div", { "class": "section-title" }, [ txt("h2", null, "מסמכים ותבניות") ]),
+    txt("div", "sub", "הפקת מסמכים מוכנים להדפסה או לשמירה כ-PDF, ממולאים אוטומטית מהנתונים העדכניים."),
+    f1, f2,
+    txt("div", "note", '💡 בחלון ההדפסה שנפתח אפשר לבחור מדפסת אמיתית או "שמירה כ-PDF".')
+  ]));
+};
+
+VIEW.reports = function(v){
+  v.appendChild(h("div", { "class": "panel" }, [
+    txt("h2", null, "סיכום שנת " + YEAR),
+    txt("div", "sub", "מתעדכן אוטומטית עם כל רישום."),
+    statRow([
+      { k: "סה״כ תלמידות רשומות", v: T.total, hero: true },
+      { k: "ממוצע לגן", v: (T.total / T.gans).toFixed(1) },
+      { k: "גנים פעילים", v: T.gans },
+      { k: "קלוטות בעירייה", v: T.muni }
+    ])
+  ]));
+  v.appendChild(h("div", { "class": "panel" }, [
+    txt("h2", null, "יעד מספר גנים"),
+    txt("div", "sub", "משמש לחישוב הממוצע לגן בסיכום שלמעלה."),
+    h("div", { "class": "row" }, [
+      h("div", { "class": "field", style: "min-width:150px" }, [
+        txt("label", null, "מספר גנים ליעד"), h("input", { value: String(T.gans) })
+      ]),
+      btn("שמור")
+    ])
+  ]));
+};
+
+VIEW.municipality = function(v){
+  v.appendChild(h("div", { "class": "panel" }, [
+    txt("h2", null, "רשימת העירייה · שנת " + YEAR),
+    txt("div", "sub", 'הדבק/י או העלה/י את רשימת תעודות הזהות שקיבלת מהעירייה. המערכת תבצע התאמה (VLOOKUP) לפי ת״ז ותסמן כל תלמידה כ"קלוט בעירייה".'),
+    h("div", { "class": "grid g2" }, [
+      h("div", null, [
+        txt("label", null, 'הדבקת ת״ז (שורה לכל אחת)'),
+        h("textarea", { rows: "8", text: STUDENTS.slice(0, 9).map(function(s){ return s.tz; }).join("\n") }),
+        h("div", { "class": "row", style: "margin-top:8px" }, [
+          btn("🔗 בצע התאמה וסמן"), btn("📄 טעינת קובץ CSV", "ghost")
+        ])
+      ]),
+      h("div", { id: "muni-result" }, [ txt("div", "hint", "התוצאה תופיע כאן לאחר ההתאמה.") ])
+    ])
+  ]));
+};
+
+VIEW.management = function(v){
+  var people = [
+    ["ישראל וינברג", "מנכ״ל", "052-8841190"],
+    ["שרה ברקוביץ׳", "רכזת רישום", "053-3120774"],
+    ["אהובה רקובסקי", "מזכירות", "054-8110297"],
+    ["מלכה לוי", "אגף חינוך", "052-4419923"]
+  ];
+  v.appendChild(h("div", { "class": "panel" }, [
+    txt("h2", null, "ספר טלפונים · הנהלה"),
+    txt("div", "sub", "אנשי הקשר של ההנהלה והאגפים."),
+    table(["שם", "תפקיד", "נייד"], people.map(function(p){
+      return [h("b", { text: p[0] }), p[1],
+              h("span", { style: "direction:ltr;unicode-bidi:isolate", text: p[2] })];
+    }))
+  ]));
+};
+
+VIEW.messages = function(v){
+  var fs1 = h("fieldset", null, [
+    txt("legend", null, "1 · למי שולחים"),
+    h("div", { "class": "row", style: "gap:6px;flex-wrap:wrap" }, [
+      btn("👪 הורי תלמידות"), btn("👩‍🏫 צוות הגנים", "ghost"),
+      btn("📞 הנהלה", "ghost"), btn("✍️ רשימה ידנית", "ghost")
+    ]),
+    h("div", { "class": "grid g4", style: "margin-top:10px" }, [
+      h("div", null, [txt("label", null, "חינוך"), h("select", { html: "<option>הכל</option><option>רגיל</option><option>ח״מ</option>" })]),
+      h("div", null, [txt("label", null, "קמפוס"), h("select", { html: "<option>הכל</option>" + CAMPUS.map(function(c){ return "<option>" + c + "</option>"; }).join("") })]),
+      h("div", null, [txt("label", null, "מועד רישום"), h("select", { html: "<option>הכל</option>" + PERIODS.map(function(p){ return "<option>" + p + "</option>"; }).join("") })]),
+      h("div", null, [txt("label", null, "סטטוס שיבוץ"), h("select", { html: "<option>רק משובצות סופית</option><option>רק ממתינות</option><option>כולן</option>" })])
+    ]),
+    h("div", { "class": "row", style: "align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px" }, [
+      h("b", { text: "גנים" }), btn("בחר הכל", "ghost sm"), btn("נקה", "ghost sm"),
+      txt("span", "hint", "לא נבחר גן = כל הגנים")
+    ]),
+    h("div", { style: "max-height:130px;overflow:auto;margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:10px;display:flex;flex-wrap:wrap;gap:4px 14px",
+      html: GANS.map(function(g, i){
+        return '<label class="check"><input type="checkbox"' + (i < 2 ? " checked" : "") + '> ' + g.name + '</label>';
+      }).join("") }),
+    h("div", { "class": "note", id: "msg-count",
+      text: "61 נמענות תואמות · 58 עם נייד תקין · 3 ללא פרטי קשר" })
+  ]);
+  var CH = [["✉️ מייל", 1], ["💬 וואטסאפ", 0], ["📱 SMS", 0], ["📞 הודעה קולית", 0]];
+  var fs2 = h("fieldset", null, [
+    txt("legend", null, "2 · באיזה ערוץ"),
+    h("div", { "class": "row", style: "gap:6px;flex-wrap:wrap" },
+      CH.map(function(c, i){
+        var b = h("button", { "class": "btn sm msg-ch" + (c[1] ? "" : " ghost"), type: "button", text: c[0] });
+        b.dataset.v = ["email", "whatsapp", "sms", "voice"][i];
+        b.onclick = demoAction("בחירת ערוץ");
+        return b;
+      })),
+    h("div", { "class": "hint", id: "msg-ch-note", style: "margin-top:8px" })
+  ]);
+  var fs3 = h("fieldset", null, [
+    txt("legend", null, "3 · מה שולחים"),
+    h("div", { "class": "row", style: "gap:8px;align-items:flex-end;flex-wrap:wrap" }, [
+      h("div", { "class": "field", style: "min-width:220px" }, [
+        txt("label", null, "תבנית"),
+        h("select", { html: "<option>הודעת שיבוץ סופי</option><option>תזכורת מסמכים</option><option>הודעה לצוות</option>" })
+      ]),
+      btn("💾 שמירה כתבנית חדשה", "ghost sm")
+    ]),
+    h("div", { style: "margin-top:10px" }, [
+      txt("label", null, "נושא (למייל)"), h("input", { id: "msg-subject", value: "שיבוץ ילדתכם לשנת " + YEAR })
+    ]),
+    h("div", { style: "margin-top:10px" }, [
+      txt("label", null, "תוכן ההודעה"),
+      h("textarea", { id: "msg-body", rows: "8",
+        text: "להורי {{שם הילדה}} שיחיו,\n\nילדתכם שובצה ל{{גן}}, אצל הגננת {{גננת}}.\nפתיחת השנה: {{תאריך}}.\n\nבברכה,\nרשת הגנים" })
+    ])
+  ]);
+  var fs4 = h("fieldset", null, [
+    txt("legend", null, "4 · תצוגה מקדימה ושליחה"),
+    h("div", { "class": "row", style: "gap:8px;flex-wrap:wrap" }, [
+      h("button", { "class": "btn", id: "msg-preview", type: "button", text: "👁️ תצוגה מקדימה", onclick: demoAction("תצוגה מקדימה") }),
+      h("button", { "class": "btn", id: "msg-send", type: "button", text: "📤 שליחה", onclick: demoAction("שליחה") }),
+      h("button", { "class": "btn ghost", id: "msg-test", type: "button", text: "✉️ שליחת בדיקה אליי", onclick: demoAction("שליחת בדיקה") })
+    ]),
+    h("div", { id: "msg-out", style: "margin-top:10px", html:
+      '<div style="border:1px solid var(--border);border-radius:12px;padding:11px 13px;background:var(--surface-2);font-size:.86rem">' +
+      '<div class="hint" style="margin-bottom:4px">אל: rachel.a@example.org</div>' +
+      '<b>שיבוץ ילדתכם לשנת ' + YEAR + '</b>' +
+      '<div style="margin-top:6px;line-height:1.6">להורי <b>חנה\'לה</b> שיחיו,<br>' +
+      'ילדתכם שובצה ל<b>גן רימון</b>, אצל הגננת <b>שרה ברקוביץ׳</b>.</div></div>' })
+  ]);
+  v.appendChild(h("div", { "class": "panel" }, [
+    h("div", { "class": "section-title" }, [
+      h("div", null, [
+        txt("h2", null, "📣 מרכז ההודעות"),
+        txt("div", "sub", "שליחה מרוכזת להורים, לצוות ולהנהלה — במייל, בוואטסאפ, ב-SMS ובהודעה קולית. התוכן נכתב פעם אחת עם שדות מיזוג, והמערכת ממלאת לכל נמענת את הפרטים שלה.")
+      ]),
+      h("button", { "class": "btn ghost", id: "msg-history", text: "🕘 היסטוריית שליחות", onclick: demoAction("היסטוריית שליחות") })
+    ]),
+    fs1, fs2, fs3, fs4
+  ]));
+};
+
+VIEW.export = function(v){
+  var FIELDS = ["שם מלא", "ת״ז", "גיל", "גן", "קמפוס", "שם האם", "נייד", "כתובת", "עיר", "מועד", "עירייה", "מסמכים"];
+  var checks = h("div", { "class": "checks" });
+  FIELDS.forEach(function(f, i){
+    checks.appendChild(h("label", { "class": "check", html:
+      '<input type="checkbox" class="x-col"' + (i < 7 ? " checked" : "") + '> ' + f }));
+  });
+  var prevRows = STUDENTS.slice(0, 12).map(function(s){
+    var g = ganById(s.ganId);
+    return [fullName(s), h("span", { style: "direction:ltr;unicode-bidi:isolate", text: s.tz }),
+            s.age, g ? g.name : "—", g ? g.campus : "—", s.mother,
+            h("span", { style: "direction:ltr;unicode-bidi:isolate", text: s.mobile })];
+  });
+  v.appendChild(h("div", { "class": "panel" }, [
+    txt("h2", null, "ייצוא רשימות"),
+    txt("div", "sub", "בחר/י סינון, בחר/י אילו שדות לכלול, וייצא/י לאקסל או ל-PDF."),
+    h("div", { "class": "toolbar" }, [
+      h("div", { "class": "field" }, [txt("label", null, "גן"), h("select", { html: "<option>כל הגנים</option>" + GANS.map(function(g){ return "<option>" + g.name + "</option>"; }).join("") })]),
+      h("div", { "class": "field" }, [txt("label", null, "גיל"), h("select", { html: "<option>הכל</option><option>3</option><option>4</option><option>5</option>" })]),
+      h("div", { "class": "field" }, [txt("label", null, "מועד"), h("select", { html: "<option>הכל</option>" + PERIODS.map(function(p){ return "<option>" + p + "</option>"; }).join("") })]),
+      h("div", { "class": "field" }, [txt("label", null, "קלוט בעירייה"), h("select", { html: "<option>הכל</option><option>רק קלוטות</option><option>רק לא קלוטות</option>" })]),
+      h("div", { "class": "field" }, [txt("label", null, "מיון"), h("select", { html: "<option>לפי גן</option><option>שם משפחה</option>" })])
+    ]),
+    h("fieldset", null, [
+      txt("legend", null, "שדות לייצוא"),
+      h("div", { "class": "row", style: "margin-bottom:8px" }, [
+        btn("סמן הכל", "ghost sm"), btn("נקה הכל", "ghost sm"), btn("ברירת מחדל", "ghost sm")
+      ]),
+      checks
+    ]),
+    h("div", { "class": "row", style: "align-items:center;flex-wrap:wrap" }, [
+      h("button", { "class": "btn", id: "x-preview", text: "🔎 תצוגה מקדימה", onclick: demoAction("תצוגה מקדימה") }),
+      h("button", { "class": "btn ghost", id: "x-xls", text: "🎨 אקסל צבעוני", onclick: demoAction("ייצוא") }),
+      h("button", { "class": "btn ghost", id: "x-csv", text: "⬇️ ייצוא לאקסל (CSV)", onclick: demoAction("ייצוא") }),
+      h("button", { "class": "btn ghost", id: "x-pdf", text: "🖨️ ייצוא ל-PDF / הדפסה", onclick: demoAction("הדפסה") }),
+      h("label", { "class": "check", style: "margin-inline-start:auto", html: '<input type="checkbox"> התאם לעמוד אחד' })
+    ]),
+    h("div", { id: "x-out", style: "margin-top:14px" }, [
+      table(["שם מלא", "ת״ז", "גיל", "גן", "קמפוס", "שם האם", "נייד"], prevRows)
+    ])
+  ]));
+};
+
+VIEW.tools = function(v){
+  var card = function(icon, name, pill, pillCls, sub, btns){
+    var p = h("div", { "class": "panel" });
+    var head = h("h2", null, [ document.createTextNode(icon + " " + name) ]);
+    if(pill) head.appendChild(h("span", { "class": "pill " + (pillCls || "neutral"), text: pill }));
+    p.appendChild(head);
+    p.appendChild(txt("div", "sub", sub));
+    if(btns){
+      var r = h("div", { "class": "row", style: "margin-top:10px" });
+      btns.forEach(function(b, i){ r.appendChild(btn(b, i ? "ghost" : "")); });
+      p.appendChild(r);
+    }
+    return p;
+  };
+  v.appendChild(card("🔗", "חיבור Google Drive", "מחובר", "ok",
+    "חיבור פר-מכשיר שמאפשר יצירת תיקייה אוטומטית לכל ילדה והעלאת מסמכים ישירות אל הדרייב.",
+    ["🔄 בדיקת חיבור וגרסה", "📂 פתח תיקיית האב", "🗂️ ארגן תיקיות לפי גן"]));
+  v.appendChild(card("🔗", "נדרים פלוס", "בהכנה · לא מחובר", "neutral",
+    "כשהורה נרשם דרך המערכת — ייפתח אוטומטית תיק ילדה שלם, המסמכים יעלו לתיקיית הדרייב שלה, ותתקבל התראה.",
+    null));
+  v.appendChild(card("📝", "רישום דיגיטלי — טופס להורים", "פעיל דרך הגשר", "ok",
+    "טופס ציבורי עם חתימה דיגיטלית והעלאת ת״ז ותוספת.",
+    ["💾 שמירה ופרסום הטופס", "📄 פתיחת הטופס", "📁 רישומים ממתינים"]));
+  v.appendChild(card("💾", "גיבוי ושחזור", null, null,
+    'הנתונים מסונכרנים בענן. גיבוי אוטומטי יומי נשמר ל-Drive בתיקיית "גיבויים".',
+    ["⬇️ הורדת גיבוי", "⬆️ שחזור מקובץ"]));
+  v.appendChild(card("🤖", "עוזר חכם (AI)", "פועל דרך הגשר", "ok",
+    "צ׳אט עזרה שמסביר איך להשתמש בתוכנה, ויודע גם לבצע פעולות באישור.",
+    ["🔑 הגדרת מפתח"]));
+  v.appendChild(card("🧭", "עוזר חכם ודיוק מפה", null, null,
+    "מפתחות ה-API נשמרים בגשר ולא בתוכנה. בלי מפתח גאוקוד — נפילה ל-OpenStreetMap.",
+    ["🔑 הגדרת מפתח מפה"]));
+};
+
+VIEW.settings = function(v){
+  var sec = function(title, sub, body){
+    var p = h("div", { "class": "panel" }, [ txt("h2", null, title), txt("div", "sub", sub) ]);
+    if(body) p.appendChild(body);
+    return p;
+  };
+  v.appendChild(sec("מי מחובר עכשיו", "משתמשים פעילים ב-5 הדקות האחרונות.",
+    h("div", { "class": "row", style: "gap:8px;flex-wrap:wrap;margin-top:8px", html:
+      '<span class="pill ok">● שרה ברקוביץ׳ · לפני 0 שנ׳</span>' +
+      '<span class="pill neutral">● אהובה רקובסקי · לפני 4 דק׳</span>' +
+      '<span class="pill neutral">● מזכירות · לפני 7 דק׳</span>' })));
+  v.appendChild(sec("יומן פעילות — מי ערך מה ומתי", "העריכה האחרונה של כל משתמש.",
+    table(["משתמש", "מתי", "מה עשה/תה"], [
+      ["שרה ברקוביץ׳", "היום 16:23", "שיבצה 12 תלמידות לגן רימון"],
+      ["אהובה רקובסקי", "היום 14:50", "עדכנה תיק: לבין יסכה"],
+      ["מזכירות", "אתמול 08:20", "ייבוא 34 רשומות ממועד ב׳"],
+      ["ישראל וינברג", "אתמול 11:40", "עדכן גן אגוז לחינוך מיוחד"]
+    ])));
+  v.appendChild(sec("מיתוג — כותרת ולוגו", "שינוי הכותרת הראשית והלוגו של המערכת."));
+  v.appendChild(sec("התקנה כאפליקציה — טלפון או מחשב", "הוספת המערכת למסך הבית."));
+  v.appendChild(sec("רף שיבוץ — מקסימום משובצות בגן", "מגבלה קשיחה על השיבוץ הסופי בלבד.",
+    h("div", { "class": "row", style: "margin-top:8px" }, [
+      h("div", { "class": "field" }, [txt("label", null, "ברירת מחדל — רגיל"), h("input", { value: "32" })]),
+      h("div", { "class": "field" }, [txt("label", null, "ברירת מחדל — ח״מ"), h("input", { value: "12" })]),
+      btn("שמירה")
+    ])));
+  v.appendChild(sec("שנים", "כל שנה מנוהלת בנפרד.",
+    h("div", { "class": "row", style: "gap:6px;margin-top:8px" }, [
+      btn(YEAR + " · פעילה"), btn(PREV, "ghost"), btn("+ הוספת שנה", "ghost")
+    ])));
+  v.appendChild(sec("מעבר שנה — קידום לגן המתקדם", "מעתיק את התלמידות משנה קודמת ומקדם אותן לגיל הבא."));
+  v.appendChild(sec("נתונים היסטוריים (שנים קודמות)", "מספרי רישום משנים שאין להן נתונים מלאים."));
+  v.appendChild(sec("מינימום לפתיחת צהרון", "בלשונית שיבוץ — צהרון, כמותנה לפתיחה.",
+    h("div", { "class": "row", style: "margin-top:8px" }, [
+      h("div", { "class": "field" }, [txt("label", null, "תלמידות"), h("input", { value: "15" })]), btn("שמירה")
+    ])));
+  v.appendChild(sec("גילי הילדים (רשימת תלמידים)", "הגילים לבחירה בתיק.",
+    h("div", { "class": "row", style: "gap:6px;margin-top:8px", html:
+      ["2", "3", "4", "5", "6"].map(function(a){ return '<span class="fchip">' + a + '</span>'; }).join("") })));
+  v.appendChild(sec("תפקידי צוות", "לכל תפקיד: שיוך חינוך וסדר בשיבוץ.",
+    h("div", { "class": "row", style: "gap:6px;margin-top:8px", html:
+      ROLES.map(function(r){ return '<span class="fchip">' + r + '</span>'; }).join("") })));
+  v.appendChild(sec("קמפוסים", "הקמפוס של כל תלמידה נגזר אוטומטית לפי הגן.",
+    h("div", { "class": "row", style: "gap:6px;margin-top:8px", html:
+      CAMPUS.map(function(c){ return '<span class="fchip">' + c + '</span>'; }).join("") })));
+  v.appendChild(sec("מנהלי מערכת", "הרשאות עריכה מלאות."));
+  v.appendChild(sec("חשבון והתחברות", "כתובת המייל והסיסמה."));
+  v.appendChild(sec("ניהול משתמשים", "הוספה, הרשאות והסרה."));
+  v.appendChild(sec("💡 פניות והצעות שיפור", "כל הצעה נשמרת ונשלחת לפיתוח."));
+};
+
+VIEW.guide = function(v){
+  var item = function(icon, title, body){
+    return h("div", { "class": "panel" }, [
+      txt("h2", null, icon + " " + title), txt("div", "sub", body)
+    ]);
+  };
+  v.appendChild(h("div", { "class": "panel" }, [
+    txt("h2", null, "מדריך למשתמש"),
+    txt("div", "sub", "כל מה שצריך לדעת כדי לעבוד עם המערכת — לפי נושאים.")
+  ]));
+  v.appendChild(item("🎒", "תיקי התלמידות", "הוספה, עריכה, סינון מתקדם, עדכון קבוצתי וייבוא מקובץ."));
+  v.appendChild(item("🏫", "גנים ושיבוץ", "רף שיבוץ לכל גן, שיבוץ ידני ושיבוץ אוטומטי לפי קרבה גיאוגרפית."));
+  v.appendChild(item("👩‍🏫", "צוות ושיבוץ צוות", "מאגר אנשי הצוות, תקנים לכל גן ומצבת להפקה."));
+  v.appendChild(item("📣", "מרכז ההודעות", "שליחה מרוכזת עם שדות מיזוג — מייל, וואטסאפ, SMS והודעה קולית."));
+  v.appendChild(item("🤖", "עוזר חכם", "פאנל צד שעונה על שאלות וגם מבצע פעולות — כל פעולה מוצגת לאישור."));
+};
+
+/* =========================================================================
+   וו הקריאה שהמעבדה משתמשת בו — אותו חוזה בדיוק כמו ב-index.html
+   ========================================================================= */
+var active = "home";
+
+function campusStats(){
+  var m = {};
+  GANS.forEach(function(g){
+    var e = m[g.campus] || (m[g.campus] = { name: g.campus, cap: 0, used: 0, gans: 0, n: 0, muni: 0, need: 0, got: 0 });
+    e.cap += g.cap; e.used += g.used; e.gans++;
+    e.need += 2 + (g.age === "5" ? 1 : 0);
+    e.got  += (g.teacher ? 1 : 0) + 1 + (g.age === "5" && rnd() > 0.35 ? 1 : 0);
+  });
+  STUDENTS.forEach(function(s){
+    var g = ganById(s.ganId); if(!g) return;
+    var e = m[g.campus]; e.n++; if(s.muni) e.muni++;
+  });
+  return Object.keys(m).map(function(k){ return m[k]; });
+}
+function byCity(){
+  var m = {};
+  STUDENTS.forEach(function(s){
+    var e = m[s.city] || (m[s.city] = { city: s.city, n: 0, ok: 0 });
+    e.n++; if(s.muni) e.ok++;
+  });
+  return Object.keys(m).map(function(k){ return m[k]; }).sort(function(a, b){ return b.n - a.n; });
+}
+
+window.__uiLab = Object.freeze({
+  stats: function(){
+    return { year: YEAR, students: T.total, gansActive: T.gans, gansTarget: 30,
+             email: "demo@example.org", staff: STAFF.length, notMuni: T.notMuni };
+  },
+
+  home: function(){
+    var docBreak = DOCS.map(function(d){
+      return { label: d[1], missing: STUDENTS.filter(function(s){ return !s.docs[d[0]]; }).length };
+    }).sort(function(a, b){ return b.missing - a.missing; });
+    var noT = GANS.filter(function(g){ return !g.teacher; });
+    return {
+      year: YEAR, name: "רכזת רישום",
+      total: T.total, placed: T.placed, waiting: T.waiting, notMuni: T.notMuni,
+      missingDocs: STUDENTS.filter(function(s){ return docsDone(s) < DOCS.length; }).length,
+      topDoc: docBreak[0].label, docBreak: docBreak,
+      topAge: "3", topAgeN: 33,
+      noTeacherCount: noT.length,
+      noTeacherCampus: noT.map(function(g){ return g.campus; }),
+      campuses: campusStats(),
+      nearFull: GANS.filter(function(g){ return g.used >= g.cap - 2; }).map(function(g){ return g.name; }),
+      gansActive: T.gans,
+      ganCards: GANS.map(function(g){
+        return { id: g.id, name: g.name, symbol: g.symbol, age: g.age, edu: g.edu,
+                 campus: g.campus, teacher: g.teacher, ageInk: g.ink,
+                 ageKey: Number((String(g.age).match(/\d+/) || [])[0]) || 99,
+                 used: g.used, cap: g.cap };
+      }).sort(function(a, b){ return (a.ageKey - b.ageKey) || a.name.localeCompare(b.name, "he"); }),
+      activity: [
+        { who: "שרה ברקוביץ׳", ts: Date.now() - 36e5,  what: "שיבצה 12 תלמידות לגן רימון" },
+        { who: "אהובה רקובסקי", ts: Date.now() - 9e6,  what: "עדכנה תיק: לבין יסכה" },
+        { who: "מזכירות",       ts: Date.now() - 9e7,  what: "ייבוא 34 רשומות ממועד ב׳" },
+        { who: "ישראל וינברג",  ts: Date.now() - 17e7, what: "עדכן גן אגוז לחינוך מיוחד" }
+      ]
+    };
+  },
+
+  subtitle: function(tab){
+    var camps = CAMPUS.length;
+    switch(tab){
+      case "students":     return T.total + " תלמידות · " + YEAR;
+      case "gans":         return T.gans + " גנים · " + camps + " קמפוסים · " + YEAR;
+      case "staff":        return "מאגר כללי · " + STAFF.length + " אנשי צוות פעילים · " + YEAR;
+      case "assign":       return YEAR + " · " + T.gans + " גנים";
+      case "map":          return YEAR + " · " + T.gans + " גנים";
+      case "reports":      return YEAR + " · " + T.total + " תלמידות · " + T.gans + " גנים";
+      case "municipality": return T.muni + " נקלטו · " + T.notMuni + " ממתינות · " + byCity().length + " ערים";
+      case "messages":     return "שליחה מרוכזת · " + YEAR;
+      case "export":       return "בחר/י מה לייצא, לאיזה פורמט ולמי";
+      case "templates":    return "מסמכים ותבניות · " + YEAR;
+      case "settings":     return "כל ההגדרות במקום אחד · מקובצות";
+      default:             return YEAR;
+    }
+  },
+
+  reportsBoard: function(){
+    var amap = {};
+    STUDENTS.forEach(function(s){
+      var g = ganById(s.ganId);
+      var a = (g && g.age) || s.age || "ללא גיל";
+      var e = amap[a] || (amap[a] = { age: a, placed: 0, waiting: 0 });
+      if(s.ganId && s.placed) e.placed++; else e.waiting++;
+    });
+    return {
+      year: YEAR, prevYear: PREV,
+      occupancy: Math.round(T.used / T.cap * 100), capUsed: T.used, capTotal: T.cap,
+      docsPct: Math.round(T.allDocs / T.total * 100), docsN: T.allDocs,
+      muniPct: Math.round(T.muni / T.total * 100), muniN: T.muni,
+      placedPct: Math.round(T.placed / T.total * 100), placedN: T.placed,
+      total: T.total,
+      prev: { docs: Math.round(T.allDocs / T.total * 100) - 11,
+              muni: Math.round(T.muni / T.total * 100) + 3,
+              placed: Math.round(T.placed / T.total * 100) - 6 },
+      byCity: byCity().slice(0, 8),
+      byAge: Object.keys(amap).map(function(k){ return amap[k]; })
+               .sort(function(a, b){ return String(a.age).localeCompare(String(b.age), "he", { numeric: true }); }),
+      perGan: GANS.map(function(g){
+        var rows = STUDENTS.filter(function(s){ return s.ganId === g.id; });
+        var ok = rows.filter(function(s){ return docsDone(s) === DOCS.length; }).length;
+        return { id: g.id, name: g.name, campus: g.campus, ageInk: g.ink,
+                 n: rows.length, cap: g.cap, used: g.used,
+                 occ: Math.round(g.used / g.cap * 100),
+                 muni: rows.length ? Math.round(rows.filter(function(s){ return s.muni; }).length / rows.length * 100) : 0,
+                 docs: rows.length ? Math.round(ok / rows.length * 100) : 0 };
+      }).sort(function(a, b){ return b.occ - a.occ; })
+    };
+  },
+
+  muniBoard: function(){
+    var pend = STUDENTS.filter(function(s){ return !s.muni; });
+    var counts = { tz: 0, gan: 0, docs: 0, ready: 0 };
+    var rows = pend.map(function(s){
+      var r;
+      if(!s.tz)            r = { key: "tz",   label: 'חסרה ת״ז',      tone: "bad" };
+      else if(!s.ganId)    r = { key: "gan",  label: "חסר שיבוץ",     tone: "warn" };
+      else if(docsDone(s) < DOCS.length) r = { key: "docs", label: "מסמכים חסרים", tone: "warn" };
+      else                 r = { key: "ready", label: "מוכן לשליחה", tone: "good" };
+      counts[r.key]++;
+      return { id: s.id, name: fullName(s), tz: s.tz, gan: ganName(s.ganId),
+               city: s.city, reason: r.label, tone: r.tone };
+    }).sort(function(a, b){ return a.name.localeCompare(b.name, "he"); });
+    return { year: YEAR, total: T.total, absorbed: T.muni, pending: pend.length,
+             pct: Math.round(T.muni / T.total * 100), counts: counts,
+             rows: rows.slice(0, 60), rowsTotal: rows.length,
+             byCity: byCity().slice(0, 8), listed: T.muni };
+  },
+
+  mgmtBoard: function(){
+    var cs = campusStats();
+    var needT = 0, gotT = 0;
+    cs.forEach(function(c){ needT += c.need; gotT += Math.min(c.got, c.need); });
+    return {
+      year: YEAR, prevYear: PREV, total: T.total, prevTotal: 381,
+      target: T.cap,
+      occupancy: Math.round(T.used / T.cap * 100),
+      staffing: Math.round(gotT / needT * 100),
+      openSlots: Math.max(0, needT - gotT),
+      muniPct: Math.round(T.muni / T.total * 100),
+      campuses: cs.map(function(c){
+        return { name: c.name, gans: c.gans, n: c.n,
+                 occ: Math.round(c.used / c.cap * 100),
+                 staff: Math.round(Math.min(c.got, c.need) / c.need * 100),
+                 muni: c.n ? Math.round(c.muni / c.n * 100) : 0 };
+      }),
+      byPeriod: ["א׳", "ב׳", "ג׳"].map(function(p){
+        var n = STUDENTS.filter(function(s){ return s.period === p; }).length;
+        return { p: p, now: n, prev: Math.round(n * 0.92) };
+      })
+    };
+  },
+
+  staffBoard: function(){
+    var has = function(r){ return STAFF.filter(function(m){ return m.role.indexOf(r) >= 0; }); };
+    var gan = has("גננת"), say = has("סייעת");
+    var sp = function(a){ return a.filter(function(m){ return m.edu !== "רגיל"; }).length; };
+    var kinds = {};
+    say.forEach(function(m){ kinds[m.role] = (kinds[m.role] || 0) + 1; });
+    var assigned = STAFF.filter(function(m){ return m.ganId; }).length;
+    return {
+      total: STAFF.length,
+      ganenet: gan.length, ganenetSplit: { n: gan.length, special: sp(gan), regular: gan.length - sp(gan) },
+      sayaat: say.length,  sayaatSplit:  { n: say.length, special: sp(say), regular: say.length - sp(say) },
+      sayaatKinds: Object.keys(kinds).map(function(k){ return { role: k, n: kinds[k] }; })
+                     .sort(function(a, b){ return b.n - a.n; }).slice(0, 3),
+      noCert: STAFF.filter(function(m){ return !m.cert; }).length,
+      assigned: assigned, unassigned: STAFF.length - assigned
+    };
+  },
+
+  gansBoard: function(){
+    var m = {};
+    GANS.forEach(function(g){
+      var e = m[g.campus] || (m[g.campus] = { name: g.campus, gans: [], cap: 0, used: 0 });
+      e.cap += g.cap; e.used += g.used;
+      e.gans.push({ id: g.id, name: g.name, symbol: g.symbol, age: g.age, edu: g.edu,
+                    campus: g.campus, teacher: g.teacher, phone: g.phone,
+                    ageInk: g.ink, used: g.used, cap: g.cap,
+                    reg: STUDENTS.filter(function(s){ return s.ganId === g.id; }).length });
+    });
+    return { campuses: CAMPUS.map(function(c){ return m[c]; }).filter(Boolean) };
+  },
+
+  assignBoard: function(){
+    return {
+      context: "activity", contextLabel: "פעילות הגן",
+      gans: GANS.map(function(g){
+        var reg = STUDENTS.filter(function(s){ return s.ganId === g.id; }).length;
+        var staff = STAFF.filter(function(m){ return m.ganId === g.id; });
+        return {
+          id: g.id, name: g.name, symbol: g.symbol, age: g.age, edu: g.edu, campus: g.campus,
+          ageInk: g.ink, reg: reg, mandatory: g.age === "5", freeDays: [],
+          bRole: "סייעת ב׳", bMin: 30, bEligible: reg >= 30 && g.age !== "5",
+          filled: staff.map(function(m){
+            return { role: m.role, name: m.last + " " + m.first, phone: m.mobile,
+                     extraLabel: "ותק", extra: m.seniority + " שנים", students: "" };
+          })
+        };
+      })
+    };
+  },
+
+  studentCards: function(){
+    return {
+      total: STUDENTS.length, openId: "",
+      rows: STUDENTS.slice(0, 120).map(function(s){
+        var g = ganById(s.ganId);
+        var placed = !!(s.ganId && s.placed);
+        return {
+          id: s.id, name: fullName(s), ini: ini(fullName(s)), tz: s.tz,
+          gan: g ? g.name : "", campus: g ? g.campus : "", age: s.age, period: s.period,
+          ageInk: g ? g.ink : "", placed: placed, muni: s.muni,
+          docsDone: docsDone(s), docsTotal: DOCS.length,
+          status: placed ? "משובצת" : (s.ganId ? "ממתינה" : "ללא גן"),
+          tone:   placed ? "good"   : (s.ganId ? "warn"   : "bad")
+        };
+      })
+    };
+  },
+
+  ganColors: function(){
+    var out = {};
+    GANS.forEach(function(g, i){
+      out[g.id] = ["#2c6a4c", "#e0a53a", "#3f7cac", "#c65d5d", "#7b5ea7", "#4bb1a6"][i % 6];
+    });
+    return out;
+  },
+
+  ageLegend: function(){
+    return ["3", "4", "5"].map(function(a){
+      return '<span style="display:inline-flex;align-items:center;gap:5px">' +
+        '<span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);' +
+        'background:color-mix(in srgb, ' + AGE_HUE[a] + ' 55%, var(--surface))"></span>גיל ' + a + '</span>';
+    }).join(" ");
+  },
+
+  openGan:     function(){ toast("דמו — כרטיס השיבוץ של הגן אינו נפתח כאן."); },
+  openStudent: function(){ toast("דמו — תיק התלמידה אינו נפתח כאן."); },
+  addStudent:  function(){ toast("דמו — הוספת ילדה אינה פעילה כאן."); },
+  openMenu:    function(){ openDrawer(); },
+  activeTab:   function(){ return active; },
+  go:          function(tab){ route(tab); }
+});
+
+/* =========================================================================
+   ניווט ותשתית הדף
+   ========================================================================= */
+function openDrawer(){ document.getElementById("drawer").classList.add("open");
+                       document.getElementById("scrim").classList.add("show"); }
+function closeDrawer(){ document.getElementById("drawer").classList.remove("open");
+                        document.getElementById("scrim").classList.remove("show"); }
+
+function renderTabs(){
+  var nav = document.getElementById("tabs");
+  var counts = { students: T.total, gans: T.gans };
+  nav.innerHTML = "";
+  TABS.forEach(function(t){
+    var b = h("button", { "data-tab": t.id, "class": t.id === active ? "active" : "" }, [
+      txt("span", "ic", t.icon), txt("span", "tl", t.label)
+    ]);
+    if(counts[t.id] != null) b.appendChild(txt("span", "count", String(counts[t.id])));
+    b.onclick = function(){ route(t.id); closeDrawer(); };
+    nav.appendChild(b);
+  });
+}
+
+function route(tab){
+  if(tab) active = tab;
+  var v = document.getElementById("view");
+  v.innerHTML = "";
+  renderTabs();
+  (VIEW[active] || VIEW.home)(v);
+  window.scrollTo(0, 0);
+}
+
+/* גובה רצועת הדמו נמדד בזמן ריצה — בנייד היא נשברת לשתי שורות, וגובה
+   קשיח היה משאיר אותה על גבי הכותרת. */
+function sizeFlag(){
+  var f = document.querySelector(".demo-flag");
+  if(!f) return;
+  document.documentElement.style.setProperty("--demo-bar", Math.ceil(f.getBoundingClientRect().height) + "px");
+}
+
+function boot(){
+  /* מחליף את המידע בכותרת ובמגירה לנתוני הדמו */
+  var y = document.getElementById("yearSelect");
+  if(y) y.innerHTML = "<option>" + YEAR + "</option><option>" + PREV + "</option>";
+  var yc = document.getElementById("yearChip"); if(yc) yc.textContent = YEAR;
+  var ec = document.getElementById("eduChip");  if(ec) ec.textContent = "הכל";
+  var edu = document.getElementById("drawerEdu");
+  if(edu) edu.innerHTML = '<button class="on">הכל</button><button>רגיל</button><button>ח״מ</button>';
+  var t2 = document.querySelector("#drawerBrand .txt .t2");
+  if(t2) t2.textContent = "רשת הגנים · דמו";
+
+  var bind = function(id, fn){ var e = document.getElementById(id); if(e) e.onclick = fn; };
+  bind("menuBtn", openDrawer);
+  bind("drawerClose", closeDrawer);
+  bind("backBtn", function(){ route("home"); });
+  document.getElementById("scrim").onclick = closeDrawer;
+  bind("themeBtn", function(){
+    var cur = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = cur;
+  });
+  bind("aiHelpBtn", function(){
+    document.getElementById("aiPanel").classList.toggle("open");
+    document.body.classList.toggle("ai-docked");
+  });
+  bind("feedbackBtn", function(){ toast("דמו — טופס הפניות אינו פעיל כאן."); });
+  bind("aiClose", function(){
+    document.getElementById("aiPanel").classList.remove("open");
+    document.body.classList.remove("ai-docked");
+  });
+  bind("aiClear", function(){ toast("דמו — העוזר אינו מחובר כאן."); });
+  bind("aiSend",  function(){ toast("דמו — העוזר אינו מחובר כאן."); });
+
+  var mode = document.getElementById("aiMode");
+  if(mode){ mode.textContent = "דמו"; mode.className = "pill neutral"; }
+  var msgs = document.getElementById("aiMsgs");
+  if(msgs) msgs.innerHTML =
+    '<div class="aimsg bot">שלום. אפשר לשאול אותי על נתונים, או לבקש ממני לבצע פעולה.</div>' +
+    '<div class="aimsg user">כמה תלמידות בגן רימון?</div>' +
+    '<div class="aimsg bot">בגן רימון 27 תלמידות רשומות בשנת ' + YEAR + ', מתוכן 24 משובצות סופית. רף השיבוץ בגן הוא 32.</div>' +
+    '<div class="aimsg user">שבצי את שרה כהן לגן רימון</div>' +
+    '<div class="aiact"><b>⚠ אישור פעולה — שיבוץ תלמידה</b>' +
+    '<div>כהן שרה · 329771003</div>' +
+    '<div style="display:flex;gap:8px;margin-top:8px">' +
+    '<div style="flex:1;background:var(--surface-2);border-radius:9px;padding:6px 9px">' +
+    '<div style="font-size:.7rem;color:var(--muted)">לפני</div><b style="margin:0">ללא גן</b></div>' +
+    '<div style="flex:1;background:var(--surface-2);border-radius:9px;padding:6px 9px">' +
+    '<div style="font-size:.7rem;color:var(--muted)">אחרי</div><b style="margin:0">גן רימון · 28/32</b></div></div>' +
+    '<div class="aiact-row"><button class="btn">אישור וביצוע</button>' +
+    '<button class="btn ghost">ביטול</button></div></div>';
+  if(msgs) msgs.querySelectorAll(".aiact .btn").forEach(function(b){
+    b.onclick = function(){ toast("דמו — הפעולה אינה מתבצעת כאן."); };
+  });
+
+  sizeFlag();
+  window.addEventListener("resize", sizeFlag);
+  if(window.ResizeObserver){
+    new ResizeObserver(sizeFlag).observe(document.querySelector(".demo-flag"));
+  }
+
+  route("home");
+}
+
+if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+else boot();
+
+})();
+
+</script>
+<script src="ui-lab.js"></script>
+</body>
+</html>

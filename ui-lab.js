@@ -752,9 +752,12 @@ function renderAssignBoard(host){
     side.appendChild(edit);
     row.appendChild(side);
 
-    if(g.freeDays.length){
+    /* ⚠️ בלי ההגנה הזו, שדה freeDays חסר זורק — וכל הלוח נעלם בשקט
+       (הקריאה עטופה ב-try/catch). */
+    var fd = g.freeDays || [];
+    if(fd.length){
       row.appendChild(el("div", "la-free", "🏖️ יום חופשי: " +
-        g.freeDays.map(function(x){ return x.role + " (" + x.days.join(", ") + ")"; }).join(" · ")));
+        fd.map(function(x){ return x.role + " (" + (x.days || []).join(", ") + ")"; }).join(" · ")));
     }
     board.appendChild(row);
   });
