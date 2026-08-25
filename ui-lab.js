@@ -45,16 +45,12 @@ var ICONS = {
   messages:"✉", tools:"⚒", settings:"⚙", guide:"▧"
 };
 
-var nav = document.getElementById("tabs");
-var foot = document.querySelector(".drawer-foot");
-if(!nav) return;               /* management.html / register.html — אין ניווט */
+/* ⚠️ סקריפט שמוזרק דינמית אינו deferred — הדגל defer מתעלמים ממנו, והוא רץ
+   ברגע שהגיע. לכן אסור לחפש אלמנטים כאן: ה-<body> עדיין לא נותח, החיפוש היה
+   מחזיר null והמעבדה הייתה יוצאת בשקט בלי לעשות דבר. כל האיתור נדחה ל-init(). */
+var nav = null, foot = null, view = null;
 
 var busy = false;              /* מונע לולאה: השינויים שלנו מפעילים את הצופה */
-
-/* מקטע הניווט מקבל סימון, כדי שה-CSS יוכל להסתיר את התווית "ניווט" שמעליו —
-   היא כפולה מול כותרות הקבוצות שאנחנו מזריקים. */
-var navSec = nav.closest(".drawer-sec");
-if(navSec) navSec.classList.add("lab-navsec");
 
 function relabel(){
   for(var id in LABELS){
@@ -146,7 +142,6 @@ function userRow(s){
    כל המספרים מגיעים מ-window.__uiLab.home(), שמחשב אותם מהנתונים החיים.
    =========================================================================== */
 
-var view = document.getElementById("view");
 var homeBusy = false;
 
 function el(tag, cls, txt){
@@ -442,9 +437,27 @@ function paint(){
   busy = false;
 }
 
-new MutationObserver(paint).observe(nav, {childList:true});
-if(view) new MutationObserver(maybeHome).observe(view, {childList:true, subtree:true});
-paint();
-maybeHome();
+function init(){
+  nav  = document.getElementById("tabs");
+  foot = document.querySelector(".drawer-foot");
+  view = document.getElementById("view");
+  if(!nav) return;             /* management.html / register.html — אין ניווט */
+
+  /* מקטע הניווט מקבל סימון, כדי שה-CSS יסתיר את התווית "ניווט" שמעליו —
+     היא כפולה מול כותרות הקבוצות שאנחנו מזריקים. */
+  var navSec = nav.closest(".drawer-sec");
+  if(navSec) navSec.classList.add("lab-navsec");
+
+  new MutationObserver(paint).observe(nav, {childList:true});
+  if(view) new MutationObserver(maybeHome).observe(view, {childList:true, subtree:true});
+  paint();
+  maybeHome();
+}
+
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", init, {once:true});
+}else{
+  init();
+}
 
 })();

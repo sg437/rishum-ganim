@@ -17,7 +17,7 @@
   if(!localStorage.getItem('uiLab')) return;
   document.documentElement.classList.add('ui-lab');
   var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css'; document.head.appendChild(l);
-  var j=document.createElement('script'); j.src='ui-lab.js'; j.defer=true; document.head.appendChild(j);
+  var j=document.createElement('script'); j.src='ui-lab.js'; j.async=false; document.head.appendChild(j);
   document.addEventListener('DOMContentLoaded',function(){
     var u=new URL(location.href); u.searchParams.set('ui','off');
     var a=document.createElement('a');
