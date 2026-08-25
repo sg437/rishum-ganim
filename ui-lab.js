@@ -52,6 +52,38 @@ var nav = null, foot = null, view = null;
 
 var busy = false;              /* מונע לולאה: השינויים שלנו מפעילים את הצופה */
 
+/* החלטה 3: "ייצוא" מופיע בסרגל בקנבס, ו-viewExport כבר קיים בקוד ומחובר
+   ב-route() — רק מנותק מהניווט. הלשונית מוזרקת כאן ולא נוספת ל-TABS, כדי
+   שהתוכנה הרגילה תישאר בדיוק כפי שהיא עד לאישור הסופי. */
+function exportTab(){
+  if(nav.querySelector('[data-tab="export"]')) return;
+  var after = nav.querySelector('[data-tab="municipality"]');
+  if(!after) return;
+  var b = document.createElement("button");
+  b.dataset.tab = "export";
+  b.innerHTML = '<span class="ic"></span><span class="tl"></span>';
+  b.querySelector(".ic").textContent = "↧";
+  b.querySelector(".tl").textContent = "ייצוא";
+  b.onclick = function(){ go("export"); };
+  after.parentNode.insertBefore(b, after.nextSibling);
+}
+
+/* החלטה 6: מוני הצוות והעירייה. renderTabs מחשב מונים לתלמידות ולגנים בלבד.
+   מונה העירייה הוא התראה (רקע פליז), כמו בקנבס. */
+function navCounts(s){
+  if(!s) return;
+  [["staff", s.staff, false], ["municipality", s.notMuni, true]].forEach(function(x){
+    var btn = nav.querySelector('[data-tab="' + x[0] + '"]');
+    if(!btn) return;
+    var c = btn.querySelector(".count");
+    if(!x[1]){ if(c) c.remove(); return; }
+    if(!c){ c = document.createElement("span"); c.className = "count"; btn.appendChild(c); }
+    var txt = String(x[1]);
+    if(c.textContent !== txt) c.textContent = txt;   /* בלי זה — לולאת צופה */
+    c.classList.toggle("alert", !!x[2]);
+  });
+}
+
 function relabel(){
   for(var id in LABELS){
     var btn = nav.querySelector('[data-tab="'+id+'"] .tl');
@@ -486,7 +518,11 @@ function tintBars(){
    =========================================================================== */
 
 function slotCard(o){
-  var c = el("div", "la-slot" + (o.cls ? " " + o.cls : ""));
+  /* החלטה 1: קלף פנוי הוא כפתור שפותח את מודאל השיבוץ — שם כל 17 התפקידים,
+     על הכללים הבדוקים. קלף נעול נשאר תצוגה בלבד. */
+  var tag = (o.onOpen ? "button" : "div");
+  var c = el(tag, "la-slot" + (o.cls ? " " + o.cls : ""));
+  if(o.onOpen){ c.onclick = o.onOpen; c.title = "פתיחת שיבוץ הגן"; }
   c.appendChild(el("div", "la-role", o.role));
   if(o.name){
     var who = el("div", "la-who");
@@ -537,6 +573,9 @@ function renderAssignBoard(host){
     g.filled.forEach(function(f){ byRole[f.role] = f; });
 
     var shown = {}, filledN = 0, slotN = 0;
+    var openThis = function(){
+      if(window.__uiLab && window.__uiLab.openGan) window.__uiLab.openGan(g.id);
+    };
     function addRole(role, opts){
       opts = opts || {};
       var f = byRole[role];
@@ -549,7 +588,8 @@ function renderAssignBoard(host){
         slots.appendChild(slotCard({ role:role, cls:"lock",
           emptyText:"נפתחת מ-" + g.bMin + " בנות · כרגע " + g.reg }));
       }else{ slotN++;
-        slots.appendChild(slotCard({ role:role, cls:"free", emptyText:"+ שיבוץ" }));
+        slots.appendChild(slotCard({ role:role, cls:"free", emptyText:"+ שיבוץ",
+          onOpen:openThis }));
       }
     }
 
@@ -566,6 +606,14 @@ function renderAssignBoard(host){
         extra: f.extra ? (f.extraLabel ? f.extraLabel + ": " + f.extra : f.extra) : "",
         students: f.students }));
     });
+    /* קלף "+" בסוף השורה — כל תפקיד אחר מתוך 17, דרך המודאל */
+    var add = el("button", "la-slot la-add");
+    add.title = "הוספת תפקיד נוסף";
+    add.appendChild(el("span", "la-add-plus", "+"));
+    add.appendChild(el("span", "la-add-txt", "תפקיד נוסף"));
+    add.onclick = openThis;
+    slots.appendChild(add);
+
     row.appendChild(slots);
 
     /* המונה — בלי רווחים סביב הלוכסן */
@@ -630,11 +678,13 @@ function paint(){
   if(busy) return;
   busy = true;
   try{
+    exportTab();
     groupNav();
     relabel();
-    maybeHome();
     var s = (window.__uiLab && window.__uiLab.stats) ? window.__uiLab.stats() : null;
+    navCounts(s);
     brandSub(s);
+    maybeHome();
     if(foot){
       targetCard(s);
       userRow(s);

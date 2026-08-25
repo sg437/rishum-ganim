@@ -2246,7 +2246,12 @@ if(document.documentElement.classList.contains("ui-lab")){
           students:    eduScope(studentsOfYear().filter(s=>!s.finished)).length,
           gansActive:  eduScope(DB.gans.filter(g=>g.active)).length,
           gansTarget:  Number(DB.settings && DB.settings.gansTarget) || 0,
-          email:       (currentUser && currentUser.email) || ""
+          email:       (currentUser && currentUser.email) || "",
+          /* מוני ניווט שהקנבס מציג ו-renderTabs אינו מחשב:
+             צוות (מאגר כללי, אינו מפולח לפי חינוך) ועירייה (כהתראה). */
+          staff:       (DB.staff || []).length,
+          notMuni:     eduScope(studentsOfYear().filter(s=>!s.finished))
+                         .filter(s=>!s.absorbedMunicipality).length
         };
       }catch(e){ return null; }
     },

@@ -300,12 +300,24 @@ html.ui-lab .lu-mail{
   html.ui-lab .hamburger,
   html.ui-lab .scrim      { display:none }
 
-  /* הכותרת מתרוקנת — המותג והשבבים כפולים מול הסרגל */
-  html.ui-lab header.top  { position:static; background:transparent; border-bottom:0; box-shadow:none }
+  /* הכותרת מתרוקנת — המותג והשבבים כפולים מול הסרגל. אבל היא נשארת
+     נעוצה, כי כפתור החזרה יושב בה וצריך להיות זמין מכל מסך גם בגלילה,
+     בדיוק כמו היום. pointer-events:none כדי שהרצועה השקופה לא תחסום
+     קליקים על התוכן שמתחתיה; הכפתור עצמו מחזיר לעצמו auto. */
+  html.ui-lab header.top  {
+    position:sticky; top:0; z-index:35;
+    background:transparent; border-bottom:0; box-shadow:none;
+    pointer-events:none;
+  }
   /* הכותרת התרוקנה, ולכן ה-padding שלה הוא כל הנשימה שנשארה מעל התוכן */
   html.ui-lab .top-inner  { max-width:none; padding:18px 26px 0 }
   html.ui-lab .brand,
   html.ui-lab .top-chips  { display:none }
+  html.ui-lab .backbtn    {
+    pointer-events:auto;
+    background:var(--surface); border:1px solid var(--border);
+    box-shadow:var(--shadow); border-radius:12px;
+  }
 }
 
 
@@ -608,6 +620,21 @@ html.ui-lab .la-slot{
 }
 html.ui-lab .la-slot.free{ background:transparent; border:1px dashed var(--border) }
 html.ui-lab .la-slot.lock{ background:var(--warn-soft); border:1px dashed var(--warn) }
+/* קלף פנוי הוא כפתור — צריך לאפס את ברירות המחדל של button */
+html.ui-lab button.la-slot{
+  font:inherit; text-align:start; cursor:pointer; display:block; width:auto;
+}
+html.ui-lab button.la-slot:hover{ border-color:var(--accent); border-style:solid }
+html.ui-lab .la-add{
+  flex:0 0 auto; min-width:0;
+  display:flex !important; align-items:center; gap:7px;
+  background:transparent; border:1px dashed var(--border); color:var(--muted);
+  padding:10px 14px;
+}
+html.ui-lab .la-add:hover{ color:var(--accent-strong) }
+html.ui-lab .la-add-plus{ font-size:1.1rem; font-weight:700; line-height:1 }
+html.ui-lab .la-add-txt{ font-size:.78rem; font-weight:700; white-space:nowrap }
+
 html.ui-lab .la-role{ font-size:.73rem; color:var(--muted); font-weight:700 }
 html.ui-lab .la-slot.lock .la-role{ color:var(--warn) }
 html.ui-lab .la-who{ display:flex; align-items:center; gap:7px; margin-top:3px; min-width:0 }

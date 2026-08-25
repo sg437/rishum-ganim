@@ -21,6 +21,12 @@ const b=html.indexOf('</style>', a);
 if(a<0||b<0) throw new Error('לא נמצא בלוק ה-<style> ב-index.html');
 const style=html.slice(a, b+'</style>'.length);
 
+/* הכותרת העליונה — נלקחת כמות שהיא, כדי שכפתור החזרה והשבבים לא יתיישנו */
+const ha=html.indexOf('<header class="top">');
+const he=html.indexOf('</header>', ha);
+if(ha<0||he<0) throw new Error('לא נמצאה הכותרת ב-index.html');
+const header=html.slice(ha, he+'</header>'.length);
+
 /* המגירה והרעלה — נלקחות כמות שהן מ-index.html, לא משוכפלות ביד */
 const ds=html.indexOf('<div class="scrim"');
 const de=html.indexOf('</aside>', ds);
@@ -44,13 +50,7 @@ const navHtml=tabs.map(t=>{
 
 const demo=`
 ${drawer}
-<header class="top"><div class="top-inner">
-  <div class="brand"><span class="logo">🎒</span>
-    <span class="txt"><span class="t1">מערכת ניהול</span><span class="t2">רשת הגנים מודיעין עילית</span></span></div>
-  <div class="top-spacer"></div>
-  <div class="top-chips"><span class="chip year">📅 תשפ״ח</span><span class="chip edu reg">חינוך רגיל</span></div>
-  <button class="hamburger"><span></span></button>
-</div></header>
+${header}
 
 <div id="view" style="max-width:1200px;margin:0 auto;padding:18px 14px">
   ${process.env.HARNESS_TAB==='assign'?'<div class="panel"><div class="section-title"><h2>שיבוץ צוות</h2></div><div id="asgList"></div></div>':''}
