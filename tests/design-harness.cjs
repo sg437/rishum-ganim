@@ -61,6 +61,8 @@ ${header}
     +'<div class="stat"><div class="k">לא קלוט</div><div class="v" style="color:var(--bad)">88</div></div>'
     +'</div></div>':''}
   ${process.env.HARNESS_TAB==='staff'?'<div class="panel"><div class="section-title"><h2>רשימת צוות הגנים</h2></div>'
+    +'<div class="searchbar"><div class="search-field"><span class="mag">🔎</span><input placeholder="חיפוש שם / טלפון / עיר…"></div><button class="filter-toggle">☰ סינון</button></div>'
+    +'<div class="toolbar"><button class="btn">➕ הוספת איש/אשת צוות</button><button class="btn ghost">📣 שליחת הודעות</button><button class="btn ghost">⬆️ ייבוא מקובץ</button></div>'
     +'<div id="staffTable"><div class="table-wrap"><table class="stu-table"><thead><tr><th>שם משפחה</th><th>שם פרטי</th><th>תפקיד</th><th>חינוך</th><th>נייד</th></tr></thead><tbody>'
     +'<tr><td><b>ברקוביץ׳</b></td><td>שרה</td><td>גננת</td><td>רגיל</td><td>052-8841190</td></tr>'
     +'<tr><td><b>לוי</b></td><td>מלכה</td><td>גננת</td><td>רגיל</td><td>053-3120774</td></tr>'
@@ -80,7 +82,10 @@ ${header}
     +'</div></div></div></div></details>'
     +'<div id="map-stage" style="height:280px;background:#e8ece7;border-radius:16px;margin-top:14px"></div>'
     +'</div>':''}
-  ${process.env.HARNESS_TAB==='gans'?'<div class="panel"><div class="section-title"><h2>רשימת הגנים</h2></div><div id="ganTable"><div class="table-wrap"><table><thead><tr><th>שם הגן</th><th>גיל</th></tr></thead><tbody><tr><td>גן זית</td><td>3</td></tr></tbody></table></div></div></div>':''}
+  ${process.env.HARNESS_TAB==='gans'?'<div class="panel"><div class="section-title"><h2>רשימת הגנים</h2></div>'
+    +'<div class="searchbar"><div class="search-field"><span class="mag">🔎</span><input placeholder="חיפוש שם הגן / גננת / סמל / כתובת…"></div><button class="filter-toggle">☰ סינון</button></div>'
+    +'<div class="toolbar"><button class="btn">➕ הוספת גן</button><button class="btn ghost">⬆️ ייבוא מקובץ</button><button class="btn ghost">📤 ייצוא / הדפסה</button></div>'
+    +'<div id="ganTable"><div class="table-wrap"><table><thead><tr><th>שם הגן</th><th>גיל</th></tr></thead><tbody><tr><td>גן זית</td><td>3</td></tr></tbody></table></div></div></div>':''}
   ${process.env.HARNESS_TAB==='assign'?'<div class="panel"><div class="section-title"><h2>שיבוץ צוות</h2></div><div id="asgList"></div></div>':''}
   <div class="section-title">תיקי התלמידות · שנת תשפ״ח</div>
 
@@ -171,6 +176,8 @@ window.__uiLab={
               {who:"מזכירות",ts:Date.now()-9e7,what:"דוח עירייה לחודש אב הופק"}]};},
   go(tab,filter){console.log('go',tab,JSON.stringify(filter||{}));},
   addStudent(){console.log('addStudent');},
+  subtitle(tab){return {students:"906 תלמידות · תשפ\u05f4ז",gans:"29 גנים · 3 קמפוסים · תשפ\u05f4ז",
+    staff:"מאגר כללי · 202 אנשי צוות פעילים · תשפ\u05f4ז"}[tab]||"תשפ\u05f4ז";},
   staffBoard(){return {total:202,ganenet:31,sayaat:21,noCert:9,assigned:178,unassigned:24};},
   ganColors(){return {"1":"#2c6a4c","2":"#3f7cac","3":"#7b5ea7","4":"#c65d5d"};},
   gansBoard(){return {total:6,campuses:[

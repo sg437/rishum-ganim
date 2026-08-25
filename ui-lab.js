@@ -746,10 +746,65 @@ function renderAssignBoard(host){
   return true;
 }
 
+/* בורר ההקשר הוא <select> בקוד. הוא נשאר — ולצידו מוזרקות לשוניות
+   שמניעות אותו, כמו בלוח. כך אין אובדן מנגנון. */
+function assignTabs(){
+  var sel = view.querySelector("#asgCtxSel");
+  if(!sel || view.querySelector(".lab-ctx")) return;
+  var strip = el("div", "lab-ctx");
+  Array.prototype.slice.call(sel.options).forEach(function(o){
+    var b = el("button", "lab-ctxb" + (o.selected ? " on" : ""), o.textContent);
+    b.onclick = function(){
+      sel.value = o.value;
+      sel.dispatchEvent(new Event("change", {bubbles:true}));
+    };
+    strip.appendChild(b);
+  });
+  var field = sel.closest(".field") || sel.parentNode;
+  field.parentNode.insertBefore(strip, field);
+  field.style.display = "none";          /* ה-select נשאר בדום ומחווט */
+}
+
+function assignKpis(){
+  var host = view.querySelector("#asgList");
+  if(!host || view.querySelector(".lab-akpis")) return;
+  var d = (window.__uiLab && window.__uiLab.assignBoard) ? window.__uiLab.assignBoard() : null;
+  var st = (window.__uiLab && window.__uiLab.staffBoard) ? window.__uiLab.staffBoard() : null;
+  if(!d || !d.gans) return;
+
+  var filled = 0, slots = 0, noTeacher = 0;
+  d.gans.forEach(function(g){
+    var byRole = {}; g.filled.forEach(function(f){ byRole[f.role] = 1; });
+    var core = 2 + (g.mandatory ? 0 : (g.bEligible ? 1 : 0));
+    slots += Math.max(core, g.filled.length);
+    filled += g.filled.length;
+    if(!byRole["גננת"]) noTeacher++;
+  });
+
+  var row = el("div", "lh-kpis lab-akpis");
+  row.appendChild(kpi({
+    dark:true, label:"תקנים מאוישים", value:filled,
+    sub:(slots - filled) + " תקנים פתוחים",
+    ring: slots ? filled / slots * 100 : 0
+  }));
+  row.appendChild(kpi({
+    label:"גנים ללא גננת", value:noTeacher, tone:noTeacher ? "bad" : "good",
+    sub:noTeacher ? "לשיבוץ לפני תחילת השנה" : ""
+  }));
+  if(st) row.appendChild(kpi({
+    label:"זמינים לשיבוץ", value:st.unassigned, tone:"good",
+    sub:st.ganenet + " גננות · " + st.sayaat + " סייעות"
+  }));
+  host.parentNode.insertBefore(row, host);
+}
+
 function maybeAssign(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="assign"]');
   if(!(b && b.classList.contains("active"))) return;
+  homeBusy = true;
+  try{ assignTabs(); assignKpis(); }catch(e){}
+  homeBusy = false;
   var host = view.querySelector("#asgList");
   if(!host || host.querySelector(".lab-asg")) return;
   homeBusy = true;
@@ -772,16 +827,15 @@ function maybeAssign(){
    אף אלמנט אינו מוזז: כל fieldset מקבל סימון, וההסתרה נעשית ב-CSS. הזזת
    צמתים הייתה מסכנת מאזינים שהקוד הקיים כבר קשר אליהם.
    =========================================================================== */
+/* שמות הלשוניות לפי לוח 07. "משפחה וקשר" ו"היסטוריה" שבלוח אינם ניתנים
+   למימוש: שדות ההורים יושבים בתוך "פרטים אישיים" ולא במקטע נפרד, ואין
+   יומן פר-תיק במודל. ארבע לשוניות שמכסות את כל תשעת המקטעים. */
 var PANES = [
-  { name:"פרטים",  legends:["פרטים אישיים", "כתובת"] },
-  { name:"שיבוץ",  legends:["שיבוץ ורישום", "תוכניות ומועדונים", "סיוע והעשרה"] },
-  { name:"מסמכים", legends:["מסמכים", "תיקיית דרייב"] },
-  { name:"שונות",  legends:["שונות", "הערות וסיום"] }
+  { name:"פרטי הילדה",   legends:["פרטים אישיים", "כתובת", "שיבוץ ורישום"] },
+  { name:"מסמכים",       legends:["מסמכים", "תיקיית דרייב"] },
+  { name:"תוכניות ושונות", legends:["תוכניות ומועדונים", "סיוע והעשרה", "שונות"] },
+  { name:"הערות",        legends:["הערות וסיום"] }
 ];
-
-function isPhone(){
-  try{ return window.matchMedia("(max-width:900px)").matches; }catch(e){ return false; }
-}
 
 function paneOf(legend){
   var t = String(legend || "").trim();
@@ -793,7 +847,7 @@ function paneOf(legend){
 
 function dossierTabs(){
   var modal = document.getElementById("modal");
-  if(!modal || !isPhone()) return;
+  if(!modal) return;
   if(!modal.querySelector("#s-firstName")) return;      /* לא תיק ילדה */
   if(modal.querySelector(".lab-dtabs")) return;         /* כבר טופל */
 
@@ -832,7 +886,15 @@ function dossierTabs(){
     who.appendChild(el("span", "lab-dini", initialsFrom(full)));
     var box = el("div", "lab-dwho-t");
     box.appendChild(el("div", "lab-dname", full));
-    if(tz && tz.value) box.appendChild(el("div", "lab-dtz", tz.value));
+    var meta = [];
+    if(tz && tz.value) meta.push(tz.value);
+    var age = modal.querySelector("#s-age"), gan = modal.querySelector("#s-ganId");
+    if(age && age.value) meta.push("בת " + age.value);
+    if(gan && gan.selectedIndex >= 0){
+      var gt = (gan.options[gan.selectedIndex] || {}).textContent || "";
+      if(gt && gt.indexOf("—") < 0) meta.push(gt.trim());
+    }
+    if(meta.length) box.appendChild(el("div", "lab-dtz", meta.join(" · ")));
     who.appendChild(box);
     h3.parentNode.insertBefore(who, h3.nextSibling);
     anchor = who;
@@ -1086,13 +1148,88 @@ function staffRows(){
   });
 }
 
+/* שורת "N תואמים · מתוך M" מעל הטבלה, כמו בלוחות. הספירה נלקחת מהדום
+   של הטבלה עצמה, ולכן היא תמיד תואמת למה שמוצג בפועל אחרי סינון. */
+function matchLine(hostSel, word, totalFromStats){
+  var host = view.querySelector(hostSel);
+  if(!host) return;
+  var shown = host.querySelectorAll("tbody tr").length;
+  var line = view.querySelector(".lab-mline");
+  if(!line){
+    line = el("div", "lab-mline");
+    line.appendChild(el("span", "lab-mtxt", ""));
+    host.parentNode.insertBefore(line, host);
+  }
+  var txt = shown + " " + word + " תואמים · מתוך " + totalFromStats;
+  var t = line.querySelector(".lab-mtxt");
+  if(t.textContent !== txt) t.textContent = txt;   /* בלי זה — לולאת צופה */
+}
+
 function maybeStaff(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="staff"]');
   if(!(b && b.classList.contains("active"))) return;
   homeBusy = true;
-  try{ staffKpis(); staffRows(); }catch(e){}
+  try{
+    staffKpis(); staffRows();
+    var sb = (window.__uiLab && window.__uiLab.staffBoard) ? window.__uiLab.staffBoard() : null;
+    if(sb) matchLine("#staffTable", "אנשי צוות", sb.total);
+  }catch(e){}
   homeBusy = false;
+}
+
+/* ===========================================================================
+   בלוק כותרת אחיד לכל המסכים
+   ---------------------------------------------------------------------------
+   בכל לוח יש אותו מבנה: שורת הקשר קטנה, כותרת גדולה, וכפתורי הפעולה בצד
+   שמאל — הכול בשורה אחת. בתוכנה הם מפוזרים: הכותרת בפאנל, והכפתורים בשורה
+   נפרדת מתחת (ולפעמים בשתיים). כאן הם נאספים לבלוק אחד.
+
+   הכפתורים *מוזזים* ולא נבנים מחדש, כך שכל המאזינים שהקוד הקיים כבר קשר
+   אליהם ממשיכים לעבוד. שום כפתור לא נעלם — גם כאלה שאינם בלוח.
+   =========================================================================== */
+function screenHeader(){
+  var panel = view.querySelector(".panel");
+  if(!panel || panel.querySelector(".lab-shead")) return;
+
+  /* הכותרת: או .section-title h2 או h2 ישיר בפאנל */
+  var st = panel.querySelector(":scope > .section-title");
+  var h2 = st ? st.querySelector("h2") : panel.querySelector(":scope > h2");
+  if(!h2) return;
+
+  var head = el("div", "lab-shead");
+  var lft  = el("div", "lab-shead-t");
+
+  var tab = (nav.querySelector("[data-tab].active") || {}).dataset;
+  var sub = (window.__uiLab && window.__uiLab.subtitle && tab)
+              ? window.__uiLab.subtitle(tab.tab) : "";
+  if(sub) lft.appendChild(el("div", "lab-ssub", sub));
+
+  var anchor = st || h2;
+  anchor.parentNode.insertBefore(head, anchor);
+  lft.appendChild(h2);                        /* העברה — המאזינים נשמרים */
+  head.appendChild(lft);
+
+  /* איסוף כפתורי הפעולה: השורה/הסרגל הראשון שאחרי הכותרת שמכיל .btn */
+  var acts = el("div", "lab-sacts");
+  var node = (st && st.parentNode === panel) ? st.nextElementSibling : head.nextElementSibling;
+  var scanned = 0;
+  while(node && scanned < 4){
+    var next = node.nextElementSibling;
+    var btns = node.querySelectorAll(":scope > .btn, :scope > button.btn");
+    var onlyBtns = btns.length && node.children.length === btns.length;
+    if(onlyBtns){
+      while(node.firstChild) acts.appendChild(node.firstChild);
+      node.remove();
+    }
+    node = next; scanned++;
+  }
+  /* אם ה-.section-title כבר החזיק כפתורים — גם הם עוברים */
+  if(st){
+    Array.prototype.slice.call(st.children).forEach(function(c){ acts.appendChild(c); });
+    if(!st.children.length) st.remove();
+  }
+  if(acts.children.length) head.appendChild(acts);
 }
 
 function maybeStudents(){
@@ -1100,7 +1237,12 @@ function maybeStudents(){
   var b = nav.querySelector('[data-tab="students"]');
   if(!(b && b.classList.contains("active"))) return;
   homeBusy = true;                                /* אותו דגל — חוסם כניסה חוזרת */
-  try{ styleStuSummary(); studentsRows(); }catch(e){}
+  try{
+    styleStuSummary(); studentsRows();
+    var sm = view.querySelector("#stuSummary .stat .v");
+    if(sm) matchLine("#stuTable", "תלמידות",
+      (parseInt(String(sm.textContent).replace(/[^\d]/g,""),10) || 0));
+  }catch(e){}
   homeBusy = false;
 }
 
@@ -1112,6 +1254,7 @@ function isHome(){
 function maybeHome(){
   if(homeBusy || !view) return;
   try{ tintBars(); }catch(e){}
+  try{ screenHeader(); }catch(e){}
   if(!isHome()){ maybeStudents(); maybeAssign(); maybeGans(); maybeMap(); maybeStaff(); return; }
   if(view.querySelector(".lab-home")) return;   /* כבר שלנו */
   renderHome();

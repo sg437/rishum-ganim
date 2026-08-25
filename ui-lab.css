@@ -210,19 +210,26 @@ html.ui-lab .drawer.open{ transform:translateX(0) }
    (הגדרות): "שנים ומעבר שנה", "חשבון והתחברות", "פניות והצעות"; והעוזר החכם
    למסך 13. מצב יום/לילה אינו מופיע בשום מסך, וממשיך לעבוד לפי הגדרת מערכת
    ההפעלה (prefers-color-scheme). מוסתר, לא נמחק — ההחלטה הסופית פתוחה. */
-html.ui-lab .drawer-sec:has(> .drawer-year),
-html.ui-lab .drawer-foot .df-row{ display:none }
-html.ui-lab .drawer-foot{ border-top:0; padding-top:0 }
+/* בורר השנה בלבד מוסתר — הוא באמת קיים בהגדרות ("שנים ומעבר שנה"),
+   כך שאין דרך שנחסמת. */
+html.ui-lab .drawer-sec:has(> .drawer-year){ display:none }
 
-/* יוצא מן הכלל אחד: מצב יום/לילה. ארבע הפונקציות האחרות נמצאו בקנבס
-   (הגדרות / כלים ושירותים), אבל לזו אין בית באף אחד מ-16 המסכים —
-   והסתרתה נועלת את מי שבחר במפורש יום או לילה על הבחירה הישנה שלו.
-   יכולת קיימת אינה נופלת רק כי הקנבס לא צייר אותה. */
-html.ui-lab .drawer-foot .df-row:has(> #themeBtn){ display:flex }
-html.ui-lab .drawer-foot #themeBtn{
+/* ⚠️ תוקן: קודם הוסתרו כאן גם עוזר חכם, יצירת קשר והתנתקות, בהנחה
+   שהם יושבים בהגדרות ובכלים ושירותים כמו בלוח. הלוח אמנם מציב אותם
+   שם — אבל בתוכנה הם עדיין לא נבנו שם, ולכן ההסתרה הפכה שלוש פונקציות
+   עובדות לבלתי נגישות לחלוטין. יכולת חוזרת לסרגל עד שיש לה בית אמיתי.
+   מצב יום/לילה נשאר מאותה סיבה — אין לו בית באף מסך בלוח. */
+html.ui-lab .drawer-foot{ border-top:1px solid var(--border); padding-top:12px }
+html.ui-lab .drawer-foot .df-row button{
   background:transparent; border:1px solid var(--border); color:var(--ink-soft);
-  font-size:.82rem; padding:8px 10px;
+  font-size:.82rem; padding:9px 10px; font-weight:600;
 }
+html.ui-lab .drawer-foot .df-row button:hover{ border-color:var(--accent-strong); color:#fff }
+html.ui-lab .drawer-foot #signOutBtn{
+  background:transparent; border-color:color-mix(in srgb, var(--bad) 45%, transparent);
+  color:#e3a49b;
+}
+html.ui-lab .drawer-foot #signOutBtn:hover{ border-color:#e3a49b; color:#fff }
 
 /* בקנבס אין תוויות מעל מקטעי הסרגל — לא "ניווט" ולא "חינוך".
    הקבוצות (יומיום / ניתוח והפקה) הן הכותרות היחידות. */
@@ -460,8 +467,10 @@ html.ui-lab .lh-gans{
 }
 html.ui-lab .lh-gan{
   text-align:start; background:var(--surface);
-  /* מסגרת חזקה בצבע הגיל — --age-ink מוזרק ב-ui-lab.js מתוך AGE_HUE */
-  border:2px solid var(--age-ink, var(--border));
+  /* מסגרת בצבע הגיל — --age-ink מוזרק ב-ui-lab.js מתוך AGE_HUE.
+     3px, ורצועה עבה בצד ההתחלה, כדי שהגיל ייקרא במבט אחד. */
+  border:3px solid var(--age-ink, var(--border));
+  border-inline-start-width:9px;
   border-radius:16px; padding:14px 16px; font:inherit; cursor:pointer;
   display:flex; flex-direction:column; gap:2px;
 }
@@ -820,7 +829,8 @@ html.ui-lab .lg-grid{
 /* מסגרת חזקה בצבע הגיל — --age-ink מ-AGE_HUE שכבר קיים בקוד */
 html.ui-lab .lg-card{
   background:var(--surface);
-  border:2px solid var(--age-ink, var(--border));
+  border:3px solid var(--age-ink, var(--border));
+  border-inline-start-width:9px;
   border-radius:16px; padding:15px 17px;
   display:flex; flex-direction:column; gap:2px; min-width:0;
 }
@@ -862,6 +872,25 @@ html.ui-lab .lg-teach.none .lg-tsub{ direction:rtl }
    הנהלה. שמונת המסכים בנויים מאותם אבני יסוד — כותרת, פאנלים, כפתורים,
    סרגל חיפוש, כרטיסי מספרים וטבלאות. כאן מיושרים אבני היסוד עצמן, ולכן
    כל השמונה מקבלים את שפת הלוחות בלי לגעת במבנה של אף אחד מהם.        */
+
+/* בלוק הכותרת האחיד — שורת הקשר, כותרת גדולה, וכפתורים בצד שמאל */
+html.ui-lab .lab-shead{
+  display:flex; align-items:flex-start; justify-content:space-between;
+  gap:18px; flex-wrap:wrap; margin-bottom:18px;
+}
+html.ui-lab .lab-shead-t{ min-width:0 }
+html.ui-lab .lab-ssub{ font-size:.8rem; color:var(--muted); font-weight:600; margin-bottom:2px }
+html.ui-lab .lab-shead h2{
+  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-size:1.75rem; font-weight:600; letter-spacing:-.03em; margin:0;
+}
+html.ui-lab .lab-sacts{ display:flex; gap:9px; flex-wrap:wrap; align-items:center; flex:0 0 auto }
+html.ui-lab .lab-sacts .btn{ margin:0 }
+@media(max-width:900px){
+  html.ui-lab .lab-shead{ gap:12px }
+  html.ui-lab .lab-shead h2{ font-size:1.35rem }
+  html.ui-lab .lab-sacts{ width:100%; }
+}
 
 /* כותרת מסך */
 html.ui-lab .section-title h2{
@@ -937,6 +966,94 @@ html.ui-lab .empty{
 }
 html.ui-lab fieldset{ border-radius:14px; border-color:var(--border) }
 html.ui-lab legend{ font-weight:700; color:var(--accent-strong); font-size:.86rem }
+
+/* ── תיק הילדה — מסך מלא עם לשוניות (לוח 07) ─────────────────────────────
+   בלוח זה מסך מלא עם לשוניות גם במחשב, לא רק בנייד. הכללים חלים בכל
+   רוחב; מה שמשתנה בנייד הוא רק הצפיפות.                                 */
+html.ui-lab .overlay{ padding:0; align-items:stretch }
+html.ui-lab .modal{
+  width:100%; max-width:none; border-radius:0; border:0;
+  max-height:100dvh;
+}
+/* כותרת כהה */
+/* ה-padding של .modal הוא 0 22px — המרג׳ין השלילי חייב להתאים לו */
+html.ui-lab .modal > h3{
+  background:var(--lab-deep); color:#fff; border-bottom:0;
+  margin:0 -22px; padding:14px 22px 10px;
+  font-size:.92rem; font-weight:600;
+}
+html.ui-lab .lab-dwho{
+  flex:0 0 auto;                 /* .modal הוא flex-column — בלי זה מתכווץ */
+  background:var(--lab-deep); color:#fff;
+  margin:0 -22px; padding:0 22px 14px;
+  display:flex; align-items:center; gap:11px;
+  position:sticky; top:0; z-index:3;
+}
+html.ui-lab .lab-dini{
+  width:42px; height:42px; border-radius:13px; flex:0 0 auto;
+  display:grid; place-items:center;
+  background:rgba(255,255,255,.14); color:#fff; font-weight:800; font-size:.86rem;
+}
+html.ui-lab .lab-dname{ font-weight:700; font-size:1.05rem }
+html.ui-lab .lab-dtz{
+  font-size:.76rem; color:rgba(255,255,255,.6); font-weight:600;
+  direction:ltr; unicode-bidi:isolate; text-align:start;
+}
+/* רצועת הלשוניות — נעוצה לראש התיק */
+html.ui-lab .lab-dtabs{
+  flex:0 0 auto;                 /* ⚠️ קריטי: .modal הוא display:flex עם
+     flex-direction:column, ולכן הרצועה היא פריט flex. בלי זה היא מתכווצת
+     ל-1px (רק הגבול) והלשוניות גולשות מחוצה לה ואינן לחיצות. */
+  position:sticky; top:0; z-index:4;
+  display:flex; gap:2px; margin:0 -22px 14px; padding:0 12px;
+  background:var(--surface); border-bottom:1px solid var(--border);
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+}
+html.ui-lab .lab-dtab{
+  background:none; border:0; border-radius:0; padding:12px 13px 10px;
+  font-size:.86rem; font-weight:600; color:var(--muted);
+  border-bottom:2px solid transparent; white-space:nowrap; cursor:pointer;
+}
+html.ui-lab .lab-dtab.on{ color:var(--accent-strong); border-bottom-color:var(--accent) }
+/* רק המקטע הפעיל מוצג */
+html.ui-lab .modal[data-lab-pane="0"] fieldset[data-lab-pane]:not([data-lab-pane="0"]),
+html.ui-lab .modal[data-lab-pane="1"] fieldset[data-lab-pane]:not([data-lab-pane="1"]),
+html.ui-lab .modal[data-lab-pane="2"] fieldset[data-lab-pane]:not([data-lab-pane="2"]),
+html.ui-lab .modal[data-lab-pane="3"] fieldset[data-lab-pane]:not([data-lab-pane="3"]){
+  display:none;
+}
+/* המקטעים הופכים לכרטיסים; ה-legend מיותר מרגע שיש לשוניות */
+html.ui-lab .modal fieldset[data-lab-pane]{
+  border:1px solid var(--border); border-radius:14px; padding:14px; margin:0 0 12px;
+}
+html.ui-lab .modal fieldset[data-lab-pane] > legend{ display:none }
+/* פס הפעולות התחתון. הפוטר של המודאל הוא .foot (‎.sd-foot שייך לחלון
+   שיתוף המסמך) והוא כבר sticky bottom בבסיס — כאן רק מעצבים אותו. */
+html.ui-lab .modal > .foot{
+  flex:0 0 auto;
+  margin:16px -22px 0; padding:10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  gap:9px; flex-wrap:nowrap;
+}
+html.ui-lab .modal > .foot #saveStu{
+  margin-inline-start:0 !important; flex:1;
+  background:var(--lab-deep); color:#fff; min-height:46px;
+}
+html.ui-lab .modal > .foot .btn{ min-height:46px }
+
+
+/* דסקטופ — מסך כמעט מלא ותוכן רחב */
+@media(min-width:901px){
+  html.ui-lab .overlay{ padding:22px }
+  html.ui-lab .modal{
+    width:min(1180px, 100%); max-height:calc(100dvh - 44px);
+    border-radius:20px; border:1px solid var(--border);
+  }
+  html.ui-lab .modal > h3{ border-radius:20px 20px 0 0 }
+  html.ui-lab .lab-dtabs{ padding:0 22px }
+  html.ui-lab .modal > .foot{ border-radius:0 0 20px 20px }
+  /* המקטעים בשתי עמודות, כמו בלוח */
+  html.ui-lab .modal fieldset[data-lab-pane] .grid.g3{ grid-template-columns:repeat(3,1fr) }
+}
 
 /* ── 12. נייד — לוח 16 ────────────────────────────────────────────────────
    סרגל לשוניות תחתון, רשימת תלמידות ככרטיסים, וכותרת קומפקטית.
@@ -1023,77 +1140,6 @@ html.ui-lab .lab-bottom{ display:none }
   html.ui-lab header.top .chip.edu{
     background:rgba(255,255,255,.1); color:rgba(255,255,255,.8); border-color:transparent;
   }
-
-  /* ---- תיק הילדה כמסך מלא עם לשוניות (לוח 16) ---- */
-  html.ui-lab .overlay{ padding:0; align-items:stretch }
-  html.ui-lab .modal{
-    width:100%; max-width:none; border-radius:0; border:0;
-    max-height:100dvh;
-  }
-  /* כותרת כהה */
-  /* ה-padding של .modal הוא 0 22px — המרג׳ין השלילי חייב להתאים לו */
-  html.ui-lab .modal > h3{
-    background:var(--lab-deep); color:#fff; border-bottom:0;
-    margin:0 -22px; padding:14px 22px 10px;
-    font-size:.92rem; font-weight:600;
-  }
-  html.ui-lab .lab-dwho{
-    flex:0 0 auto;                 /* .modal הוא flex-column — בלי זה מתכווץ */
-    background:var(--lab-deep); color:#fff;
-    margin:0 -22px; padding:0 22px 14px;
-    display:flex; align-items:center; gap:11px;
-    position:sticky; top:0; z-index:3;
-  }
-  html.ui-lab .lab-dini{
-    width:42px; height:42px; border-radius:13px; flex:0 0 auto;
-    display:grid; place-items:center;
-    background:rgba(255,255,255,.14); color:#fff; font-weight:800; font-size:.86rem;
-  }
-  html.ui-lab .lab-dname{ font-weight:700; font-size:1.05rem }
-  html.ui-lab .lab-dtz{
-    font-size:.76rem; color:rgba(255,255,255,.6); font-weight:600;
-    direction:ltr; unicode-bidi:isolate; text-align:start;
-  }
-  /* רצועת הלשוניות — נעוצה לראש התיק */
-  html.ui-lab .lab-dtabs{
-    flex:0 0 auto;                 /* ⚠️ קריטי: .modal הוא display:flex עם
-       flex-direction:column, ולכן הרצועה היא פריט flex. בלי זה היא מתכווצת
-       ל-1px (רק הגבול) והלשוניות גולשות מחוצה לה ואינן לחיצות. */
-    position:sticky; top:0; z-index:4;
-    display:flex; gap:2px; margin:0 -22px 14px; padding:0 12px;
-    background:var(--surface); border-bottom:1px solid var(--border);
-    overflow-x:auto; -webkit-overflow-scrolling:touch;
-  }
-  html.ui-lab .lab-dtab{
-    background:none; border:0; border-radius:0; padding:12px 13px 10px;
-    font-size:.86rem; font-weight:600; color:var(--muted);
-    border-bottom:2px solid transparent; white-space:nowrap; cursor:pointer;
-  }
-  html.ui-lab .lab-dtab.on{ color:var(--accent-strong); border-bottom-color:var(--accent) }
-  /* רק המקטע הפעיל מוצג */
-  html.ui-lab .modal[data-lab-pane="0"] fieldset[data-lab-pane]:not([data-lab-pane="0"]),
-  html.ui-lab .modal[data-lab-pane="1"] fieldset[data-lab-pane]:not([data-lab-pane="1"]),
-  html.ui-lab .modal[data-lab-pane="2"] fieldset[data-lab-pane]:not([data-lab-pane="2"]),
-  html.ui-lab .modal[data-lab-pane="3"] fieldset[data-lab-pane]:not([data-lab-pane="3"]){
-    display:none;
-  }
-  /* המקטעים הופכים לכרטיסים; ה-legend מיותר מרגע שיש לשוניות */
-  html.ui-lab .modal fieldset[data-lab-pane]{
-    border:1px solid var(--border); border-radius:14px; padding:14px; margin:0 0 12px;
-  }
-  html.ui-lab .modal fieldset[data-lab-pane] > legend{ display:none }
-  /* פס הפעולות התחתון. הפוטר של המודאל הוא .foot (‎.sd-foot שייך לחלון
-     שיתוף המסמך) והוא כבר sticky bottom בבסיס — כאן רק מעצבים אותו. */
-  html.ui-lab .modal > .foot{
-    flex:0 0 auto;
-    margin:16px -22px 0; padding:10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-    gap:9px; flex-wrap:nowrap;
-  }
-  html.ui-lab .modal > .foot #saveStu{
-    margin-inline-start:0 !important; flex:1;
-    background:var(--lab-deep); color:#fff; min-height:46px;
-  }
-  html.ui-lab .modal > .foot .btn{ min-height:46px }
 
   /* ---- מסך הבית בנייד ---- */
   html.ui-lab .lh-kpis{ grid-template-columns:1fr 1fr; gap:11px }

@@ -2396,6 +2396,25 @@ if(document.documentElement.classList.contains("ui-lab")){
       }catch(e){ return null; }
     },
 
+    /* כותרת־המשנה של כל מסך, לפי הלוחות. מחושבת מהנתונים החיים. */
+    subtitle(tab){
+      try{
+        const y = DB.activeYear || "";
+        const stu = eduScope(studentsOfYear().filter(s=>!s.finished)).length;
+        const gans = eduScope(DB.gans.filter(g=>g.active));
+        const camps = new Set(gans.map(g=>String(g.campus||"").trim()).filter(Boolean)).size;
+        const staff = (DB.staff||[]).filter(m=>staffIsActive(m)).length;
+        switch(tab){
+          case "students": return stu + " תלמידות · " + y;
+          case "gans":     return gans.length + " גנים · " + camps + " קמפוסים · " + y;
+          case "staff":    return "מאגר כללי · " + staff + " אנשי צוות פעילים · " + y;
+          case "assign":   return y + " · " + gans.length + " גנים";
+          case "map":      return y + " · " + gans.length + " גנים";
+          default:         return y;
+        }
+      }catch(e){ return ""; }
+    },
+
     /* מסך צוות הגנים (לוח 04 במסמך — מסך שאינו קיים בקנבס הישן).
        ⚠️ הלוח מציג "מסמכים חסרים" עם חוזה העסקה / אישור העדר עבירות /
        תעודת הוראה. שלושתם אינם קיימים במודל הצוות. מה שכן קיים הוא
