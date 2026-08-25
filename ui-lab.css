@@ -671,7 +671,103 @@ html.ui-lab .la-free{
   html.ui-lab .la-edit{ min-height:44px }
 }
 
-/* ── 10. תג המעבדה ─────────────────────────────────────────────────────────
+
+/* ── 10. נייד — לוח 16 ────────────────────────────────────────────────────
+   סרגל לשוניות תחתון, רשימת תלמידות ככרטיסים, וכותרת קומפקטית.
+   הכול תחת 900px בלבד; בדסקטופ שום דבר מכאן לא חל.
+   המידות נמדדו מהלוח: סרגל 9/16/14, פריט .68rem, אייקון 1.1rem,
+   FAB 50×50 ברדיוס 17 עם צל 0 8px 18px.                                    */
+
+html.ui-lab .lab-bottom{ display:none }
+
+@media(max-width:900px){
+  html.ui-lab .lab-bottom{
+    position:fixed; inset-inline:0; bottom:0; z-index:45;
+    display:flex; justify-content:space-between; align-items:flex-end;
+    background:var(--surface); border-top:1px solid var(--border);
+    padding:9px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+  html.ui-lab .lb-item{
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    background:none; border:0; padding:2px 6px; min-width:56px;
+    font-size:.68rem; font-weight:600; color:var(--muted); cursor:pointer;
+  }
+  html.ui-lab .lb-item.on{ color:var(--lab-deep); font-weight:700 }
+  html.ui-lab .lb-ic{ font-size:1.1rem; line-height:1 }
+  html.ui-lab .lb-item.on .lb-ic{ opacity:1 }
+  html.ui-lab .lb-fab{
+    width:50px; height:50px; border-radius:17px; flex:0 0 auto;
+    background:var(--lab-deep); color:#fff; border:0;
+    display:grid; place-items:center; font-size:1.35rem; margin-bottom:2px;
+    box-shadow:0 8px 18px rgba(21,52,42,.32); cursor:pointer;
+  }
+
+  /* מקום לסרגל, ולתג המעבדה שלא יסתתר מאחוריו */
+  html.ui-lab body{ padding-bottom:82px }
+  html.ui-lab .ui-lab-badge{ inset-block-end:calc(86px + env(safe-area-inset-bottom, 0px)) }
+  /* סרגל הבחירה של התלמידות נעוץ מעל סרגל הניווט */
+  html.ui-lab .selbar{ bottom:86px }
+
+  /* ---- רשימת התלמידות ככרטיסים במקום טבלה ----
+     סדר העמודות בתוכנה משתנה לפי "עמודות נוספות", ולכן אי אפשר למקם תא
+     לפי מיקומו. הפריסה גמישה: תא השם תופס שורה שלמה, וכל השאר זורמים
+     אחריו כשורת פרטים אחת. */
+  html.ui-lab .stu-table{ min-width:0; display:block }
+  html.ui-lab .stu-table thead{ display:none }
+  html.ui-lab .stu-table tbody{ display:flex; flex-direction:column; gap:10px }
+  html.ui-lab .stu-table tbody tr{
+    display:flex; flex-wrap:wrap; align-items:center; gap:7px 10px;
+    background:var(--surface);
+    border:1px solid var(--border); border-radius:14px; padding:13px 15px;
+  }
+  html.ui-lab .stu-table tbody tr.sel,
+  html.ui-lab .stu-table tbody tr.selected{ box-shadow:inset 3px 0 0 var(--accent) }
+  html.ui-lab .stu-table td{
+    display:block; border:0; padding:0; white-space:normal;
+    font-size:.8rem; color:var(--muted);
+  }
+  /* השם תופס שורה שלמה. ה-flex חייב להיאמר שוב — td{display:block} שלמעלה
+     דורס את .lab-namecell, כי מדובר באותו אלמנט. */
+  html.ui-lab .stu-table td:first-child{
+    flex:1 0 100%; display:flex; align-items:center; gap:10px;
+    font-size:1rem; color:var(--ink);
+  }
+  html.ui-lab .stu-table .lab-namecell .nm{ font-weight:700 }
+  html.ui-lab .stu-table .lab-ini{ width:34px; height:34px; font-size:.8rem }
+  html.ui-lab .stu-table td.actions{ flex:1 0 100%; margin-top:2px }
+  html.ui-lab .stu-table td:empty{ display:none }
+
+  /* ---- כותרת כהה קומפקטית (לוח 16) ---- */
+  html.ui-lab header.top{
+    background:var(--lab-deep); border-bottom:0;
+    box-shadow:0 1px 0 rgba(0,0,0,.12);
+  }
+  html.ui-lab header.top .brand .txt .t1{ color:#fff }
+  html.ui-lab header.top .brand .txt .t2{ color:rgba(255,255,255,.55) }
+  html.ui-lab header.top .hamburger{
+    background:rgba(255,255,255,.12); border-color:transparent;
+  }
+  html.ui-lab header.top .hamburger span,
+  html.ui-lab header.top .hamburger span::before{ background:#fff }
+  html.ui-lab header.top .hamburger span{ box-shadow:0 6px 0 #fff, 0 -6px 0 #fff }
+  html.ui-lab header.top .backbtn{
+    background:rgba(255,255,255,.12); border-color:transparent; color:#fff;
+  }
+  html.ui-lab header.top .chip.year{ background:rgba(255,255,255,.14); color:#fff }
+  html.ui-lab header.top .chip.edu{
+    background:rgba(255,255,255,.1); color:rgba(255,255,255,.8); border-color:transparent;
+  }
+
+  /* ---- מסך הבית בנייד ---- */
+  html.ui-lab .lh-kpis{ grid-template-columns:1fr 1fr; gap:11px }
+  html.ui-lab .lh-kpi.dark{ grid-column:1 / -1 }
+  html.ui-lab .lh-greet{ font-size:1.35rem }
+  html.ui-lab .lh-task{ padding:12px 0 }
+  html.ui-lab .lh-tbtn{ padding:8px 12px; font-size:.8rem }
+  html.ui-lab .lh-gans{ grid-template-columns:1fr }
+}
+
+/* ── 11. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
 html.ui-lab .ui-lab-badge{

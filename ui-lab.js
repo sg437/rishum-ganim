@@ -84,6 +84,60 @@ function navCounts(s){
   });
 }
 
+/* ===========================================================================
+   נייד — סרגל לשוניות תחתון (לוח 16)
+   ---------------------------------------------------------------------------
+   מוצג רק מתחת ל-900px. המגירה נשארת קיימת ונפתחת מ"עוד", כך ששאר עשר
+   הלשוניות נגישות ושום דבר לא נחסם.
+
+   האייקונים הם הגליפים של שאר התוכנה ולא אימוג׳י — בלוח הם צבעוניים, ואצלנו
+   כל הניווט מונוכרומי. "עוד" קיבל ⋯ ולא ☰, כי ☰ כבר שייך לתלמידות.
+   =========================================================================== */
+var BOTTOM = [
+  { tab:"home",     icon:"◫", label:"בית" },
+  { tab:"students", icon:"☰", label:"תלמידות" },
+  { fab:true },
+  { tab:"map",      icon:"⌖", label:"שיבוץ" },
+  { menu:true,      icon:"⋯", label:"עוד" }
+];
+
+function bottomBar(){
+  var bar = document.getElementById("labBottom");
+  if(!bar){
+    bar = document.createElement("nav");
+    bar.id = "labBottom";
+    bar.className = "lab-bottom";
+    BOTTOM.forEach(function(it){
+      if(it.fab){
+        var f = el("button", "lb-fab", "+");
+        f.title = "הוספת ילדה";
+        f.setAttribute("aria-label", "הוספת ילדה");
+        f.onclick = function(){ if(window.__uiLab && window.__uiLab.addStudent) window.__uiLab.addStudent(); };
+        bar.appendChild(f);
+        return;
+      }
+      var b = el("button", "lb-item");
+      b.appendChild(el("span", "lb-ic", it.icon));
+      b.appendChild(el("span", "lb-tx", it.label));
+      if(it.menu){
+        b.dataset.menu = "1";
+        b.onclick = function(){ if(window.__uiLab && window.__uiLab.openMenu) window.__uiLab.openMenu(); };
+      }else{
+        b.dataset.for = it.tab;
+        b.onclick = function(){ go(it.tab); };
+      }
+      bar.appendChild(b);
+    });
+    document.body.appendChild(bar);
+  }
+  /* סימון הלשונית הפעילה */
+  bar.querySelectorAll("[data-for]").forEach(function(b){
+    var src = nav.querySelector('[data-tab="' + b.dataset.for + '"]');
+    var on  = !!(src && src.classList.contains("active"));
+    if(b.classList.contains("on") !== on) b.classList.toggle("on", on);
+  });
+}
+
 function relabel(){
   for(var id in LABELS){
     var btn = nav.querySelector('[data-tab="'+id+'"] .tl');
@@ -679,6 +733,7 @@ function paint(){
   busy = true;
   try{
     exportTab();
+    bottomBar();
     groupNav();
     relabel();
     var s = (window.__uiLab && window.__uiLab.stats) ? window.__uiLab.stats() : null;

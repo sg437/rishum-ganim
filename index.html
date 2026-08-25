@@ -2390,6 +2390,15 @@ if(document.documentElement.classList.contains("ui-lab")){
       }catch(e){ return null; }
     },
 
+    /* כפתור ה-+ בסרגל התחתון בנייד (לוח 16) — אותה פעולה בדיוק של
+       "➕ הוספת ילדה" במסך התלמידות, כולל ירושת בורר החינוך. */
+    addStudent(){
+      try{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); }catch(e){}
+    },
+
+    /* פתיחת המגירה — "עוד" בסרגל התחתון */
+    openMenu(){ try{ openDrawer(); }catch(e){} },
+
     /* פתיחת מודאל השיבוץ הקיים. כל הכתיבה למסד נשארת שם — על הכללים
        הבדוקים שלו (סייעת ב׳ מ-30, אין בגן חובה, ימים, תקופה, כפילות). */
     openGan(ganId){ try{ openGanAssign(ganId); }catch(e){} },
