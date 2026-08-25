@@ -1053,6 +1053,64 @@ function maybeMap(){
   homeBusy = false;
 }
 
+/* ===========================================================================
+   צוות הגנים (לוח 04)
+   ---------------------------------------------------------------------------
+   שורת KPI מעל הטבלה, ראשי תיבות בשורות, והתפקיד כתגית. הטבלה, החיפוש
+   והסינון נשארים של התוכנה.
+   =========================================================================== */
+function staffKpis(){
+  var host = view.querySelector("#staffTable");
+  if(!host || view.querySelector(".lab-stkpis")) return;
+  var d = (window.__uiLab && window.__uiLab.staffBoard) ? window.__uiLab.staffBoard() : null;
+  if(!d) return;
+  var row = el("div", "lh-kpis lab-stkpis");
+  row.appendChild(kpi({
+    dark:true, label:"סה״כ אנשי צוות", value:d.total,
+    sub:d.assigned + " משובצים · " + d.unassigned + " ללא גן",
+    ring: d.total ? d.assigned / d.total * 100 : 0
+  }));
+  row.appendChild(kpi({ label:"גננות",  value:d.ganenet }));
+  row.appendChild(kpi({ label:"סייעות", value:d.sayaat }));
+  row.appendChild(kpi({ label:"ללא תעודה", value:d.noCert, tone:d.noCert ? "bad" : "good" }));
+  host.parentNode.insertBefore(row, host);
+}
+
+function staffRows(){
+  /* ראשי תיבות בתא שם המשפחה, ותגית לתפקיד — כמו בלוח */
+  view.querySelectorAll("#staffTable tbody tr").forEach(function(tr){
+    var tds = tr.children;
+    if(tds.length < 3) return;
+    var nameCell = tds[0], roleCell = tds[2];
+    if(!nameCell.querySelector(".lab-ini")){
+      var last = (nameCell.textContent || "").trim();
+      var first = (tds[1].textContent || "").trim();
+      var ini = initialsFrom((last + " " + first).trim());
+      if(ini){
+        var sp = el("span", "lab-ini", ini);
+        nameCell.insertBefore(sp, nameCell.firstChild);
+        nameCell.classList.add("lab-namecell");
+      }
+    }
+    if(roleCell && !roleCell.querySelector(".lab-role")){
+      var t = (roleCell.textContent || "").trim();
+      if(t && t !== "—"){
+        roleCell.textContent = "";
+        roleCell.appendChild(el("span", "lab-role", t));
+      }
+    }
+  });
+}
+
+function maybeStaff(){
+  if(homeBusy || !view) return;
+  var b = nav.querySelector('[data-tab="staff"]');
+  if(!(b && b.classList.contains("active"))) return;
+  homeBusy = true;
+  try{ staffKpis(); staffRows(); }catch(e){}
+  homeBusy = false;
+}
+
 function maybeStudents(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="students"]');
@@ -1070,7 +1128,7 @@ function isHome(){
 function maybeHome(){
   if(homeBusy || !view) return;
   try{ tintBars(); }catch(e){}
-  if(!isHome()){ maybeStudents(); maybeAssign(); maybeGans(); maybeMap(); return; }
+  if(!isHome()){ maybeStudents(); maybeAssign(); maybeGans(); maybeMap(); maybeStaff(); return; }
   if(view.querySelector(".lab-home")) return;   /* כבר שלנו */
   renderHome();
 }

@@ -2418,6 +2418,27 @@ if(document.documentElement.classList.contains("ui-lab")){
       }catch(e){ return null; }
     },
 
+    /* מסך צוות הגנים (לוח 04 במסמך — מסך שאינו קיים בקנבס הישן).
+       ⚠️ הלוח מציג "מסמכים חסרים" עם חוזה העסקה / אישור העדר עבירות /
+       תעודת הוראה. שלושתם אינם קיימים במודל הצוות. מה שכן קיים הוא
+       certificate (תעודה), ולכן המשבצת הרביעית מציגה "ללא תעודה" —
+       נתון אמיתי מאותה משפחה, במקום מספר מומצא. */
+    staffBoard(){
+      try{
+        const all = (DB.staff||[]).filter(m=>staffIsActive(m));
+        const has = r => all.filter(m=>String(m.role||"").indexOf(r)>=0).length;
+        const idx = staffAsgIndex("activity", null);
+        const assigned = all.filter(m=>idx[m.id]).length;
+        return {
+          total: all.length,
+          ganenet: has("גננת"),
+          sayaat:  has("סייעת"),
+          noCert:  all.filter(m=>!m.certificate).length,
+          assigned, unassigned: all.length - assigned
+        };
+      }catch(e){ return null; }
+    },
+
     /* צבעי הגנים במפה — ganColor() כבר קיים ומשמש לדגלים ולנקודות.
        נחשף כדי שהשבבים בבורר הגנים יישאו את אותו צבע, כמו בלוח 05. */
     ganColors(){
