@@ -30,6 +30,12 @@ var GROUPS = [
                                  "messages","tools","settings","guide"] }
 ];
 
+/* תוויות הניווט בקנבס קצרות מאלה שבקוד. שינוי המערך TABS עצמו היה משנה גם
+   את התוכנה הרגילה, ולכן ההחלפה היא על הטקסט המוצג בלבד, בתוך המעבדה.
+   מסך 02 בקנבס: "מסך בית" · "תלמידות" · "צוות" (בקוד: עמוד הבית / תיקי
+   התלמידות / צוות הגנים). שאר התוויות זהות. */
+var LABELS = { home:"מסך בית", students:"תלמידות", staff:"צוות" };
+
 var nav = document.getElementById("tabs");
 var foot = document.querySelector(".drawer-foot");
 if(!nav) return;               /* management.html / register.html — אין ניווט */
@@ -40,6 +46,21 @@ var busy = false;              /* מונע לולאה: השינויים שלנו
    היא כפולה מול כותרות הקבוצות שאנחנו מזריקים. */
 var navSec = nav.closest(".drawer-sec");
 if(navSec) navSec.classList.add("lab-navsec");
+
+function relabel(){
+  for(var id in LABELS){
+    var btn = nav.querySelector('[data-tab="'+id+'"] .tl');
+    if(btn && btn.textContent !== LABELS[id]) btn.textContent = LABELS[id];
+  }
+}
+
+/* כותרת המשנה של המותג בקנבס היא שנה · מספר גנים, ולא שם הרשת */
+function brandSub(s){
+  var el = document.querySelector("#drawerBrand .txt .t2");
+  if(!el || !s) return;
+  var txt = s.year + (s.gansActive ? " · " + s.gansActive + " גנים" : "");
+  if(el.textContent !== txt) el.textContent = txt;
+}
 
 function groupNav(){
   for(var i=0;i<GROUPS.length;i++){
@@ -109,8 +130,10 @@ function paint(){
   busy = true;
   try{
     groupNav();
+    relabel();
+    var s = (window.__uiLab && window.__uiLab.stats) ? window.__uiLab.stats() : null;
+    brandSub(s);
     if(foot){
-      var s = (window.__uiLab && window.__uiLab.stats) ? window.__uiLab.stats() : null;
       targetCard(s);
       userRow(s);
     }
