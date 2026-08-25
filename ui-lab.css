@@ -1183,3 +1183,292 @@ html.ui-lab .ui-lab-badge{
 }
 html.ui-lab .ui-lab-badge:hover{ opacity:1 }
 @media print{ html.ui-lab .ui-lab-badge{ display:none } }
+
+/* ===========================================================================
+   14 · המסכים הנותרים — דוחות, עירייה, הנהלה, הודעות, ייצוא, הגדרות, כלים
+   =========================================================================== */
+
+/* -- כותרת המסך יושבת על רקע העמוד, מעל הכרטיסים -------------------------- */
+html.ui-lab #view > .lab-shead{ margin:0 0 20px }
+
+/* -- שורת KPI ------------------------------------------------------------- */
+html.ui-lab .lab-kpis{
+  display:grid; gap:14px; margin-bottom:18px;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+}
+
+/* -- שני טורים ------------------------------------------------------------ */
+html.ui-lab .lab-2col{ display:grid; gap:14px; grid-template-columns:1fr 1fr; margin-bottom:18px }
+html.ui-lab .lab-2col.aside{ grid-template-columns:320px 1fr }
+@media (max-width:1000px){
+  html.ui-lab .lab-2col, html.ui-lab .lab-2col.aside{ grid-template-columns:1fr }
+}
+
+/* -- פאנל שהמעבדה בונה ---------------------------------------------------- */
+html.ui-lab .panel.lab-made{ margin:0 }
+html.ui-lab .lab-phead{ margin-bottom:14px }
+html.ui-lab .lab-phead h3{ margin:0; font-size:1.05rem; font-weight:600; letter-spacing:-.02em }
+html.ui-lab .lab-psub{ font-size:.78rem; color:var(--muted); margin-top:3px }
+html.ui-lab .lab-empty{ color:var(--muted); font-size:.85rem; padding:16px 0; text-align:center }
+html.ui-lab .lab-note{
+  margin-top:12px; padding:9px 12px; border-radius:10px;
+  background:var(--surface-2); color:var(--ink-soft); font-size:.78rem;
+}
+
+/* -- מד אופקי ------------------------------------------------------------- */
+html.ui-lab .lab-brow{ margin-bottom:13px }
+html.ui-lab .lab-brow:last-child{ margin-bottom:0 }
+html.ui-lab .lab-btop{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px }
+html.ui-lab .lab-blab{ font-size:.85rem; font-weight:600 }
+html.ui-lab .lab-bval{
+  font-size:.76rem; color:var(--ink-soft); font-weight:600;
+  direction:ltr; unicode-bidi:isolate;
+}
+html.ui-lab .lab-bar{ height:8px; border-radius:99px; background:var(--lab-rule-row); overflow:hidden }
+html.ui-lab .lab-bar > i{ display:block; height:100%; border-radius:99px; background:var(--accent) }
+html.ui-lab .lab-bar.good > i{ background:var(--accent) }
+html.ui-lab .lab-bar.warn > i{ background:var(--lab-gold) }
+html.ui-lab .lab-bar.bad  > i{ background:#b4483c }
+html.ui-lab .lab-bar.mini{ height:6px; width:80px; display:inline-block; vertical-align:middle }
+
+/* -- עמודות (רישום לפי גיל / קצב לפי מועד) -------------------------------- */
+html.ui-lab .lab-cols{
+  display:flex; align-items:flex-end; justify-content:space-around;
+  gap:10px; min-height:180px; padding-top:6px;
+}
+html.ui-lab .lab-col{ display:flex; flex-direction:column; align-items:center; gap:7px; flex:1 }
+html.ui-lab .lab-cn{ font-size:.82rem; font-weight:700 }
+html.ui-lab .lab-cl{ font-size:.75rem; color:var(--muted); font-weight:600 }
+html.ui-lab .lab-stack{
+  width:100%; max-width:56px; min-height:8px; display:flex; flex-direction:column;
+  border-radius:8px 8px 4px 4px; overflow:hidden;
+}
+html.ui-lab .lab-stack > i.wait{ background:var(--lab-gold); display:block }
+html.ui-lab .lab-stack > i.plc { background:var(--accent);   display:block }
+html.ui-lab .lab-pair{ display:flex; align-items:flex-end; gap:5px; height:130px }
+html.ui-lab .lab-pair > i{ display:block; width:22px; border-radius:6px 6px 3px 3px; min-height:4px }
+html.ui-lab .lab-pair > i.now { background:var(--accent) }
+html.ui-lab .lab-pair > i.prev{ background:var(--lab-rule-head) }
+html.ui-lab .lab-legend{ display:flex; gap:16px; justify-content:center; margin-top:14px }
+html.ui-lab .lab-lg{ display:inline-flex; align-items:center; gap:6px; font-size:.75rem; color:var(--ink-soft) }
+html.ui-lab .lab-lg > i{ width:11px; height:11px; border-radius:3px; display:block }
+html.ui-lab .lab-lg > i.plc, html.ui-lab .lab-lg > i.now{ background:var(--accent) }
+html.ui-lab .lab-lg > i.wait{ background:var(--lab-gold) }
+html.ui-lab .lab-lg > i.prev{ background:var(--lab-rule-head); border:1px solid var(--border) }
+
+/* -- תאים בטבלאות שהמעבדה בונה -------------------------------------------- */
+html.ui-lab td.lab-gcell > b{
+  border-inline-start:4px solid var(--age-ink, var(--border));
+  padding-inline-start:9px; display:inline-block;
+}
+html.ui-lab td.lab-occ{ white-space:nowrap }
+html.ui-lab .lab-occn{ display:inline-block; min-width:38px; font-weight:700; font-size:.82rem }
+html.ui-lab td.lab-num{ direction:ltr; unicode-bidi:isolate; text-align:end; font-variant-numeric:tabular-nums }
+html.ui-lab .lab-tag{
+  display:inline-block; padding:3px 10px; border-radius:99px;
+  font-size:.73rem; font-weight:700; border:1px solid transparent;
+}
+html.ui-lab .lab-tag.good{ background:var(--accent-soft); color:var(--accent-strong); border-color:#cfe2d4 }
+html.ui-lab .lab-tag.warn{ background:#f7efd9; color:#7a5a15; border-color:#e8d7a8 }
+html.ui-lab .lab-tag.bad { background:#fbe6e3; color:#8f342a; border-color:#f0c9c3 }
+
+/* -- קמפוסים (מבט הנהלה) -------------------------------------------------- */
+html.ui-lab .lab-camp{
+  border:1px solid var(--border); border-radius:14px; padding:13px 15px;
+  background:var(--surface-2); margin-bottom:11px;
+}
+html.ui-lab .lab-camp:last-child{ margin-bottom:0 }
+html.ui-lab .lab-camph{ display:flex; justify-content:space-between; align-items:baseline; gap:10px }
+html.ui-lab .lab-campn{ font-size:.75rem; color:var(--muted) }
+html.ui-lab .lab-metrics{ display:flex; gap:26px; margin-top:10px }
+html.ui-lab .lab-metric{ display:flex; flex-direction:column; gap:2px }
+html.ui-lab .lab-mk{ font-size:.7rem; color:var(--muted); font-weight:600 }
+html.ui-lab .lab-mv{ font-size:.9rem; font-weight:700 }
+html.ui-lab .lab-mv.good{ color:var(--accent) }
+html.ui-lab .lab-mv.warn{ color:var(--lab-gold) }
+html.ui-lab .lab-mv.bad { color:#b4483c }
+
+/* -- סביבת עבודה בשני טורים (הודעות, ייצוא) ------------------------------- */
+html.ui-lab .lab-work{ display:grid; gap:16px; grid-template-columns:1fr 320px; align-items:start }
+html.ui-lab .lab-work.rev{ grid-template-columns:320px 1fr }
+html.ui-lab .lab-work.rev .lab-wside{ order:-1 }
+html.ui-lab .lab-wmain{ display:flex; flex-direction:column; gap:14px; min-width:0 }
+html.ui-lab .lab-wside{ display:flex; flex-direction:column; gap:14px; position:sticky; top:14px }
+@media (max-width:1000px){
+  html.ui-lab .lab-work, html.ui-lab .lab-work.rev{ grid-template-columns:1fr }
+  html.ui-lab .lab-wside{ position:static }
+  html.ui-lab .lab-work.rev .lab-wside{ order:0 }
+}
+
+/* -- לוח השליחה/ההורדה הכהה ------------------------------------------------ */
+html.ui-lab .lab-send{
+  background:var(--lab-deep); color:#f3f6f1; border-radius:var(--radius);
+  padding:18px 20px; box-shadow:0 10px 26px rgba(21,52,42,.18);
+}
+html.ui-lab .lab-sendk{ font-size:.76rem; color:#a9c0b2; font-weight:600 }
+html.ui-lab .lab-bignum{
+  font-size:2.9rem; font-weight:600; line-height:1.05; letter-spacing:-.045em;
+  margin:2px 0 4px;
+}
+html.ui-lab .lab-send .lab-cntline{
+  font-size:.77rem; color:#a9c0b2; background:none; border:0; padding:0; margin:0;
+}
+html.ui-lab .lab-sendrule{ height:1px; background:rgba(255,255,255,.14); margin:15px 0 }
+html.ui-lab .lab-sendacts{ display:flex; flex-direction:column; gap:8px; align-items:stretch }
+html.ui-lab .lab-sendacts .btn{
+  width:100%; justify-content:center; background:#fff; color:var(--lab-deep);
+  border:0; font-weight:700;
+}
+html.ui-lab .lab-sendacts .btn.ghost{
+  background:rgba(255,255,255,.08); color:#e7efe8; border:1px solid rgba(255,255,255,.2);
+}
+html.ui-lab .lab-sendacts .check{ color:#cddcd2; font-size:.78rem; margin:2px 0 0 }
+
+/* -- שלבים ממוספרים (הודעות) ---------------------------------------------- */
+html.ui-lab .lab-wmain fieldset{
+  border:1px solid var(--border); border-radius:var(--radius);
+  background:var(--surface); padding:16px 18px;
+}
+html.ui-lab .lab-wmain legend{
+  display:flex; align-items:center; gap:9px; padding:0 4px;
+  font-weight:600; font-size:1rem;
+}
+html.ui-lab .lab-step{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:7px; background:var(--lab-deep);
+  color:#f3f6f1; font-size:.75rem; font-weight:700;
+}
+html.ui-lab .lab-steptxt{ letter-spacing:-.02em }
+
+/* -- כרטיסי ערוץ ---------------------------------------------------------- */
+html.ui-lab .btn.lab-chcard{
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  min-width:150px; padding:11px 14px; text-align:start; line-height:1.25;
+}
+html.ui-lab .lab-chttl{ font-weight:700; font-size:.9rem }
+html.ui-lab .lab-chsub{ font-size:.7rem; opacity:.72; font-weight:500 }
+
+/* -- שבבים לקבוצות תיבות סימון (ייצוא, הודעות, מחשבון) --------------------- */
+html.ui-lab .checks .check,
+html.ui-lab .lab-wmain .check{
+  display:inline-flex; align-items:center; gap:7px; margin:0;
+  padding:6px 12px; border:1px solid var(--border); border-radius:99px;
+  background:var(--surface); font-size:.82rem; font-weight:600;
+  cursor:pointer; transition:background .15s, border-color .15s, color .15s;
+}
+html.ui-lab .checks .check:hover,
+html.ui-lab .lab-wmain .check:hover{ border-color:var(--accent) }
+html.ui-lab .checks .check:has(input:checked),
+html.ui-lab .lab-wmain .check:has(input:checked){
+  background:var(--lab-deep); border-color:var(--lab-deep); color:#f3f6f1;
+}
+html.ui-lab .checks{ display:flex !important; flex-wrap:wrap; gap:8px }
+
+/* -- הגדרות: רשימת ניווט צדדית -------------------------------------------- */
+html.ui-lab .lab-setwrap{ display:grid; gap:18px; grid-template-columns:1fr 230px; align-items:start }
+html.ui-lab .lab-setcol{ display:flex; flex-direction:column; gap:14px; min-width:0 }
+html.ui-lab .lab-setcol > .panel{ margin:0 }
+html.ui-lab .lab-toc{
+  position:sticky; top:14px; background:var(--surface-2);
+  border:1px solid var(--border); border-radius:var(--radius); padding:12px 10px;
+  max-height:calc(100vh - 40px); overflow:auto;
+}
+html.ui-lab .lab-tocg{
+  font-size:.68rem; color:var(--muted); font-weight:700; letter-spacing:.02em;
+  padding:10px 10px 5px;
+}
+html.ui-lab .lab-tocg:first-child{ padding-top:2px }
+html.ui-lab .lab-toci{
+  display:block; padding:7px 10px; border-radius:9px; text-decoration:none;
+  color:var(--ink-soft); font-size:.82rem; font-weight:600;
+  border-inline-start:3px solid transparent;
+}
+html.ui-lab .lab-toci:hover{ background:var(--surface) }
+html.ui-lab .lab-toci.on{
+  background:var(--surface); color:var(--ink);
+  border-inline-start-color:var(--accent);
+}
+@media (max-width:1000px){
+  html.ui-lab .lab-setwrap{ grid-template-columns:1fr }
+  html.ui-lab .lab-toc{ display:none }
+}
+
+/* -- כלים ושירותים: רשת כרטיסים ------------------------------------------- */
+html.ui-lab .lab-grid{
+  display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(420px,1fr));
+  align-items:stretch;
+}
+html.ui-lab .lab-grid > .panel{ margin:0 }
+html.ui-lab .panel.lab-tool > h2{ display:flex; align-items:center; gap:11px }
+html.ui-lab .lab-ic{
+  flex:0 0 auto; width:34px; height:34px; border-radius:11px;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--accent-soft); font-size:1rem;
+}
+html.ui-lab .lab-ictt{ flex:1 1 auto; min-width:0 }
+html.ui-lab .panel.lab-tool > h2 .pill{ flex:0 0 auto; font-size:.72rem }
+
+/* -- עיגולי ראשי תיבות (מי מחובר / יומן פעילות) ---------------------------- */
+html.ui-lab .lab-av{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:26px; border-radius:9px; margin-inline-end:9px;
+  background:var(--accent-soft); color:var(--accent-strong);
+  font-size:.7rem; font-weight:700; vertical-align:middle;
+}
+html.ui-lab td.lab-avcell{ white-space:nowrap }
+
+/* -- תיקוני התאמה לפי הלוחות ---------------------------------------------- */
+
+/* כרטיס KPI תמיד נערם: תווית, מספר, דלתא, מד. בלי זה כרטיס עם שורת דלתא
+   ארוכה נשבר לשורה אופקית והתווית נצמדת למספר. */
+html.ui-lab .lab-kpis .lh-kpi{ display:block }
+html.ui-lab .lab-kpis .lh-kpi.lh-kpi-ring{ display:flex; align-items:center }
+html.ui-lab .lab-kpis .lh-kpi.dark .lh-bar{ background:rgba(255,255,255,.14) }
+html.ui-lab .lab-kpis .lh-kpi.dark .lh-bar > i{ background:var(--lab-gold-on-deep) }
+html.ui-lab .lab-kpis .lh-sub.gold{ color:var(--lab-gold-on-deep); font-weight:700 }
+html.ui-lab .lab-kpis .lh-sub.good{ color:var(--accent); font-weight:700 }
+html.ui-lab .lab-kpis .lh-sub.bad { color:#b4483c; font-weight:700 }
+
+/* עירייה: הטבלה מימין, המדים משמאל — כמו בלוח */
+html.ui-lab .lab-2col.aside{ grid-template-columns:1fr 320px }
+@media (max-width:1000px){ html.ui-lab .lab-2col.aside{ grid-template-columns:1fr } }
+
+/* הודעות/ייצוא: הפאנל החיצוני הוא העמוד עצמו, לא כרטיס */
+html.ui-lab .panel.lab-bare{
+  background:none; border:0; box-shadow:none; padding:0; margin:0;
+}
+
+/* כרטיסי הערוץ ברוחב אחיד */
+html.ui-lab .lab-chrow{
+  display:grid !important; gap:9px;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+}
+
+/* שבבי בחירה: בלי תיבת סימון גלויה, עם ✕ על מה שנבחר — כמו בלוח */
+html.ui-lab .checks .check > input[type=checkbox],
+html.ui-lab .lab-wmain .check > input[type=checkbox]{
+  position:absolute; opacity:0; width:1px; height:1px; pointer-events:none;
+}
+html.ui-lab .checks .check,
+html.ui-lab .lab-wmain .check{ position:relative }
+html.ui-lab .checks .check:has(input:checked)::after,
+html.ui-lab .lab-wmain .check:has(input:checked)::after{
+  content:"✕"; font-size:.72rem; opacity:.75; margin-inline-start:2px;
+}
+/* הסתרת התיבה דורשת :has — בדפדפן בלעדיו התיבה נשארת ונשארת שמישה */
+@supports not selector(:has(*)){
+  html.ui-lab .checks .check > input[type=checkbox],
+  html.ui-lab .lab-wmain .check > input[type=checkbox]{
+    position:static; opacity:1; width:auto; height:auto; pointer-events:auto;
+  }
+}
+
+/* תיבת סימון בתוך הלוח הכהה */
+html.ui-lab .lab-send .check{
+  background:transparent !important; border:1px solid rgba(255,255,255,.2) !important;
+  color:#cddcd2 !important; border-radius:10px; padding:8px 12px; justify-content:center;
+}
+html.ui-lab .lab-send .check > input[type=checkbox]{
+  position:static; opacity:1; width:auto; height:auto; pointer-events:auto;
+}
+html.ui-lab .lab-send .check::after{ content:none !important }

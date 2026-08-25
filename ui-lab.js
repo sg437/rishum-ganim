@@ -82,6 +82,11 @@ function exportTab(){
   b.querySelector(".tl").textContent = "ייצוא";
   b.onclick = function(){ go("export"); };
   after.parentNode.insertBefore(b, after.nextSibling);
+  if(window.__uiLab && window.__uiLab.activeTab &&
+     window.__uiLab.activeTab() === "export"){
+    nav.querySelectorAll("[data-tab].active").forEach(function(x){ x.classList.remove("active"); });
+    b.classList.add("active");
+  }
 }
 
 /* החלטה 6: מוני הצוות והעירייה. renderTabs מחשב מונים לתלמידות ולגנים בלבד.
@@ -1206,29 +1211,47 @@ function maybeStaff(){
    =========================================================================== */
 function screenHeader(){
   var panel = view.querySelector(".panel");
-  if(!panel || panel.querySelector(".lab-shead")) return;
+  if(!panel || view.querySelector(".lab-shead")) return;
 
   /* הכותרת: או .section-title h2 או h2 ישיר בפאנל */
   var st = panel.querySelector(":scope > .section-title");
   var h2 = st ? st.querySelector("h2") : panel.querySelector(":scope > h2");
-  if(!h2) return;
+
+  var tabId = curTab();
+
+  /* ⚠️ במסכים מרובי־מקטעים (הגדרות, כלים, דוחות) ובמסכים שהמעבדה מזריקה
+     בהם פאנלים משלה (עירייה, הנהלה) אסור לגנוב את ה-h2 של הפאנל הראשון:
+     הוא כותרת של מקטע, לא של המסך — והפאנל היה נשאר בלי כותרת. שם המסך
+     נלקח אז מהניווט, וכל הפאנלים נשארים שלמים. */
+  var OWN = { reports:"דוחות ואחוזים", municipality:"קליטה בעירייה",
+              management:"מבט הנהלה",  settings:"הגדרות",
+              tools:"כלים ושירותים" };
+  var panels = view.querySelectorAll(":scope > .panel").length;
+  var ownTitle = OWN[tabId] || (panels >= 3 ? labelOfTab(tabId) : "");
+  if(!h2 && !ownTitle) return;
 
   var head = el("div", "lab-shead");
   var lft  = el("div", "lab-shead-t");
 
-  var tab = (nav.querySelector("[data-tab].active") || {}).dataset;
-  var sub = (window.__uiLab && window.__uiLab.subtitle && tab)
-              ? window.__uiLab.subtitle(tab.tab) : "";
+  var sub = (window.__uiLab && window.__uiLab.subtitle && tabId)
+              ? window.__uiLab.subtitle(tabId) : "";
   if(sub) lft.appendChild(el("div", "lab-ssub", sub));
 
-  var anchor = st || h2;
+  var anchor = st || h2 || panel;
   anchor.parentNode.insertBefore(head, anchor);
-  lft.appendChild(h2);                        /* העברה — המאזינים נשמרים */
+  if(ownTitle){
+    lft.appendChild(el("h2", null, ownTitle));   /* ה-h2 של הפאנל נשאר במקומו */
+    st = null;
+  }else{
+    lft.appendChild(h2);                         /* העברה — המאזינים נשמרים */
+  }
   head.appendChild(lft);
 
   /* איסוף כפתורי הפעולה: השורה/הסרגל הראשון שאחרי הכותרת שמכיל .btn */
   var acts = el("div", "lab-sacts");
-  var node = (st && st.parentNode === panel) ? st.nextElementSibling : head.nextElementSibling;
+  var node = ownTitle ? null
+           : (st && st.parentNode === panel) ? st.nextElementSibling
+           : head.nextElementSibling;
   var scanned = 0;
   while(node && scanned < 4){
     var next = node.nextElementSibling;
@@ -1240,12 +1263,628 @@ function screenHeader(){
     }
     node = next; scanned++;
   }
-  /* אם ה-.section-title כבר החזיק כפתורים — גם הם עוברים */
+  /* אם ה-.section-title כבר החזיק כפתורים — גם הם עוברים.
+     ⚠️ תוקן: קודם *כל* ילדי ה-.section-title נזרקו לשורת הפעולות, כולל
+     עטיפת הכותרת שנשאר בה ה-.sub — ותיאור המסך נחת בין הכפתורים. */
   if(st){
-    Array.prototype.slice.call(st.children).forEach(function(c){ acts.appendChild(c); });
+    Array.prototype.slice.call(st.children).forEach(function(c){
+      if(c.classList && c.classList.contains("btn")){ acts.appendChild(c); return; }
+      var inner = c.querySelectorAll ? c.querySelectorAll(".btn") : [];
+      Array.prototype.slice.call(inner).forEach(function(b){ acts.appendChild(b); });
+      var sub = c.querySelector ? c.querySelector(".sub") : null;
+      if(sub) lft.appendChild(sub);
+      if(!c.textContent.trim() && !c.children.length) c.remove();
+      else if(c.parentNode === st) lft.appendChild(c);
+    });
     if(!st.children.length) st.remove();
   }
+  /* .sub ישיר בפאנל (רוב המסכים) — שייך לכותרת, לא לגוף */
+  if(!ownTitle){
+    var pSub = panel.querySelector(":scope > .sub");
+    if(pSub && head.nextElementSibling === pSub) lft.appendChild(pSub);
+  }
+
+  /* הלוחות מציגים "הדפסה" ו"ייצוא" בכותרת של מסכי הסיכום. שניהם פעולות
+     אמיתיות: הדפסת הדפדפן, ומעבר למסך הייצוא הקיים. */
+  if(tabId === "reports" || tabId === "management"){
+    var pr = el("button", "btn ghost", "🖨️ הדפסה");
+    pr.onclick = function(){ window.print(); };
+    var xp = el("button", "btn", "↧ ייצוא");
+    xp.onclick = function(){ go("export"); };
+    acts.appendChild(xp); acts.appendChild(pr);
+  }
+
   if(acts.children.length) head.appendChild(acts);
+
+  /* בלוחות הכותרת יושבת מעל הכרטיסים על רקע העמוד, לא בתוך כרטיס.
+     מוציאים אותה מהפאנל הראשון לראש המסך — כך גם הבלוקים שהמעבדה
+     מזריקה נכנסים *אחרי* הכותרת ולא לפניה. */
+  view.insertBefore(head, view.firstChild);
+  if(!panel.textContent.trim() && !panel.children.length) panel.remove();
+}
+
+/* ===========================================================================
+   המסכים שנותרו — דוחות, עירייה, הודעות, ייצוא, הגדרות, כלים, הנהלה
+   ---------------------------------------------------------------------------
+   כל אחד מהם מקבל את המבנה של הלוח בלי לפרק את המסך הקיים: מזריקים את
+   הבלוקים שהלוח מציג ואינם בתוכנה, ומזיזים (לא בונים מחדש) את מה שכבר קיים.
+   =========================================================================== */
+function labelOfTab(id){
+  var t = nav && nav.querySelector('[data-tab="' + id + '"] .tl');
+  return t ? String(t.textContent || "").trim() : "";
+}
+
+function curTab(){
+  if(window.__uiLab && window.__uiLab.activeTab){
+    var t = window.__uiLab.activeTab();
+    if(t) return t;
+  }
+  var b = nav && nav.querySelector("[data-tab].active");
+  return b ? b.dataset.tab : "";
+}
+
+/* פאנל תוצר של המעבדה — מסומן כדי שלא ייבנה פעמיים */
+function labPanel(key, title, sub){
+  var p = el("div", "panel lab-made");
+  p.dataset.lab = key;
+  if(title){
+    var h = el("div", "lab-phead");
+    h.appendChild(el("h3", null, title));
+    if(sub) h.appendChild(el("div", "lab-psub", sub));
+    p.appendChild(h);
+  }
+  return p;
+}
+function hasLab(key){ return !!view.querySelector('[data-lab="' + key + '"]'); }
+
+/* שורת KPI בסגנון הלוחות */
+function kpiRow(cards){
+  var row = el("div", "lab-kpis");
+  cards.forEach(function(c){ row.appendChild(kpi(c)); });
+  return row;
+}
+
+/* מד אופקי עם תווית וערך — "קליטה בעירייה לפי עיר" / "לפי רשות" */
+function barRow(label, value, pct, tone){
+  var r = el("div", "lab-brow");
+  var top = el("div", "lab-btop");
+  top.appendChild(el("span", "lab-blab", label));
+  top.appendChild(el("span", "lab-bval", value));
+  r.appendChild(top);
+  var bar = el("div", "lab-bar" + (tone ? " " + tone : "")), i = el("i");
+  i.style.width = Math.max(0, Math.min(100, pct)) + "%";
+  bar.appendChild(i); r.appendChild(bar);
+  return r;
+}
+function toneOf(pct){ return pct >= 85 ? "good" : pct >= 70 ? "warn" : "bad"; }
+/* בתפוסה הכיוון הפוך: גן מלא הוא התראה, לא הצלחה */
+function occTone(pct){ return pct >= 98 ? "bad" : pct >= 88 ? "warn" : "good"; }
+
+/* ---------------------------------------------------------------- דוחות */
+function reportsScreen(){
+  if(curTab() !== "reports" || hasLab("rep")) return;
+  var d = window.__uiLab && window.__uiLab.reportsBoard && window.__uiLab.reportsBoard();
+  if(!d) return;
+  var first = view.querySelector(".panel");
+  if(!first) return;
+
+  var frag = document.createDocumentFragment();
+
+  /* דלתא מול השנה הקודמת, כפי שהלוח מציג. אם אין שנה קודמת — הערך המוחלט. */
+  var pv = d.prev || {};
+  function delta(now, was, fallback){
+    if(was == null) return { sub:fallback };
+    var g = now - was;
+    return { sub:(g >= 0 ? "▲ " : "▼ ") + Math.abs(g) + "% מ" + d.prevYear,
+             subTone:(g >= 0 ? "good" : "bad") };
+  }
+  var dDocs = delta(d.docsPct,  pv.docs,   d.docsN + " מתוך " + d.total + " תיקים");
+  var dMuni = delta(d.muniPct,  pv.muni,   d.muniN + " נקלטו");
+  var dPlc  = delta(d.placedPct, pv.placed, d.placedN + " משובצות");
+
+  frag.appendChild(kpiRow([
+    { label:"תפוסת רשת ממוצעת", value:d.occupancy + "%",
+      sub:d.capUsed + " מתוך " + d.capTotal + " מקומות", bar:d.occupancy },
+    { label:"תיקים עם כל המסמכים", value:d.docsPct + "%",
+      sub:dDocs.sub, subTone:dDocs.subTone, bar:d.docsPct },
+    { label:"אחוז קליטה בעירייה", value:d.muniPct + "%",
+      sub:dMuni.sub, subTone:dMuni.subTone, bar:d.muniPct },
+    { label:"אחוז שיבוץ", value:d.placedPct + "%", dark:true,
+      sub:dPlc.sub, subTone:"gold", bar:d.placedPct }
+  ]));
+
+  var two = el("div", "lab-2col");
+
+  var pc = labPanel("rep", "קליטה בעירייה לפי עיר", "אחוז התיקים שנקלטו");
+  if(!d.byCity.length) pc.appendChild(el("div", "lab-empty", "אין נתוני עיר בתיקים."));
+  d.byCity.forEach(function(c){
+    var pct = c.n ? Math.round(c.ok / c.n * 100) : 0;
+    pc.appendChild(barRow(c.city, pct + "% · " + c.n + " תיקים", pct, toneOf(pct)));
+  });
+  var pa = labPanel("repAge", "רישום לפי גיל", "משובצות מול ממתינות");
+  var cols = el("div", "lab-cols");
+  var maxA = 1;
+  d.byAge.forEach(function(a){ maxA = Math.max(maxA, a.placed + a.waiting); });
+  d.byAge.forEach(function(a){
+    var c = el("div", "lab-col");
+    c.appendChild(el("div", "lab-cn", String(a.placed + a.waiting)));
+    var stack = el("div", "lab-stack");
+    stack.style.height = Math.round((a.placed + a.waiting) / maxA * 130) + "px";
+    var w = el("i", "wait"); w.style.height = ((a.waiting / (a.placed + a.waiting || 1)) * 100) + "%";
+    var g = el("i", "plc");  g.style.height = ((a.placed  / (a.placed + a.waiting || 1)) * 100) + "%";
+    stack.appendChild(w); stack.appendChild(g);
+    c.appendChild(stack);
+    c.appendChild(el("div", "lab-cl", /^\d/.test(a.age) ? "גיל " + a.age : a.age));
+    cols.appendChild(c);
+  });
+  pa.appendChild(cols);
+  var lg = el("div", "lab-legend");
+  ["משובצות", "ממתינות"].forEach(function(t, i){
+    var it = el("span", "lab-lg");
+    it.appendChild(el("i", i ? "wait" : "plc"));
+    it.appendChild(el("span", null, t));
+    lg.appendChild(it);
+  });
+  pa.appendChild(lg);
+  two.appendChild(pa);      /* ימין */
+  two.appendChild(pc);      /* שמאל — כמו בלוח */
+  frag.appendChild(two);
+
+  /* פירוט לפי גן */
+  var pt = labPanel("repGan", "פירוט לפי גן", "כל " + d.perGan.length + " הגנים");
+  var wrap = el("div", "table-wrap"), t = el("table");
+  var thead = el("thead"), tr = el("tr");
+  ["גן", "קמפוס", "רשומות", "תפוסה", "קליטה בעירייה", "מסמכים מלאים"].forEach(function(h){
+    tr.appendChild(el("th", null, h));
+  });
+  thead.appendChild(tr); t.appendChild(thead);
+  var tb = el("tbody");
+  d.perGan.forEach(function(g){
+    var r = el("tr");
+    var c1 = el("td"); var nm = el("b", null, g.name);
+    if(g.ageInk) nm.style.borderInlineStartColor = g.ageInk;
+    c1.className = "lab-gcell"; c1.appendChild(nm);
+    if(g.ageInk) c1.style.setProperty("--age-ink", g.ageInk);
+    r.appendChild(c1);
+    r.appendChild(el("td", null, g.campus || "—"));
+    r.appendChild(el("td", null, String(g.n)));
+    var c4 = el("td", "lab-occ");
+    c4.appendChild(el("span", "lab-occn", g.occ + "%"));
+    var b = el("div", "lab-bar mini " + occTone(g.occ)), i = el("i");
+    i.style.width = Math.min(100, g.occ) + "%"; b.appendChild(i); c4.appendChild(b);
+    r.appendChild(c4);
+    r.appendChild(el("td", null, g.muni + "%"));
+    r.appendChild(el("td", null, g.docs + "%"));
+    tb.appendChild(r);
+  });
+  t.appendChild(tb); wrap.appendChild(t); pt.appendChild(wrap);
+  frag.appendChild(pt);
+
+  first.parentNode.insertBefore(frag, first);
+}
+
+/* --------------------------------------------------------------- עירייה */
+function muniScreen(){
+  if(curTab() !== "municipality" || hasLab("muni")) return;
+  var d = window.__uiLab && window.__uiLab.muniBoard && window.__uiLab.muniBoard();
+  if(!d) return;
+  var first = view.querySelector(".panel");
+  if(!first) return;
+
+  var frag = document.createDocumentFragment();
+  frag.appendChild(kpiRow([
+    { label:"נקלטו", value:String(d.absorbed), dark:true,
+      sub:d.pct + "% מהתיקים · " + d.year, ring:d.pct },
+    { label:"ממתינות לקליטה", value:String(d.pending), tone:"warn",
+      sub:"מתוך " + d.total + " תיקים" },
+    { label:"מוכנות לשליחה", value:String(d.counts.ready), tone:"good",
+      sub:'ת"ז, שיבוץ ומסמכים תקינים' },
+    { label:"חסומות", value:String(d.counts.tz + d.counts.gan + d.counts.docs),
+      tone:"bad",
+      sub:d.counts.tz + ' ללא ת"ז · ' + d.counts.gan + " ללא שיבוץ · " + d.counts.docs + " מסמכים" }
+  ]));
+
+  var two = el("div", "lab-2col aside");
+  var pc = labPanel("muni", "לפי עיר", "נקלטו מתוך רשומות");
+  if(!d.byCity.length) pc.appendChild(el("div", "lab-empty", "אין נתוני עיר בתיקים."));
+  d.byCity.forEach(function(c){
+    var pct = c.n ? Math.round(c.ok / c.n * 100) : 0;
+    pc.appendChild(barRow(c.city, c.ok + "/" + c.n, pct, toneOf(pct)));
+  });
+  if(d.listed) pc.appendChild(el("div", "lab-note",
+    d.listed + ' ת"ז ברשימת העירייה שנטענה לשנת ' + d.year));
+  var pp = labPanel("muniList", d.rowsTotal + " תיקים ממתינים",
+    d.rowsTotal > d.rows.length ? "מוצגים " + d.rows.length + " הראשונים" : "לפי א״ב");
+  if(!d.rows.length) pp.appendChild(el("div", "lab-empty", "כל התיקים נקלטו בעירייה. 🎉"));
+  else{
+    var wrap = el("div", "table-wrap"), t = el("table"), th = el("thead"), tr = el("tr");
+    ["תלמידה", 'ת"ז', "גן", "עיר", "מה חוסם"].forEach(function(h){ tr.appendChild(el("th", null, h)); });
+    th.appendChild(tr); t.appendChild(th);
+    var tb = el("tbody");
+    d.rows.forEach(function(r){
+      var x = el("tr");
+      x.appendChild(el("td", null, r.name || "—"));
+      var tz = el("td", "lab-num", r.tz || "—"); x.appendChild(tz);
+      x.appendChild(el("td", null, r.gan || "—"));
+      x.appendChild(el("td", null, r.city || "—"));
+      var c = el("td");
+      c.appendChild(el("span", "lab-tag " + r.tone, r.reason));
+      x.appendChild(c);
+      tb.appendChild(x);
+    });
+    t.appendChild(tb); wrap.appendChild(t); pp.appendChild(wrap);
+  }
+  two.appendChild(pp);      /* ימין */
+  two.appendChild(pc);      /* שמאל — כמו בלוח */
+  frag.appendChild(two);
+  first.parentNode.insertBefore(frag, first);
+}
+
+/* --------------------------------------------------------------- הנהלה */
+function mgmtScreen(){
+  if(curTab() !== "management" || hasLab("mg")) return;
+  var d = window.__uiLab && window.__uiLab.mgmtBoard && window.__uiLab.mgmtBoard();
+  if(!d) return;
+  var first = view.querySelector(".panel");
+  if(!first) return;
+
+  var delta = d.prevTotal
+    ? Math.round((d.total - d.prevTotal) / d.prevTotal * 100) : 0;
+  var frag = document.createDocumentFragment();
+  frag.appendChild(kpiRow([
+    { label:"רשומות בשנה", value:String(d.total), dark:true,
+      sub:(delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta) + "% מ" + (d.prevYear || "אשתקד") +
+          " (" + d.prevTotal + ")",
+      bar:d.target ? Math.round(d.total / d.target * 100) : 0 },
+    { label:"תפוסת רשת", value:d.occupancy + "%", bar:d.occupancy },
+    { label:"איוש צוות", value:d.staffing + "%",
+      sub:d.openSlots + " תקנים פתוחים", subTone:d.openSlots ? "bad" : "good",
+      bar:d.staffing },
+    { label:"קליטה בעירייה", value:d.muniPct + "%", bar:d.muniPct }
+  ]));
+
+  var two = el("div", "lab-2col");
+  var pc = labPanel("mg", "קמפוסים", "תפוסה, איוש וקליטה");
+  d.campuses.forEach(function(c){
+    var card = el("div", "lab-camp");
+    var h = el("div", "lab-camph");
+    h.appendChild(el("b", null, c.name));
+    h.appendChild(el("span", "lab-campn", c.gans + " גנים · " + c.n + " תלמידות"));
+    card.appendChild(h);
+    var m = el("div", "lab-metrics");
+    [["תפוסה", c.occ], ["איוש", c.staff], ["קליטה", c.muni]].forEach(function(x){
+      var b = el("div", "lab-metric");
+      b.appendChild(el("span", "lab-mk", x[0]));
+      b.appendChild(el("span", "lab-mv " + toneOf(x[1]), x[1] + "%"));
+      m.appendChild(b);
+    });
+    card.appendChild(m);
+    pc.appendChild(card);
+  });
+
+  var pp = labPanel("mgP", "קצב הרישום לפי מועד",
+    d.prevYear ? d.year + " מול " + d.prevYear : d.year);
+  var cols = el("div", "lab-cols pair"), maxP = 1;
+  d.byPeriod.forEach(function(x){ maxP = Math.max(maxP, x.now, x.prev); });
+  d.byPeriod.slice().reverse().forEach(function(x){
+    var c = el("div", "lab-col");
+    c.appendChild(el("div", "lab-cn", String(x.now)));
+    var pr = el("div", "lab-pair");
+    var a = el("i", "now"); a.style.height = Math.round(x.now / maxP * 130) + "px";
+    var b = el("i", "prev"); b.style.height = Math.round(x.prev / maxP * 130) + "px";
+    pr.appendChild(a); pr.appendChild(b);
+    c.appendChild(pr);
+    c.appendChild(el("div", "lab-cl", "מועד " + x.p));
+    cols.appendChild(c);
+  });
+  pp.appendChild(cols);
+  var lg = el("div", "lab-legend");
+  [[d.year, "now"], [d.prevYear || "אשתקד", "prev"]].forEach(function(t){
+    var it = el("span", "lab-lg");
+    it.appendChild(el("i", t[1]));
+    it.appendChild(el("span", null, t[0]));
+    lg.appendChild(it);
+  });
+  pp.appendChild(lg);
+  two.appendChild(pp);      /* ימין */
+  two.appendChild(pc);      /* שמאל — כמו בלוח */
+  frag.appendChild(two);
+  first.parentNode.insertBefore(frag, first);
+}
+
+
+
+/* -------------------------------------------------------------- הודעות */
+/* הלוח מציג את שלושת השלבים בטור הימני ולוח שליחה קבוע בשמאלי: מספר
+   הנמענות, כפתורי השליחה, תצוגה מקדימה ושליחות אחרונות. בתוכנה כל אלה
+   קיימים — רק פזורים בתחתית המסך. כאן הם *מוזזים* לתוך הלוח, כך שכל
+   המאזינים והלוגיקה (כולל אישור לפני שליחה) נשארים בדיוק כפי שהם. */
+function messagesScreen(){
+  if(curTab() !== "messages") return;
+  var panel = view.querySelector(".panel");
+  if(!panel || panel.querySelector(".lab-work")) return;
+
+  var sets = panel.querySelectorAll(":scope > fieldset");
+  if(sets.length < 4) return;
+
+  var work = el("div", "lab-work");
+  var main = el("div", "lab-wmain");
+  var side = el("aside", "lab-wside");
+
+  panel.classList.add("lab-bare");
+  panel.insertBefore(work, panel.firstChild);
+  work.appendChild(main); work.appendChild(side);
+
+  /* שלושת השלבים הראשונים לטור הראשי; השלב הרביעי מתפרק אל הלוח */
+  var last = sets[sets.length - 1];
+  Array.prototype.slice.call(sets).forEach(function(f){
+    if(f !== last) main.appendChild(f);
+  });
+
+  /* --- לוח השליחה --- */
+  var card = el("div", "lab-send");
+  var cnt  = panel.querySelector("#msg-count") || main.querySelector("#msg-count");
+  var big  = el("div", "lab-bignum", "…");
+  card.appendChild(el("div", "lab-sendk", "תישלח ל-"));
+  card.appendChild(big);
+  if(cnt){
+    cnt.classList.add("lab-cntline");
+    card.appendChild(cnt);
+    /* המספר הגדול נגזר מהטקסט החי של #msg-count ומתעדכן איתו */
+    var sync = function(){
+      var m = String(cnt.textContent || "").match(/\d+/);
+      var n = m ? m[0] : "0";
+      if(big.textContent !== n) big.textContent = n;
+    };
+    sync();
+    new MutationObserver(sync).observe(cnt, {childList:true, subtree:true, characterData:true});
+  }
+  card.appendChild(el("div", "lab-sendrule"));
+
+  var acts = el("div", "lab-sendacts");
+  ["#msg-send", "#msg-test", "#msg-preview"].forEach(function(sel, i){
+    var b = panel.querySelector(sel) || last.querySelector(sel);
+    if(!b) return;
+    b.style.background = "";
+    if(i) b.classList.add("ghost");         /* ראשי אחד בלבד: השליחה */
+    acts.appendChild(b);                    /* העברה — המאזין נשמר */
+  });
+  card.appendChild(acts);
+  side.appendChild(card);
+
+  var out = last.querySelector("#msg-out");
+  if(out){
+    var pv = labPanel("msgPrev", "תצוגה מקדימה", "נמענת ראשונה");
+    pv.appendChild(out);
+    side.appendChild(pv);
+  }
+  /* מה שנשאר בשלב 4 (אם נשאר) חוזר לטור הראשי, שלא ייעלם דבר */
+  if(last.querySelector(".btn, input, textarea, select")) main.appendChild(last);
+  else last.remove();
+
+  /* מספור השלבים כשבב, כמו בלוח */
+  main.querySelectorAll("legend").forEach(function(lg){
+    if(lg.querySelector(".lab-step")) return;
+    var m = String(lg.textContent || "").match(/^\s*(\d+)\s*·\s*(.*)$/);
+    if(!m) return;
+    lg.textContent = "";
+    lg.appendChild(el("span", "lab-steptxt", m[2]));
+    lg.appendChild(el("span", "lab-step", m[1]));
+  });
+
+  /* כרטיסי ערוץ עם שורת הסבר, כפי שהלוח מציג */
+  var NOTE = { email:"דרך הגשר · ללא עלות", whatsapp:"אוטומטי עם ספק · אחרת ידני",
+               sms:"דורש ספק חיצוני", voice:"דורש ספק חיצוני" };
+  main.querySelectorAll(".msg-ch").forEach(function(b){
+    if(b.querySelector(".lab-chsub")) return;
+    var n = NOTE[b.dataset.v];
+    if(!n) return;
+    var t = el("span", "lab-chttl", b.textContent.trim());
+    b.textContent = "";
+    b.appendChild(t);
+    b.appendChild(el("span", "lab-chsub", n));
+    b.classList.add("lab-chcard");
+    var row = b.parentNode;
+    if(row && !row.classList.contains("lab-chrow")) row.classList.add("lab-chrow");
+  });
+}
+
+/* ---------------------------------------------------------------- ייצוא */
+function exportScreen(){
+  if(curTab() !== "export") return;
+  var panel = view.querySelector(".panel");
+  if(!panel || panel.querySelector(".lab-work")) return;
+  var tools = panel.querySelector(":scope > .toolbar");
+  var fs    = panel.querySelector(":scope > fieldset");
+  if(!tools || !fs) return;
+
+  var work = el("div", "lab-work rev");
+  var main = el("div", "lab-wmain");
+  var side = el("aside", "lab-wside");
+  panel.classList.add("lab-bare");
+  panel.insertBefore(work, tools);
+  work.appendChild(main); work.appendChild(side);
+
+  var card = labPanel("xWhat", "מה לייצא");
+  card.appendChild(tools);
+  card.appendChild(fs);
+  main.appendChild(card);
+
+  /* שורת כפתורי הייצוא — לתוך הלוח הכהה */
+  var row = panel.querySelector(":scope > .row");
+  var sc  = el("div", "lab-send");
+  var big = el("div", "lab-bignum", "—");
+  sc.appendChild(el("div", "lab-sendk", "בקובץ יהיו"));
+  sc.appendChild(big);
+  var meta = el("div", "lab-cntline", "שורות · בחר/י תצוגה מקדימה");
+  sc.appendChild(meta);
+  sc.appendChild(el("div", "lab-sendrule"));
+  if(row){ row.classList.add("lab-sendacts"); sc.appendChild(row); }
+  side.appendChild(sc);
+
+  var pri = panel.querySelector("#x-csv") || panel.querySelector("#x-xls");
+  if(pri && row){
+    pri.classList.remove("ghost");
+    row.insertBefore(pri, row.firstChild);
+    Array.prototype.slice.call(row.children).forEach(function(b){
+      if(b !== pri && b.classList && b.classList.contains("btn")) b.classList.add("ghost");
+    });
+  }
+
+  var out = panel.querySelector("#x-out");
+  if(out){
+    var pv = labPanel("xPrev", "תצוגה מקדימה");
+    out.parentNode.insertBefore(pv, out);
+    pv.appendChild(out);
+    /* המספר הגדול נקרא מטבלת התצוגה המקדימה בכל פעם שהיא מתרעננת */
+    var sync = function(){
+      var rows = out.querySelectorAll("tbody tr").length;
+      var cols = out.querySelectorAll("thead th").length;
+      big.textContent = rows ? String(rows) : "—";
+      meta.textContent = rows ? "שורות · " + cols + " עמודות" : "שורות · בחר/י תצוגה מקדימה";
+    };
+    new MutationObserver(sync).observe(out, {childList:true, subtree:true});
+    sync();
+  }
+}
+
+/* -------------------------------------------------------------- הגדרות */
+/* הלוח מוסיף רשימת ניווט קבועה בצד ימין עם כותרות קבוצה. הקבוצות נגזרות
+   מכותרות הפאנלים הקיימות — שום פאנל לא זז ולא נעלם. */
+var SET_GROUPS = [
+  ["שנים ותכנים", ["שנים", "מעבר שנה", "נתונים היסטוריים", "רף שיבוץ", "מינימום לפתיחת צהרון"]],
+  ["רשימות המערכת", ["גילי הילדים", "תפקידי צוות", "קמפוסים"]],
+  ["מערכת והרשאות", ["מי מחובר", "יומן פעילות", "מנהלי מערכת", "ניהול משתמשים", "חשבון והתחברות"]],
+  ["מראה והתקנה", ["מיתוג", "התקנה כאפליקציה", "פניות והצעות"]]
+];
+function settingsScreen(){
+  if(curTab() !== "settings" || view.querySelector(".lab-toc")) return;
+  var panels = Array.prototype.slice.call(view.querySelectorAll(":scope > .panel"));
+  if(panels.length < 4) return;
+
+  var items = [];
+  panels.forEach(function(p, i){
+    var h = p.querySelector("h2");
+    if(!h) return;
+    /* רק צמתי הטקסט של ה-h2 — בלי תגיות מונה כמו "3 מחוברים" שבתוכו */
+    var t = "";
+    Array.prototype.slice.call(h.childNodes).forEach(function(n){
+      if(n.nodeType === 3) t += n.nodeValue;
+    });
+    t = t.replace(/[…\s]+$/, "").trim() || String(h.textContent || "").trim();
+    if(!t) return;
+    if(!p.id) p.id = "labsec" + i;
+    items.push({ id:p.id, title:t, el:p });
+  });
+  if(!items.length) return;
+
+  var toc = el("nav", "lab-toc");
+  var used = {};
+  SET_GROUPS.forEach(function(grp){
+    var picked = items.filter(function(it){
+      if(used[it.id]) return false;
+      return grp[1].some(function(k){ return it.title.indexOf(k) >= 0; });
+    });
+    if(!picked.length) return;
+    toc.appendChild(el("div", "lab-tocg", grp[0]));
+    picked.forEach(function(it){
+      used[it.id] = 1;
+      var a = el("a", "lab-toci", it.title);
+      a.href = "#" + it.id;
+      toc.appendChild(a);
+    });
+  });
+  var rest = items.filter(function(it){ return !used[it.id]; });
+  if(rest.length){
+    toc.appendChild(el("div", "lab-tocg", "נוספים"));
+    rest.forEach(function(it){
+      var a = el("a", "lab-toci", it.title);
+      a.href = "#" + it.id;
+      toc.appendChild(a);
+    });
+  }
+
+  /* עוטפים: רשימת הניווט מימין, הפאנלים משמאל */
+  var wrap = el("div", "lab-setwrap");
+  var col  = el("div", "lab-setcol");
+  view.insertBefore(wrap, panels[0]);
+  wrap.appendChild(col); wrap.appendChild(toc);
+  /* סדר הפאנלים עוקב אחרי סדר הרשימה, כך שגלילה ורשימה מספרות אותו סיפור */
+  var order = [];
+  toc.querySelectorAll(".lab-toci").forEach(function(a){
+    var t = view.querySelector(a.getAttribute("href"));
+    if(t) order.push(t);
+  });
+  order.forEach(function(p){ col.appendChild(p); });
+  panels.forEach(function(p){ if(p.parentNode !== col) col.appendChild(p); });
+
+  /* סימון הפריט הפעיל בגלילה */
+  var links = toc.querySelectorAll(".lab-toci");
+  var spy = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting) return;
+      links.forEach(function(a){
+        a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id);
+      });
+    });
+  }, {rootMargin:"-10% 0px -80% 0px"});
+  items.forEach(function(it){ spy.observe(it.el); });
+}
+
+/* --------------------------------------------------------- כלים ושירותים */
+/* הלוח מציג את הכלים כרשת כרטיסים, עם עיגול אייקון בצד ימין ותג מצב בצד
+   שמאל. בתוכנה זה טור אחד והאייקון תקוע בתוך הכותרת. */
+function toolsScreen(){
+  if(curTab() !== "tools" || view.querySelector(".lab-grid")) return;
+  var panels = Array.prototype.slice.call(view.querySelectorAll(":scope > .panel"));
+  if(panels.length < 2) return;
+  var grid = el("div", "lab-grid");
+  view.insertBefore(grid, panels[0]);
+  panels.forEach(function(p){ grid.appendChild(p); toolCard(p); });
+}
+function toolCard(p){
+  var h = p.querySelector(":scope > h2");
+  if(!h || h.querySelector(".lab-ic")) return;
+  /* חילוץ האמוג׳י הפותח לעיגול נפרד */
+  var txt = String(h.textContent || "");
+  var m = txt.match(/^\s*([\u203C-\u3299\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\uFE0F]+)\s*(.*)$/);
+  var pill = h.querySelector(".pill");
+  var icon = m ? m[1] : "";
+  var name = m ? m[2] : txt.trim();
+  h.textContent = "";
+  var ic = el("span", "lab-ic", icon || "▣");
+  var tt = el("span", "lab-ictt", name);
+  h.appendChild(ic); h.appendChild(tt);
+  if(pill) h.appendChild(pill);
+  p.classList.add("lab-tool");
+}
+
+/* --------------------------------------------------------- העוזר החכם */
+/* הלוח מציג את מי־מחובר ואת יומן הפעילות עם עיגול ראשי־תיבות לכל משתמש. */
+function initials(name){
+  var w = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if(!w.length) return "־";
+  return (w[0][0] || "") + (w.length > 1 ? (w[1][0] || "") : "");
+}
+function presenceSkin(){
+  view.querySelectorAll(".pill:not(.lab-pres)").forEach(function(p){
+    if(!p.closest(".panel")) return;
+    var h2 = p.closest(".panel").querySelector("h2");
+    if(!h2 || String(h2.textContent).indexOf("מי מחובר") < 0) return;
+    p.classList.add("lab-pres");
+  });
+  /* שורות יומן הפעילות — עיגול ראשי תיבות בעמודה הראשונה */
+  view.querySelectorAll("table tbody tr").forEach(function(tr){
+    var tb = tr.closest("table");
+    var head = tb && tb.querySelector("thead th");
+    if(!head || String(head.textContent).trim() !== "משתמש") return;
+    var td = tr.firstElementChild;
+    if(!td || td.querySelector(".lab-av")) return;
+    var nm = String(td.textContent || "").trim();
+    var av = el("span", "lab-av", initials(nm));
+    td.insertBefore(av, td.firstChild);
+    td.classList.add("lab-avcell");
+  });
 }
 
 function maybeStudents(){
@@ -1271,7 +1910,20 @@ function maybeHome(){
   if(homeBusy || !view) return;
   try{ tintBars(); }catch(e){}
   try{ screenHeader(); }catch(e){}
-  if(!isHome()){ maybeStudents(); maybeAssign(); maybeGans(); maybeMap(); maybeStaff(); return; }
+  if(!isHome()){
+    maybeStudents(); maybeAssign(); maybeGans(); maybeMap(); maybeStaff();
+    homeBusy = true;
+    try{ reportsScreen(); }catch(e){}
+    try{ muniScreen(); }catch(e){}
+    try{ mgmtScreen(); }catch(e){}
+    try{ messagesScreen(); }catch(e){}
+    try{ exportScreen(); }catch(e){}
+    try{ settingsScreen(); }catch(e){}
+    try{ toolsScreen(); }catch(e){}
+    try{ presenceSkin(); }catch(e){}
+    homeBusy = false;
+    return;
+  }
   if(view.querySelector(".lab-home")) return;   /* כבר שלנו */
   renderHome();
 }

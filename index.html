@@ -2432,9 +2432,214 @@ if(document.documentElement.classList.contains("ui-lab")){
           case "staff":    return "מאגר כללי · " + staff + " אנשי צוות פעילים · " + y;
           case "assign":   return y + " · " + gans.length + " גנים";
           case "map":      return y + " · " + gans.length + " גנים";
+          case "reports":  return y + " · " + stu + " תלמידות · " + gans.length + " גנים";
+          case "municipality": {
+            const all = eduScope(studentsOfYear().filter(s=>!s.finished));
+            const ok  = all.filter(s=>s.absorbedMunicipality).length;
+            const cities = new Set(all.map(s=>String(s.city||"").trim()).filter(Boolean)).size;
+            return ok + " נקלטו · " + (all.length-ok) + " ממתינות · " + cities + " ערים";
+          }
+          case "messages": return "שליחה מרוכזת · " + y;
+          case "export":   return "בחר/י מה לייצא, לאיזה פורמט ולמי";
+          case "templates":return "מסמכים ותבניות · " + y;
+          case "settings": return "כל ההגדרות במקום אחד · מקובצות";
           default:         return y;
         }
       }catch(e){ return ""; }
+    },
+
+    /* לוח 11 — "דוחות ואחוזים". הלוח כולו אחוזים, בעוד שמסך הדוחות בתוכנה
+       בנוי על ספירות. כאן מחושבים אותם ארבעה אחוזים מהנתונים החיים, וכן
+       הפילוח לפי עיר ולפי גן שהלוח מציג. אין כאן שום כתיבה. */
+    reportsBoard(){
+      try{
+        const stu   = eduScope(studentsOfYear().filter(s=>!s.finished));
+        const gans  = eduScope(DB.gans.filter(g=>g.active));
+        const total = stu.length || 1;
+
+        let cap = 0, used = 0;
+        gans.forEach(g=>{ cap += ganAssignCap(g)||0; used += ganAssignedCount(g.id); });
+
+        const fullDocs = stu.filter(s=>{
+          const d = s.docs || {};
+          return STUDENT_DOCS.every(x=>d[x[0]]);
+        }).length;
+        const absorbed = stu.filter(s=>s.absorbedMunicipality).length;
+        const placed   = stu.filter(s=>s.ganId && s.placed!==false).length;
+
+        /* אותם אחוזים בשנה הקודמת — הלוח מציג דלתא לכל כרטיס */
+        const yrs = (DB.years||[]).slice();
+        const pi = yrs.indexOf(DB.activeYear);
+        const prevYear = pi > 0 ? yrs[pi-1] : "";
+        const pRows = prevYear
+          ? eduScope((DB.students||[]).filter(s=>s.year===prevYear && !s.finished)) : [];
+        const pT = pRows.length || 0;
+        const pct = (n,d)=> d ? Math.round(n/d*100) : null;
+        const prev = {
+          docs:   pct(pRows.filter(s=>{const d=s.docs||{};return STUDENT_DOCS.every(x=>d[x[0]]);}).length, pT),
+          muni:   pct(pRows.filter(s=>s.absorbedMunicipality).length, pT),
+          placed: pct(pRows.filter(s=>s.ganId && s.placed!==false).length, pT)
+        };
+
+        /* לפי עיר — הלוח מציג "קליטה בעירייה לפי עיר" */
+        const cmap = {};
+        stu.forEach(s=>{
+          const c = String(s.city||"").trim() || "אחר";
+          const e = cmap[c] || (cmap[c]={city:c, n:0, ok:0});
+          e.n++; if(s.absorbedMunicipality) e.ok++;
+        });
+        const byCity = Object.keys(cmap).map(k=>cmap[k])
+          .sort((a,b)=>b.n-a.n).slice(0, 8);
+
+        /* רישום לפי גיל — משובצות מול ממתינות, כמו עמודות הלוח */
+        const amap = {};
+        stu.forEach(s=>{
+          const g = ganById(s.ganId);
+          const a = String((g&&g.age)||s.age||"").trim() || "ללא גיל";
+          const e = amap[a] || (amap[a]={age:a, placed:0, waiting:0});
+          if(s.ganId && s.placed!==false) e.placed++; else e.waiting++;
+        });
+        const byAge = Object.keys(amap).map(k=>amap[k])
+          .sort((a,b)=>String(a.age).localeCompare(String(b.age),"he",{numeric:true}));
+
+        /* פירוט לפי גן */
+        const perGan = gans.map(g=>{
+          const rows = stu.filter(s=>s.ganId===g.id);
+          const c = ganAssignCap(g)||0, u = ganAssignedCount(g.id);
+          const okDocs = rows.filter(s=>{ const d=s.docs||{}; return STUDENT_DOCS.every(x=>d[x[0]]); }).length;
+          return {
+            id:g.id, name:ganName(g.id),
+            campus:String(g.campus||"").trim(),
+            ageInk:ganAgeInk(g)||"",
+            n:rows.length, cap:c, used:u,
+            occ: c ? Math.round(u/c*100) : 0,
+            muni: rows.length ? Math.round(rows.filter(s=>s.absorbedMunicipality).length/rows.length*100) : 0,
+            docs: rows.length ? Math.round(okDocs/rows.length*100) : 0
+          };
+        }).sort((a,b)=>b.occ-a.occ);
+
+        return {
+          year: DB.activeYear||"",
+          occupancy: cap ? Math.round(used/cap*100) : 0, capUsed:used, capTotal:cap,
+          docsPct:  Math.round(fullDocs/total*100), docsN:fullDocs,
+          muniPct:  Math.round(absorbed/total*100),  muniN:absorbed,
+          placedPct:Math.round(placed/total*100),    placedN:placed,
+          total: stu.length, byCity, byAge, perGan,
+          prevYear, prev
+        };
+      }catch(e){ return null; }
+    },
+
+    /* לוח 09 — "קליטה בעירייה". ⚠️ הלוח מציג מעקב משלוחים לרשויות: "טרם
+       נשלח", "נדחה — כתובת", "ימים בהמתנה", "משלוחים אחרונים". במודל הנתונים
+       אין שדה משלוח, אין תאריך ואין רשות — יש רק absorbedMunicipality (דו-ערכי).
+       לכן במקום להמציא סטטוסים, הפירוט כאן נשען על החסמים האמיתיים שמונעים
+       הגשה: חסרה ת"ז, אין שיבוץ, חסרים מסמכים — או מוכן לשליחה. */
+    muniBoard(){
+      try{
+        const stu = eduScope(studentsOfYear().filter(s=>!s.finished));
+        const ok  = stu.filter(s=>s.absorbedMunicipality);
+        const pend= stu.filter(s=>!s.absorbedMunicipality);
+
+        const reasonOf = s=>{
+          if(!digits(s.tz)) return {key:"tz",   label:'חסרה ת"ז',      tone:"bad"};
+          if(!s.ganId)      return {key:"gan",  label:"חסר שיבוץ",     tone:"warn"};
+          const d=s.docs||{};
+          if(STUDENT_DOCS.some(x=>!d[x[0]])) return {key:"docs", label:"מסמכים חסרים", tone:"warn"};
+          return {key:"ready", label:"מוכן לשליחה", tone:"good"};
+        };
+
+        const counts = {tz:0, gan:0, docs:0, ready:0};
+        const rows = pend.map(s=>{
+          const r = reasonOf(s); counts[r.key]++;
+          return {
+            id:s.id,
+            name:(String(s.lastName||"").trim()+" "+String(s.firstName||"").trim()).trim(),
+            tz:digits(s.tz), gan:s.ganId?ganName(s.ganId):"",
+            city:String(s.city||"").trim(),
+            reason:r.label, tone:r.tone
+          };
+        }).sort((a,b)=>a.name.localeCompare(b.name,"he"));
+
+        const cmap={};
+        stu.forEach(s=>{
+          const c=String(s.city||"").trim() || "אחר";
+          const e=cmap[c]||(cmap[c]={city:c,n:0,ok:0});
+          e.n++; if(s.absorbedMunicipality) e.ok++;
+        });
+        const byCity=Object.keys(cmap).map(k=>cmap[k]).sort((a,b)=>b.n-a.n).slice(0,8);
+
+        return {
+          year:DB.activeYear||"", total:stu.length,
+          absorbed:ok.length, pending:pend.length,
+          pct: stu.length ? Math.round(ok.length/stu.length*100) : 0,
+          counts, rows:rows.slice(0,60), rowsTotal:rows.length, byCity,
+          listed:((DB.municipality||{})[DB.activeYear]||[]).length
+        };
+      }catch(e){ return null; }
+    },
+
+    /* לוח 08 — "מבט הנהלה". טאב "הנהלה" בתוכנה הוא ספר טלפונים; הלוח מבקש
+       תמונת מצב. הנתונים כאן הם אותם נתונים שכבר קיימים — תפוסה, איוש
+       וקליטה — מקובצים לפי קמפוס, וקצב הרישום לפי מועד מול השנה הקודמת. */
+    mgmtBoard(){
+      try{
+        const stu  = eduScope(studentsOfYear().filter(s=>!s.finished));
+        const gans = eduScope(DB.gans.filter(g=>g.active));
+        const total= stu.length || 1;
+
+        const coreOf = g=>{
+          const a = ganAsg(g.id);
+          const need = ["גננת","סייעת"].concat(isMandatoryGan(g) ? [ASSISTANT_B_ROLE] : []);
+          let got = 0;
+          need.forEach(r=>{ const c=a[r]; if(c && (c.name||c.staffId)) got++; });
+          return {need:need.length, got};
+        };
+
+        let capT=0, useT=0, needT=0, gotT=0;
+        const cmap={};
+        gans.forEach(g=>{
+          const c = String(g.campus||"").trim() || "ללא קמפוס";
+          const e = cmap[c] || (cmap[c]={name:c, gans:0, n:0, cap:0, used:0, need:0, got:0, muni:0});
+          const core = coreOf(g), rows = stu.filter(s=>s.ganId===g.id);
+          e.gans++; e.n += rows.length;
+          e.cap += ganAssignCap(g)||0; e.used += ganAssignedCount(g.id);
+          e.need += core.need; e.got += core.got;
+          e.muni += rows.filter(s=>s.absorbedMunicipality).length;
+          capT += ganAssignCap(g)||0; useT += ganAssignedCount(g.id);
+          needT += core.need; gotT += core.got;
+        });
+        const campuses = Object.keys(cmap).map(k=>{
+          const e = cmap[k];
+          return { name:e.name, gans:e.gans, n:e.n,
+                   occ: e.cap ? Math.round(e.used/e.cap*100) : 0,
+                   staff: e.need ? Math.round(e.got/e.need*100) : 0,
+                   muni: e.n ? Math.round(e.muni/e.n*100) : 0 };
+        }).sort((a,b)=>b.n-a.n);
+
+        /* קצב הרישום לפי מועד — השנה מול הקודמת */
+        const yrs = (DB.years||[]).slice();
+        const i = yrs.indexOf(DB.activeYear);
+        const prev = i > 0 ? yrs[i-1] : "";
+        const prevRows = prev ? eduScope((DB.students||[]).filter(s=>s.year===prev && !s.finished)) : [];
+        const byPeriod = PERIODS.map(pr=>({
+          p: pr,
+          now:  stu.filter(s=>s.period===pr).length,
+          prev: prevRows.filter(s=>s.period===pr).length
+        }));
+
+        const absorbed = stu.filter(s=>s.absorbedMunicipality).length;
+        return {
+          year:DB.activeYear||"", prevYear:prev,
+          total:stu.length, prevTotal:prevRows.length,
+          target:(capT || Number(DB.settings&&DB.settings.gansTarget) || 0),
+          occupancy: capT ? Math.round(useT/capT*100) : 0,
+          staffing:  needT ? Math.round(gotT/needT*100) : 0,
+          openSlots: Math.max(0, needT-gotT),
+          muniPct:   Math.round(absorbed/total*100),
+          campuses, byPeriod
+        };
+      }catch(e){ return null; }
     },
 
     /* מסך צוות הגנים (לוח 04 במסמך — מסך שאינו קיים בקנבס הישן).
@@ -2523,6 +2728,10 @@ if(document.documentElement.classList.contains("ui-lab")){
 
     /* ניווט ללשונית, עם סינון מוקדם אופציונלי — "שורת דורש טיפול מנווטת
        לרשימה מסוננת מראש" (HANDOFF.md). נוגע ב-state של הממשק בלבד. */
+    /* המסך הפעיל. "ייצוא" אינו ב-TABS — הכפתור שלו מוזרק על ידי המעבדה
+       ולכן renderTabs לעולם אינו מסמן אותו כפעיל. */
+    activeTab(){ try{ return active; }catch(e){ return ""; } },
+
     go(tab, filter){
       try{
         if(filter){
