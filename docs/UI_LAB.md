@@ -47,6 +47,8 @@
 | `github.md` | מיפוי מסך לקוד ב-`index.html` ומושגי המערכת. |
 | `support.js` | קובץ הרנדור של הקנבס בלבד. אין לממש ממנו דבר. |
 
+> **שאלות פתוחות שממתינות להחלטה:** [`docs/design/OPEN-QUESTIONS.md`](design/OPEN-QUESTIONS.md)
+
 ### שגיאות שנמצאו בחבילה
 
 הקנבס נבדק מול הקוד. העובדות על התוכנה מדויקות — 14 לשוניות, `ASSISTANT_B_MIN = 30`,
@@ -88,8 +90,8 @@
 | 2 | סרגל צד קבוע + breakpoint למגירה | ✅ במעבדה |
 | 3 | `viewHome` — כרטיסי KPI ופאנל "דורש טיפול" | ✅ במעבדה |
 | 4 | `viewStudents` — מד מסמכים, ראשי תיבות, KPI, סרגל כהה | ✅ במעבדה |
-| 5 | `viewMap` — כרטיס סינון, דגלים עם תפוסה, סיבות חסימה | ⬜ |
-| 6 | `viewAssign` — לוח התקנים | ⬜ |
+| 5 | `viewMap` — דגלים עם שם ותפוסה | ✅ במעבדה |
+| 6 | `viewAssign` — לוח התקנים | ⛔ חוסם — ראה שאלה 1 |
 | 7 | `viewGans` · `viewReports` · `viewMunicipality` · `viewMessages` · `viewSettings` · `viewManagement` | ⬜ |
 
 שלב 1 הוא CSS בלבד. שלב 2 דרש גם JS, ולכן נוסף `ui-lab.js` — קובץ שנטען רק
