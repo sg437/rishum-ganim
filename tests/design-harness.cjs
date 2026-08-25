@@ -60,6 +60,12 @@ ${header}
     +'<div class="stat"><div class="k">קלוט בעירייה</div><div class="v">818</div></div>'
     +'<div class="stat"><div class="k">לא קלוט</div><div class="v" style="color:var(--bad)">88</div></div>'
     +'</div></div>':''}
+  ${process.env.HARNESS_TAB==='staff'?'<div class="panel"><div class="section-title"><h2>רשימת צוות הגנים</h2></div>'
+    +'<div id="staffTable"><div class="table-wrap"><table class="stu-table"><thead><tr><th>שם משפחה</th><th>שם פרטי</th><th>תפקיד</th><th>חינוך</th><th>נייד</th></tr></thead><tbody>'
+    +'<tr><td><b>ברקוביץ׳</b></td><td>שרה</td><td>גננת</td><td>רגיל</td><td>052-8841190</td></tr>'
+    +'<tr><td><b>לוי</b></td><td>מלכה</td><td>גננת</td><td>רגיל</td><td>053-3120774</td></tr>'
+    +'<tr><td><b>בלוי</b></td><td>פייגי</td><td>סייעת</td><td>רגיל</td><td>054-8110297</td></tr>'
+    +'</tbody></table></div></div></div>':''}
   ${process.env.HARNESS_TAB==='map'?'<div class="panel"><div class="row"><b>מפת שיבוץ</b>'
     +'<button class="btn sm" id="map-auto">⚡ שיבוץ אוטומטי לפי קרבה</button></div>'
     +'<details class="map-fold" open><summary>סינון וגנים להצגה</summary><div class="map-fold-body">'
@@ -165,6 +171,7 @@ window.__uiLab={
               {who:"מזכירות",ts:Date.now()-9e7,what:"דוח עירייה לחודש אב הופק"}]};},
   go(tab,filter){console.log('go',tab,JSON.stringify(filter||{}));},
   addStudent(){console.log('addStudent');},
+  staffBoard(){return {total:202,ganenet:31,sayaat:21,noCert:9,assigned:178,unassigned:24};},
   ganColors(){return {"1":"#2c6a4c","2":"#3f7cac","3":"#7b5ea7","4":"#c65d5d"};},
   gansBoard(){return {total:6,campuses:[
     {name:"קמפוס צפון",cap:106,used:85,gans:[
