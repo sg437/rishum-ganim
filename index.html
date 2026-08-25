@@ -2396,6 +2396,42 @@ if(document.documentElement.classList.contains("ui-lab")){
       }catch(e){ return null; }
     },
 
+    /* מסך הגנים בתצוגת כרטיסים (לוח 03). מבוסס על gansScoped() — אותה
+       רשימה מסוננת שהטבלה מציגה, כך שהחיפוש והסינון של המסך נשמרים. */
+    gansBoard(){
+      try{
+        const list = gansScoped();
+        const cards = list.map(g=>{
+          const cap  = ganAssignCap(g);
+          const used = ganAssignedCount(g.id);
+          const reg  = studentsOfYear().filter(s=>!s.finished && s.ganId===g.id).length;
+          return {
+            id:g.id, name:ganName(g.id),
+            symbol:String(g.ganSymbol||g.internalSymbol||"").trim(),
+            age:String(g.age||"").trim(),
+            edu:eduLabel(g),
+            campus:String(g.campus||"").trim() || "ללא קמפוס",
+            teacher:String(g.teacherName||"").trim(),
+            teacherPhone:String(g.teacherMobile||g.phoneGan||"").trim(),
+            active:!!g.active,
+            ageInk: ganAgeInk(g) || "",
+            ageKey: Number((String(g.age||"").match(/\d+/g)||[])[0]) || 99,
+            used, cap,
+            waiting: Math.max(0, reg - used)
+          };
+        }).sort((a,b)=> (a.ageKey-b.ageKey) || a.name.localeCompare(b.name,"he"));
+
+        /* קיבוץ לפי קמפוס, בסדר הופעה */
+        const order=[], byCampus={};
+        cards.forEach(c=>{
+          if(!byCampus[c.campus]){ byCampus[c.campus]={name:c.campus, gans:[], cap:0, used:0}; order.push(c.campus); }
+          const e=byCampus[c.campus];
+          e.gans.push(c); e.cap+=c.cap||0; e.used+=c.used;
+        });
+        return { total:cards.length, campuses:order.map(k=>byCampus[k]) };
+      }catch(e){ return null; }
+    },
+
     /* מקראת צבעי הגילאים — אותה פונקציה שהתוכנה כבר משתמשת בה,
        כדי שהמקראה במעבדה תהיה זהה לזו שבמסכים הרגילים. */
     ageLegend(){ try{ return ageLegendHtml(); }catch(e){ return ""; } },

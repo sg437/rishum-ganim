@@ -841,6 +841,132 @@ function dossierTabs(){
   else modal.insertBefore(strip, modal.firstChild);
 }
 
+/* ===========================================================================
+   מסך הגנים — תצוגת כרטיסים (לוח 03)
+   ---------------------------------------------------------------------------
+   בורר טבלה / כרטיסים. תצוגת הטבלה נשארת של התוכנה בדיוק כפי שהיא;
+   בתצוגת הכרטיסים מוחלף תוכן #ganTable בלבד. הנתונים מ-gansScoped(),
+   כלומר החיפוש והסינון של המסך נשמרים.
+   =========================================================================== */
+var gansMode = "cards";          /* בלוח, "כרטיסים" הוא הפעיל */
+
+function ganCard(g){
+  var c = el("div", "lg-card" + (g.active ? "" : " off"));
+  if(g.ageInk) c.style.setProperty("--age-ink", g.ageInk);
+
+  var top = el("div", "lg-top");
+  var t = el("div", "lg-ttl");
+  t.appendChild(el("b", null, g.name));
+  if(g.edu && g.edu !== "רגיל") t.appendChild(el("span", "lh-gan-edu", g.edu));
+  top.appendChild(t);
+  top.appendChild(el("span", "lg-icon", "⌂"));
+  c.appendChild(top);
+
+  var meta = [];
+  if(g.age) meta.push("גיל " + g.age);
+  meta.push("חינוך " + (g.edu === "רגיל" ? "רגיל" : "מיוחד"));
+  if(g.symbol) meta.push("סמל " + g.symbol);
+  c.appendChild(el("div", "lg-meta", meta.join(" · ")));
+
+  var cap = el("div", "lg-cap");
+  cap.appendChild(el("span", "lg-cap-l", "תפוסה"));
+  var r = el("span", "lg-cap-n");
+  r.appendChild(g.cap ? ratio(g.used, g.cap) : el("span", null, String(g.used)));
+  cap.appendChild(r);
+  c.appendChild(cap);
+
+  var bar = el("div", "lh-bar"), bi = el("i");
+  var pct = g.cap ? Math.min(100, g.used / g.cap * 100) : 0;
+  bi.style.width = pct + "%";
+  if(pct >= 100) bi.classList.add("full"); else if(pct >= 85) bi.classList.add("near");
+  bar.appendChild(bi); c.appendChild(bar);
+
+  if(g.cap){
+    var free = g.cap - g.used;
+    c.appendChild(free > 0
+      ? el("div", "lg-free", free + " מקומות פנויים")
+      : el("div", "lg-free full", "מלא" + (g.waiting ? " · " + g.waiting + " בהמתנה" : "")));
+  }
+
+  /* הגננת בתחתית — ובאדום כשאין */
+  var tr = el("div", "lg-teach" + (g.teacher ? "" : " none"));
+  if(g.teacher){
+    tr.appendChild(el("span", "lab-ini", initialsFrom(g.teacher)));
+    var tb = el("div", null);
+    tb.appendChild(el("div", "lg-tname", g.teacher));
+    tb.appendChild(el("div", "lg-tsub", "גננת" + (g.teacherPhone ? " · " + g.teacherPhone : "")));
+    tr.appendChild(tb);
+  }else{
+    tr.appendChild(el("span", "lab-ini q", "?"));
+    var nb = el("div", null);
+    nb.appendChild(el("div", "lg-tname", "ללא גננת משובצת"));
+    nb.appendChild(el("div", "lg-tsub", "לשיבוץ לפני תחילת השנה"));
+    tr.appendChild(nb);
+  }
+  c.appendChild(tr);
+  return c;
+}
+
+function renderGansBoard(host){
+  var d = (window.__uiLab && window.__uiLab.gansBoard) ? window.__uiLab.gansBoard() : null;
+  if(!d || !d.campuses) return false;
+
+  var wrap = el("div", "lab-gans");
+  d.campuses.forEach(function(camp){
+    var head = el("div", "lg-camp");
+    head.appendChild(el("b", null, camp.name));
+    var sub = camp.gans.length === 1 ? "גן אחד" : camp.gans.length + " גנים";
+    if(camp.cap) sub += " · " + camp.used + " מתוך " + camp.cap + " מקומות";
+    head.appendChild(el("span", "lg-camp-sub", sub));
+    wrap.appendChild(head);
+
+    var grid = el("div", "lg-grid");
+    camp.gans.forEach(function(g){ grid.appendChild(ganCard(g)); });
+    wrap.appendChild(grid);
+  });
+
+  /* מקראת הגילאים — אותה מקראה של המסכים הרגילים */
+  var lg = (window.__uiLab && window.__uiLab.ageLegend) ? window.__uiLab.ageLegend() : "";
+  if(lg){ var box = el("div", "lh-legend"); box.innerHTML = lg; wrap.appendChild(box); }
+
+  host.innerHTML = "";
+  host.appendChild(wrap);
+  return true;
+}
+
+function gansToggle(host){
+  var bar = view.querySelector(".lab-gtoggle");
+  if(bar) return bar;
+  bar = el("div", "lab-gtoggle");
+  [["cards", "כרטיסים"], ["table", "טבלה"]].forEach(function(m){
+    var b = el("button", "lg-tab" + (gansMode === m[0] ? " on" : ""), m[1]);
+    b.onclick = function(){
+      if(gansMode === m[0]) return;
+      gansMode = m[0];
+      bar.querySelectorAll(".lg-tab").forEach(function(x){ x.classList.toggle("on", x === b); });
+      if(window.__uiLab && window.__uiLab.go) window.__uiLab.go("gans");   /* רינדור מחדש */
+    };
+    bar.appendChild(b);
+  });
+  host.parentNode.insertBefore(bar, host);
+  return bar;
+}
+
+function maybeGans(){
+  if(homeBusy || !view) return;
+  var b = nav.querySelector('[data-tab="gans"]');
+  if(!(b && b.classList.contains("active"))) return;
+  var host = view.querySelector("#ganTable");
+  if(!host) return;
+  if(gansMode === "cards" && host.querySelector(".lab-gans")) return;
+  homeBusy = true;
+  try{
+    gansToggle(host);
+    if(gansMode === "cards") renderGansBoard(host);
+  }catch(e){}
+  homeBusy = false;
+}
+
 function maybeStudents(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="students"]');
@@ -858,7 +984,7 @@ function isHome(){
 function maybeHome(){
   if(homeBusy || !view) return;
   try{ tintBars(); }catch(e){}
-  if(!isHome()){ maybeStudents(); maybeAssign(); return; }
+  if(!isHome()){ maybeStudents(); maybeAssign(); maybeGans(); return; }
   if(view.querySelector(".lab-home")) return;   /* כבר שלנו */
   renderHome();
 }

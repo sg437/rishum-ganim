@@ -60,6 +60,7 @@ ${header}
     +'<div class="stat"><div class="k">קלוט בעירייה</div><div class="v">818</div></div>'
     +'<div class="stat"><div class="k">לא קלוט</div><div class="v" style="color:var(--bad)">88</div></div>'
     +'</div></div>':''}
+  ${process.env.HARNESS_TAB==='gans'?'<div class="panel"><div class="section-title"><h2>רשימת הגנים</h2></div><div id="ganTable"><div class="table-wrap"><table><thead><tr><th>שם הגן</th><th>גיל</th></tr></thead><tbody><tr><td>גן זית</td><td>3</td></tr></tbody></table></div></div></div>':''}
   ${process.env.HARNESS_TAB==='assign'?'<div class="panel"><div class="section-title"><h2>שיבוץ צוות</h2></div><div id="asgList"></div></div>':''}
   <div class="section-title">תיקי התלמידות · שנת תשפ״ח</div>
 
@@ -150,6 +151,17 @@ window.__uiLab={
               {who:"מזכירות",ts:Date.now()-9e7,what:"דוח עירייה לחודש אב הופק"}]};},
   go(tab,filter){console.log('go',tab,JSON.stringify(filter||{}));},
   addStudent(){console.log('addStudent');},
+  gansBoard(){return {total:6,campuses:[
+    {name:"קמפוס צפון",cap:106,used:85,gans:[
+      {id:"1",name:"גן זית",symbol:"4404",age:"3",edu:"רגיל",campus:"קמפוס צפון",teacher:"אסתר גרוס",teacherPhone:"055-6620481",active:true,ageInk:"#4c9a6a",ageKey:3,used:24,cap:32,waiting:0},
+      {id:"3",name:"גן דובדבן",symbol:"4409",age:"3/4",edu:"רגיל",campus:"קמפוס צפון",teacher:"מלכה לוי",teacherPhone:"053-3120774",active:true,ageInk:"#4c9a6a",ageKey:3,used:29,cap:32,waiting:0},
+      {id:"4",name:"גן רימון",symbol:"4402",age:"4",edu:"רגיל",campus:"קמפוס צפון",teacher:"שרה ברקוביץ׳",teacherPhone:"052-8841190",active:true,ageInk:"#7a6bb0",ageKey:4,used:32,cap:32,waiting:4}]},
+    {name:"קמפוס מרכז",cap:62,used:58,gans:[
+      {id:"2",name:"גן תפוח",symbol:"4418",age:"3",edu:"רגיל",campus:"קמפוס מרכז",teacher:"רבקה קליין",teacherPhone:"052-7003318",active:true,ageInk:"#4c9a6a",ageKey:3,used:30,cap:30,waiting:9},
+      {id:"6",name:"גן שקד",symbol:"4421",age:"5",edu:"רגיל",campus:"קמפוס מרכז",teacher:"",teacherPhone:"",active:true,ageInk:"#b08a2e",ageKey:5,used:28,cap:32,waiting:0}]},
+    {name:"קמפוס דרום",cap:14,used:11,gans:[
+      {id:"5",name:"גן אגוז",symbol:"4470",age:"5",edu:"ח״מ",campus:"קמפוס דרום",teacher:"חנה זילברשטיין",teacherPhone:"054-8110297",active:true,ageInk:"#b08a2e",ageKey:5,used:11,cap:14,waiting:0}]}
+  ]};},
   ageLegend(){return '<div class="hint" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">'+
     ['3','4','5'].map(function(a){var c={3:'#4c9a6a',4:'#7a6bb0',5:'#b08a2e'}[a];
       return '<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);background:color-mix(in srgb, '+c+' 55%, var(--surface))"></span>גיל '+a+'</span>';}).join(' ')+

@@ -724,7 +724,72 @@ html.ui-lab .la-free{
 }
 
 
-/* ── 10. נייד — לוח 16 ────────────────────────────────────────────────────
+
+/* ── 10. מסך הגנים — תצוגת כרטיסים (לוח 03) ──────────────────────────────
+   הטבלה נשארת של התוכנה; רק תוכן #ganTable מוחלף בתצוגת הכרטיסים.       */
+
+html.ui-lab .lab-gtoggle{
+  display:inline-flex; gap:2px; padding:3px; margin:0 0 14px;
+  background:var(--surface-2); border:1px solid var(--border); border-radius:12px;
+}
+html.ui-lab .lg-tab{
+  background:none; border:0; border-radius:9px; padding:8px 16px;
+  font-size:.85rem; font-weight:600; color:var(--ink-soft); cursor:pointer;
+}
+html.ui-lab .lg-tab.on{ background:var(--surface); color:var(--ink); box-shadow:var(--shadow) }
+
+html.ui-lab .lab-gans{ display:flex; flex-direction:column; gap:6px }
+html.ui-lab .lg-camp{
+  display:flex; align-items:baseline; gap:10px;
+  padding:18px 2px 10px; border-bottom:1px solid var(--lab-rule-row); margin-bottom:14px;
+}
+html.ui-lab .lg-camp b{ font-size:1rem; font-weight:700 }
+html.ui-lab .lg-camp-sub{ font-size:.78rem; color:var(--muted); font-weight:600 }
+
+html.ui-lab .lg-grid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(255px, 1fr));
+  gap:14px; margin-bottom:6px;
+}
+/* מסגרת חזקה בצבע הגיל — --age-ink מ-AGE_HUE שכבר קיים בקוד */
+html.ui-lab .lg-card{
+  background:var(--surface);
+  border:2px solid var(--age-ink, var(--border));
+  border-radius:16px; padding:15px 17px;
+  display:flex; flex-direction:column; gap:2px; min-width:0;
+}
+html.ui-lab .lg-card.off{ opacity:.55 }
+html.ui-lab .lg-card:hover{ box-shadow:var(--shadow-lg) }
+html.ui-lab .lg-top{ display:flex; align-items:center; justify-content:space-between; gap:10px }
+html.ui-lab .lg-ttl{ display:flex; align-items:center; gap:7px; min-width:0 }
+html.ui-lab .lg-ttl b{ font-size:1rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+html.ui-lab .lg-icon{
+  width:34px; height:34px; border-radius:11px; flex:0 0 auto;
+  display:grid; place-items:center; font-size:1rem;
+  background:color-mix(in srgb, var(--age-ink, var(--accent)) 16%, var(--surface));
+  color:var(--age-ink, var(--accent));
+}
+html.ui-lab .lg-meta{ font-size:.76rem; color:var(--muted); margin-bottom:11px }
+html.ui-lab .lg-cap{ display:flex; justify-content:space-between; align-items:baseline; gap:8px }
+html.ui-lab .lg-cap-l{ font-size:.75rem; color:var(--muted); font-weight:600 }
+html.ui-lab .lg-cap-n{ font-size:.9rem; font-weight:700 }
+html.ui-lab .lg-free{ font-size:.78rem; font-weight:700; color:var(--good); margin-top:7px }
+html.ui-lab .lg-free.full{ color:var(--bad) }
+html.ui-lab .lg-teach{
+  margin-top:12px; padding-top:11px; border-top:1px solid var(--lab-rule-row);
+  display:flex; align-items:center; gap:9px; min-width:0;
+}
+html.ui-lab .lg-teach .lab-ini{ width:32px; height:32px; font-size:.75rem }
+html.ui-lab .lg-teach .lab-ini.q{ background:var(--bad-soft); color:var(--bad) }
+html.ui-lab .lg-tname{ font-weight:700; font-size:.88rem }
+html.ui-lab .lg-teach.none .lg-tname{ color:var(--bad) }
+html.ui-lab .lg-tsub{ font-size:.75rem; color:var(--muted); direction:ltr; text-align:start }
+html.ui-lab .lg-teach.none .lg-tsub{ direction:rtl }
+
+@media(max-width:900px){
+  html.ui-lab .lg-grid{ grid-template-columns:1fr }
+}
+
+/* ── 11. נייד — לוח 16 ────────────────────────────────────────────────────
    סרגל לשוניות תחתון, רשימת תלמידות ככרטיסים, וכותרת קומפקטית.
    הכול תחת 900px בלבד; בדסקטופ שום דבר מכאן לא חל.
    המידות נמדדו מהלוח: סרגל 9/16/14, פריט .68rem, אייקון 1.1rem,
@@ -890,7 +955,7 @@ html.ui-lab .lab-bottom{ display:none }
   html.ui-lab .lh-gans{ grid-template-columns:1fr }
 }
 
-/* ── 11. תג המעבדה ─────────────────────────────────────────────────────────
+/* ── 12. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
 /* ⚠️ באג שתוקן: inset-inline-start ב-RTL הוא *ימין*, כלומר התג ישב בדיוק
