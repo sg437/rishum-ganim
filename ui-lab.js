@@ -1202,7 +1202,9 @@ function matchLine(hostSel, word, totalFromStats){
   if(!line){
     line = el("div", "lab-mline");
     line.appendChild(el("span", "lab-mtxt", ""));
-    host.parentNode.insertBefore(line, host);
+    /* מחוץ ל-.stu-stage, שאם לא כן הוא הופך לעמודה בתוך ה-flex */
+    var stage = host.closest(".stu-stage") || host;
+    stage.parentNode.insertBefore(line, stage);
   }
   var txt = shown + " " + word + " תואמים · מתוך " + totalFromStats;
   var t = line.querySelector(".lab-mtxt");
@@ -1951,6 +1953,122 @@ function presenceSkin(){
   });
 }
 
+/* ===========================================================================
+   תלמידות — תצוגת כרטיסים (לוח 17, המסך האמצעי)
+   ---------------------------------------------------------------------------
+   הבורר "טבלה | כרטיסים" שבלוח. הטבלה נשארת במקומה ורק מוסתרת, כך שכל
+   המאזינים, המיון והבחירה הקבוצתית שקשורים אליה ממשיכים לחיות. הכרטיסים
+   מוצגים לצידה ומוזנים מ-filteredStudents() — אותה רשימה בדיוק.
+   =========================================================================== */
+var stuMode = "table";           /* בלוח 01 "טבלה" הוא הפעיל */
+
+function stuCard(r){
+  var c = el("button", "ls-card" + (r.tone ? " " + r.tone : ""));
+  c.type = "button";
+  if(r.ageInk) c.style.setProperty("--age-ink", r.ageInk);
+
+  c.appendChild(el("span", "ls-badge " + r.tone, r.status));
+
+  var body = el("span", "ls-body");
+  var t = el("span", "ls-t");
+  t.appendChild(el("span", "ls-name", r.name));
+  var bits = [];
+  if(r.gan) bits.push(r.gan);
+  if(r.age) bits.push("בת " + r.age);
+  if(r.period) bits.push("מועד " + r.period);
+  if(!bits.length) bits.push("ללא גן");
+  t.appendChild(el("span", "ls-sub", bits.join(" · ")));
+  body.appendChild(t);
+  body.appendChild(el("span", "ls-ini", r.ini));
+  c.appendChild(body);
+
+  var foot = el("span", "ls-foot");
+  var docs = el("span", "ls-docs");
+  docs.appendChild(el("span", "ls-dic", "▤"));
+  var segs = el("span", "ls-segs");
+  for(var i = 0; i < r.docsTotal; i++){
+    segs.appendChild(el("i", i < r.docsDone ? "on" : ""));
+  }
+  docs.appendChild(segs);
+  docs.appendChild(el("span", "ls-dn", r.docsDone + "/" + r.docsTotal));
+  foot.appendChild(docs);
+  if(!r.muni) foot.appendChild(el("span", "ls-muni", "לא קלוט"));
+  c.appendChild(foot);
+
+  c.onclick = function(){
+    if(window.__uiLab && window.__uiLab.openStudent) window.__uiLab.openStudent(r.id);
+  };
+  return c;
+}
+
+function renderStuCards(host){
+  var d = (window.__uiLab && window.__uiLab.studentCards)
+            ? window.__uiLab.studentCards() : null;
+  if(!d) return false;
+  var box = view.querySelector(".ls-cards");
+  if(!box){
+    box = el("div", "ls-cards");
+    host.parentNode.insertBefore(box, host.nextSibling);
+  }
+  if(box.dataset.n === String(d.total) + ":" + d.openId) return true;
+  box.dataset.n = String(d.total) + ":" + d.openId;
+  box.innerHTML = "";
+  if(!d.rows.length){
+    box.appendChild(el("div", "lab-empty", "אין תלמידות התואמות לסינון."));
+    return true;
+  }
+  d.rows.forEach(function(r){
+    var c = stuCard(r);
+    if(r.id === d.openId) c.classList.add("on");
+    box.appendChild(c);
+  });
+  if(d.total > d.rows.length){
+    box.appendChild(el("div", "lab-empty",
+      "מוצגות " + d.rows.length + " מתוך " + d.total + " — צמצמ/י את הסינון או עברו לטבלה."));
+  }
+  return true;
+}
+
+/* הבורר עצמו — אותו רכיב של מסך הגנים */
+function stuToggle(host){
+  var bar = view.querySelector(".lab-stoggle");
+  if(bar) return bar;
+  bar = el("div", "lab-gtoggle lab-stoggle");
+  /* ⚠️ .stu-stage הוא flex — הזרקה לתוכו הופכת את הבורר לעמודה שגוזלת
+     רוחב מהטבלה. הוא נכנס מעל הבמה, לא לתוכה. */
+  var stage = host.closest(".stu-stage");
+  [["table", "טבלה"], ["cards", "כרטיסים"]].forEach(function(m){
+    var b = el("button", "lg-tab" + (stuMode === m[0] ? " on" : ""), m[1]);
+    b.onclick = function(){
+      if(stuMode === m[0]) return;
+      stuMode = m[0];
+      bar.querySelectorAll(".lg-tab").forEach(function(x){ x.classList.toggle("on", x === b); });
+      applyStuMode();
+    };
+    bar.appendChild(b);
+  });
+  var line = view.querySelector(".lab-mline");
+  if(line){ bar.classList.add("in-line"); line.appendChild(bar); }
+  else{
+    var anchor = stage || host;
+    anchor.parentNode.insertBefore(bar, anchor);
+  }
+  return bar;
+}
+
+function applyStuMode(){
+  var host = view.querySelector("#stuTable");
+  if(!host) return;
+  var cards = view.querySelector(".ls-cards");
+  if(stuMode === "cards"){
+    host.classList.add("lab-hidden");
+    if(!renderStuCards(host)) host.classList.remove("lab-hidden");
+  }else{
+    host.classList.remove("lab-hidden");
+    if(cards) cards.remove();
+  }
+}
+
 function maybeStudents(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="students"]');
@@ -1961,6 +2079,8 @@ function maybeStudents(){
     var sm = view.querySelector("#stuSummary .stat .v");
     if(sm) matchLine("#stuTable", "תלמידות",
       (parseInt(String(sm.textContent).replace(/[^\d]/g,""),10) || 0));
+    var host = view.querySelector("#stuTable");   /* אחרי matchLine — הבורר נכנס לתוכו */
+    if(host){ stuToggle(host); applyStuMode(); }
   }catch(e){}
   homeBusy = false;
 }

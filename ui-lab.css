@@ -1520,3 +1520,139 @@ html.ui-lab .lab-subdoc > b{ display:block; font-size:.92rem; margin-bottom:4px 
 html.ui-lab .lab-stkpis .lh-kpi{ display:block }
 html.ui-lab .lab-stkpis .lh-kpi.lh-kpi-ring{ display:flex; align-items:center }
 html.ui-lab .lab-stkpis .lh-sub{ font-size:.74rem; color:var(--muted) }
+
+/* ===========================================================================
+   15 · תלמידות בתצוגת כרטיסים (לוח 17) והעוזר החכם (לוח 16)
+   =========================================================================== */
+
+html.ui-lab .lab-hidden{ display:none !important }
+html.ui-lab .lab-stoggle{ margin-bottom:12px }
+
+html.ui-lab .ls-cards{
+  display:grid; gap:11px;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+}
+html.ui-lab .ls-card{
+  position:relative; display:flex; flex-direction:column; gap:11px;
+  padding:15px 16px 13px; text-align:start; font:inherit; cursor:pointer;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius);
+  border-inline-start:5px solid var(--age-ink, var(--border));
+  transition:border-color .15s, box-shadow .15s, transform .1s;
+}
+html.ui-lab .ls-card:hover{ box-shadow:0 6px 18px rgba(21,52,42,.10); transform:translateY(-1px) }
+html.ui-lab .ls-card.on{ border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft) }
+
+/* התג יושב על המסגרת בפינה העליונה, כמו בלוח */
+html.ui-lab .ls-badge{
+  position:absolute; inset-block-start:-9px; inset-inline-end:14px;
+  padding:2px 10px; border-radius:99px; font-size:.7rem; font-weight:700;
+  border:1px solid transparent; white-space:nowrap;
+}
+html.ui-lab .ls-badge.good{ background:var(--accent-soft); color:var(--accent-strong); border-color:#cfe2d4 }
+html.ui-lab .ls-badge.warn{ background:#f7efd9; color:#7a5a15; border-color:#e8d7a8 }
+html.ui-lab .ls-badge.bad { background:#fbe6e3; color:#8f342a; border-color:#f0c9c3 }
+
+html.ui-lab .ls-body{ display:flex; align-items:flex-start; gap:11px }
+html.ui-lab .ls-t{ display:flex; flex-direction:column; gap:2px; flex:1; min-width:0 }
+html.ui-lab .ls-name{
+  font-weight:600; font-size:.96rem; letter-spacing:-.02em;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html.ui-lab .ls-sub{ font-size:.76rem; color:var(--muted); font-weight:600 }
+html.ui-lab .ls-ini{
+  flex:0 0 auto; width:34px; height:34px; border-radius:11px;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--surface-2); color:var(--ink-soft);
+  font-size:.74rem; font-weight:700;
+}
+
+html.ui-lab .ls-foot{
+  display:flex; align-items:center; gap:9px;
+  padding-top:10px; border-top:1px solid var(--lab-rule-row);
+}
+html.ui-lab .ls-docs{ display:inline-flex; align-items:center; gap:7px }
+html.ui-lab .ls-dic{ font-size:.85rem; color:var(--muted) }
+html.ui-lab .ls-segs{ display:inline-flex; gap:3px }
+html.ui-lab .ls-segs > i{
+  display:block; width:16px; height:5px; border-radius:99px;
+  background:var(--lab-rule-row);
+}
+html.ui-lab .ls-segs > i.on{ background:var(--accent) }
+html.ui-lab .ls-dn{
+  font-size:.72rem; color:var(--muted); font-weight:700;
+  direction:ltr; unicode-bidi:isolate;
+}
+html.ui-lab .ls-muni{
+  margin-inline-start:auto; font-size:.71rem; font-weight:700; color:#b4483c;
+}
+
+/* -- העוזר החכם ------------------------------------------------------------ */
+html.ui-lab .aipanel{
+  border-inline-start:0; box-shadow:-6px 0 28px rgba(21,52,42,.14);
+  background:var(--bg);
+}
+html.ui-lab .aipanel-head{
+  background:var(--lab-deep); border-bottom:0; color:#f3f6f1; padding:13px 14px;
+}
+html.ui-lab .aipanel-title{ font-weight:600; letter-spacing:-.02em; color:#f3f6f1 }
+html.ui-lab .aipanel-head .pill{
+  background:rgba(255,255,255,.14); color:#d7e5da; border-color:transparent; font-size:.72rem;
+}
+html.ui-lab .aipanel-head .pill.ok{ background:var(--accent); color:#fff }
+html.ui-lab .aipanel-btn{
+  background:rgba(255,255,255,.1); border-color:transparent; color:#e7efe8; border-radius:9px;
+}
+html.ui-lab .aipanel-btn:hover{ background:rgba(255,255,255,.2); border-color:transparent }
+
+html.ui-lab .aipanel-msgs{ padding:14px; gap:11px }
+html.ui-lab .aimsg{ border-radius:14px; padding:10px 13px; font-size:.88rem; line-height:1.6 }
+/* ⚠️ בלוח הכיוון הפוך מהקוד: הבועה של המשתמש כהה ובקצה, של העוזר בהירה
+   ובהתחלה. align-self:flex-start ב-RTL הוא *ימין*. */
+html.ui-lab .aimsg.user{
+  align-self:flex-end; background:var(--lab-deep); color:#f3f6f1; border:0;
+  border-end-end-radius:5px;
+}
+html.ui-lab .aimsg.bot{
+  align-self:flex-start; background:var(--surface); color:var(--ink);
+  border:1px solid var(--border); border-end-start-radius:5px;
+}
+html.ui-lab .aimsg.sys{ font-size:.76rem }
+
+/* כרטיס אישור הפעולה */
+html.ui-lab .aiact{
+  background:var(--surface); border:1px solid var(--border);
+  border-inline-start:4px solid var(--lab-gold);
+  border-radius:14px; padding:13px 15px;
+}
+html.ui-lab .aiact b{ color:var(--lab-gold); font-size:.84rem; font-weight:700; margin-bottom:6px }
+html.ui-lab .aiact .aiact-row{ gap:8px; margin-top:11px }
+html.ui-lab .aiact .aiact-row .btn{ flex:1; justify-content:center }
+html.ui-lab .aiact.done{
+  border-color:var(--border); border-inline-start-color:var(--accent);
+  background:var(--accent-soft);
+}
+html.ui-lab .aiact.done b{ color:var(--accent-strong) }
+html.ui-lab .aiact.cancel{ border-inline-start-color:var(--muted) }
+html.ui-lab .aiact.cancel b{ color:var(--muted) }
+
+html.ui-lab .aipanel-foot{
+  background:var(--bg); border-top:1px solid var(--border); padding:12px 14px; gap:9px;
+}
+html.ui-lab .aipanel-foot textarea{
+  border-radius:14px; padding:10px 13px; background:var(--surface); font-size:.88rem;
+}
+html.ui-lab .aipanel-foot .btn{
+  width:42px; height:42px; padding:0; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:1rem;
+}
+
+/* הכרטיסים יורשים את מקומה של הטבלה בתוך .stu-stage — בלי זה הם מקבלים
+   רק את הרוחב הטבעי שלהם ונדחסים לעמודה אחת. */
+html.ui-lab .stu-stage > .ls-cards{ flex:1 1 0; min-width:0 }
+html.ui-lab .lab-stoggle{ display:inline-flex; margin:0 0 12px }
+html.ui-lab .lab-mline{ display:flex; align-items:center; justify-content:space-between; gap:14px }
+html.ui-lab .lab-stoggle.in-line{ margin:0 }
+/* בלוח כפתור הביצוע ירוק ורחב מהביטול */
+html.ui-lab .aiact .aiact-row .btn:not(.ghost){ flex:2; background:var(--accent); border-color:var(--accent) }
+html.ui-lab .aiact .aiact-row .btn.ghost{ flex:1 }

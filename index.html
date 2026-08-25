@@ -2642,6 +2642,44 @@ if(document.documentElement.classList.contains("ui-lab")){
       }catch(e){ return null; }
     },
 
+    /* תצוגת הכרטיסים של התלמידות (לוח 17, המסך האמצעי). מבוססת על
+       filteredStudents() — בדיוק אותה רשימה שהטבלה מציגה, כך שהחיפוש,
+       הסינון והמיון של המסך תקפים גם כאן. קריאה בלבד. */
+    studentCards(){
+      try{
+        const list = filteredStudents();
+        return {
+          total: list.length,
+          openId: stuQuickId || "",
+          rows: list.slice(0, 400).map(s=>{
+            const g = s.ganId ? ganById(s.ganId) : null;
+            const d = s.docs || {};
+            const done = STUDENT_DOCS.filter(x=>d[x[0]]).length;
+            const placed = !!(s.ganId && s.placed !== false);
+            return {
+              id: s.id,
+              name: fullName(s),
+              ini: initialsOf(s),
+              tz: String(s.tz || ""),
+              gan: g ? ganName(g.id) : "",
+              campus: (g && String(g.campus||"").trim()) || String(s.campus||"").trim(),
+              age: String(s.age || ""),
+              period: String(s.period || ""),
+              ageInk: g ? (ganAgeInk(g) || "") : "",
+              placed,
+              muni: !!s.absorbedMunicipality,
+              docsDone: done, docsTotal: STUDENT_DOCS.length,
+              status: placed ? "משובצת" : (s.ganId ? "ממתינה" : "ללא גן"),
+              tone:   placed ? "good"    : (s.ganId ? "warn"    : "bad")
+            };
+          })
+        };
+      }catch(e){ return null; }
+    },
+
+    /* פתיחת התיק המקוצר של תלמידה — אותו מסלול של לחיצה על שורה בטבלה. */
+    openStudent(id){ try{ openStuQuick(id); }catch(e){} },
+
     /* מסך צוות הגנים (לוח 04 במסמך — מסך שאינו קיים בקנבס הישן).
        ⚠️ הלוח מציג "מסמכים חסרים" עם חוזה העסקה / אישור העדר עבירות /
        תעודת הוראה. שלושתם אינם קיימים במודל הצוות. מה שכן קיים הוא
