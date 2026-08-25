@@ -335,6 +335,14 @@ html.ui-lab .lh-greet{
   font-size:1.75rem; font-weight:600; letter-spacing:-.03em;
 }
 html.ui-lab .lh-hsub{ font-size:.9rem; color:var(--ink-soft); margin-top:2px }
+html.ui-lab .lh-acts{ display:flex; gap:9px; flex:0 0 auto }
+html.ui-lab .lh-btn{
+  padding:10px 16px; border-radius:10px; font-weight:600; font-size:.86rem; cursor:pointer;
+}
+html.ui-lab .lh-btn.ghost  { background:var(--surface); color:var(--ink-soft); border:1px solid var(--lab-border-strong) }
+html.ui-lab .lh-btn.ghost:hover{ border-color:var(--accent); color:var(--accent-strong) }
+html.ui-lab .lh-btn.primary{ background:var(--lab-deep); color:#fff; border:0; font-weight:700 }
+html.ui-lab .lh-btn.primary:hover{ opacity:.92 }
 
 /* כרטיסי KPI */
 html.ui-lab .lh-kpis{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:14px }
@@ -429,6 +437,13 @@ html.ui-lab .lh-camp-top{ display:flex; justify-content:space-between; align-ite
 html.ui-lab .lh-camp-n{ font-size:.8rem; color:var(--muted); font-weight:700 }
 /* יחס מבודד — בלי זה 168/180 מתהפך ב-RTL */
 html.ui-lab .lh-ratio{ direction:ltr; unicode-bidi:isolate }
+html.ui-lab .lh-camp-more{ display:none }
+html.ui-lab .lh-panel.lh-open .lh-camp-more{ display:block }
+html.ui-lab .lh-more{
+  background:none; border:0; padding:8px 0 0; cursor:pointer;
+  font-size:.8rem; font-weight:700; color:var(--accent);
+}
+html.ui-lab .lh-more:hover{ text-decoration:underline }
 
 /* פעילות אחרונה */
 html.ui-lab .lh-act{ display:flex; gap:10px; padding:8px 0; align-items:flex-start }
@@ -444,11 +459,15 @@ html.ui-lab .lh-gans{
   display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:14px; margin-top:6px;
 }
 html.ui-lab .lh-gan{
-  text-align:start; background:var(--surface); border:1px solid var(--border);
-  border-radius:16px; padding:15px 17px; font:inherit; cursor:pointer;
+  text-align:start; background:var(--surface);
+  /* מסגרת חזקה בצבע הגיל — --age-ink מוזרק ב-ui-lab.js מתוך AGE_HUE */
+  border:2px solid var(--age-ink, var(--border));
+  border-radius:16px; padding:14px 16px; font:inherit; cursor:pointer;
   display:flex; flex-direction:column; gap:2px;
 }
-html.ui-lab .lh-gan:hover{ border-color:var(--accent); box-shadow:var(--shadow) }
+html.ui-lab .lh-gan:hover{ box-shadow:var(--shadow-lg) }
+html.ui-lab .lh-legend{ margin-top:14px; padding-top:12px; border-top:1px solid var(--lab-rule-row) }
+html.ui-lab .lh-legend .hint{ margin-top:0 }
 html.ui-lab .lh-gan-top{ display:flex; align-items:center; gap:7px }
 html.ui-lab .lh-gan-top b{ font-size:.98rem; font-weight:700 }
 html.ui-lab .lh-gan-edu{
@@ -484,7 +503,40 @@ html.ui-lab .lh-empty{ font-size:.85rem; color:var(--muted); padding:10px 0 }
    עיצוב בלבד על המבנה הקיים. viewStudents מחזיק מיון, סינון, בחירה מרובה
    והתיק בצד — החלפת ה-DOM הייתה שוברת אותם.                                */
 
-html.ui-lab .lab-skpis{ margin-bottom:16px }
+/* פס הסיכום הנעוץ. שני תיקונים: רקע אטום ו-z-index, כי בגלילה השורות
+   נראו מבעדו והוא צף באמצע הטבלה; ועיצוב KPI לפי הלוח, במקום להזריק
+   שורה שנייה עם אותם מספרים. */
+html.ui-lab #stuSummary.sticky{
+  background:var(--bg); z-index:20;
+  padding:10px 0; margin-bottom:4px;
+}
+html.ui-lab #stuSummary .stats{
+  grid-template-columns:1.4fr repeat(auto-fit, minmax(130px, 1fr)); gap:14px;
+}
+html.ui-lab #stuSummary .stat{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; padding:16px 18px;
+}
+html.ui-lab #stuSummary .stat .k{ font-size:.79rem; color:var(--muted); font-weight:600 }
+html.ui-lab #stuSummary .stat .v{
+  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-size:2.1rem; font-weight:500; letter-spacing:-.03em; margin-top:2px;
+}
+/* המשבצת הראשונה — כהה עם טבעת, כמו בלוח */
+/* .k ו-.v הם אחים ישירים בתוך המשבצת, ולכן flex פשוט היה מסדר אותם
+   בשורה אחת עם הטבעת והכרטיס היה נחתך. grid מציב את הטבעת בעמודה שנייה
+   על פני שתי השורות. */
+html.ui-lab #stuSummary .stat.lab-hero{
+  background:var(--lab-deep); border-color:transparent; color:#fff;
+  display:grid; grid-template-columns:1fr auto; column-gap:14px; align-items:center;
+}
+html.ui-lab #stuSummary .stat.lab-hero .k{ grid-column:1; grid-row:1 }
+html.ui-lab #stuSummary .stat.lab-hero .v{ grid-column:1; grid-row:2 }
+html.ui-lab #stuSummary .stat.lab-hero .lh-ring{ grid-column:2; grid-row:1 / span 2 }
+html.ui-lab #stuSummary .stat.lab-hero .k{ color:rgba(255,255,255,.6) }
+html.ui-lab #stuSummary .stat.lab-hero .v{ color:#fff; font-size:2.6rem; letter-spacing:-.04em }
+html.ui-lab #stuSummary .stat.lab-hero .v small{ color:rgba(255,255,255,.55) }
+
 
 /* ראשי תיבות בעיגול לכל שורה (מוזרקים ב-ui-lab.js) */
 html.ui-lab .lab-namecell{ display:flex; align-items:center; gap:10px }
@@ -841,8 +893,11 @@ html.ui-lab .lab-bottom{ display:none }
 /* ── 11. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
+/* ⚠️ באג שתוקן: inset-inline-start ב-RTL הוא *ימין*, כלומר התג ישב בדיוק
+   מעל תחתית סרגל הצד וחסם את כרטיס היעד ואת שורת המשתמש. הוא עובר לצד
+   הנגדי. בנייד הסרגל הוא מגירה סגורה, ולכן שם אין התנגשות. */
 html.ui-lab .ui-lab-badge{
-  position:fixed; inset-block-end:12px; inset-inline-start:12px; z-index:9999;
+  position:fixed; inset-block-end:12px; inset-inline-end:12px; z-index:9999;
   display:inline-flex; align-items:center; gap:6px;
   padding:6px 12px; border-radius:999px;
   background:#7a2e2e; color:#fff;

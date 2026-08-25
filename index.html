@@ -2271,12 +2271,14 @@ if(document.documentElement.classList.contains("ui-lab")){
           const d = s.docs || {};
           return STUDENT_DOCS.some(x=>!d[x[0]]);
         }).length;
-        /* איזה מסמך חסר הכי הרבה — לשורת המשנה */
-        let topDoc="", topDocN=0;
-        STUDENT_DOCS.forEach(x=>{
-          const n = stu.filter(s=>!((s.docs||{})[x[0]])).length;
-          if(n>topDocN){ topDocN=n; topDoc=x[1]; }
-        });
+        /* פירוט לפי סוג מסמך. ספירה כוללת של "חסר לפחות אחד" יכולה לצאת
+           שווה לסך התיקים ואז אינה אומרת דבר — הפירוט מראה מיד איזה מסמך
+           הוא הצוואר. */
+        const docBreak = STUDENT_DOCS.map(x=>({
+          label: x[1],
+          missing: stu.filter(s=>!((s.docs||{})[x[0]])).length
+        })).sort((a,b)=>b.missing-a.missing);
+        const topDoc = docBreak.length ? docBreak[0].label : "";
 
         const noTeacher = gans.filter(g=>!String(g.teacherName||"").trim());
 
@@ -2327,13 +2329,17 @@ if(document.documentElement.classList.contains("ui-lab")){
             edu:eduLabel(g),
             campus:String(g.campus||"").trim(),
             teacher:String(g.teacherName||"").trim(),
+            ageInk: ganAgeInk(g) || "",
+            ageKey: Number((String(g.age||"").match(/\d+/g)||[])[0]) || 99,
             used, cap
           };
-        }).sort((a,b)=>a.name.localeCompare(b.name,"he"));
+        })
+        /* מיון לפי גיל ואז א״ב, כפי שנתבקש */
+        .sort((a,b)=> (a.ageKey-b.ageKey) || a.name.localeCompare(b.name,"he"));
 
         return {
           year:DB.activeYear||"", activity, name:myName, ganCards,
-          total, placed, waiting, notMuni, missingDocs, topDoc,
+          total, placed, waiting, notMuni, missingDocs, topDoc, docBreak,
           topAge, topAgeN,
           noTeacherCount:noTeacher.length,
           noTeacherCampus:[...new Set(noTeacher.map(g=>String(g.campus||"").trim()).filter(Boolean))],
@@ -2389,6 +2395,10 @@ if(document.documentElement.classList.contains("ui-lab")){
         };
       }catch(e){ return null; }
     },
+
+    /* מקראת צבעי הגילאים — אותה פונקציה שהתוכנה כבר משתמשת בה,
+       כדי שהמקראה במעבדה תהיה זהה לזו שבמסכים הרגילים. */
+    ageLegend(){ try{ return ageLegendHtml(); }catch(e){ return ""; } },
 
     /* כפתור ה-+ בסרגל התחתון בנייד (לוח 16) — אותה פעולה בדיוק של
        "➕ הוספת ילדה" במסך התלמידות, כולל ירושת בורר החינוך. */

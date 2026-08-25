@@ -322,6 +322,17 @@ function renderHome(){
   if(d.notMuni) bits.push(d.notMuni + " תיקים לא נקלטו בעירייה");
   left.appendChild(el("div", "lh-hsub", bits.length ? bits.join(", ") + "." : "אין משימות פתוחות."));
   head.appendChild(left);
+
+  /* הכפתורים בצד שמאל למעלה — לוח 02 */
+  var acts = el("div", "lh-acts");
+  var rep = el("button", "lh-btn ghost", "דוח יומי");
+  rep.onclick = function(){ go("reports"); };   /* אין "דוח יומי" נפרד — מסך הדוחות */
+  acts.appendChild(rep);
+  var add = el("button", "lh-btn primary", "+ הוספת ילדה");
+  add.onclick = function(){ if(window.__uiLab && window.__uiLab.addStudent) window.__uiLab.addStudent(); };
+  acts.appendChild(add);
+  head.appendChild(acts);
+
   root.appendChild(head);
 
   /* --- ארבעת כרטיסי ה-KPI --- */
@@ -352,7 +363,7 @@ function renderHome(){
   var cols = el("div", "lh-cols");
 
   /* דורש טיפול */
-  var tasks = panel("דורש טיפול");
+  var tasks = panel("דורש טיפול", "כל המשימות", function(){ go("students"); });
   var any = false;
   if(d.notMuni){ any = true; tasks.appendChild(taskRow(d.notMuni, "bad",
     "תיקים שלא נקלטו בעירייה", "מתוך " + d.total + " תיקים פעילים", "טפל",
@@ -361,9 +372,12 @@ function renderHome(){
     "ממתינות לשיבוץ",
     d.nearFull.length ? d.nearFull.slice(0,2).join(" ו") + " קרובים לתפוסה מלאה" : "",
     "לשיבוץ", function(){ go("students", {placed:"no"}); })); }
-  if(d.missingDocs){ any = true; tasks.appendChild(taskRow(d.missingDocs, "warn",
-    "תיקים עם מסמך חסר", d.topDoc ? "החסר הנפוץ: " + d.topDoc : "", "רשימה",
-    function(){ go("students"); })); }
+  if(d.missingDocs){ any = true;
+    /* פירוט לפי סוג — "906 מתוך 906" לבדו אינו אומר דבר */
+    var br = (d.docBreak || []).filter(function(x){ return x.missing; })
+               .map(function(x){ return x.label + " " + x.missing; }).join(" · ");
+    tasks.appendChild(taskRow(d.missingDocs, "warn",
+      "תיקים עם מסמך חסר", br, "רשימה", function(){ go("students"); })); }
   if(d.noTeacherCount){ any = true; tasks.appendChild(taskRow(d.noTeacherCount, "good",
     "גנים ללא גננת משובצת",
     (d.noTeacherCampus.length ? d.noTeacherCampus.join(" · ") + " · " : "") + "לשנת " + d.year,
@@ -375,8 +389,9 @@ function renderHome(){
   var side = el("div", "lh-side");
 
   var camps = panel("תפוסה לפי קמפוס");
+  var CAMP_SHOWN = 5;
   if(d.campuses.length){
-    d.campuses.forEach(function(c){
+    d.campuses.forEach(function(c, ci){
       var row = el("div", "lh-camp");
       var top = el("div", "lh-camp-top");
       top.appendChild(el("b", null, c.name));
@@ -390,8 +405,18 @@ function renderHome(){
       if(pct >= 95) i.classList.add("full");
       else if(pct >= 85) i.classList.add("near");
       bar.appendChild(i); row.appendChild(bar);
+      if(ci >= CAMP_SHOWN) row.classList.add("lh-camp-more");
       camps.appendChild(row);
     });
+    if(d.campuses.length > CAMP_SHOWN){
+      var rest = d.campuses.length - CAMP_SHOWN;
+      var more = el("button", "lh-more", "הצגת " + rest + " נוספים");
+      more.onclick = function(){
+        var open = camps.classList.toggle("lh-open");
+        more.textContent = open ? "הצגת פחות" : "הצגת " + rest + " נוספים";
+      };
+      camps.appendChild(more);
+    }
   } else {
     camps.appendChild(el("div", "lh-empty", "לא הוגדרו קמפוסים."));
   }
@@ -429,6 +454,8 @@ function renderHome(){
     d.ganCards.forEach(function(g){
       var card = el("button", "lh-gan");
       card.onclick = function(){ go("gans"); };
+      /* מסגרת בצבע הגיל — מאותה מפה שהתוכנה כבר משתמשת בה (AGE_HUE) */
+      if(g.ageInk) card.style.setProperty("--age-ink", g.ageInk);
 
       var top = el("div", "lh-gan-top");
       top.appendChild(el("b", null, g.name));
@@ -467,6 +494,13 @@ function renderHome(){
       grid.appendChild(card);
     });
     gp.appendChild(grid);
+    /* מקראת הגילאים — אותה מקראה שבמסכים הרגילים */
+    var lg = (window.__uiLab && window.__uiLab.ageLegend) ? window.__uiLab.ageLegend() : "";
+    if(lg){
+      var box = el("div", "lh-legend");
+      box.innerHTML = lg;                      /* מקור פנימי מהתוכנה, לא קלט משתמש */
+      gp.appendChild(box);
+    }
     root.appendChild(gp);
   }
 
@@ -493,21 +527,38 @@ function initialsFrom(name){
   return (w[0].charAt(0) + (w[1] ? w[1].charAt(0) : "")).trim();
 }
 
-function studentsKpis(){
-  var stage = view.querySelector(".stu-stage");
-  if(!stage || view.querySelector(".lab-skpis")) return;
-  var d = (window.__uiLab && window.__uiLab.home) ? window.__uiLab.home() : null;
-  if(!d) return;
-  var row = el("div", "lh-kpis lab-skpis");
-  row.appendChild(kpi({ dark:true, label:"סה״כ רשומות", value:d.total,
-    sub:d.gansActive ? d.gansActive + " גנים פעילים" : "",
-    ring: d.total ? d.placed / d.total * 100 : 0 }));
-  row.appendChild(kpi({ label:"משובצות סופית", value:d.placed, tone:"good",
-    bar: d.total ? d.placed / d.total * 100 : 0 }));
-  row.appendChild(kpi({ label:"ממתינות לשיבוץ", value:d.waiting,
-    sub: d.topAge ? d.topAgeN + " מהן בגיל " + d.topAge : "" }));
-  row.appendChild(kpi({ label:"לא קלוט בעירייה", value:d.notMuni, tone:"bad" }));
-  stage.parentNode.insertBefore(row, stage);
+/* פס הסיכום של מסך התלמידות כבר קיים (#stuSummary), חי, ומגיב לסינון.
+   הזרקת שורת KPI שנייה יצרה כפילות של אותם מספרים — לכן כאן רק מעצבים
+   את הקיים: המשבצת הראשונה הופכת לכהה ומקבלת טבעת אחוזים. */
+function styleStuSummary(){
+  var sum = view.querySelector("#stuSummary");
+  if(!sum) return;
+  var tiles = sum.querySelectorAll(".stat");
+  if(tiles.length < 2) return;
+
+  var first = tiles[0];
+  if(!first.classList.contains("lab-hero")) first.classList.add("lab-hero");
+
+  var num = function(t){
+    var v = t.querySelector(".v");
+    return v ? (parseInt(String(v.textContent).replace(/[^\d]/g, ""), 10) || 0) : 0;
+  };
+  var total = num(tiles[0]), placed = num(tiles[1]);
+  var pct = total ? Math.round(placed / total * 100) : 0;
+
+  var ring = first.querySelector(".lh-ring");
+  if(!ring){
+    ring = el("div", "lh-ring");
+    ring.appendChild(el("div", "lh-ring-in", ""));
+    first.appendChild(ring);
+  }
+  var txt = pct + "%";
+  var inner = ring.firstChild;
+  if(inner.textContent !== txt){
+    inner.textContent = txt;
+    ring.style.background = "conic-gradient(var(--lab-gold) 0 " + pct +
+                            "%, rgba(255,255,255,.14) " + pct + "% 100%)";
+  }
 }
 
 function studentsRows(){
@@ -795,7 +846,7 @@ function maybeStudents(){
   var b = nav.querySelector('[data-tab="students"]');
   if(!(b && b.classList.contains("active"))) return;
   homeBusy = true;                                /* אותו דגל — חוסם כניסה חוזרת */
-  try{ studentsKpis(); studentsRows(); }catch(e){}
+  try{ styleStuSummary(); studentsRows(); }catch(e){}
   homeBusy = false;
 }
 

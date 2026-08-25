@@ -53,15 +53,22 @@ ${drawer}
 ${header}
 
 <div id="view" style="max-width:1200px;margin:0 auto;padding:18px 14px">
+  ${process.env.HARNESS_TAB==='students'?'<div id="stuSummary" class="sticky"><div class="stats">'
+    +'<div class="stat"><div class="k">רשומות</div><div class="v">906</div></div>'
+    +'<div class="stat"><div class="k">משובצות</div><div class="v" style="color:var(--good)">897</div></div>'
+    +'<div class="stat"><div class="k">ממתינות לשיבוץ</div><div class="v" style="color:var(--warn)">9</div></div>'
+    +'<div class="stat"><div class="k">קלוט בעירייה</div><div class="v">818</div></div>'
+    +'<div class="stat"><div class="k">לא קלוט</div><div class="v" style="color:var(--bad)">88</div></div>'
+    +'</div></div>':''}
   ${process.env.HARNESS_TAB==='assign'?'<div class="panel"><div class="section-title"><h2>שיבוץ צוות</h2></div><div id="asgList"></div></div>':''}
   <div class="section-title">תיקי התלמידות · שנת תשפ״ח</div>
 
-  <div class="stats" style="margin:14px 0 18px">
+  ${process.env.HARNESS_TAB==='students'?'':`<div class="stats" style="margin:14px 0 18px">
     <div class="stat hero"><div class="k">רשומות</div><div class="v">412</div></div>
     <div class="stat"><div class="k">משובצות</div><div class="v">361</div></div>
     <div class="stat"><div class="k">ממתינות לשיבוץ</div><div class="v">51</div></div>
     <div class="stat"><div class="k">קלוט בעירייה</div><div class="v">338 <small>מתוך 412</small></div></div>
-  </div>
+  </div>`}
 
   <div class="panel">
     <h2>סינון</h2><div class="sub">בחירת גן, גיל וסטטוס. הסינון חל על כל המסכים.</div>
@@ -127,16 +134,26 @@ window.__uiLab={
     noTeacherCount:6,noTeacherCampus:["קמפוס דרום"],gansActive:29,
     nearFull:["גן תפוח","גן דובדבן"],
     campuses:[{name:"קמפוס צפון",cap:180,used:168},{name:"קמפוס מרכז",cap:175,used:147},
-              {name:"קמפוס דרום",cap:125,used:97}],
+              {name:"קמפוס דרום",cap:125,used:97},{name:"שדי חמד",cap:72,used:64},
+              {name:"אבני נזר",cap:108,used:95},{name:"מרומי שדה",cap:108,used:79},
+              {name:"ריטב״א",cap:108,used:93}],
+    docBreak:[{label:"תקנון",missing:906},{label:"צילום תעודת זהות",missing:41},{label:"נספח",missing:12}],
     ganCards:[
-      {id:"1",name:"גן רימון",symbol:"4402",age:"4",edu:"רגיל",campus:"קמפוס צפון",teacher:"שרה ברקוביץ׳",used:32,cap:32},
-      {id:"2",name:"גן דובדבן",symbol:"4409",age:"3/4",edu:"רגיל",campus:"קמפוס צפון",teacher:"מלכה לוי",used:29,cap:32},
-      {id:"3",name:"גן שקד",symbol:"4421",age:"5",edu:"רגיל",campus:"קמפוס מרכז",teacher:"",used:28,cap:32},
-      {id:"4",name:"גן אגוז",symbol:"4470",age:"5",edu:"ח״מ",campus:"קמפוס דרום",teacher:"חנה זילברשטיין",used:11,cap:14}],
+      {id:"1",name:"גן זית",symbol:"4404",age:"3",edu:"רגיל",campus:"קמפוס צפון",teacher:"אסתר גרוס",ageInk:"#4c9a6a",ageKey:3,used:24,cap:32},
+      {id:"2",name:"גן תפוח",symbol:"4418",age:"3",edu:"רגיל",campus:"קמפוס מרכז",teacher:"רבקה קליין",ageInk:"#4c9a6a",ageKey:3,used:30,cap:30},
+      {id:"3",name:"גן דובדבן",symbol:"4409",age:"3/4",edu:"רגיל",campus:"קמפוס צפון",teacher:"מלכה לוי",ageInk:"#4c9a6a",ageKey:3,used:29,cap:32},
+      {id:"4",name:"גן רימון",symbol:"4402",age:"4",edu:"רגיל",campus:"קמפוס צפון",teacher:"שרה ברקוביץ׳",ageInk:"#7a6bb0",ageKey:4,used:32,cap:32},
+      {id:"5",name:"גן אגוז",symbol:"4470",age:"5",edu:"ח״מ",campus:"קמפוס דרום",teacher:"חנה זילברשטיין",ageInk:"#b08a2e",ageKey:5,used:11,cap:14},
+      {id:"6",name:"גן שקד",symbol:"4421",age:"5",edu:"רגיל",campus:"קמפוס מרכז",teacher:"",ageInk:"#b08a2e",ageKey:5,used:28,cap:32}],
     activity:[{who:"רכזת רישום",ts:Date.now()-3600e3,what:"12 תלמידות שובצו לגן רימון"},
               {who:"מזכירות",ts:Date.now()-9e6,what:"ייבוא 34 רשומות ממועד ב׳"},
               {who:"מזכירות",ts:Date.now()-9e7,what:"דוח עירייה לחודש אב הופק"}]};},
   go(tab,filter){console.log('go',tab,JSON.stringify(filter||{}));},
+  addStudent(){console.log('addStudent');},
+  ageLegend(){return '<div class="hint" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px">'+
+    ['3','4','5'].map(function(a){var c={3:'#4c9a6a',4:'#7a6bb0',5:'#b08a2e'}[a];
+      return '<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);background:color-mix(in srgb, '+c+' 55%, var(--surface))"></span>גיל '+a+'</span>';}).join(' ')+
+    ' <span style="color:var(--muted)">· גן דו-גילאי במעבר צבעים</span></div>';},
   openGan(id){console.log('openGan',id);},
   assignBoard(){return {context:"activity",contextLabel:"פעילות הגן",gans:[
     /* גן רגיל — שלושה תקנים מאוישים, כמו בלוח */
