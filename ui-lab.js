@@ -706,6 +706,90 @@ function maybeAssign(){
   homeBusy = false;
 }
 
+/* ===========================================================================
+   נייד — תיק הילדה כמסך מלא עם לשוניות (לוח 16, הטלפון השלישי)
+   ---------------------------------------------------------------------------
+   התיק במודאל בנוי מתשעה fieldset עם legend. הלוח מציג ארבע לשוניות —
+   פרטים · מסמכים · משפחה · היסטוריה — ושתיים מהן אינן ניתנות למימוש כפי
+   שהן: "משפחה" היא שדות ההורים, והם יושבים בתוך "פרטים אישיים" ולא במקטע
+   נפרד; ו"היסטוריה" אינה קיימת במודל הנתונים כלל — אין יומן פר-תיק.
+
+   לכן ארבע לשוניות לפי המקטעים האמיתיים, שמכסות את כל התשעה. המיפוי לפי
+   טקסט ה-legend, וכל מקטע שלא זוהה נופל ללשונית האחרונה — כך שאף מקטע לא
+   נעלם, גם אם ייווסף מקטע חדש בעתיד.
+
+   אף אלמנט אינו מוזז: כל fieldset מקבל סימון, וההסתרה נעשית ב-CSS. הזזת
+   צמתים הייתה מסכנת מאזינים שהקוד הקיים כבר קשר אליהם.
+   =========================================================================== */
+var PANES = [
+  { name:"פרטים",  legends:["פרטים אישיים", "כתובת"] },
+  { name:"שיבוץ",  legends:["שיבוץ ורישום", "תוכניות ומועדונים", "סיוע והעשרה"] },
+  { name:"מסמכים", legends:["מסמכים", "תיקיית דרייב"] },
+  { name:"שונות",  legends:["שונות", "הערות וסיום"] }
+];
+
+function isPhone(){
+  try{ return window.matchMedia("(max-width:900px)").matches; }catch(e){ return false; }
+}
+
+function paneOf(legend){
+  var t = String(legend || "").trim();
+  for(var i = 0; i < PANES.length; i++){
+    if(PANES[i].legends.indexOf(t) >= 0) return i;
+  }
+  return PANES.length - 1;      /* מקטע לא מוכר — לא נעלם, נופל לאחרונה */
+}
+
+function dossierTabs(){
+  var modal = document.getElementById("modal");
+  if(!modal || !isPhone()) return;
+  if(!modal.querySelector("#s-firstName")) return;      /* לא תיק ילדה */
+  if(modal.querySelector(".lab-dtabs")) return;         /* כבר טופל */
+
+  var sets = modal.querySelectorAll("fieldset");
+  if(!sets.length) return;
+  var used = {};
+  sets.forEach(function(fs){
+    var lg = fs.querySelector("legend");
+    var p  = paneOf(lg && lg.textContent);
+    fs.dataset.labPane = String(p);
+    used[p] = true;
+  });
+
+  var strip = el("div", "lab-dtabs");
+  PANES.forEach(function(pane, i){
+    if(!used[i]) return;                                 /* לשונית בלי תוכן — לא מוצגת */
+    var b = el("button", "lab-dtab" + (i === 0 ? " on" : ""), pane.name);
+    b.onclick = function(){
+      modal.dataset.labPane = String(i);
+      strip.querySelectorAll(".lab-dtab").forEach(function(x){ x.classList.toggle("on", x === b); });
+      modal.scrollTop = 0;
+    };
+    strip.appendChild(b);
+  });
+  modal.dataset.labPane = "0";
+
+  /* שם הילדה ות״ז בכותרת, כמו בלוח */
+  var h3 = modal.querySelector("h3");
+  var fn = modal.querySelector("#s-firstName"), ln = modal.querySelector("#s-lastName");
+  var tz = modal.querySelector("#s-tz");
+  var full = [(ln && ln.value) || "", (fn && fn.value) || ""].join(" ").trim();
+
+  var anchor = h3 || null;
+  if(h3 && full){
+    var who = el("div", "lab-dwho");
+    who.appendChild(el("span", "lab-dini", initialsFrom(full)));
+    var box = el("div", "lab-dwho-t");
+    box.appendChild(el("div", "lab-dname", full));
+    if(tz && tz.value) box.appendChild(el("div", "lab-dtz", tz.value));
+    who.appendChild(box);
+    h3.parentNode.insertBefore(who, h3.nextSibling);
+    anchor = who;
+  }
+  if(anchor) anchor.parentNode.insertBefore(strip, anchor.nextSibling);
+  else modal.insertBefore(strip, modal.firstChild);
+}
+
 function maybeStudents(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="students"]');
@@ -750,6 +834,10 @@ function paint(){
 
 function init(){
   nav  = document.getElementById("tabs");
+  var modalBox = document.getElementById("modal");
+  if(modalBox) new MutationObserver(function(){
+    try{ dossierTabs(); }catch(e){}
+  }).observe(modalBox, {childList:true});
   foot = document.querySelector(".drawer-foot");
   view = document.getElementById("view");
   if(!nav) return;             /* management.html / register.html — אין ניווט */

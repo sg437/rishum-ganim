@@ -758,6 +758,77 @@ html.ui-lab .lab-bottom{ display:none }
     background:rgba(255,255,255,.1); color:rgba(255,255,255,.8); border-color:transparent;
   }
 
+  /* ---- תיק הילדה כמסך מלא עם לשוניות (לוח 16) ---- */
+  html.ui-lab .overlay{ padding:0; align-items:stretch }
+  html.ui-lab .modal{
+    width:100%; max-width:none; border-radius:0; border:0;
+    max-height:100dvh;
+  }
+  /* כותרת כהה */
+  /* ה-padding של .modal הוא 0 22px — המרג׳ין השלילי חייב להתאים לו */
+  html.ui-lab .modal > h3{
+    background:var(--lab-deep); color:#fff; border-bottom:0;
+    margin:0 -22px; padding:14px 22px 10px;
+    font-size:.92rem; font-weight:600;
+  }
+  html.ui-lab .lab-dwho{
+    flex:0 0 auto;                 /* .modal הוא flex-column — בלי זה מתכווץ */
+    background:var(--lab-deep); color:#fff;
+    margin:0 -22px; padding:0 22px 14px;
+    display:flex; align-items:center; gap:11px;
+    position:sticky; top:0; z-index:3;
+  }
+  html.ui-lab .lab-dini{
+    width:42px; height:42px; border-radius:13px; flex:0 0 auto;
+    display:grid; place-items:center;
+    background:rgba(255,255,255,.14); color:#fff; font-weight:800; font-size:.86rem;
+  }
+  html.ui-lab .lab-dname{ font-weight:700; font-size:1.05rem }
+  html.ui-lab .lab-dtz{
+    font-size:.76rem; color:rgba(255,255,255,.6); font-weight:600;
+    direction:ltr; unicode-bidi:isolate; text-align:start;
+  }
+  /* רצועת הלשוניות — נעוצה לראש התיק */
+  html.ui-lab .lab-dtabs{
+    flex:0 0 auto;                 /* ⚠️ קריטי: .modal הוא display:flex עם
+       flex-direction:column, ולכן הרצועה היא פריט flex. בלי זה היא מתכווצת
+       ל-1px (רק הגבול) והלשוניות גולשות מחוצה לה ואינן לחיצות. */
+    position:sticky; top:0; z-index:4;
+    display:flex; gap:2px; margin:0 -22px 14px; padding:0 12px;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
+  }
+  html.ui-lab .lab-dtab{
+    background:none; border:0; border-radius:0; padding:12px 13px 10px;
+    font-size:.86rem; font-weight:600; color:var(--muted);
+    border-bottom:2px solid transparent; white-space:nowrap; cursor:pointer;
+  }
+  html.ui-lab .lab-dtab.on{ color:var(--accent-strong); border-bottom-color:var(--accent) }
+  /* רק המקטע הפעיל מוצג */
+  html.ui-lab .modal[data-lab-pane="0"] fieldset[data-lab-pane]:not([data-lab-pane="0"]),
+  html.ui-lab .modal[data-lab-pane="1"] fieldset[data-lab-pane]:not([data-lab-pane="1"]),
+  html.ui-lab .modal[data-lab-pane="2"] fieldset[data-lab-pane]:not([data-lab-pane="2"]),
+  html.ui-lab .modal[data-lab-pane="3"] fieldset[data-lab-pane]:not([data-lab-pane="3"]){
+    display:none;
+  }
+  /* המקטעים הופכים לכרטיסים; ה-legend מיותר מרגע שיש לשוניות */
+  html.ui-lab .modal fieldset[data-lab-pane]{
+    border:1px solid var(--border); border-radius:14px; padding:14px; margin:0 0 12px;
+  }
+  html.ui-lab .modal fieldset[data-lab-pane] > legend{ display:none }
+  /* פס הפעולות התחתון. הפוטר של המודאל הוא .foot (‎.sd-foot שייך לחלון
+     שיתוף המסמך) והוא כבר sticky bottom בבסיס — כאן רק מעצבים אותו. */
+  html.ui-lab .modal > .foot{
+    flex:0 0 auto;
+    margin:16px -22px 0; padding:10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    gap:9px; flex-wrap:nowrap;
+  }
+  html.ui-lab .modal > .foot #saveStu{
+    margin-inline-start:0 !important; flex:1;
+    background:var(--lab-deep); color:#fff; min-height:46px;
+  }
+  html.ui-lab .modal > .foot .btn{ min-height:46px }
+
   /* ---- מסך הבית בנייד ---- */
   html.ui-lab .lh-kpis{ grid-template-columns:1fr 1fr; gap:11px }
   html.ui-lab .lh-kpi.dark{ grid-column:1 / -1 }
