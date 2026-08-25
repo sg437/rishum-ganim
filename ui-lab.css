@@ -17,7 +17,9 @@
      ✅ 2. סרגל צד קבוע + breakpoint למגירה (עם ui-lab.js)
      ✅ 3. viewHome — כרטיסי KPI ופאנל "דורש טיפול"
      ✅ 4. viewStudents — מד מסמכים, ראשי תיבות, KPI, סרגל כהה
-     ⬜ 5. viewMap · 6. viewAssign · 7. השאר
+     ✅ 5. viewMap — דגלים עם שם ותפוסה
+     ⬜ 6. viewAssign — לוח התקנים (דורש החלטה — ראה docs/UI_LAB.md)
+     ⬜ 7. השאר
    שלבים 3 ומעלה דורשים בנייה מחדש של תוכן המסכים, ולא רק של המסגרת.
    =========================================================================== */
 
@@ -492,7 +494,40 @@ html.ui-lab .stu-table tbody tr.selected{
   box-shadow:inset 3px 0 0 var(--accent);
 }
 
-/* ── 8. תג המעבדה ─────────────────────────────────────────────────────────
+
+/* ── 8. מפת שיבוץ (שלב 5 — לוח 04 בקנבס) ─────────────────────────────────
+   הדגל נושא שם ותפוסה ומאדים כשהגן מלא. שאר המסך — הסינון, פאנל הצד,
+   וטבלת ההצעה — מקבלים את שפת הכרטיסים; ההתנהגות של Leaflet לא נוגעה.   */
+
+/* Leaflet כותב transform משלו על אלמנט האייקון, ולכן המיקום נעשה כאן */
+html.ui-lab .map-gan-divicon .lab-flagwrap{
+  position:absolute; inset-inline-start:0; top:0;
+  transform:translate(-50%,-100%);
+  display:flex; flex-direction:column; align-items:center; white-space:nowrap;
+}
+html.ui-lab .lab-ganflag{
+  display:inline-flex; align-items:center; gap:7px;
+  background:var(--flagc,#2c6a4c); color:#fff;
+  padding:5px 11px; border-radius:999px;
+  font:700 .78rem/1 "Assistant","Heebo",system-ui,sans-serif;
+  box-shadow:0 3px 10px rgba(0,0,0,.32);
+}
+html.ui-lab .lab-ganflag.full{ background:#a5342b }
+html.ui-lab .lab-ganflag .lgf-r{
+  background:rgba(255,255,255,.22); border-radius:999px; padding:1px 7px;
+  font-size:.72rem; direction:ltr; unicode-bidi:isolate;   /* 32/32 ולא 32/32 הפוך */
+}
+html.ui-lab .lab-ganstem{ width:3px; height:9px; border-radius:2px; margin-top:1px }
+
+/* פאנל הצד של המפה */
+html.ui-lab .map-side-kid{ border-radius:11px; padding:9px 11px }
+html.ui-lab .map-fold{ border-radius:14px }
+html.ui-lab .map-fold>summary{ padding:12px 16px; font-weight:600 }
+
+/* טבלת ההצעה של השיבוץ האוטומטי — סיבת חסימה בולטת */
+html.ui-lab .leaflet-container{ border-radius:16px }
+
+/* ── 9. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
 html.ui-lab .ui-lab-badge{

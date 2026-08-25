@@ -6006,8 +6006,23 @@ function mapMarker(L, pt, opts){
     weight:opts.weight!=null?opts.weight:1.5, fillColor:opts.fill, fillOpacity:opts.opacity!=null?opts.opacity:0.95 });
 }
 /* אייקון גן — דגל טיפה עם לוגו הרשת (מהמיתוג), בצבע הייחודי של הגן */
-function mapGanIcon(L, color){
+function mapGanIcon(L, color, g){
   color=color||"#6f42c1";
+  /* מעבדת עיצוב (לוח 04): הדגל נושא את שם הגן ואת התפוסה, ומאדים כשהגן מלא.
+     פעיל רק כשהמעבדה דלוקה — אחרת נשאר דגל הטיפה המקורי.
+     גודל האייקון 0×0 והמיקום נעשה ב-transform על העטיפה הפנימית, כי Leaflet
+     כותב transform משלו על אלמנט האייקון עצמו. */
+  if(g && document.documentElement.classList.contains("ui-lab")){
+    const cap=ganAssignCap(g), used=ganAssignedCount(g.id);
+    const full=!!(cap && used>=cap);
+    const ratio=cap ? (used+"/"+cap) : String(used);   /* בלי רווחים — כלל ה-bidi */
+    const html=`<div class="lab-flagwrap">`
+      +`<div class="lab-ganflag${full?' full':''}" style="--flagc:${color}">`
+      +`<span class="lgf-n">${esc(ganName(g.id))}</span>`
+      +`<span class="lgf-r">${esc(ratio)}</span></div>`
+      +`<div class="lab-ganstem" style="background:${full?'#a5342b':color}"></div></div>`;
+    return L.divIcon({ className:"map-gan-divicon", html, iconSize:[0,0], iconAnchor:[0,0] });
+  }
   const html=`<div class="map-gan-flag" style="border-color:${color}"><span>${logoHtml()}</span></div><div class="map-gan-stem" style="background:${color}"></div>`;
   return L.divIcon({ className:"map-gan-divicon", html, iconSize:[40,48], iconAnchor:[20,48] });
 }
@@ -6017,7 +6032,7 @@ function mapPlotGans(){
     if(!mapGanShown(g)) return;   // רק גנים עם מיקום מדויק בעיר (לא "מרכז עיר")
     const col=ganColor(g.id);
     const cnt=mapShownStudents().filter(s=>s.ganId===g.id).length;
-    const m=_mapL.marker([g.geo.lat,g.geo.lng],{ icon:mapGanIcon(_mapL,col), zIndexOffset:1000, riseOnHover:true });
+    const m=_mapL.marker([g.geo.lat,g.geo.lng],{ icon:mapGanIcon(_mapL,col,g), zIndexOffset:1000, riseOnHover:true });
     m.bindTooltip(`<span style="background:${col};color:#fff;padding:2px 8px;border-radius:8px">${esc(ganName(g.id))}</span>`, { permanent:true, direction:"top", offset:[0,-40], className:"map-gan-tip" });
     m.bindPopup(`<div style="font-weight:700;margin-bottom:2px">🏫 ${esc(ganName(g.id))}</div>`
       +(g.teacherName?`<div>גננת: ${esc(g.teacherName)}</div>`:"")
