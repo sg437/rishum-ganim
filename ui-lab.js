@@ -967,6 +967,76 @@ function maybeGans(){
   homeBusy = false;
 }
 
+/* ===========================================================================
+   מפת שיבוץ (לוח 05)
+   ---------------------------------------------------------------------------
+   בורר הגנים נשאר תיבות סימון בקוד — רק נראה כשבבים. הצבע של כל שבב הוא
+   הצבע של אותו גן במפה (ganColor), כך שהשבב, הדגל והנקודה מדברים באותה
+   שפה. אין נגיעה בהתנהגות, בסינון או ב-Leaflet.
+   =========================================================================== */
+function mapChips(){
+  var box = view.querySelector("#map-gan-list");
+  if(!box) return;
+  var colors = (window.__uiLab && window.__uiLab.ganColors) ? window.__uiLab.ganColors() : null;
+  if(!colors) return;
+  box.querySelectorAll("input[data-gid]").forEach(function(inp){
+    var lab = inp.closest("label");
+    if(!lab) return;
+    var c = colors[inp.dataset.gid];
+    if(c && lab.style.getPropertyValue("--gan-ink") !== c) lab.style.setProperty("--gan-ink", c);
+    lab.classList.add("lab-ganchip");
+  });
+  box.querySelectorAll("input[data-camp]").forEach(function(inp){
+    var lab = inp.closest("label");
+    if(lab) lab.classList.add("lab-campchip");
+  });
+  box.classList.add("lab-chipbox");
+}
+
+/* מקראה על המפה — אינה קיימת בתוכנה, ומופיעה בלוח. נבנית מהגנים שנבחרו. */
+function mapLegend(){
+  var stage = view.querySelector("#map-stage");
+  if(!stage) return;
+  var colors = (window.__uiLab && window.__uiLab.ganColors) ? window.__uiLab.ganColors() : null;
+  if(!colors) return;
+  var box = view.querySelector(".lab-maplegend");
+  if(!box){
+    box = el("div", "lab-maplegend");
+    stage.appendChild(box);
+  }
+  var rows = [];
+  view.querySelectorAll("#map-gan-list input[data-gid]").forEach(function(inp){
+    if(!inp.checked) return;
+    var lab = inp.closest("label");
+    rows.push([colors[inp.dataset.gid] || "#8894a0", (lab ? lab.textContent : "").trim()]);
+  });
+  var key = rows.map(function(r){ return r.join("|"); }).join(",");
+  if(box.dataset.key === key) return;                 /* בלי זה — לולאת צופה */
+  box.dataset.key = key;
+  box.innerHTML = "";
+  if(!rows.length){ box.style.display = "none"; return; }
+  box.style.display = "";
+  box.appendChild(el("div", "lml-h", "מקרא"));
+  rows.slice(0, 8).forEach(function(r){
+    var row = el("div", "lml-r");
+    var dot = el("span", "lml-d");
+    dot.style.background = r[0];
+    row.appendChild(dot);
+    row.appendChild(el("span", null, "רשומה ל" + r[1]));
+    box.appendChild(row);
+  });
+  if(rows.length > 8) box.appendChild(el("div", "lml-more", "ועוד " + (rows.length - 8)));
+}
+
+function maybeMap(){
+  if(homeBusy || !view) return;
+  var b = nav.querySelector('[data-tab="map"]');
+  if(!(b && b.classList.contains("active"))) return;
+  homeBusy = true;
+  try{ mapChips(); mapLegend(); }catch(e){}
+  homeBusy = false;
+}
+
 function maybeStudents(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="students"]');
@@ -984,7 +1054,7 @@ function isHome(){
 function maybeHome(){
   if(homeBusy || !view) return;
   try{ tintBars(); }catch(e){}
-  if(!isHome()){ maybeStudents(); maybeAssign(); maybeGans(); return; }
+  if(!isHome()){ maybeStudents(); maybeAssign(); maybeGans(); maybeMap(); return; }
   if(view.querySelector(".lab-home")) return;   /* כבר שלנו */
   renderHome();
 }

@@ -2396,6 +2396,16 @@ if(document.documentElement.classList.contains("ui-lab")){
       }catch(e){ return null; }
     },
 
+    /* צבעי הגנים במפה — ganColor() כבר קיים ומשמש לדגלים ולנקודות.
+       נחשף כדי שהשבבים בבורר הגנים יישאו את אותו צבע, כמו בלוח 05. */
+    ganColors(){
+      try{
+        const out = {};
+        mapGansForEdu().forEach(g=>{ out[g.id] = ganColor(g.id); });
+        return out;
+      }catch(e){ return null; }
+    },
+
     /* מסך הגנים בתצוגת כרטיסים (לוח 03). מבוסס על gansScoped() — אותה
        רשימה מסוננת שהטבלה מציגה, כך שהחיפוש והסינון של המסך נשמרים. */
     gansBoard(){
