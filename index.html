@@ -21,6 +21,25 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="רשת הגנים">
+<!-- מעבדת עיצוב (UI Lab) — שכבת עיצוב חלופית על אותה תוכנה ואותם נתונים חיים.
+     כבויה כברירת מחדל: בלי הדגל הקוד הזה אינו עושה דבר ואף משתמש אינו מושפע.
+     הפעלה ‎?ui=new‎ · כיבוי ‎?ui=off‎ · הבחירה נזכרת במכשיר (localStorage).
+     העיצוב עצמו יושב כולו ב-ui-lab.css, תחום ל-html.ui-lab. -->
+<script>(function(){try{
+  var p=new URLSearchParams(location.search).get('ui');
+  if(p!==null){ if(p==='off'||p==='0'||p===''){ localStorage.removeItem('uiLab'); } else { localStorage.setItem('uiLab',p); } }
+  if(!localStorage.getItem('uiLab')) return;
+  document.documentElement.classList.add('ui-lab');
+  var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css'; document.head.appendChild(l);
+  document.addEventListener('DOMContentLoaded',function(){
+    var u=new URL(location.href); u.searchParams.set('ui','off');
+    var a=document.createElement('a');
+    a.className='ui-lab-badge'; a.href=u.pathname+u.search+u.hash;
+    a.textContent='\u{1F9EA} מעבדת עיצוב — יציאה';
+    a.title='חזרה לעיצוב הרגיל';
+    document.body.appendChild(a);
+  });
+}catch(e){}})();</script>
 <style>
 :root{
   --bg:#f4f6f4;--surface:#ffffff;--surface-2:#f0f3f0;--ink:#17241d;--ink-soft:#4a564e;--muted:#7f8a82;--border:#e2e7e2;--accent:#2c6a4c;--accent-strong:#1f4d37;--accent-soft:#e8f0ea;--brass:#9a7429;--good:#2f7a53;--good-soft:#e6f0e9;--warn:#96661f;--warn-soft:#f4ecdf;--bad:#a03b32;--bad-soft:#f6e7e5;--over1:#6b4c9a;--over1-soft:#ece8f4;

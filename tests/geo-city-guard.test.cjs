@@ -11,9 +11,10 @@
    ============================================================================ */
 const fs=require('fs'), path=require('path'), vm=require('vm');
 const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
-const re=/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
-let m,i=0,code=null;
-while((m=re.exec(html))){ i++; if(i===2) code=m[1]; }
+/* הסקריפט הראשי הוא ה-<script type="module"> היחיד בדף. מזהים אותו לפי הסוג
+   ולא לפי מיקומו ברשימת הסקריפטים, כדי שהוספת סקריפט קצר ב-<head> לא תשבור. */
+const re=/<script(?![^>]*\bsrc=)[^>]*\btype="module"[^>]*>([\s\S]*?)<\/script>/;
+const code=(re.exec(html)||[])[1]||null;
 if(!code) throw new Error('לא נמצא הסקריפט הראשי');
 
 function grab(name){
