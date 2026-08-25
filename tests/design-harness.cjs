@@ -127,6 +127,11 @@ window.__uiLab={
     nearFull:["גן תפוח","גן דובדבן"],
     campuses:[{name:"קמפוס צפון",cap:180,used:168},{name:"קמפוס מרכז",cap:175,used:147},
               {name:"קמפוס דרום",cap:125,used:97}],
+    ganCards:[
+      {id:"1",name:"גן רימון",symbol:"4402",age:"4",edu:"רגיל",campus:"קמפוס צפון",teacher:"שרה ברקוביץ׳",used:32,cap:32},
+      {id:"2",name:"גן דובדבן",symbol:"4409",age:"3/4",edu:"רגיל",campus:"קמפוס צפון",teacher:"מלכה לוי",used:29,cap:32},
+      {id:"3",name:"גן שקד",symbol:"4421",age:"5",edu:"רגיל",campus:"קמפוס מרכז",teacher:"",used:28,cap:32},
+      {id:"4",name:"גן אגוז",symbol:"4470",age:"5",edu:"ח״מ",campus:"קמפוס דרום",teacher:"חנה זילברשטיין",used:11,cap:14}],
     activity:[{who:"רכזת רישום",ts:Date.now()-3600e3,what:"12 תלמידות שובצו לגן רימון"},
               {who:"מזכירות",ts:Date.now()-9e6,what:"ייבוא 34 רשומות ממועד ב׳"},
               {who:"מזכירות",ts:Date.now()-9e7,what:"דוח עירייה לחודש אב הופק"}]};},

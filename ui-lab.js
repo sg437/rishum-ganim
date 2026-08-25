@@ -333,6 +333,57 @@ function renderHome(){
   cols.appendChild(side);
   root.appendChild(cols);
 
+  /* --- כרטיסי הגנים ---
+     לוח 02 בקנבס השמיט אותם, אבל HANDOFF.md §2 דורש אותם במפורש:
+     "כרטיסי הגנים נשמרים, עם הגננת בתחתית הכרטיס וסימון ללא גננת
+     משובצת באדום". המפרט גובר על השמטה בלוח. */
+  if(d.ganCards && d.ganCards.length){
+    var gp = panel("הגנים · תפוסה מול רף השיבוץ");
+    var grid = el("div", "lh-gans");
+    d.ganCards.forEach(function(g){
+      var card = el("button", "lh-gan");
+      card.onclick = function(){ go("gans"); };
+
+      var top = el("div", "lh-gan-top");
+      top.appendChild(el("b", null, g.name));
+      if(g.edu && g.edu !== "רגיל") top.appendChild(el("span", "lh-gan-edu", g.edu));
+      card.appendChild(top);
+
+      var meta = [];
+      if(g.symbol) meta.push("סמל " + g.symbol);
+      if(g.age)    meta.push("גיל " + g.age);
+      if(g.campus) meta.push(g.campus);
+      card.appendChild(el("div", "lh-gan-meta", meta.join(" · ")));
+
+      var cap = el("div", "lh-gan-cap");
+      cap.appendChild(el("span", "lh-gan-caplbl", "תפוסה"));
+      var r = el("span", "lh-gan-capn");
+      r.appendChild(g.cap ? ratio(g.used, g.cap) : el("span", null, String(g.used)));
+      cap.appendChild(r);
+      card.appendChild(cap);
+
+      var bar = el("div", "lh-bar"), bi = el("i");
+      var pct = g.cap ? Math.min(100, g.used / g.cap * 100) : 0;
+      bi.style.width = pct + "%";
+      if(pct >= 100) bi.classList.add("full");
+      else if(pct >= 85) bi.classList.add("near");
+      bar.appendChild(bi); card.appendChild(bar);
+
+      if(g.cap){
+        var freeN = g.cap - g.used;
+        card.appendChild(el("div", "lh-gan-free" + (freeN <= 0 ? " full" : ""),
+          freeN > 0 ? freeN + " מקומות פנויים" : "מלא"));
+      }
+
+      /* הגננת בתחתית הכרטיס — ובאדום כשאין */
+      card.appendChild(el("div", "lh-gan-t" + (g.teacher ? "" : " none"),
+        g.teacher || "ללא גננת משובצת"));
+      grid.appendChild(card);
+    });
+    gp.appendChild(grid);
+    root.appendChild(gp);
+  }
+
   homeBusy = true;
   view.innerHTML = "";
   view.appendChild(root);

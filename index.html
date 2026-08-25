@@ -2310,8 +2310,24 @@ if(document.documentElement.classList.contains("ui-lab")){
         const myMail = (currentUser && currentUser.email) || "";
         const myName = ((DB.settings && DB.settings.userNames) || {})[myMail] || "";
 
+        /* כרטיסי הגנים — HANDOFF.md §2 דורש אותם במסך הבית ("כרטיסי הגנים
+           נשמרים, עם הגננת בתחתית הכרטיס וסימון ללא גננת משובצת באדום").
+           לוח 02 בקנבס השמיט אותם; המפרט גובר. */
+        const ganCards = gans.map(g=>{
+          const cap=ganAssignCap(g), used=ganAssignedCount(g.id);
+          return {
+            id:g.id, name:ganName(g.id),
+            symbol:String(g.ganSymbol||g.internalSymbol||"").trim(),
+            age:String(g.age||"").trim(),
+            edu:eduLabel(g),
+            campus:String(g.campus||"").trim(),
+            teacher:String(g.teacherName||"").trim(),
+            used, cap
+          };
+        }).sort((a,b)=>a.name.localeCompare(b.name,"he"));
+
         return {
-          year:DB.activeYear||"", activity, name:myName,
+          year:DB.activeYear||"", activity, name:myName, ganCards,
           total, placed, waiting, notMuni, missingDocs, topDoc,
           topAge, topAgeN,
           noTeacherCount:noTeacher.length,

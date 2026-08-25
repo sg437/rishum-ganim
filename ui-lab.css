@@ -214,6 +214,16 @@ html.ui-lab .drawer-sec:has(> .drawer-year),
 html.ui-lab .drawer-foot .df-row{ display:none }
 html.ui-lab .drawer-foot{ border-top:0; padding-top:0 }
 
+/* יוצא מן הכלל אחד: מצב יום/לילה. ארבע הפונקציות האחרות נמצאו בקנבס
+   (הגדרות / כלים ושירותים), אבל לזו אין בית באף אחד מ-16 המסכים —
+   והסתרתה נועלת את מי שבחר במפורש יום או לילה על הבחירה הישנה שלו.
+   יכולת קיימת אינה נופלת רק כי הקנבס לא צייר אותה. */
+html.ui-lab .drawer-foot .df-row:has(> #themeBtn){ display:flex }
+html.ui-lab .drawer-foot #themeBtn{
+  background:transparent; border:1px solid var(--border); color:var(--ink-soft);
+  font-size:.82rem; padding:8px 10px;
+}
+
 /* בקנבס אין תוויות מעל מקטעי הסרגל — לא "ניווט" ולא "חינוך".
    הקבוצות (יומיום / ניתוח והפקה) הן הכותרות היחידות. */
 html.ui-lab .drawer-sec>.lbl{ display:none }
@@ -416,6 +426,34 @@ html.ui-lab .lh-adot{
 }
 html.ui-lab .lh-atxt{ font-weight:700; font-size:.88rem }
 html.ui-lab .lh-awho{ font-size:.78rem; color:var(--muted); margin-top:1px }
+
+/* כרטיסי הגנים (HANDOFF.md §2 — הקנבס השמיט, המפרט גובר) */
+html.ui-lab .lh-gans{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:14px; margin-top:6px;
+}
+html.ui-lab .lh-gan{
+  text-align:start; background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; padding:15px 17px; font:inherit; cursor:pointer;
+  display:flex; flex-direction:column; gap:2px;
+}
+html.ui-lab .lh-gan:hover{ border-color:var(--accent); box-shadow:var(--shadow) }
+html.ui-lab .lh-gan-top{ display:flex; align-items:center; gap:7px }
+html.ui-lab .lh-gan-top b{ font-size:.98rem; font-weight:700 }
+html.ui-lab .lh-gan-edu{
+  background:var(--warn-soft); color:var(--warn);
+  border-radius:999px; padding:1px 8px; font-size:.7rem; font-weight:800;
+}
+html.ui-lab .lh-gan-meta{ font-size:.76rem; color:var(--muted); margin-bottom:9px }
+html.ui-lab .lh-gan-cap{ display:flex; justify-content:space-between; align-items:baseline; gap:8px }
+html.ui-lab .lh-gan-caplbl{ font-size:.75rem; color:var(--muted); font-weight:600 }
+html.ui-lab .lh-gan-capn{ font-size:.86rem; font-weight:700 }
+html.ui-lab .lh-gan-free{ font-size:.76rem; font-weight:700; color:var(--good); margin-top:6px }
+html.ui-lab .lh-gan-free.full{ color:var(--bad) }
+html.ui-lab .lh-gan-t{
+  margin-top:10px; padding-top:9px; border-top:1px solid var(--lab-rule-row);
+  font-size:.82rem; font-weight:700;
+}
+html.ui-lab .lh-gan-t.none{ color:var(--bad) }
 
 html.ui-lab .lh-empty{ font-size:.85rem; color:var(--muted); padding:10px 0 }
 
