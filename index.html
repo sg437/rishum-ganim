@@ -2653,10 +2653,28 @@ if(document.documentElement.classList.contains("ui-lab")){
         const has = r => all.filter(m=>String(m.role||"").indexOf(r)>=0).length;
         const idx = staffAsgIndex("activity", null);
         const assigned = all.filter(m=>idx[m.id]).length;
+        /* פירוט לכל כרטיס, כפי שהלוח מציג ("31 גננות · 26 תל׳ · 5 ח״מ") */
+        const eduOf = m => String(eduLabel(m)||"").indexOf("מיוחד") >= 0 ||
+                           String(eduLabel(m)||"").indexOf('ח"מ') >= 0 ||
+                           String(eduLabel(m)||"").indexOf("ח״מ") >= 0;
+        const split = r=>{
+          const rows = all.filter(m=>String(m.role||"").indexOf(r)>=0);
+          const sp = rows.filter(eduOf).length;
+          return { n:rows.length, special:sp, regular:rows.length-sp };
+        };
+        const gan = split("גננת"), say = split("סייעת");
+        /* פירוט הסייעות לפי סוג התפקיד המדויק */
+        const sayKinds = {};
+        all.filter(m=>String(m.role||"").indexOf("סייעת")>=0).forEach(m=>{
+          const r = String(m.role||"").trim();
+          sayKinds[r] = (sayKinds[r]||0) + 1;
+        });
         return {
           total: all.length,
-          ganenet: has("גננת"),
-          sayaat:  has("סייעת"),
+          ganenet: gan.n, ganenetSplit: gan,
+          sayaat:  say.n, sayaatSplit: say,
+          sayaatKinds: Object.keys(sayKinds).map(k=>({role:k, n:sayKinds[k]}))
+                             .sort((a,b)=>b.n-a.n).slice(0,3),
           noCert:  all.filter(m=>!m.certificate).length,
           assigned, unassigned: all.length - assigned
         };

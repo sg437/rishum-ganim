@@ -990,6 +990,22 @@ function ganCard(g){
   return c;
 }
 
+/* המשבצת המקווקוות שבלוח — פותחת את "הוספת גן" הקיים, בלי נתיב חדש */
+function addGanCard(campus){
+  var c = el("button", "lg-add");
+  c.type = "button";
+  c.appendChild(el("span", "lg-add-plus", "+"));
+  /* שמות הקמפוסים כבר פותחים ב"קמפוס" — בלי זה יוצא "לקמפוס קמפוס צפון" */
+  var to = campus ? (campus.indexOf("קמפוס") === 0 ? " ל" + campus : " לקמפוס " + campus) : "";
+  c.appendChild(el("span", "lg-add-t", "הוספת גן" + to));
+  c.appendChild(el("span", "lg-add-s", "שם, גיל, תקן ותפוסה"));
+  c.onclick = function(){
+    var b = view.querySelector("#addGan");
+    if(b) b.click();
+  };
+  return c;
+}
+
 function renderGansBoard(host){
   var d = (window.__uiLab && window.__uiLab.gansBoard) ? window.__uiLab.gansBoard() : null;
   if(!d || !d.campuses) return false;
@@ -1005,6 +1021,7 @@ function renderGansBoard(host){
 
     var grid = el("div", "lg-grid");
     camp.gans.forEach(function(g){ grid.appendChild(ganCard(g)); });
+    grid.appendChild(addGanCard(camp.name));
     wrap.appendChild(grid);
   });
 
@@ -1137,9 +1154,15 @@ function staffKpis(){
     sub:d.assigned + " משובצים · " + d.unassigned + " ללא גן",
     ring: d.total ? d.assigned / d.total * 100 : 0
   }));
-  row.appendChild(kpi({ label:"גננות",  value:d.ganenet }));
-  row.appendChild(kpi({ label:"סייעות", value:d.sayaat }));
-  row.appendChild(kpi({ label:"ללא תעודה", value:d.noCert, tone:d.noCert ? "bad" : "good" }));
+  var gs = d.ganenetSplit || {}, ss = d.sayaatSplit || {};
+  row.appendChild(kpi({ label:"גננות", value:d.ganenet,
+    sub:(gs.regular != null ? gs.regular + " רגיל · " + gs.special + " ח״מ" : "") }));
+  row.appendChild(kpi({ label:"סייעות", value:d.sayaat,
+    sub:(d.sayaatKinds && d.sayaatKinds.length)
+        ? d.sayaatKinds.map(function(k){ return k.n + " " + k.role; }).join(" · ")
+        : (ss.regular != null ? ss.regular + " רגיל · " + ss.special + " ח״מ" : "") }));
+  row.appendChild(kpi({ label:"ללא תעודה", value:d.noCert, tone:d.noCert ? "bad" : "good",
+    sub:d.total ? Math.round(d.noCert / d.total * 100) + "% מהמאגר" : "" }));
   host.parentNode.insertBefore(row, host);
 }
 
@@ -1226,8 +1249,9 @@ function screenHeader(){
   var OWN = { reports:"דוחות ואחוזים", municipality:"קליטה בעירייה",
               management:"מבט הנהלה",  settings:"הגדרות",
               tools:"כלים ושירותים" };
-  var panels = view.querySelectorAll(":scope > .panel").length;
-  var ownTitle = OWN[tabId] || (panels >= 3 ? labelOfTab(tabId) : "");
+  /* רק המסכים ברשימה — ספירת פאנלים אינה קריטריון טוב: מסך עם כמה פאנלים
+     שכותרתו הראשונה כן שייכת למסך היה מאבד את כפתורי הפעולה שלו. */
+  var ownTitle = OWN[tabId] || "";
   if(!h2 && !ownTitle) return;
 
   var head = el("div", "lab-shead");
@@ -1859,6 +1883,46 @@ function toolCard(p){
   p.classList.add("lab-tool");
 }
 
+/* ------------------------------------------------- מסמכים ותבניות (11) */
+/* בלוח כל סוג מסמך הוא כרטיס עם רצועת כותרת: עיגול אייקון, שם ושורת הסבר,
+   והפקדים בגוף. בתוכנה זה fieldset עם legend ו-hint — אותם חלקים בדיוק. */
+function templatesScreen(){
+  if(curTab() !== "templates") return;
+  var panel = view.querySelector(".panel");
+  if(!panel) return;
+  panel.classList.add("lab-bare");
+  panel.querySelectorAll(":scope > fieldset").forEach(function(f){
+    if(f.classList.contains("lab-doc")) return;
+    var lg = f.querySelector(":scope > legend");
+    if(!lg) return;
+    f.classList.add("lab-doc");
+
+    var head = el("div", "lab-dochead");
+    var txt  = String(lg.textContent || "");
+    var m    = txt.match(/^\s*([\u203C-\u3299\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\uFE0F]+)\s*(.*)$/);
+    head.appendChild(el("span", "lab-ic", m ? m[1] : "▢"));
+    var tt = el("div", "lab-doctt");
+    tt.appendChild(el("div", "lab-docname", m ? m[2] : txt.trim()));
+    var hint = f.querySelector(":scope > .hint");
+    if(hint){ hint.classList.add("lab-docsub"); tt.appendChild(hint); }
+    head.appendChild(tt);
+    lg.remove();
+    f.insertBefore(head, f.firstChild);
+
+    /* התיבות הפנימיות (משרד ראשי / משרד החינוך) — תת-כרטיסים בשתי עמודות */
+    var subs = [];
+    Array.prototype.slice.call(f.children).forEach(function(c){
+      if(c === head || c === hint) return;
+      if(c.tagName === "DIV" && c.querySelector(".btn") && c.querySelector("b")) subs.push(c);
+    });
+    if(subs.length > 1){
+      var grid = el("div", "lab-docgrid");
+      f.insertBefore(grid, subs[0]);
+      subs.forEach(function(c){ c.classList.add("lab-subdoc"); grid.appendChild(c); });
+    }
+  });
+}
+
 /* --------------------------------------------------------- העוזר החכם */
 /* הלוח מציג את מי־מחובר ואת יומן הפעילות עם עיגול ראשי־תיבות לכל משתמש. */
 function initials(name){
@@ -1920,6 +1984,7 @@ function maybeHome(){
     try{ exportScreen(); }catch(e){}
     try{ settingsScreen(); }catch(e){}
     try{ toolsScreen(); }catch(e){}
+    try{ templatesScreen(); }catch(e){}
     try{ presenceSkin(); }catch(e){}
     homeBusy = false;
     return;
