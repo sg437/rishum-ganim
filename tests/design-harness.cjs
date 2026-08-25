@@ -76,23 +76,29 @@ ${drawer}
   </div>
 
   <div class="panel" style="padding-inline:0">
-    <div class="table-wrap"><table>
+    <div class="stu-stage"><div id="stuTable" style="flex:1 1 0;min-width:0">
+    <div class="table-wrap"><table class="stu-table">
       <thead><tr><th class="sortable">שם מלא</th><th>ת״ז</th><th>גן</th><th>שיבוץ</th>
         <th>גיל</th><th>עיר</th><th>מסמכים</th><th>סטטוס</th></tr></thead>
       <tbody>
-        <tr><td><span class="ini">אח</span> אברמוביץ׳ חנה׳לה</td><td>325417806</td><td>גן רימון · 4</td>
+        <tr class="sel"><td><div class="nm">אברמוביץ׳ חנה׳לה</div></td><td class="tzcell">325417806</td><td>גן רימון · 4</td>
           <td><span class="chip edu reg">✔ משובצת</span></td><td>4</td><td>ירושלים</td>
-          <td><span class="docchip">נס</span><span class="docchip">ת״ז</span></td>
+          <td><span class="docchips"><span class="docchip on">נס</span><span class="docchip on">ת״ז</span><span class="docchip">תק</span></span></td>
           <td><span class="chip edu">פעילה</span></td></tr>
-        <tr><td><span class="ini">גמ</span> גולדשטיין מירי</td><td>328990114</td><td>גן תפוח · 3</td>
+        <tr><td><div class="nm">גולדשטיין מירי</div></td><td class="tzcell">328990114</td><td>גן תפוח · 3</td>
           <td><span class="chip edu spec">ממתינה</span></td><td>3</td><td>ירושלים</td>
-          <td><span class="docchip">נס</span></td>
+          <td><span class="docchips"><span class="docchip on">נס</span><span class="docchip">ת״ז</span><span class="docchip">תק</span></span></td>
           <td><span class="chip edu">פעילה</span></td></tr>
-        <tr><td><span class="ini">לב</span> לוי ברכה</td><td>331204558</td><td>—</td>
-          <td><span class="chip edu spec">ממתינה</span></td><td>5</td><td>מודיעין עילית</td>
-          <td><span class="docchip">תק</span></td>
+        <tr><td><div class="nm">וייס שרה</div></td><td class="tzcell">324110552</td><td>גן אגוז · 5</td>
+          <td><span class="chip edu reg">✔ משובצת</span></td><td>5</td><td>מודיעין עילית</td>
+          <td><span class="docchips"><span class="docchip on">נס</span><span class="docchip on">ת״ז</span><span class="docchip on">תק</span></span></td>
           <td><span class="chip edu">פעילה</span></td></tr>
       </tbody></table></div>
+    <div class="selbar"><b>נבחרה 1 תלמידה</b>
+      <button class="btn">סמן כקלוט</button>
+      <button class="btn">שיבוץ לגן…</button>
+      <button class="btn">ייצוא הבחירה</button></div>
+    </div></div>
   </div>
 
   <div class="panel">

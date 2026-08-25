@@ -16,7 +16,7 @@
      ✅ 1. טוקנים, טיפוגרפיה, רדיוסים וצפיפות
      ✅ 2. סרגל צד קבוע + breakpoint למגירה (עם ui-lab.js)
      ✅ 3. viewHome — כרטיסי KPI ופאנל "דורש טיפול"
-     ⬜ 4. viewStudents — שבבי סינון, מד מסמכים, תיק בצד
+     ✅ 4. viewStudents — מד מסמכים, ראשי תיבות, KPI, סרגל כהה
      ⬜ 5. viewMap · 6. viewAssign · 7. השאר
    שלבים 3 ומעלה דורשים בנייה מחדש של תוכן המסכים, ולא רק של המסגרת.
    =========================================================================== */
@@ -426,7 +426,73 @@ html.ui-lab .lh-empty{ font-size:.85rem; color:var(--muted); padding:10px 0 }
   html.ui-lab .lh-tbtn{ min-height:44px }
 }
 
-/* ── 7. תג המעבדה ─────────────────────────────────────────────────────────
+
+/* ── 7. תיקי התלמידות (שלב 4 — לוח 01 בקנבס) ─────────────────────────────
+   עיצוב בלבד על המבנה הקיים. viewStudents מחזיק מיון, סינון, בחירה מרובה
+   והתיק בצד — החלפת ה-DOM הייתה שוברת אותם.                                */
+
+html.ui-lab .lab-skpis{ margin-bottom:16px }
+
+/* ראשי תיבות בעיגול לכל שורה (מוזרקים ב-ui-lab.js) */
+html.ui-lab .lab-namecell{ display:flex; align-items:center; gap:10px }
+html.ui-lab .lab-ini{
+  width:30px; height:30px; border-radius:11px; flex:0 0 auto;
+  display:grid; place-items:center;
+  background:var(--accent-soft); color:var(--accent-strong);
+  font-weight:800; font-size:.74rem; line-height:1;
+}
+
+/* מד המסמכים — שלוש התגיות הופכות לשלושה פסים.
+   הטקסט בתוכן נשאר לקוראי מסך ולכותרת ה-title, אבל אינו מוצג. */
+html.ui-lab .stu-table .docchips{ gap:4px; align-items:center; vertical-align:middle }
+html.ui-lab .stu-table .docchip{
+  min-width:0; width:22px; height:5px; padding:0; border-radius:999px;
+  border:0; background:var(--border);
+  font-size:0; overflow:hidden; text-indent:-9999px;
+}
+html.ui-lab .stu-table .docchip.on{ background:var(--good) }
+html.ui-lab .stu-table a.docchip.has-file{ box-shadow:0 0 0 1px var(--good-soft) }
+html.ui-lab .lab-docn{
+  margin-inline-start:8px; font-size:.76rem; font-weight:700; color:var(--muted);
+  direction:ltr; unicode-bidi:isolate;   /* 2/3 ולא 3/2 */
+}
+html.ui-lab .lab-docfull + .lab-docn{ color:var(--good) }
+
+/* סרגל הפעולות התחתון — כהה, כמו בלוח */
+html.ui-lab .selbar{
+  background:var(--lab-deep); border-radius:14px; padding:12px 16px;
+  box-shadow:var(--shadow-lg);
+}
+html.ui-lab .selbar .btn{ background:rgba(255,255,255,.12); border-radius:10px; font-weight:600 }
+html.ui-lab .selbar .btn:hover{ background:rgba(255,255,255,.2) }
+
+/* התיק המקוצר בצד — כותרת כהה */
+html.ui-lab .qhead{
+  background:var(--lab-deep); color:#fff;
+  margin:-16px -18px 14px; padding:16px 18px;
+  border-radius:16px 16px 0 0;
+}
+html.ui-lab .qhead .ini{ background:rgba(255,255,255,.14); color:#fff }
+html.ui-lab .qhead .qname{ color:#fff }
+html.ui-lab .qhead .qtz{ color:rgba(255,255,255,.6); direction:ltr; unicode-bidi:isolate }
+html.ui-lab .qhead .qclose{ background:rgba(255,255,255,.14); border-color:transparent; color:#fff }
+
+/* פס הסינון — שבבים במקום שדות (מסך 01) */
+html.ui-lab .fchips{ gap:7px }
+html.ui-lab .fchip{
+  background:var(--surface); border:1px solid var(--border); color:var(--ink-soft);
+  padding:7px 13px; font-weight:600; font-size:.83rem;
+}
+html.ui-lab .fchip:hover{ border-color:var(--accent) }
+
+/* שורה נבחרת — גוון ירוק וקו מבטא בצד ההתחלה */
+html.ui-lab .stu-table tbody tr.sel,
+html.ui-lab .stu-table tbody tr.selected{
+  background:var(--accent-soft);
+  box-shadow:inset 3px 0 0 var(--accent);
+}
+
+/* ── 8. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
 html.ui-lab .ui-lab-badge{

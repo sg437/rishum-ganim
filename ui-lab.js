@@ -344,6 +344,75 @@ function renderHome(){
   homeBusy = false;
 }
 
+/* ===========================================================================
+   שלב 4 — תיקי התלמידות (לוח 01 בקנבס)
+   ---------------------------------------------------------------------------
+   כאן *לא* מחליפים את המסך. viewStudents מחזיק מיון, סינון, בחירה מרובה,
+   התיק המקוצר בצד, קישורי דרייב ועדכון קבוצתי — כל אלה מחווטים בקוד הקיים,
+   והחלפת ה-DOM הייתה שוברת אותם. לכן: עיצוב ב-CSS, ותוספות נקודתיות בלבד.
+
+   שלוש תוספות: שורת ה-KPI מעל הטבלה, ראשי תיבות בעיגול לכל שורה,
+   ומונה המסמכים (2/3) לצד מד שלושת הפסים.
+   =========================================================================== */
+
+function initialsFrom(name){
+  var w = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if(!w.length) return "";
+  return (w[0].charAt(0) + (w[1] ? w[1].charAt(0) : "")).trim();
+}
+
+function studentsKpis(){
+  var stage = view.querySelector(".stu-stage");
+  if(!stage || view.querySelector(".lab-skpis")) return;
+  var d = (window.__uiLab && window.__uiLab.home) ? window.__uiLab.home() : null;
+  if(!d) return;
+  var row = el("div", "lh-kpis lab-skpis");
+  row.appendChild(kpi({ dark:true, label:"סה״כ רשומות", value:d.total,
+    sub:d.gansActive ? d.gansActive + " גנים פעילים" : "",
+    ring: d.total ? d.placed / d.total * 100 : 0 }));
+  row.appendChild(kpi({ label:"משובצות סופית", value:d.placed, tone:"good",
+    bar: d.total ? d.placed / d.total * 100 : 0 }));
+  row.appendChild(kpi({ label:"ממתינות לשיבוץ", value:d.waiting,
+    sub: d.topAge ? d.topAgeN + " מהן בגיל " + d.topAge : "" }));
+  row.appendChild(kpi({ label:"לא קלוט בעירייה", value:d.notMuni, tone:"bad" }));
+  stage.parentNode.insertBefore(row, stage);
+}
+
+function studentsRows(){
+  /* ראשי תיבות — נגזרים מהשם שכבר בתא, בלי להיזקק לנתון נוסף */
+  view.querySelectorAll(".stu-table .nm").forEach(function(nm){
+    if(nm.previousElementSibling && nm.previousElementSibling.classList.contains("lab-ini")) return;
+    var ini = initialsFrom(nm.textContent);
+    if(!ini) return;
+    var sp = el("span", "lab-ini", ini);
+    nm.parentNode.insertBefore(sp, nm);
+    nm.parentNode.classList.add("lab-namecell");
+  });
+
+  /* מונה המסמכים לצד המד */
+  view.querySelectorAll(".stu-table .docchips").forEach(function(box){
+    var chips = box.querySelectorAll(".docchip");
+    if(!chips.length) return;
+    var on = box.querySelectorAll(".docchip.on").length;
+    var n = box.parentNode.querySelector(".lab-docn");
+    if(!n){ n = el("span", "lab-docn"); box.parentNode.insertBefore(n, box.nextSibling); }
+    /* רק אם השתנה — כתיבת textContent היא בעצמה שינוי DOM, ובלי התנאי
+       הזה הצופה היה מפעיל את עצמו שוב ושוב בלולאה. */
+    var txt = on + "/" + chips.length;            /* בלי רווחים — כלל ה-bidi */
+    if(n.textContent !== txt) n.textContent = txt;
+    box.classList.toggle("lab-docfull", on === chips.length);
+  });
+}
+
+function maybeStudents(){
+  if(homeBusy || !view) return;
+  var b = nav.querySelector('[data-tab="students"]');
+  if(!(b && b.classList.contains("active"))) return;
+  homeBusy = true;                                /* אותו דגל — חוסם כניסה חוזרת */
+  try{ studentsKpis(); studentsRows(); }catch(e){}
+  homeBusy = false;
+}
+
 function isHome(){
   var b = nav.querySelector('[data-tab="home"]');
   return !!(b && b.classList.contains("active"));
@@ -351,7 +420,7 @@ function isHome(){
 
 function maybeHome(){
   if(homeBusy || !view) return;
-  if(!isHome()) return;
+  if(!isHome()){ maybeStudents(); return; }
   if(view.querySelector(".lab-home")) return;   /* כבר שלנו */
   renderHome();
 }
@@ -374,7 +443,7 @@ function paint(){
 }
 
 new MutationObserver(paint).observe(nav, {childList:true});
-if(view) new MutationObserver(maybeHome).observe(view, {childList:true});
+if(view) new MutationObserver(maybeHome).observe(view, {childList:true, subtree:true});
 paint();
 maybeHome();
 
