@@ -19,7 +19,8 @@
      ✅ 4. viewStudents — מד מסמכים, ראשי תיבות, KPI, סרגל כהה
      ✅ 5. viewMap — דגלים עם שם ותפוסה
      ⬜ 6. viewAssign — לוח התקנים (דורש החלטה — ראה docs/UI_LAB.md)
-     ⬜ 7. השאר
+     ◐ 7. השאר — פסי תפוסה צבועים בכל המסכים; שאר המסכים מקבלים
+           את שכבת הטוקנים, אך טרם נבנו מחדש לפי הלוחות
    שלבים 3 ומעלה דורשים בנייה מחדש של תוכן המסכים, ולא רק של המסגרת.
    =========================================================================== */
 
@@ -518,6 +519,12 @@ html.ui-lab .lab-ganflag .lgf-r{
   font-size:.72rem; direction:ltr; unicode-bidi:isolate;   /* 32/32 ולא 32/32 הפוך */
 }
 html.ui-lab .lab-ganstem{ width:3px; height:9px; border-radius:2px; margin-top:1px }
+
+/* פסי התפוסה בכל המסכים — הצביעה לפי אחוז נעשית ב-ui-lab.js */
+html.ui-lab .bar{ height:7px; border:0; background:color-mix(in srgb, var(--border) 70%, var(--surface)) }
+html.ui-lab .bar > i{ background:var(--good) }
+html.ui-lab .bar > i.near{ background:var(--lab-gold) }
+html.ui-lab .bar > i.full{ background:var(--bad) }
 
 /* פאנל הצד של המפה */
 html.ui-lab .map-side-kid{ border-radius:11px; padding:9px 11px }

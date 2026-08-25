@@ -399,6 +399,25 @@ function studentsRows(){
   });
 }
 
+/* ===========================================================================
+   שלב 7 — צביעת פסי התפוסה בכל המסכים
+   ---------------------------------------------------------------------------
+   בקנבס פס תפוסה מחליף צבע לפי כמה הוא מלא: ירוק · ענבר מ-85% · אדום ב-100%.
+   הרוחב נקבע ב-style inline מתוך הקוד, ו-CSS אינו יכול להסתעף עליו — לכן
+   הקריאה נעשית כאן. חל על כרטיסי הגנים, מסך הבית וכל מקום שמשתמש ב-.bar.
+   =========================================================================== */
+function tintBars(){
+  view.querySelectorAll(".bar > i").forEach(function(i){
+    var w = parseFloat(i.style.width);
+    if(isNaN(w)) return;
+    var cls = w >= 100 ? "full" : (w >= 85 ? "near" : "");
+    if(i.dataset.labTint === cls) return;         /* בלי זה — לולאת צופה */
+    i.dataset.labTint = cls;
+    i.classList.remove("near", "full");
+    if(cls) i.classList.add(cls);
+  });
+}
+
 function maybeStudents(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="students"]');
@@ -415,6 +434,7 @@ function isHome(){
 
 function maybeHome(){
   if(homeBusy || !view) return;
+  try{ tintBars(); }catch(e){}
   if(!isHome()){ maybeStudents(); return; }
   if(view.querySelector(".lab-home")) return;   /* כבר שלנו */
   renderHome();
