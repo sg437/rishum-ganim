@@ -1,0 +1,104 @@
+מערכת ניהול רשת הגנים — רישיון קנייני
+Rishum Ganim — Proprietary License
+
+Copyright © 2026 שמואל גולדמן (Shmuel Goldman). כל הזכויות שמורות.
+Copyright © 2026 Shmuel Goldman. All rights reserved.
+
+================================================================================
+עברית
+================================================================================
+
+1. בעלות
+   כל הזכויות בתוכנה זו — לרבות קוד המקור, קוד השרת (Google Apps Script),
+   כללי ההרשאות, העיצוב, המבנה, הטקסטים, התיעוד והמסמכים הנלווים — שמורות
+   בלעדית לשמואל גולדמן ("בעל הזכויות").
+
+2. איסור שימוש ללא רישיון
+   אין להעתיק, לשכפל, להוריד, לאחסן, לשנות, להתאים, לתרגם, להפיץ, לפרסם,
+   להשכיר, למכור, להעניק רישיון־משנה, להנגיש לציבור, ליצור עבודות נגזרות,
+   או לעשות כל שימוש אחר בתוכנה — כולה או חלקה — ללא אישור מפורש, מראש
+   ובכתב מבעל הזכויות.
+
+3. הצגת קוד המקור אינה רישיון
+   התוכנה פועלת בדפדפן, ולכן חלק מקוד המקור שלה נגיש טכנית לצפייה. עובדה זו
+   אינה מהווה ויתור על זכויות, אינה הופכת את הקוד לנחלת הכלל, ואינה מעניקה
+   כל רישיון או היתר שימוש. הדבר נכון גם לגבי כל עותק שהושג ממאגר ציבורי,
+   מארכיון אינטרנט, ממטמון של מנוע חיפוש או מכל מקור אחר.
+
+4. איסור שכפול באמצעים אוטומטיים
+   האמור בסעיף 2 חל במלואו גם על שכפול, שחזור, "הנדסה לאחור" או יצירת עבודה
+   נגזרת באמצעות כלי בינה מלאכותית, מודלי שפה, סוכנים אוטומטיים, מחוללי קוד,
+   סורקים (crawlers) או כל אמצעי אוטומטי אחר. שימוש בתוכנה זו — או בכל חלק
+   ממנה — כקלט לאימון מודל, לכוונון (fine-tuning) או להנחיה שמטרתה לייצר
+   מערכת דומה, אסור אף הוא.
+
+5. סימני זיהוי
+   בתוכנה משובצים מזהים ייחודיים לצורך הוכחת מקור ובעלות. הסרתם, שינוים או
+   טשטושם — לרבות באמצעות הקטנה (minification), ערפול (obfuscation) או עיבוד
+   אוטומטי — אינה מכשירה שימוש אסור, ותיחשב כראיה לכוונת הפרה.
+
+6. אין אחריות
+   התוכנה מסופקת כמות שהיא ("AS IS"), ללא אחריות מכל סוג, מפורשת או משתמעת.
+   בעל הזכויות לא יישא באחריות לכל נזק ישיר, עקיף, מיוחד או תוצאתי הנובע
+   מהשימוש בתוכנה או מאי־היכולת להשתמש בה.
+
+7. אכיפה
+   הפרת רישיון זה מהווה הפרת זכויות יוצרים לפי חוק זכות יוצרים, התשס"ח–2007,
+   ולפי אמנות בין־לאומיות. בעל הזכויות שומר על מלוא זכויותיו וסעדיו, לרבות
+   צו מניעה ופיצוי ללא הוכחת נזק.
+
+8. יצירת קשר לרישוי
+   פניות לקבלת רישיון שימוש: sg@taharat.org
+
+================================================================================
+English
+================================================================================
+
+1. OWNERSHIP
+   All rights in this software — including its source code, server-side code
+   (Google Apps Script), security rules, design, structure, texts, and
+   accompanying documentation — are owned exclusively by Shmuel Goldman
+   (the "Owner").
+
+2. NO LICENSE GRANTED
+   No permission is granted to copy, reproduce, download, store, modify,
+   adapt, translate, distribute, publish, rent, sell, sublicense, publicly
+   display, create derivative works from, or otherwise use this software,
+   in whole or in part, without the Owner's express prior written consent.
+
+3. VIEWABILITY IS NOT A LICENSE
+   This software runs in a web browser, and portions of its source are
+   therefore technically viewable. That fact does not waive any right, does
+   not place the code in the public domain, and grants no license or
+   permission whatsoever. The same applies to any copy obtained from a
+   public repository, a web archive, a search-engine cache, or any other
+   source.
+
+4. AUTOMATED REPRODUCTION PROHIBITED
+   Section 2 applies in full to reproduction, reconstruction, reverse
+   engineering, or the creation of derivative works by means of artificial
+   intelligence tools, language models, autonomous agents, code generators,
+   crawlers, or any other automated means. Using this software, or any part
+   of it, as input for model training, fine-tuning, or prompting intended to
+   produce a similar system is likewise prohibited.
+
+5. PROVENANCE MARKERS
+   Unique identifiers are embedded in this software to establish origin and
+   ownership. Removing, altering, or obscuring them — including by
+   minification, obfuscation, or automated processing — does not legitimize
+   unauthorized use and shall be treated as evidence of intent to infringe.
+
+6. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED. IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY DIRECT,
+   INDIRECT, SPECIAL, OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE OF, OR
+   INABILITY TO USE, THE SOFTWARE.
+
+7. ENFORCEMENT
+   Violation of this license constitutes copyright infringement under the
+   Israeli Copyright Act, 5768-2007, and applicable international treaties.
+   The Owner reserves all rights and remedies, including injunctive relief
+   and statutory damages.
+
+8. LICENSING CONTACT
+   sg@taharat.org
