@@ -212,7 +212,21 @@ html.ui-lab .drawer-nav button .ic{ font-size:1.05rem; width:22px }
 html.ui-lab .drawer-nav button .tl{
   min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-html.ui-lab .drawer-nav button .count{ flex:0 0 auto; padding:1px 7px; font-size:.72rem }
+/* מונה רגיל בקנבס הוא מספר חשוף, לא תגית. התגית שמורה להתראה בלבד
+   (בקנבס: עירייה 74 על רקע פליז). ראה מסך 02. */
+html.ui-lab .drawer-nav button .count{
+  flex:0 0 auto; background:transparent; padding:0;
+  color:rgba(255,255,255,.4); font-size:.78rem; font-weight:700;
+}
+html.ui-lab .drawer-nav button .count.alert{
+  background:var(--lab-gold); color:#fff;
+  border-radius:6px; padding:1px 7px; font-size:.72rem;
+}
+html.ui-lab .drawer-nav button.active .count{ background:transparent; color:rgba(255,255,255,.75) }
+
+/* הגליפים דקים יותר מאימוג׳י וזקוקים לאיזון אופטי */
+html.ui-lab .drawer-nav button .ic{ font-size:1rem; opacity:.75 }
+html.ui-lab .drawer-nav button.active .ic{ opacity:1 }
 
 /* כותרות קבוצות הניווט (מוזרקות ב-ui-lab.js) */
 html.ui-lab .lab-navgroup{

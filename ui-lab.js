@@ -36,6 +36,15 @@ var GROUPS = [
    התלמידות / צוות הגנים). שאר התוויות זהות. */
 var LABELS = { home:"מסך בית", students:"תלמידות", staff:"צוות" };
 
+/* הקנבס משתמש בגליפים מונוכרומיים ולא באימוג׳י — נלקחו ממסך 02 אחד לאחד.
+   (HANDOFF.md מתיר "אימוג׳י או גליפים"; הקנבס, שהוא המקור המחייב, בחר גליפים.)
+   "מדריך" אינו מופיע בקנבס כלל, ולכן הגליף שלו הוא בחירה שלי. */
+var ICONS = {
+  home:"◫", students:"☰", gans:"⌂", map:"⌖", staff:"◈", assign:"⇄",
+  templates:"▢", reports:"◔", municipality:"▤", management:"☏",
+  messages:"✉", tools:"⚒", settings:"⚙", guide:"▧"
+};
+
 var nav = document.getElementById("tabs");
 var foot = document.querySelector(".drawer-foot");
 if(!nav) return;               /* management.html / register.html — אין ניווט */
@@ -51,6 +60,10 @@ function relabel(){
   for(var id in LABELS){
     var btn = nav.querySelector('[data-tab="'+id+'"] .tl');
     if(btn && btn.textContent !== LABELS[id]) btn.textContent = LABELS[id];
+  }
+  for(var gid in ICONS){
+    var ic = nav.querySelector('[data-tab="'+gid+'"] .ic');
+    if(ic && ic.textContent !== ICONS[gid]) ic.textContent = ICONS[gid];
   }
 }
 
