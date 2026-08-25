@@ -53,6 +53,7 @@ ${drawer}
 </div></header>
 
 <div id="view" style="max-width:1200px;margin:0 auto;padding:18px 14px">
+  ${process.env.HARNESS_TAB==='assign'?'<div class="panel"><div class="section-title"><h2>שיבוץ צוות</h2></div><div id="asgList"></div></div>':''}
   <div class="section-title">תיקי התלמידות · שנת תשפ״ח</div>
 
   <div class="stats" style="margin:14px 0 18px">
@@ -135,7 +136,35 @@ window.__uiLab={
     activity:[{who:"רכזת רישום",ts:Date.now()-3600e3,what:"12 תלמידות שובצו לגן רימון"},
               {who:"מזכירות",ts:Date.now()-9e6,what:"ייבוא 34 רשומות ממועד ב׳"},
               {who:"מזכירות",ts:Date.now()-9e7,what:"דוח עירייה לחודש אב הופק"}]};},
-  go(tab,filter){console.log('go',tab,JSON.stringify(filter||{}));}
+  go(tab,filter){console.log('go',tab,JSON.stringify(filter||{}));},
+  openGan(id){console.log('openGan',id);},
+  assignBoard(){return {context:"activity",contextLabel:"פעילות הגן",gans:[
+    /* גן רגיל — שלושה תקנים מאוישים, כמו בלוח */
+    {id:"1",name:"גן רימון",symbol:"4402",age:"4",edu:"רגיל",campus:"קמפוס צפון",
+     reg:32,mandatory:false,bRole:"סייעת ב'",bMin:30,bEligible:true,freeDays:[],
+     filled:[{role:"גננת",name:"שרה ברקוביץ׳",extraLabel:"",extra:"",students:""},
+             {role:"סייעת",name:"פייגי בלוי",extraLabel:"",extra:"",students:""}]},
+    /* גן מתחת לסף — התקן השלישי נעול */
+    {id:"2",name:"גן שקד",symbol:"4421",age:"4",edu:"רגיל",campus:"קמפוס מרכז",
+     reg:21,mandatory:false,bRole:"סייעת ב'",bMin:30,bEligible:false,
+     freeDays:[{role:"ממלאת מקום",days:["כל השבוע"]}],
+     filled:[{role:"סייעת",name:"חיה גולד",extraLabel:"",extra:"",students:""},
+             {role:"סייעת ממלאת מקום",name:"ברכי רוט",extraLabel:"תקופה",extra:"3 חודשים",students:""}]},
+    /* גן חובה (גיל 5) — אין סייעת ב׳ כלל */
+    {id:"3",name:"גן אלון",symbol:"4433",age:"5",edu:"רגיל",campus:"קמפוס צפון",
+     reg:34,mandatory:true,bRole:"סייעת ב'",bMin:30,bEligible:false,freeDays:[],
+     filled:[{role:"גננת",name:"רבקה קליין",extraLabel:"",extra:"",students:""},
+             {role:"סייעת",name:"טובה ויסמן",extraLabel:"",extra:"",students:""}]},
+    /* ⚠️ המקרה שהלוח לא יודע להציג — חמישה תפקידים */
+    {id:"4",name:"גן אגוז",symbol:"4470",age:"5",edu:"ח״מ",campus:"קמפוס דרום",
+     reg:11,mandatory:true,bRole:"סייעת ב'",bMin:30,bEligible:false,
+     freeDays:[{role:"משלימה",days:["ג׳","ה׳"]}],
+     filled:[{role:"גננת",name:"חנה זילברשטיין",extraLabel:"",extra:"",students:""},
+             {role:"סייעת",name:"נחמה פישר",extraLabel:"",extra:"",students:""},
+             {role:"סייעת רפואית",name:"מרים לוין",extraLabel:"",extra:"",students:""},
+             {role:"סייעת צמודה",name:"דבורה פרנקל",extraLabel:"",extra:"",students:"וייס שרה"},
+             {role:"גננת משלימה",name:"רויזי שוורץ",extraLabel:"ימים",extra:"ג׳, ה׳",students:""}]}
+  ]};}
 };
 document.addEventListener('DOMContentLoaded',function(){
   var n=document.getElementById('tabs'); if(n) n.innerHTML=${JSON.stringify(navHtml)};

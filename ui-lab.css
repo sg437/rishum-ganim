@@ -18,7 +18,7 @@
      ✅ 3. viewHome — כרטיסי KPI ופאנל "דורש טיפול"
      ✅ 4. viewStudents — מד מסמכים, ראשי תיבות, KPI, סרגל כהה
      ✅ 5. viewMap — דגלים עם שם ותפוסה
-     ⬜ 6. viewAssign — לוח התקנים (דורש החלטה — ראה docs/UI_LAB.md)
+     ✅ 6. viewAssign — לוח התקנים, בלי תקרת שלושה ובלי גרירה
      ◐ 7. השאר — פסי תפוסה צבועים בכל המסכים; שאר המסכים מקבלים
            את שכבת הטוקנים, אך טרם נבנו מחדש לפי הלוחות
    שלבים 3 ומעלה דורשים בנייה מחדש של תוכן המסכים, ולא רק של המסגרת.
@@ -572,7 +572,79 @@ html.ui-lab .map-fold>summary{ padding:12px 16px; font-weight:600 }
 /* טבלת ההצעה של השיבוץ האוטומטי — סיבת חסימה בולטת */
 html.ui-lab .leaflet-container{ border-radius:16px }
 
-/* ── 9. תג המעבדה ─────────────────────────────────────────────────────────
+
+/* ── 9. לוח התקנים בשיבוץ צוות (שלב 6 — לוח 05 בקנבס) ───────────────────
+   מספר הכרטיסים משתנה לפי מספר התפקידים המשובצים בפועל — אין תקרה של
+   שלושה, כי במערכת 17 תפקידים וגן עם ארבעה היה נחתך.                    */
+
+html.ui-lab .lab-asg{ display:flex; flex-direction:column; gap:10px }
+
+html.ui-lab .la-legend{ display:flex; gap:14px; margin-bottom:2px; flex-wrap:wrap }
+html.ui-lab .la-lg{ display:inline-flex; align-items:center; gap:6px; font-size:.76rem; color:var(--muted); font-weight:600 }
+html.ui-lab .la-lg::before{ content:""; width:9px; height:9px; border-radius:3px }
+html.ui-lab .la-lg.on::before  { background:var(--good) }
+html.ui-lab .la-lg.free::before{ background:transparent; border:1px dashed var(--border) }
+html.ui-lab .la-lg.lock::before{ background:transparent; border:1px dashed var(--warn) }
+
+html.ui-lab .la-row{
+  display:grid; grid-template-columns:190px 1fr auto; gap:14px; align-items:center;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; padding:14px 16px;
+}
+html.ui-lab .la-gan-top{ display:flex; align-items:center; gap:7px }
+html.ui-lab .la-gan-top b{ font-size:.96rem }
+html.ui-lab .la-gan-meta{ font-size:.75rem; color:var(--muted); margin-top:1px }
+html.ui-lab .la-gan-reg { font-size:.78rem; color:var(--accent-strong); font-weight:700; margin-top:3px }
+html.ui-lab .la-gan-mand{
+  display:inline-block; margin-top:4px; font-size:.7rem; font-weight:800;
+  background:var(--accent-soft); color:var(--accent-strong); border-radius:999px; padding:1px 8px;
+}
+
+html.ui-lab .la-slots{ display:flex; gap:10px; flex-wrap:wrap; min-width:0 }
+html.ui-lab .la-slot{
+  flex:0 1 190px; min-width:150px;
+  border-radius:13px; padding:10px 13px;
+  background:var(--good-soft); border:1px solid transparent;
+}
+html.ui-lab .la-slot.free{ background:transparent; border:1px dashed var(--border) }
+html.ui-lab .la-slot.lock{ background:var(--warn-soft); border:1px dashed var(--warn) }
+html.ui-lab .la-role{ font-size:.73rem; color:var(--muted); font-weight:700 }
+html.ui-lab .la-slot.lock .la-role{ color:var(--warn) }
+html.ui-lab .la-who{ display:flex; align-items:center; gap:7px; margin-top:3px; min-width:0 }
+html.ui-lab .la-who b{ font-size:.88rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+html.ui-lab .la-slot .la-ini{
+  width:24px; height:24px; border-radius:8px; flex:0 0 auto; display:grid; place-items:center;
+  background:var(--surface); color:var(--good); font-weight:800; font-size:.68rem;
+}
+html.ui-lab .la-empty-txt{ font-size:.8rem; color:var(--muted); font-weight:600; margin-top:4px }
+html.ui-lab .la-slot.lock .la-empty-txt{ color:var(--warn) }
+html.ui-lab .la-extra{ font-size:.73rem; color:var(--good); font-weight:700; margin-top:3px }
+html.ui-lab .la-kids { font-size:.73rem; color:var(--accent-strong); margin-top:3px }
+
+html.ui-lab .la-side{ display:flex; flex-direction:column; align-items:center; gap:7px; flex:0 0 auto }
+html.ui-lab .la-count{
+  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-size:.95rem; font-weight:700; color:var(--muted);
+}
+html.ui-lab .la-count.full{ color:var(--good) }
+html.ui-lab .la-edit{
+  background:var(--surface); border:1px solid var(--border); color:var(--ink-soft);
+  padding:7px 14px; border-radius:10px; font-weight:600; font-size:.82rem;
+}
+html.ui-lab .la-edit:hover{ border-color:var(--accent); color:var(--accent-strong) }
+
+html.ui-lab .la-free{
+  grid-column:1 / -1; font-size:.78rem; color:var(--accent-strong);
+  padding-top:9px; border-top:1px solid var(--lab-rule-row);
+}
+
+@media(max-width:900px){
+  html.ui-lab .la-row{ grid-template-columns:1fr; gap:10px }
+  html.ui-lab .la-side{ flex-direction:row; justify-content:space-between }
+  html.ui-lab .la-edit{ min-height:44px }
+}
+
+/* ── 10. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
 html.ui-lab .ui-lab-badge{

@@ -2339,6 +2339,56 @@ if(document.documentElement.classList.contains("ui-lab")){
       }catch(e){ return null; }
     },
 
+    /* לוח התקנים בשיבוץ צוות (לוח 05). כל תפקיד משובץ מקבל כרטיס — אין תקרה
+       של שלושה. לוח הקנבס מציג n/3 בעוד שבמערכת 17 תפקידים, וגן עם ארבעה
+       תפקידים היה נחתך שם בשקט. כאן: שלושת תקני הליבה תמיד (גננת · סייעת ·
+       סייעת ב׳ לפי זכאות), ובנוסף כרטיס לכל תפקיד אחר שמשובץ בפועל. */
+    assignBoard(){
+      try{
+        const gans  = eduScope(DB.gans.slice())
+                        .sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+        const roles = assignRoles();
+        return {
+          context: asgContext,
+          contextLabel: ctxLabel(asgContext),
+          gans: gans.map(g=>{
+            const a   = ganAsg(g.id);
+            const reg = studentsOfYear().filter(s=>!s.finished && s.ganId===g.id).length;
+            const mandatory = isMandatoryGan(g);
+            const filled = roles.map(meta=>{
+              const cur = a[meta.role];
+              if(!cur || !(cur.name || cur.staffId)) return null;
+              return {
+                role:       meta.role,
+                name:       cur.name || "",
+                phone:      cur.phone || "",
+                extraLabel: asgExtraLabel(meta.role),
+                extra:      asgExtraText(meta.role, cur),
+                students:   asgStudentsLabel(meta.role, cur)
+              };
+            }).filter(Boolean);
+            const free = ganFreeDays(g.id, asgContext) || {};
+            return {
+              id:g.id, name:ganName(g.id),
+              symbol:String(g.ganSymbol||g.internalSymbol||"").trim(),
+              age:String(g.age||"").trim(),
+              edu:eduLabel(g),
+              campus:String(g.campus||"").trim(),
+              reg, mandatory,
+              bRole:ASSISTANT_B_ROLE, bMin:ASSISTANT_B_MIN,
+              bEligible: reg>=ASSISTANT_B_MIN && !mandatory,
+              filled,
+              freeDays: Object.keys(free).map(r=>({role:r, days:free[r]||[]}))
+            };
+          })
+        };
+      }catch(e){ return null; }
+    },
+
+    /* פתיחת מודאל השיבוץ הקיים. כל הכתיבה למסד נשארת שם — על הכללים
+       הבדוקים שלו (סייעת ב׳ מ-30, אין בגן חובה, ימים, תקופה, כפילות). */
+    openGan(ganId){ try{ openGanAssign(ganId); }catch(e){} },
+
     /* ניווט ללשונית, עם סינון מוקדם אופציונלי — "שורת דורש טיפול מנווטת
        לרשימה מסוננת מראש" (HANDOFF.md). נוגע ב-state של הממשק בלבד. */
     go(tab, filter){
