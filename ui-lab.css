@@ -329,17 +329,26 @@ html.ui-lab .lu-mail{
      קליקים על התוכן שמתחתיה; הכפתור עצמו מחזיר לעצמו auto. */
   html.ui-lab header.top  {
     position:sticky; top:0; z-index:35;
-    background:transparent; border-bottom:0; box-shadow:none;
-    pointer-events:none;
+    background:var(--lab-deep); border-bottom:0; box-shadow:none;
   }
-  /* הכותרת התרוקנה, ולכן ה-padding שלה הוא כל הנשימה שנשארה מעל התוכן */
-  html.ui-lab .top-inner  { max-width:none; padding:18px 26px 0 }
-  html.ui-lab .brand,
-  html.ui-lab .top-chips  { display:none }
+  html.ui-lab .top-inner  {
+    max-width:none; padding:0 26px; min-height:46px; gap:12px;
+  }
+  /* המותג כפול מול הסרגל; השבבים נשארים — שם שם השנה והחינוך */
+  html.ui-lab .brand      { display:none }
+  html.ui-lab .top-spacer { flex:1 }
+  html.ui-lab .top-chips  { display:flex; align-items:center; gap:8px; order:9 }
+  html.ui-lab .lab-topname{
+    order:0; color:#f3f6f1; font-weight:600; font-size:.95rem;
+    letter-spacing:-.02em; white-space:nowrap;
+  }
   html.ui-lab .backbtn    {
-    pointer-events:auto;
-    background:var(--surface); border:1px solid var(--border);
-    box-shadow:var(--shadow); border-radius:12px;
+    background:rgba(255,255,255,.12); border:0; color:#fff; border-radius:10px;
+  }
+  html.ui-lab header.top .chip.year{ display:none }   /* הוחלף בבורר אמיתי */
+  html.ui-lab header.top .chip.edu {
+    background:rgba(255,255,255,.1); color:rgba(255,255,255,.78);
+    border-color:transparent;
   }
 }
 
@@ -1656,3 +1665,108 @@ html.ui-lab .lab-stoggle.in-line{ margin:0 }
 /* בלוח כפתור הביצוע ירוק ורחב מהביטול */
 html.ui-lab .aiact .aiact-row .btn:not(.ghost){ flex:2; background:var(--accent); border-color:var(--accent) }
 html.ui-lab .aiact .aiact-row .btn.ghost{ flex:1 }
+
+/* ===========================================================================
+   16 · הכותרת העליונה — בורר השנה
+   =========================================================================== */
+html.ui-lab .lab-yearpick{
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(255,255,255,.14); border-radius:99px; padding:3px 10px 3px 6px;
+  color:#fff; font-size:.8rem; font-weight:600; cursor:pointer;
+}
+html.ui-lab .lab-yearpick:hover{ background:rgba(255,255,255,.22) }
+html.ui-lab .lab-ycal{ opacity:.75; font-size:.85rem }
+html.ui-lab .lab-yearpick > select{
+  background:transparent; border:0; color:#fff; font:inherit; font-weight:600;
+  padding:2px 2px; cursor:pointer; min-width:0; width:auto; box-shadow:none;
+  appearance:none; -webkit-appearance:none; text-align:center;
+}
+html.ui-lab .lab-yearpick > select:focus{ outline:2px solid rgba(255,255,255,.5); border-radius:6px }
+html.ui-lab .lab-yearpick > select option{ color:var(--ink); background:var(--surface) }
+
+/* מקטע השנה במגירה נשאר מוסתר — הבורר עלה לכותרת ואין לשכפל אותו */
+
+/* ===========================================================================
+   17 · תלמידות וגנים — סרגל עליון, כרטיסים ושורת סינון (לוחות 01 ו-03)
+   =========================================================================== */
+
+/* -- שורות הפירוט בכרטיסי המספרים ----------------------------------------- */
+html.ui-lab #stuSummary .lab-ksub{
+  font-size:.75rem; font-weight:700; color:var(--muted); margin-top:5px;
+}
+html.ui-lab #stuSummary .lab-ksub.gold{ color:var(--lab-gold) }
+html.ui-lab #stuSummary .lab-ksub.bad { color:#b4483c }
+html.ui-lab #stuSummary .stat.lab-hero .lab-ksub.gold{ color:var(--lab-gold-on-deep) }
+html.ui-lab #stuSummary .lab-kbar{
+  height:6px; border-radius:99px; background:var(--lab-rule-row);
+  overflow:hidden; margin-top:9px;
+}
+html.ui-lab #stuSummary .lab-kbar > i{ display:block; height:100%; background:var(--accent) }
+
+/* כל כרטיס מסנן את הטבלה — ולכן נראה ומתנהג כלחיץ */
+html.ui-lab .stat.lab-clickable{ cursor:pointer; transition:box-shadow .15s, transform .1s }
+html.ui-lab .stat.lab-clickable:hover{ box-shadow:0 6px 18px rgba(21,52,42,.12); transform:translateY(-1px) }
+html.ui-lab .stat.lab-clickable:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* -- שורת חיפוש + שבבי סינון בשורה אחת ------------------------------------ */
+html.ui-lab .searchbar.lab-fbar{
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px;
+}
+/* תווית "סינון:" מיותרת — השבבים מדברים בעד עצמם, כמו בלוח */
+html.ui-lab .lab-fbar > span:not(.fchip){ display:none }
+html.ui-lab .lab-fbar .search-field{
+  flex:0 1 420px; min-width:200px; border-radius:99px;
+  background:var(--surface); border:1px solid var(--border); padding:0 14px;
+}
+html.ui-lab .lab-fbar .search-field .mag{ opacity:.45; font-size:.9rem; order:9 }
+html.ui-lab .lab-fbar .search-field input{
+  border:0; background:none; box-shadow:none; padding:10px 0; font-size:.88rem;
+}
+html.ui-lab .lab-fbar .search-field input:focus{ outline:none }
+html.ui-lab .lab-fbar .fchip{
+  background:var(--lab-deep); border-color:transparent; color:#f3f6f1;
+  border-radius:99px; padding:7px 12px; font-size:.8rem; font-weight:600;
+}
+html.ui-lab .lab-fbar .fchip button{ color:rgba(255,255,255,.7) }
+html.ui-lab .lab-fbar .fchip button:hover{ color:#fff }
+html.ui-lab .lab-fbar .filter-toggle{
+  border-radius:99px; padding:8px 14px; font-weight:600; font-size:.82rem;
+  background:var(--surface); border:1px solid var(--border); color:var(--ink-soft);
+}
+html.ui-lab .lab-fbar .filter-toggle.on{ background:var(--lab-deep); border-color:transparent; color:#fff }
+html.ui-lab .lab-fbar .clr{ margin-inline-start:2px }
+
+/* הפאנל הנפתח — אותם גופנים, קומפקטי יותר */
+html.ui-lab .filter-panel{
+  background:var(--surface-2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:14px 16px; margin-bottom:14px;
+}
+html.ui-lab .filter-panel .field label{ font-size:.72rem; color:var(--muted); font-weight:700 }
+html.ui-lab .filter-panel select,
+html.ui-lab .filter-panel input{ font-size:.84rem; padding:7px 10px }
+html.ui-lab .filter-panel .toolbar{ gap:10px }
+
+/* -- "+" לעמודות הנוספות, בכותרת הטבלה ------------------------------------ */
+html.ui-lab th.lab-colplus-cell{ text-align:end; white-space:nowrap }
+html.ui-lab .btn.lab-colplus{
+  width:24px; height:24px; min-width:0; padding:0; border-radius:8px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:1rem; line-height:1; font-weight:400;
+  background:var(--surface-2); border:1px solid var(--border); color:var(--ink-soft);
+}
+html.ui-lab .btn.lab-colplus:hover{ background:var(--accent-soft); border-color:var(--accent) }
+
+/* -- "עדכון קבוצתי" בשורת ההתאמות ----------------------------------------- */
+/* שורת ההתאמות: הטקסט בימין, ולידו בשמאל הבורר וכפתור העדכון הקבוצתי.
+   בלי margin:auto — עם space-between הוא שבר את השורה לשתיים. */
+html.ui-lab .lab-mline{ flex-wrap:wrap }
+html.ui-lab .lab-mtxt{ margin-inline-end:auto }
+html.ui-lab .lab-mline .lab-bulkbtn{
+  border-radius:99px; padding:6px 13px; font-size:.8rem; margin:0;
+}
+
+/* -- הבורר כשהוא יושב בכותרת המסך ------------------------------------------ */
+html.ui-lab .lab-gtoggle.in-head{ margin:0 }
+
+/* -- פס הבחירה התחתון נשאר על המסך בגלילה ---------------------------------- */
+html.ui-lab .selbar{ position:sticky; bottom:14px }

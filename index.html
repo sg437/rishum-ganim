@@ -2642,6 +2642,52 @@ if(document.documentElement.classList.contains("ui-lab")){
       }catch(e){ return null; }
     },
 
+    /* שורת התאריך ושורות הפירוט בכרטיסי מסך התלמידות (לוח 01).
+       התאריך העברי נגזר מאותו מנגנון של שעון מסך הבית — hebGematria —
+       ולא מ-Intl, שאינו אמין לספרות עבריות. */
+    stuKpis(){
+      try{
+        const base = studentsScopeBase();
+
+        /* "34 מאז מועד ב׳" — המועד האחרון שיש בו רישומים */
+        let sincePeriod = "", sinceN = 0;
+        for(let i = PERIODS.length - 1; i >= 0; i--){
+          const n = base.filter(s=>s.period === PERIODS[i]).length;
+          if(n){ sincePeriod = PERIODS[i]; sinceN = n; break; }
+        }
+
+        /* "33 מהן בגילאי 3" — הגיל השכיח בקרב הממתינות */
+        const waiting = base.filter(s=>s.placed === false);
+        const ageN = {};
+        waiting.forEach(s=>{
+          const g = ganById(s.ganId);
+          const a = String((g && g.age) || s.age || "").trim();
+          if(a) ageN[a] = (ageN[a] || 0) + 1;
+        });
+        let topAge = "", topAgeN = 0;
+        Object.keys(ageN).forEach(a=>{ if(ageN[a] > topAgeN){ topAgeN = ageN[a]; topAge = a; } });
+
+        /* התאריך העברי + שעת העדכון */
+        const now = new Date();
+        let heb = "";
+        try{
+          const parts = new Intl.DateTimeFormat("he-IL-u-ca-hebrew",
+            { weekday:"long", day:"numeric", month:"long", year:"numeric" }).formatToParts(now);
+          const get = t=>{ const p = parts.find(x=>x.type === t); return p ? p.value : ""; };
+          const wd = get("weekday"), month = get("month");
+          const dG = hebGematria(parseInt(get("day"), 10));
+          const yG = hebGematria(parseInt(get("year"), 10) % 1000);
+          if(wd && dG && month && yG) heb = wd + ", " + dG + " " + month + " " + yG;
+        }catch(e){}
+
+        return {
+          date: heb,
+          time: now.toLocaleTimeString("he-IL", { hour:"2-digit", minute:"2-digit" }),
+          sincePeriod, sinceN, topAge, topAgeN
+        };
+      }catch(e){ return null; }
+    },
+
     /* תצוגת הכרטיסים של התלמידות (לוח 17, המסך האמצעי). מבוססת על
        filteredStudents() — בדיוק אותה רשימה שהטבלה מציגה, כך שהחיפוש,
        הסינון והמיון של המסך תקפים גם כאן. קריאה בלבד. */

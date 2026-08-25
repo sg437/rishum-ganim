@@ -193,9 +193,15 @@ function searchbar(ph){
   tg.onclick = demoAction("פתיחת הסינון");
   return h("div", { "class": "searchbar" }, [f, tg]);
 }
+/* labels: [טקסט, id] — המזהים חייבים להיות של התוכנה האמיתית, אחרת
+   הדמו אינו מפעיל את קוד המעבדה שתלוי בהם. */
 function toolbar(labels){
   var r = h("div", { "class": "toolbar" });
-  labels.forEach(function(l, i){ r.appendChild(btn(l, i ? "ghost" : "")); });
+  labels.forEach(function(l, i){
+    var b = btn(Array.isArray(l) ? l[0] : l, i ? "ghost" : "");
+    if(Array.isArray(l) && l[1]) b.id = l[1];
+    r.appendChild(b);
+  });
   return r;
 }
 function statRow(items){
@@ -245,6 +251,11 @@ VIEW.students = function(v){
     ];
   });
 
+  var colsBar = h("div", { "class": "row", style: "margin-bottom:8px" }, [
+    h("button", { "class": "btn ghost sm", id: "stuColsBtn", type: "button",
+      text: "➕ עמודות נוספות", onclick: demoAction("עמודות נוספות") })
+  ]);
+
   var stage = h("div", { "class": "stu-stage" }, [
     h("div", { id: "stuTable", style: "flex:1 1 0;min-width:0" }, [
       table(["שם מלא", "ת״ז", "גן", "שיבוץ", "גיל", "עיר", "מסמכים", "עירייה"], rows, "stu-table")
@@ -255,8 +266,11 @@ VIEW.students = function(v){
   v.appendChild(h("div", { "class": "panel" }, [
     h("div", { "class": "section-title" }, [ txt("h2", null, "תיקי התלמידות") ]),
     sum,
-    toolbar(["➕ הוספת ילדה", "✔️ עדכון קבוצתי", "📣 שליחת הודעות", "📤 יצוא", "⬆️ ייבוא מקובץ"]),
+    toolbar([["➕ הוספת ילדה", "addStu"], ["✔️ עדכון קבוצתי", "bulkToggle"],
+             ["📣 שליחת הודעות", "stuMsg"], ["📤 יצוא", "exportStu"],
+             ["⬆️ ייבוא מקובץ", "importStu"]]),
     searchbar("חיפוש שם או ת״ז…"),
+    colsBar,
     h("div", { id: "stuChips", "class": "fchips", html:
       '<span style="font-size:.78rem;color:var(--muted);font-weight:700">סינון:</span>' +
       '<span class="fchip">גיל 3–4<button type="button">✕</button></span>' +
@@ -271,7 +285,8 @@ VIEW.gans = function(v){
   v.appendChild(h("div", { "class": "panel" }, [
     h("div", { "class": "section-title" }, [ txt("h2", null, "רשימת הגנים") ]),
     searchbar("חיפוש גן, גננת או כתובת…"),
-    toolbar(["➕ הוספת גן", "⬆️ ייבוא מקובץ", "📤 ייצוא / הדפסה"]),
+    toolbar([["➕ הוספת גן", "addGan"], ["⬆️ ייבוא מקובץ", "impGan"],
+             ["📤 ייצוא / הדפסה", "exportGans"]]),
     h("div", { id: "ganTable" }, [
       table(["שם הגן", "סמל", "גיל", "חינוך", "קמפוס", "גננת", "תפוסה"],
         GANS.map(function(g){
@@ -287,7 +302,8 @@ VIEW.staff = function(v){
   v.appendChild(h("div", { "class": "panel" }, [
     h("div", { "class": "section-title" }, [ txt("h2", null, "רשימת צוות הגנים") ]),
     searchbar("חיפוש שם, ת״ז, טלפון או עיר…"),
-    toolbar(["➕ הוספת איש/אשת צוות", "📣 שליחת הודעות", "⬆️ ייבוא מקובץ"]),
+    toolbar([["➕ הוספת איש/אשת צוות", "addStaff"], ["📣 שליחת הודעות", "staffMsg"],
+             ["⬆️ ייבוא מקובץ", "impStaff"]]),
     h("div", { id: "staffTable" }, [
       table(["איש/אשת צוות", "תפקיד", "משובצת ב־", "ותק", "נייד", "תעודה"],
         STAFF.map(function(m){
@@ -733,6 +749,28 @@ window.__uiLab = Object.freeze({
         { who: "מזכירות",       ts: Date.now() - 9e7,  what: "ייבוא 34 רשומות ממועד ב׳" },
         { who: "ישראל וינברג",  ts: Date.now() - 17e7, what: "עדכן גן אגוז לחינוך מיוחד" }
       ]
+    };
+  },
+
+  stuKpis: function(){
+    var ageN = {};
+    STUDENTS.filter(function(s){ return !(s.ganId && s.placed); }).forEach(function(s){
+      var g = ganById(s.ganId);
+      var a = String((g && g.age) || s.age || "").trim();
+      if(a) ageN[a] = (ageN[a] || 0) + 1;
+    });
+    var topAge = "", topAgeN = 0;
+    Object.keys(ageN).forEach(function(a){ if(ageN[a] > topAgeN){ topAgeN = ageN[a]; topAge = a; } });
+    var last = "", lastN = 0;
+    PERIODS.forEach(function(pr){
+      var n = STUDENTS.filter(function(s){ return s.period === pr; }).length;
+      if(n){ last = pr; lastN = n; }
+    });
+    var now = new Date();
+    return {
+      date: "יום שלישי, כ״ג באב תשפ״ו",
+      time: now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }),
+      sincePeriod: last, sinceN: lastN, topAge: topAge, topAgeN: topAgeN
     };
   },
 

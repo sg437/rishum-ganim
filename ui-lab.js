@@ -195,35 +195,9 @@ function groupNav(){
   }
 }
 
-/* ---- כרטיס היעד ושורת המשתמש ----
-   ⚠️ המפרט מבקש "כרטיס יעד רישום" (כמה נרשמו מתוך יעד). יעד רישום לתלמידות
-   אינו קיים במודל הנתונים — מה שקיים בהגדרות הוא gansTarget, יעד מספר הגנים.
-   לכן הכרטיס מציג את היעד שבאמת קיים, ומסומן ככזה. הוספת יעד רישום תדרוש
-   שדה חדש בהגדרות, והיא החלטת מוצר ולא החלטת עיצוב. */
-function targetCard(s){
-  var box = document.getElementById("labTarget");
-  if(!box){
-    box = document.createElement("div");
-    box.id = "labTarget";
-    box.className = "lab-target";
-    foot.insertBefore(box, foot.firstChild);
-  }
-  if(!s || !s.gansTarget){ box.style.display="none"; return; }
-  box.style.display = "";
-  var pct = Math.max(0, Math.min(100, Math.round(s.gansActive / s.gansTarget * 100)));
-  box.innerHTML =
-    '<div class="lt-head"><span class="lt-lbl">יעד גנים</span>'+
-      '<span class="lt-year"></span></div>'+
-    '<div class="lt-num"><b></b><span class="lt-of"></span></div>'+
-    '<div class="lt-bar"><i></i></div>';
-  /* טקסט דרך textContent — הנתונים מגיעים מהמסד ואין להזריק אותם כ-HTML */
-  box.querySelector(".lt-year").textContent = s.year || "";
-  box.querySelector(".lt-num b").textContent = String(s.gansActive);
-  /* בלי רווחים סביב הלוכסן — עם רווחים היחס מתהפך ב-RTL (כלל ה-bidi ב-HANDOFF) */
-  box.querySelector(".lt-of").textContent = "/" + s.gansTarget;
-  box.querySelector(".lt-bar i").style.width = pct + "%";
-}
-
+/* ---- שורת המשתמש בתחתית הסרגל ----
+   ⚠️ כרטיס "יעד גנים" שהיה כאן הוסר לבקשת המשתמש — הוא תפס את תחתית
+   הסרגל ולא הוסיף מידע שאינו כבר במסך הבית ובדוחות. */
 function userRow(s){
   var row = document.getElementById("labUser");
   if(!row){
@@ -551,35 +525,86 @@ function initialsFrom(name){
 /* פס הסיכום של מסך התלמידות כבר קיים (#stuSummary), חי, ומגיב לסינון.
    הזרקת שורת KPI שנייה יצרה כפילות של אותם מספרים — לכן כאן רק מעצבים
    את הקיים: המשבצת הראשונה הופכת לכהה ומקבלת טבעת אחוזים. */
+/* ===========================================================================
+   מסך התלמידות — שורת הכרטיסים (לוח 01)
+   ---------------------------------------------------------------------------
+   בלוח ארבעה כרטיסים, לא חמישה: "קלוט בעירייה" אינו שם — הוא המשלים של
+   "לא קלוט" ולא מוסיף מידע. לכל כרטיס שורת פירוט מתחת למספר, וכל כרטיס
+   לחיץ ומסנן את הטבלה למה שכתוב עליו.
+   =========================================================================== */
 function styleStuSummary(){
   var sum = view.querySelector("#stuSummary");
   if(!sum) return;
   var tiles = sum.querySelectorAll(".stat");
-  if(tiles.length < 2) return;
+  if(tiles.length < 5) return;
 
-  var first = tiles[0];
-  if(!first.classList.contains("lab-hero")) first.classList.add("lab-hero");
+  var d = (window.__uiLab && window.__uiLab.stuKpis) ? window.__uiLab.stuKpis() : null;
 
   var num = function(t){
     var v = t.querySelector(".v");
     return v ? (parseInt(String(v.textContent).replace(/[^\d]/g, ""), 10) || 0) : 0;
   };
   var total = num(tiles[0]), placed = num(tiles[1]);
-  var pct = total ? Math.round(placed / total * 100) : 0;
 
+  /* --- הכרטיס הכהה: "סה״כ רשומות" עם טבעת ושורת המועד --- */
+  var first = tiles[0];
+  if(!first.classList.contains("lab-hero")) first.classList.add("lab-hero");
+  var k0 = first.querySelector(".k");
+  if(k0 && k0.textContent.indexOf("בגן") < 0 && k0.textContent !== "סה״כ רשומות"){
+    k0.textContent = "סה״כ רשומות";
+  }
+  var pct = total ? Math.round(placed / total * 100) : 0;
   var ring = first.querySelector(".lh-ring");
   if(!ring){
     ring = el("div", "lh-ring");
     ring.appendChild(el("div", "lh-ring-in", ""));
     first.appendChild(ring);
   }
-  var txt = pct + "%";
-  var inner = ring.firstChild;
-  if(inner.textContent !== txt){
-    inner.textContent = txt;
+  var rtxt = pct + "%";
+  if(ring.firstChild.textContent !== rtxt){
+    ring.firstChild.textContent = rtxt;
     ring.style.background = "conic-gradient(var(--lab-gold) 0 " + pct +
                             "%, rgba(255,255,255,.14) " + pct + "% 100%)";
   }
+
+  /* --- שורות הפירוט --- */
+  function sub(tile, text, cls){
+    if(!text) return;
+    var e = tile.querySelector(".lab-ksub");
+    if(!e){ e = el("div", "lab-ksub"); tile.appendChild(e); }
+    if(cls && e.className.indexOf(cls) < 0) e.className = "lab-ksub " + cls;
+    if(e.textContent !== text) e.textContent = text;    /* בלי זה — לולאת צופה */
+  }
+  if(d){
+    if(d.sinceN) sub(first, "▲ " + d.sinceN + " מאז מועד " + d.sincePeriod, "gold");
+    if(d.topAgeN) sub(tiles[2], d.topAgeN + " מהן בגילאי " + d.topAge);
+  }
+  /* מד התקדמות בכרטיס "משובצות סופית", כמו בלוח */
+  var k1 = tiles[1].querySelector(".k");
+  if(k1 && k1.textContent === "משובצות") k1.textContent = "משובצות סופית";
+  var bar = tiles[1].querySelector(".lab-kbar");
+  if(!bar){ bar = el("div", "lab-kbar"); bar.appendChild(el("i")); tiles[1].appendChild(bar); }
+  bar.firstChild.style.width = pct + "%";
+
+  /* "קלוט בעירייה" יורד — הוא המשלים של הכרטיס שלידו */
+  tiles[3].classList.add("lab-hidden");
+
+  var k4 = tiles[4].querySelector(".k");
+  if(k4 && k4.textContent === "לא קלוט") k4.textContent = "לא קלוט בעירייה";
+  sub(tiles[4], "דורש טיפול ←", "bad");
+
+  /* --- כל כרטיס מסנן את הטבלה למה שכתוב עליו --- */
+  var FILTER = [ {}, { placed:"yes" }, { placed:"no" }, null, { muni:"no" } ];
+  Array.prototype.forEach.call(tiles, function(t, i){
+    if(t.dataset.labClick || !FILTER[i]) return;
+    t.dataset.labClick = "1";
+    t.classList.add("lab-clickable");
+    t.setAttribute("role", "button");
+    t.setAttribute("tabindex", "0");
+    var fire = function(){ go("students", FILTER[i]); };
+    t.onclick = fire;
+    t.onkeydown = function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); fire(); } };
+  });
 }
 
 function studentsRows(){
@@ -1039,7 +1064,7 @@ function renderGansBoard(host){
 
 function gansToggle(host){
   var bar = view.querySelector(".lab-gtoggle");
-  if(bar) return bar;
+  if(bar) return bar;                       /* גם אם כבר הועבר לכותרת */
   bar = el("div", "lab-gtoggle");
   [["cards", "כרטיסים"], ["table", "טבלה"]].forEach(function(m){
     var b = el("button", "lg-tab" + (gansMode === m[0] ? " on" : ""), m[1]);
@@ -1055,6 +1080,47 @@ function gansToggle(host){
   return bar;
 }
 
+/* ===========================================================================
+   מסך הגנים — הסרגל העליון והסינון (לוח 03)
+   ---------------------------------------------------------------------------
+   בלוח: הכותרת "גנים" בלבד, ובצד שמאל "+ גן חדש · ייבוא · ייצוא" ולצידם
+   בורר "כרטיסים | טבלה". שורת הסינון היא שבבים — בלי המילה "סינון".
+   =========================================================================== */
+var GAN_TOP = ["addGan", "impGan", "exportGans"];
+var GAN_REN = { addGan:"+ גן חדש", impGan:"ייבוא", exportGans:"ייצוא" };
+
+function gansTop(){
+  var head = view.querySelector(".lab-shead");
+  if(!head) return;
+  var h2 = head.querySelector("h2");
+  if(h2 && h2.textContent.trim() === "רשימת הגנים") h2.textContent = "גנים";
+
+  var acts = head.querySelector(".lab-sacts");
+  if(!acts){ acts = el("div", "lab-sacts"); head.appendChild(acts); }
+  orderInto(acts, GAN_TOP, GAN_REN);
+  var add = acts.querySelector("#addGan");
+  if(add) add.classList.remove("ghost");
+
+  /* הבורר "כרטיסים | טבלה" עולה לכותרת, ליד הכפתורים */
+  var bar = view.querySelector(".lab-gtoggle");
+  if(bar && bar.parentNode !== acts){ bar.classList.add("in-head"); acts.insertBefore(bar, acts.firstChild); }
+}
+
+/* שדה החיפוש וכפתור הסינון הופכים לשורת שבבים אחת, כמו בלוח */
+function gansFilters(){
+  var sb = view.querySelector(".searchbar");
+  if(!sb || sb.classList.contains("lab-fbar")) return;
+  sb.classList.add("lab-fbar");
+  var tg = sb.querySelector(".filter-toggle");
+  if(tg){
+    /* "☰ סינון" → שבב "סינון ▾" בלי המילה המודגשת; הפאנל נשאר ונפתח בלחיצה */
+    var c = tg.querySelector(".fcount");
+    tg.textContent = "עוד סינון ▾";
+    if(c) tg.appendChild(c);
+    sb.appendChild(tg);
+  }
+}
+
 function maybeGans(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="gans"]');
@@ -1066,6 +1132,7 @@ function maybeGans(){
   try{
     gansToggle(host);
     if(gansMode === "cards") renderGansBoard(host);
+    gansTop(); gansFilters();
   }catch(e){}
   homeBusy = false;
 }
@@ -1338,6 +1405,58 @@ function screenHeader(){
    כל אחד מהם מקבל את המבנה של הלוח בלי לפרק את המסך הקיים: מזריקים את
    הבלוקים שהלוח מציג ואינם בתוכנה, ומזיזים (לא בונים מחדש) את מה שכבר קיים.
    =========================================================================== */
+/* ===========================================================================
+   הכותרת העליונה — פס כהה שמתחבר לסרגל לקו אחד
+   ---------------------------------------------------------------------------
+   בכל לוח יש רצועה כהה לרוחב המסך שנמשכת מהסרגל הימני בלי תפר. קודם הכותרת
+   רוקנה והפכה שקופה, ואז נוצר "מדרגה" בין הסרגל הכהה לתוכן הבהיר.
+
+   ⚠️ בורר השנה: המעבדה הסתירה את מקטע השנה במגירה, ובכך הפכה את בחירת
+   השנה לבלתי אפשרית. ה-<select> המקורי *מועבר* לכאן — אותו אלמנט, אותו
+   מאזין change — כך שהמנגנון נשמר והשנה שוב ניתנת לבחירה.
+   =========================================================================== */
+function topBar(){
+  var inner = document.querySelector("header.top .top-inner");
+  if(!inner) return;
+
+  var name = inner.querySelector(".lab-topname");
+  if(!name){
+    name = el("div", "lab-topname");
+    inner.insertBefore(name, inner.firstChild);
+  }
+  var t = labelOfTab(curTab()) || "";
+  if(name.textContent !== t) name.textContent = t;
+
+  var chips = inner.querySelector(".top-chips");
+  if(chips && !chips.querySelector("#yearSelect")){
+    var sel = document.getElementById("yearSelect");
+    if(sel){
+      var chip = el("label", "lab-yearpick");
+      chip.appendChild(el("span", "lab-ycal", "▤"));
+      chip.appendChild(sel);            /* העברה — המאזין נשמר */
+      chips.insertBefore(chip, chips.firstChild);
+    }
+  }
+}
+
+/* מסדר את הכפתורים לפי הסדר שבלוח — ורק אם הם אינם כבר בו.
+   ⚠️ appendChild על ילד שכבר אחרון הוא עדיין שינוי DOM: הצופה מתעורר,
+   קורא לנו שוב, ונוצרת לולאה אינסופית. לכן משווים לפני שנוגעים. */
+function orderInto(box, ids, rename){
+  var want = [];
+  ids.forEach(function(id){
+    var b = view.querySelector("#" + id);
+    if(!b) return;
+    if(rename && rename[id] && b.textContent.trim() !== rename[id]) b.textContent = rename[id];
+    want.push(b);
+  });
+  if(!want.length) return;
+  var cur = Array.prototype.filter.call(box.children, function(c){ return want.indexOf(c) >= 0; });
+  var same = cur.length === want.length && want.every(function(b, i){ return cur[i] === b; });
+  if(same && want.every(function(b){ return b.parentNode === box; })) return;
+  want.forEach(function(b){ box.appendChild(b); });
+}
+
 function labelOfTab(id){
   var t = nav && nav.querySelector('[data-tab="' + id + '"] .tl');
   return t ? String(t.textContent || "").trim() : "";
@@ -2072,6 +2191,92 @@ function applyStuMode(){
   }
 }
 
+/* ===========================================================================
+   מסך התלמידות — הסרגל העליון, שורת התאריך והסינון (לוח 01)
+   ---------------------------------------------------------------------------
+   בלוח: "+ הוספת ילדה · ייצוא · ייבוא" בצד שמאל של הכותרת, ומעל הכותרת שורת
+   תאריך עברי ושעת עדכון. "עדכון קבוצתי" יורד לפס הבחירה התחתון, ו"שליחת
+   הודעות" יורדת לגמרי — יש לה מסך משלה.
+   =========================================================================== */
+var STU_TOP  = ["addStu", "exportStu", "importStu"];   /* הסדר בלוח */
+var STU_DROP = ["stuMsg"];                             /* למסך ההודעות יש לשונית */
+
+function studentsTop(){
+  /* ⚠️ screenHeader מוציא את בלוק הכותרת מהפאנל אל ראש #view, ולכן חיפוש
+     בתוך .panel מחזיר null והפונקציה הייתה יוצאת בשקט. */
+  var head = view.querySelector(".lab-shead");
+  if(!head) return;
+
+  /* שורת התאריך מעל הכותרת, במקום כותרת־המשנה הגנרית */
+  var d = (window.__uiLab && window.__uiLab.stuKpis) ? window.__uiLab.stuKpis() : null;
+  if(d && d.date){
+    var line = head.querySelector(".lab-ssub");
+    if(!line){
+      line = el("div", "lab-ssub");
+      var t = head.querySelector(".lab-shead-t");
+      if(t) t.insertBefore(line, t.firstChild);
+    }
+    var txt = d.date + " · עודכן " + d.time;
+    if(line.textContent !== txt) line.textContent = txt;
+  }
+
+  var acts = head.querySelector(".lab-sacts");
+  if(!acts){ acts = el("div", "lab-sacts"); head.appendChild(acts); }
+
+  /* מה שאינו שייך למסך הזה יורד */
+  STU_DROP.forEach(function(id){
+    var b = view.querySelector("#" + id);
+    if(b) b.classList.add("lab-hidden");
+  });
+
+  /* "עדכון קבוצתי" יורד לשורת ההתאמות שמעל הטבלה — לא לכותרת.
+     ⚠️ screenHeader כבר אסף אותו לשורת הפעולות, ולכן לא די בבדיקת ההורה:
+     צריך להוציא אותו משם במפורש. */
+  var bulk = view.querySelector("#bulkToggle");
+  var mline = view.querySelector(".lab-mline");
+  if(bulk && mline && bulk.parentNode !== mline){
+    bulk.classList.add("lab-bulkbtn", "ghost");
+    mline.appendChild(bulk);                  /* העברה — המאזין נשמר */
+  }
+
+  /* שלושת כפתורי הלוח, בסדר שלו ובשמות שלו. הסדר נאכף בכל מעבר, כי
+     screenHeader מסדר אותם לפי סדר ה-DOM המקורי. */
+  orderInto(acts, STU_TOP, { addStu:"+ הוספת ילדה", exportStu:"ייצוא", importStu:"ייבוא" });
+  var add = acts.querySelector("#addStu");
+  if(add) add.classList.remove("ghost");
+}
+
+/* שורת הסינון: שדה החיפוש וכפתור הסינון הופכים לשורת שבבים אחת עם
+   השבבים הפעילים, כמו בלוח. הפאנל המלא נשאר — הוא רק נפתח בלחיצה. */
+function studentsFilters(){
+  var sb = view.querySelector(".searchbar");
+  var chips = view.querySelector("#stuChips");
+  if(!sb || !chips || sb.classList.contains("lab-fbar")) return;
+  sb.classList.add("lab-fbar");
+  Array.prototype.slice.call(chips.childNodes).forEach(function(n){ sb.appendChild(n); });
+  chips.classList.add("lab-hidden");
+  var tg = sb.querySelector(".filter-toggle");
+  if(tg) sb.appendChild(tg);                  /* כפתור הסינון אחרון, כמו בלוח */
+}
+
+/* "+" בכותרת הטבלה לעמודות הנוספות — במקום הכפתור עם הטקסט */
+function colPlus(){
+  var b = view.querySelector("#stuColsBtn");
+  if(!b) return;
+  var open = String(b.textContent || "").indexOf("הסתרת") >= 0;
+  b.title = open ? "הסתרת העמודות הנוספות" : "עמודות נוספות · מסמכים, עירייה, סימונים, סטטוס, מועד, חינוך, גיל";
+  b.setAttribute("aria-label", b.title);
+  var glyph = open ? "−" : "+";
+  if(b.textContent !== glyph) b.textContent = glyph;
+  b.classList.add("lab-colplus");
+  /* הכפתור יושב בכותרת הטבלה, בקצה שמאל — לא בשורה נפרדת מעליה */
+  var head = view.querySelector(".stu-table thead tr");
+  if(head){
+    var th = head.lastElementChild;
+    if(th && b.parentNode !== th){ th.appendChild(b); th.classList.add("lab-colplus-cell"); }
+  }
+}
+
 function maybeStudents(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="students"]');
@@ -2084,6 +2289,7 @@ function maybeStudents(){
       (parseInt(String(sm.textContent).replace(/[^\d]/g,""),10) || 0));
     var host = view.querySelector("#stuTable");   /* אחרי matchLine — הבורר נכנס לתוכו */
     if(host){ stuToggle(host); applyStuMode(); }
+    studentsTop(); studentsFilters(); colPlus();
   }catch(e){}
   homeBusy = false;
 }
@@ -2096,6 +2302,7 @@ function isHome(){
 function maybeHome(){
   if(homeBusy || !view) return;
   try{ tintBars(); }catch(e){}
+  try{ topBar(); }catch(e){}
   try{ screenHeader(); }catch(e){}
   if(!isHome()){
     maybeStudents(); maybeAssign(); maybeGans(); maybeMap(); maybeStaff();
@@ -2122,16 +2329,14 @@ function paint(){
   try{
     exportTab();
     bottomBar();
+    topBar();
     groupNav();
     relabel();
     var s = (window.__uiLab && window.__uiLab.stats) ? window.__uiLab.stats() : null;
     navCounts(s);
     brandSub(s);
     maybeHome();
-    if(foot){
-      targetCard(s);
-      userRow(s);
-    }
+    if(foot) userRow(s);
   }catch(e){ /* המעבדה לעולם לא תפיל את התוכנה */ }
   busy = false;
 }
