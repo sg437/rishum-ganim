@@ -1,116 +1,177 @@
 /* ===========================================================================
    ui-lab.css — מעבדת עיצוב (UI Lab)
    ---------------------------------------------------------------------------
-   כאן נכנס העיצוב החדש. הקובץ נטען *רק* כשמפעילים את המעבדה (‎?ui=new‎),
-   וכל הכללים בו תחומים ל-‎html.ui-lab‎ — כלומר אין לו שום השפעה על התוכנה
-   הרגילה. משתמש שנכנס לכתובת הרגילה מקבל את העיצוב הקיים, בדיוק כמו קודם.
+   העיצוב החדש, לפי חבילת ה-handoff שב-docs/design/ (ראה HANDOFF.md).
+   הקובץ נטען *רק* כשמפעילים את המעבדה (‎?ui=new‎), וכל כלל בו תחום
+   ל-‎html.ui-lab‎ — כלומר אין לו שום השפעה על התוכנה הרגילה.
 
-   הנתונים זהים לחלוטין: אותו Firebase, אותה שנה, אותם תיקים. זו התוכנה החיה
-   עם "חליפה" אחרת — לא עותק ולא דמו.
+   הנתונים זהים לחלוטין: אותו Firebase, אותה שנה, אותם תיקים.
 
    הפעלה :  https://sg437.github.io/rishum-ganim/?ui=new
    כיבוי  :  https://sg437.github.io/rishum-ganim/?ui=off
-             (או לחיצה על תג "מעבדת עיצוב" בפינת המסך)
 
-   ⚠️ אזהרה: הנתונים חיים. כל שמירה במעבדה נשמרת במסד האמיתי.
-   ===========================================================================
-   מבנה הקובץ:
-     1. אסימוני צבע וצורה (tokens)  ← 95% מהעיצוב מגיע מכאן
-     2. טיפוגרפיה
-     3. רכיבים (רק מה שהאסימונים לא מכסים)
-     4. תג המעבדה
+   ⚠️ הנתונים חיים. כל שמירה במעבדה נשמרת במסד האמיתי.
+   ---------------------------------------------------------------------------
+   מצב המימוש מול "סדר מימוש מוצע" שב-HANDOFF.md:
+     ✅ 1. טוקנים, טיפוגרפיה, רדיוסים וצפיפות   ← הקובץ הזה
+     ⬜ 2. סרגל צד קבוע + breakpoint למגירה
+     ⬜ 3. viewHome — כרטיסי KPI ופאנל "דורש טיפול"
+     ⬜ 4. viewStudents — שבבי סינון, מד מסמכים, תיק בצד
+     ⬜ 5. viewMap · 6. viewAssign · 7. השאר
+   שלבים 2 ומעלה דורשים שינוי מבנה ו-JS ב-index.html, ולא רק CSS.
    =========================================================================== */
 
 
-/* ── 1. אסימוני צבע וצורה ─────────────────────────────────────────────────
-   הערכים כאן זהים כרגע לעיצוב הקיים — זו נקודת המוצא. מחליפים אותם בערכים
-   מהעיצוב החדש (Claude Design) ומיד כל התוכנה מתלבשת מחדש: כותרת, תפריט,
-   טבלאות, כרטיסים, כפתורים, תגיות, טפסים. אין צורך לגעת ב-index.html.        */
+/* ── 1. אסימוני צבע ────────────────────────────────────────────────────────
+   הערכים לפי טבלת הטוקנים ב-HANDOFF.md. פלטה חמה — נגזרת של הקיימת:
+   הירוק (accent) לא זז, מה שהתחלף הוא הנייטרלים מאפור-ירקרק לקרם.             */
 
 html.ui-lab,
 html.ui-lab[data-theme="light"]{
-  --bg:#f4f6f4;
-  --surface:#ffffff;
-  --surface-2:#f0f3f0;
-  --ink:#17241d;
-  --ink-soft:#4a564e;
-  --muted:#7f8a82;
-  --border:#e2e7e2;
-  --accent:#2c6a4c;
-  --accent-strong:#1f4d37;
-  --accent-soft:#e8f0ea;
-  --brass:#9a7429;
-  --good:#2f7a53;        --good-soft:#e6f0e9;
-  --warn:#96661f;        --warn-soft:#f4ecdf;
-  --bad:#a03b32;         --bad-soft:#f6e7e5;
-  --over1:#6b4c9a;       --over1-soft:#ece8f4;
+  --bg:#f4f1ea;            /* היה #f4f6f4 */
+  --surface:#ffffff;       /* ללא שינוי   */
+  --surface-2:#f2efe3;     /* היה #f0f3f0 */
+  --ink:#111d16;           /* היה #17241d */
+  --ink-soft:#4a5a4e;      /* היה #4a564e */
+  --muted:#a3aa9c;         /* היה #7f8a82 */
+  --border:#e6e0d0;        /* היה #e2e7e2 */
+  --accent:#2c6a4c;        /* ללא שינוי   */
+  --accent-strong:#1f4d37; /* ללא שינוי   */
+  --accent-soft:#e6efe6;   /* היה #e8f0ea */
+  --brass:#a97f2e;         /* היה #9a7429 */
+  --good:#2c7a52;          --good-soft:#f4f8f4;
+  --warn:#8b6a24;          --warn-soft:#f6efe0;
+  --bad:#a5342b;           --bad-soft:#fbe9e6;
+  --over1:#7b5ea7;         --over1-soft:#efeaf6;
+
   --shadow:0 1px 2px rgba(23,36,29,.04),0 6px 18px rgba(23,36,29,.06);
   --shadow-lg:0 10px 26px rgba(24,43,32,.12),0 34px 66px rgba(24,43,32,.18);
-  --radius:14px;
+  --radius:16px;
+
+  /* טוקנים חדשים שאינם בפלטה הקיימת (מקטע "צבעים נוספים" ב-HANDOFF.md) */
+  --lab-deep:#15342a;      /* סרגל הצד וכרטיסי KPI כהים */
+  --lab-gold:#a97f2e;      /* מבטא הטבעת וההתקדמות */
+  --lab-gold-on-deep:#d3ab5c; /* טקסט מבטא על רקע כהה */
+  --lab-rule-head:#f0ebde; /* קו כותרת טבלה */
+  --lab-rule-row:#f4f0e4;  /* קו שורת טבלה */
+  --lab-surface-warm:#faf8f3;
+  --lab-border-strong:#e2dbcb;
+  /* צבעי קטגוריה לגילאים ולמפה */
+  --lab-cat1:#2c6a4c; --lab-cat2:#e0a53a; --lab-cat3:#3f7cac;
+  --lab-cat4:#7b5ea7; --lab-cat5:#c65d5d; --lab-cat6:#4bb1a6;
 }
 
-/* מצב לילה — שתי הצהרות: אחת להעדפת המערכת, אחת לבחירה מפורשת בתוכנה */
+/* מצב לילה.
+   ⚠️ אינו מופיע בחבילת ה-handoff — העיצוב סיפק פלטה בהירה בלבד.
+   הפלטה כאן נגזרה מהכיוון החם: הבסיס הוא ירוק-כהה של הסרגל (#15342a)
+   והמבטא הוא הפליז הבהיר (#d3ab5c). ניתן להחלפה כשתגיע החלטת עיצוב.        */
 @media(prefers-color-scheme:dark){
   html.ui-lab:not([data-theme="light"]){
-    --bg:#101614;
-    --surface:#182019;
-    --surface-2:#1e2823;
-    --ink:#e9efea;
-    --ink-soft:#a9b6ac;
-    --muted:#74827a;
-    --border:#2a352e;
-    --accent:#4aa877;
-    --accent-strong:#7ed2a3;
-    --accent-soft:#1b2a22;
-    --brass:#c9a35a;
-    --good:#5cb98a;      --good-soft:#16291f;
-    --warn:#c9a163;      --warn-soft:#2a2318;
-    --bad:#d98478;       --bad-soft:#33201d;
-    --over1:#b09ad8;     --over1-soft:#241f30;
+    --bg:#0f1512; --surface:#18211c; --surface-2:#1f2a23;
+    --ink:#eceee6; --ink-soft:#a9b3a6; --muted:#7c867a; --border:#2c3830;
+    --accent:#4aa877; --accent-strong:#7ed2a3; --accent-soft:#1b2a22;
+    --brass:#d3ab5c;
+    --good:#5cb98a;  --good-soft:#16291f;
+    --warn:#c9a163;  --warn-soft:#2a2318;
+    --bad:#d98478;   --bad-soft:#33201d;
+    --over1:#b09ad8; --over1-soft:#241f30;
     --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.42);
     --shadow-lg:0 12px 30px rgba(0,0,0,.5),0 40px 80px rgba(0,0,0,.62);
+    --lab-deep:#12271f; --lab-gold:#d3ab5c; --lab-gold-on-deep:#d3ab5c;
+    --lab-rule-head:#2c3830; --lab-rule-row:#26302a;
+    --lab-surface-warm:#1b241e; --lab-border-strong:#38463c;
   }
 }
 html.ui-lab[data-theme="dark"]{
-  --bg:#101614;
-  --surface:#182019;
-  --surface-2:#1e2823;
-  --ink:#e9efea;
-  --ink-soft:#a9b6ac;
-  --muted:#74827a;
-  --border:#2a352e;
-  --accent:#4aa877;
-  --accent-strong:#7ed2a3;
-  --accent-soft:#1b2a22;
-  --brass:#c9a35a;
-  --good:#5cb98a;        --good-soft:#16291f;
-  --warn:#c9a163;        --warn-soft:#2a2318;
-  --bad:#d98478;         --bad-soft:#33201d;
-  --over1:#b09ad8;       --over1-soft:#241f30;
+  --bg:#0f1512; --surface:#18211c; --surface-2:#1f2a23;
+  --ink:#eceee6; --ink-soft:#a9b3a6; --muted:#7c867a; --border:#2c3830;
+  --accent:#4aa877; --accent-strong:#7ed2a3; --accent-soft:#1b2a22;
+  --brass:#d3ab5c;
+  --good:#5cb98a;  --good-soft:#16291f;
+  --warn:#c9a163;  --warn-soft:#2a2318;
+  --bad:#d98478;   --bad-soft:#33201d;
+  --over1:#b09ad8; --over1-soft:#241f30;
   --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.42);
   --shadow-lg:0 12px 30px rgba(0,0,0,.5),0 40px 80px rgba(0,0,0,.62);
+  --lab-deep:#12271f; --lab-gold:#d3ab5c; --lab-gold-on-deep:#d3ab5c;
+  --lab-rule-head:#2c3830; --lab-rule-row:#26302a;
+  --lab-surface-warm:#1b241e; --lab-border-strong:#38463c;
 }
 
 
 /* ── 2. טיפוגרפיה ─────────────────────────────────────────────────────────
-   הפונט חייב להיטען מקומית או כ-data URI — ה-CSP חוסם גופנים חיצוניים
-   (‎font-src 'self' data:‎). אם העיצוב החדש דורש פונט אחר, מוסיפים אותו כאן
-   כ-@font-face עם קובץ בתיקיית המאגר.                                        */
+   גוף Assistant · כותרות ומספרים Heebo במשקל 500–600 עם letter-spacing שלילי.
+   ⚠️ הגופנים נטענים מהמכשיר בלבד. ה-CSP חוסם fonts.googleapis.com
+   (‎font-src 'self' data:‎), ולכן מי שאין לו Assistant/Heebo מותקנים יקבל
+   נפילה אחורה. טעינה אמיתית תדרוש קובצי גופן במאגר ו-@font-face.            */
 
-/* html.ui-lab body{ font-family:...; font-size:...; line-height:... } */
+html.ui-lab body{
+  font-family:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif;
+  font-size:15px; line-height:1.6;
+}
+html.ui-lab h1,
+html.ui-lab h2,
+html.ui-lab h3,
+html.ui-lab .stat .v,
+html.ui-lab .brand .txt .t1{
+  font-family:"Heebo","Assistant","Segoe UI",system-ui,sans-serif;
+  font-weight:600; letter-spacing:-.03em;
+}
+html.ui-lab .section-title{ font-size:1.75rem; font-weight:600; letter-spacing:-.03em }
+html.ui-lab .panel h2   { font-size:1.02rem; font-weight:600 }
+html.ui-lab .stat .v    { font-size:2.1rem; font-weight:500; letter-spacing:-.04em }
+html.ui-lab .stat.hero .v{ font-size:2.6rem }
+html.ui-lab label       { font-size:.78rem; font-weight:700; color:var(--ink-soft) }
+html.ui-lab .hint,
+html.ui-lab .panel .sub { font-size:.79rem; color:var(--muted) }
+html.ui-lab th          { font-size:.76rem; font-weight:600; color:var(--muted); letter-spacing:0 }
 
 
-/* ── 3. רכיבים ────────────────────────────────────────────────────────────
-   כל כלל כאן חייב להתחיל ב-‎html.ui-lab‎ כדי שלא ידלוף לעיצוב הקיים.
-   דוגמאות לנקודות האחיזה הקיימות בתוכנה:
-     header.top / .top-inner / .brand / .chip
-     .drawer / .drawer-nav / .drawer-sec
-     table / thead th / tbody tr
-     .card / .panel / button / .act
-   מוסיפים כאן רק מה שאסימוני הצבע לא הצליחו לכסות.                          */
+/* ── 3. רדיוסים וצפיפות ───────────────────────────────────────────────────
+   כרטיס 16–18 · שדה וכפתור 10–11 · כרטיס פנימי 12–13 · שבב 999.
+   תא טבלה 13–16px אנכי · כרטיס 18–22px · gap 14px.                          */
+
+html.ui-lab input,
+html.ui-lab select,
+html.ui-lab textarea,
+html.ui-lab button   { border-radius:10px }
+html.ui-lab .panel   { padding:20px 22px; border-radius:18px }
+html.ui-lab .stat    { border-radius:14px; padding:16px 18px }
+html.ui-lab .stats   { gap:14px }
+html.ui-lab .gan-card{ border-radius:16px }
+html.ui-lab .qcard   { border-radius:16px }
+html.ui-lab .ini     { border-radius:12px }
+html.ui-lab .chip,
+html.ui-lab .fchip,
+html.ui-lab .pill    { border-radius:999px }
+
+html.ui-lab th,
+html.ui-lab td       { padding:13px 12px }
+html.ui-lab .tbl-fit th,
+html.ui-lab .tbl-fit td{ padding:10px 8px }
+
+/* קווי הטבלה — גוונים חמים ייעודיים, לא צבע הגבול הכללי */
+html.ui-lab th { border-bottom:1px solid var(--lab-rule-head) }
+html.ui-lab td { border-bottom:1px solid var(--lab-rule-row) }
+
+/* מינימום מטרת נגיעה 44px (מקטע Responsive ב-HANDOFF.md) */
+@media(max-width:900px){
+  html.ui-lab button,
+  html.ui-lab .btn,
+  html.ui-lab .hamburger,
+  html.ui-lab .backbtn{ min-height:44px }
+}
 
 
-/* ── 4. תג המעבדה ─────────────────────────────────────────────────────────
+/* ── 4. Bidi ──────────────────────────────────────────────────────────────
+   כל שדה שהוא מספר לטיני — direction ltr עם יישור לימין, אחרת הספרות
+   מתהפכות מול הטקסט העברי סביבן.                                            */
+
+html.ui-lab input[type="tel"],
+html.ui-lab .fieldwrap.tel>input{ direction:ltr; text-align:right }
+
+
+/* ── 5. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
 html.ui-lab .ui-lab-badge{
