@@ -1,3 +1,19 @@
+/* ==========================================================================
+   מערכת ניהול רשת הגנים  ·  Rishum Ganim
+   Copyright © 2026 שמואל גולדמן (Shmuel Goldman). כל הזכויות שמורות / All rights reserved.
+
+   תוכנה קניינית. אין להעתיק, לשכפל, להפיץ, לפרסם, לשנות, לתרגם, ליצור עבודות
+   נגזרות או לעשות כל שימוש בקוד זה — כולו או חלקו — ללא אישור מפורש ובכתב
+   מבעל הזכויות. הדבר חל גם על שכפול באמצעות כלי בינה מלאכותית או כל אמצעי
+   אוטומטי אחר. עצם היכולת לצפות בקוד המקור בדפדפן אינה מעניקה כל רישיון.
+
+   Proprietary. Unauthorized copying, distribution, modification, or derivative
+   works — including reproduction by AI tools or any automated means — are
+   prohibited. Source visibility in a browser grants no license.
+
+   תנאים מלאים: קובץ LICENSE שבשורש הפרויקט.  ·  רישוי: sg@taharat.org
+   ========================================================================== */
+
 /**
  * גשר Google Drive למערכת רישום התלמידות.
  * ------------------------------------------------------------------
@@ -27,6 +43,10 @@ var FIREBASE_PROJECT_ID = 'rishum-ganim-fad40';
 // ב-Firestore ריקות. ⚠️ חייב להיות זהה ל-OWNER_EMAILS ב-index.html ול-ownerEmails()
 // ב-firestore.rules. מיילים באותיות קטנות בלבד.
 var OWNER_EMAILS = ['7684252sg@gmail.com', 'sg@taharat.org'];
+
+// מזהה בנייה — חייב להישאר זהה ל-RG_BUILD שב-index.html. משמש לזיהוי גרסה
+// ולסימון מקור הקוד לצורך הוכחת בעלות (ראה LICENSE, סעיף 5) — אין להסירו.
+var RG_BUILD = 'rg-b05ea2eb';
 
 // גרסת הגשר — מוחזרת ב"בדיקת חיבור" בתוכנה, כדי לדעת בוודאות איזו גרסה *נפרסה בפועל*
 // (שמירת הקוד בעורך אינה מספיקה — חייבים לפרוס גרסה חדשה). יש להעלות את התאריך
