@@ -684,9 +684,9 @@ html.ui-lab .lab-chipbox > div > div{ padding-inline-start:0 !important; gap:8px
 
 html.ui-lab .lab-ganchip{
   display:inline-flex !important; align-items:center; gap:0;
-  padding:7px 14px; border-radius:999px; white-space:nowrap;
+  padding:6px 13px; border-radius:999px; white-space:nowrap;
   border:1px solid var(--border); background:var(--surface);
-  font-weight:600; font-size:.83rem; color:var(--ink-soft); cursor:pointer;
+  font-weight:600; font-size:.8rem; color:var(--ink-soft); cursor:pointer;
   transition:background .12s, color .12s, border-color .12s;
 }
 html.ui-lab .lab-ganchip input{ position:absolute; opacity:0; width:0; height:0; margin:0 }
@@ -1770,3 +1770,24 @@ html.ui-lab .lab-gtoggle.in-head{ margin:0 }
 
 /* -- פס הבחירה התחתון נשאר על המסך בגלילה ---------------------------------- */
 html.ui-lab .selbar{ position:sticky; bottom:14px }
+
+/* -- שבב־בורר: <select> אמיתי בלבוש שבב (סינון הגנים, לוח 03) ------------- */
+html.ui-lab .lab-selchip{
+  display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+  background:var(--surface); border:1px solid var(--border); border-radius:99px;
+  padding:6px 12px; font-size:.8rem; font-weight:600; color:var(--ink-soft);
+  transition:background .15s, border-color .15s, color .15s;
+}
+html.ui-lab .lab-selchip:hover{ border-color:var(--accent) }
+html.ui-lab .lab-selchip.on{ background:var(--lab-deep); border-color:transparent; color:#f3f6f1 }
+html.ui-lab .lab-sclbl{ opacity:.8 }
+html.ui-lab .lab-selchip > select{
+  border:0; background:none; box-shadow:none; color:inherit; font:inherit;
+  font-weight:600; padding:0; min-width:0; width:auto; cursor:pointer;
+  appearance:none; -webkit-appearance:none;
+}
+html.ui-lab .lab-selchip > select:focus{ outline:none }
+html.ui-lab .lab-selchip > select option{ color:var(--ink); background:var(--surface) }
+html.ui-lab .lab-selchip::after{ content:"▾"; font-size:.7rem; opacity:.6 }
+/* הפאנל המלא נשאר בדף — הבוררים שהועברו לשבבים כבר לא צריכים להיראות בו */
+html.ui-lab .filter-panel .field:has(> select:not([id])){ }

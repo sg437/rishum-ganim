@@ -1106,19 +1106,49 @@ function gansTop(){
   if(bar && bar.parentNode !== acts){ bar.classList.add("in-head"); acts.insertBefore(bar, acts.firstChild); }
 }
 
-/* שדה החיפוש וכפתור הסינון הופכים לשורת שבבים אחת, כמו בלוח */
+/* שורת הסינון של הגנים: שדה חיפוש ואחריו שבב לכל סינון — גיל, תפוסה,
+   קמפוס, אזור. כל שבב מצביע על ה-<select> האמיתי שבפאנל הסינון (שנשאר
+   בדף, מוסתר), ולכן הבחירה עוברת בדיוק באותו onchange של התוכנה. */
 function gansFilters(){
   var sb = view.querySelector(".searchbar");
-  if(!sb || sb.classList.contains("lab-fbar")) return;
-  sb.classList.add("lab-fbar");
-  var tg = sb.querySelector(".filter-toggle");
-  if(tg){
-    /* "☰ סינון" → שבב "סינון ▾" בלי המילה המודגשת; הפאנל נשאר ונפתח בלחיצה */
-    var c = tg.querySelector(".fcount");
-    tg.textContent = "עוד סינון ▾";
-    if(c) tg.appendChild(c);
-    sb.appendChild(tg);
+  if(!sb) return;
+  if(!sb.classList.contains("lab-fbar")) sb.classList.add("lab-fbar");
+
+  var chips = (window.__uiLab && window.__uiLab.ganChips) ? window.__uiLab.ganChips() : null;
+  if(chips && !sb.querySelector(".lab-selchip")){
+    chips.forEach(function(c){
+      var sel = view.querySelector(c.sel);
+      if(!sel) return;
+      var chip = el("label", "lab-selchip");
+      chip.appendChild(el("span", "lab-sclbl", c.label));
+      /* העטיפה בפאנל נשארת ריקה אחרי ההעברה — מסתירים אותה, אחרת
+         נראית שם תווית בלי פקד */
+      var field = sel.closest(".field");
+      chip.appendChild(sel);                    /* העברה — המאזין נשמר */
+      if(field && !field.querySelector("select,input")) field.classList.add("lab-hidden");
+      /* סימון הפעיל מיד עם הבחירה. addEventListener ולא onchange —
+         כדי לא לדרוס את המאזין שהתוכנה כבר קשרה לאותו <select>. */
+      sel.addEventListener("change", function(){
+        chip.classList.toggle("on", !!sel.value);
+      });
+      sb.appendChild(chip);
+    });
   }
+  /* השבב מסומן כפעיל כשנבחר בו ערך */
+  sb.querySelectorAll(".lab-selchip").forEach(function(chip){
+    var sel = chip.querySelector("select");
+    var on = !!(sel && sel.value);
+    if(chip.classList.contains("on") !== on) chip.classList.toggle("on", on);
+  });
+
+  var tg = sb.querySelector(".filter-toggle");
+  if(tg && tg.textContent.indexOf("עוד") < 0){
+    /* "☰ סינון" → "עוד ▾"; הפאנל המלא נשאר ונפתח בלחיצה בלבד */
+    var cnt = tg.querySelector(".fcount");
+    tg.textContent = "עוד ▾";
+    if(cnt) tg.appendChild(cnt);
+  }
+  if(tg && tg !== sb.lastElementChild) sb.appendChild(tg);
 }
 
 function maybeGans(){

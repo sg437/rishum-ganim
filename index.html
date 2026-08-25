@@ -2642,6 +2642,25 @@ if(document.documentElement.classList.contains("ui-lab")){
       }catch(e){ return null; }
     },
 
+    /* שבבי הסינון של מסך הגנים (לוח 03): גיל · תפוסה · קמפוס · אזור.
+       כל שבב מצביע על <select> אמיתי בפאנל הסינון — המעבדה רק נותנת לו
+       פנים, והבחירה עוברת דרך אותו onchange של התוכנה. */
+    ganChips(){
+      try{
+        const uniq = k => [...new Set(DB.gans.map(g=>String(g[k]||"").trim()).filter(Boolean))];
+        return [
+          { sel:"#fg-age",    label:"גיל",    value:ganFilter.age,
+            options:uniq("age").sort((a,b)=>a.localeCompare(b,"he",{numeric:true})) },
+          { sel:"#fg-full",   label:"תפוסה",  value:ganFilter.full,
+            options:[["yes","מלאה"],["no","לא מלאה"]] },
+          { sel:"#fg-campus", label:"קמפוס",  value:ganFilter.campus,
+            options:uniq("campus").sort((a,b)=>a.localeCompare(b,"he")) },
+          { sel:"#fg-zone",   label:"אזור",   value:ganFilter.zone,
+            options:uniq("zone").sort((a,b)=>a.localeCompare(b,"he")) }
+        ];
+      }catch(e){ return null; }
+    },
+
     /* שורת התאריך ושורות הפירוט בכרטיסי מסך התלמידות (לוח 01).
        התאריך העברי נגזר מאותו מנגנון של שעון מסך הבית — hebGematria —
        ולא מ-Intl, שאינו אמין לספרות עבריות. */
@@ -5644,7 +5663,7 @@ function openImport(){
 /* ============================================================
    טאב גנים
    ============================================================ */
-let ganFilter = { q:"", zone:"", status:"" };
+let ganFilter = { q:"", zone:"", status:"", age:"", campus:"", full:"" };  // full: "yes" מלאה / "no" לא מלאה
 let ganFiltersOpen=false;
 let ganSort = { key:"name", dir:1 }; // מיון רשימת הגנים לפי עמודה
 const GAN_SORT_VAL = {
@@ -5666,6 +5685,15 @@ function gansScoped(){
     if(ganFilter.zone && g.zone!==ganFilter.zone) return false;
     if(ganFilter.status==='active' && !g.active) return false;
     if(ganFilter.status==='off' && g.active) return false;
+    if(ganFilter.age && String(g.age||"").trim()!==ganFilter.age) return false;
+    if(ganFilter.campus && String(g.campus||"").trim()!==ganFilter.campus) return false;
+    if(ganFilter.full){
+      /* "מלאה" = הגיע לרף השיבוץ. גן בלי רף אינו נחשב מלא. */
+      const cap=ganAssignCap(g), used=ganAssignedCount(g.id);
+      const isFull = !!cap && used>=cap;
+      if(ganFilter.full==='yes' && !isFull) return false;
+      if(ganFilter.full==='no'  &&  isFull) return false;
+    }
     return true;
   }));
 }
@@ -7146,7 +7174,9 @@ function mapFit(){
 
 function viewGans(root){
   const zones=[...new Set(DB.gans.map(g=>g.zone).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
-  const fCount=(ganFilter.zone?1:0)+(ganFilter.status?1:0);
+  const ganAges=[...new Set(DB.gans.map(g=>String(g.age||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he",{numeric:true}));
+  const ganCampuses=[...new Set(DB.gans.map(g=>String(g.campus||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const fCount=(ganFilter.zone?1:0)+(ganFilter.status?1:0)+(ganFilter.age?1:0)+(ganFilter.campus?1:0)+(ganFilter.full?1:0);
   const fOpen=ganFiltersOpen || fCount>0;
   root.innerHTML = `
   <div class="panel">
@@ -7157,6 +7187,9 @@ function viewGans(root){
     </div>
     <div class="filter-panel" id="ganFilterPanel" ${fOpen?'':'hidden'}>
       <div class="toolbar" style="margin-bottom:0">
+        <div class="field"><label>גיל</label><select id="fg-age"><option value="">הכל</option>${ganAges.map(a=>`<option ${ganFilter.age===a?'selected':''}>${esc(a)}</option>`).join("")}</select></div>
+        <div class="field"><label>תפוסה</label><select id="fg-full"><option value="">הכל</option><option value="yes" ${ganFilter.full==='yes'?'selected':''}>מלאה</option><option value="no" ${ganFilter.full==='no'?'selected':''}>לא מלאה</option></select></div>
+        <div class="field"><label>קמפוס</label><select id="fg-campus"><option value="">הכל</option>${ganCampuses.map(c=>`<option ${ganFilter.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
         <div class="field"><label>אזור</label><select id="fg-zone"><option value="">הכל</option>${zones.map(z=>`<option ${ganFilter.zone===z?'selected':''}>${esc(z)}</option>`).join("")}</select></div>
         <div class="field"><label>סטטוס</label><select id="fg-status"><option value="">הכל</option><option value="active" ${ganFilter.status==='active'?'selected':''}>פעיל</option><option value="off" ${ganFilter.status==='off'?'selected':''}>כבוי</option></select></div>
       </div>
@@ -7190,6 +7223,7 @@ function viewGans(root){
   $("#ganFilterToggle").onclick=()=>{ ganFiltersOpen=$("#ganFilterPanel").hasAttribute("hidden"); viewGans(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ ganFilter[key]=e.value; renderGanTable(); }; };
   bind("#fg-q","q"); bind("#fg-zone","zone"); bind("#fg-status","status");
+  bind("#fg-age","age"); bind("#fg-campus","campus"); bind("#fg-full","full");
   renderGanTable();
 }
 function renderGanTable(){

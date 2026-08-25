@@ -882,6 +882,21 @@ VIEW.gans = function(v){
   v.appendChild(h("div", { "class": "panel" }, [
     h("div", { "class": "section-title" }, [ txt("h2", null, "רשימת הגנים") ]),
     searchbar("חיפוש גן, גננת או כתובת…"),
+    /* פאנל הסינון של התוכנה — הבוררים עוברים לשבבים והוא נשאר מוסתר */
+    h("div", { "class": "filter-panel", id: "ganFilterPanel", hidden: "" }, [
+      h("div", { "class": "toolbar", style: "margin-bottom:0" }, [
+        h("div", { "class": "field" }, [txt("label", null, "גיל"),
+          h("select", { id: "fg-age", html: "<option value=''>הכל</option><option>3</option><option>3/4</option><option>4</option><option>5</option>" })]),
+        h("div", { "class": "field" }, [txt("label", null, "תפוסה"),
+          h("select", { id: "fg-full", html: "<option value=''>הכל</option><option value='yes'>מלאה</option><option value='no'>לא מלאה</option>" })]),
+        h("div", { "class": "field" }, [txt("label", null, "קמפוס"),
+          h("select", { id: "fg-campus", html: "<option value=''>הכל</option>" + CAMPUS.map(function(c){ return "<option>" + c + "</option>"; }).join("") })]),
+        h("div", { "class": "field" }, [txt("label", null, "אזור"),
+          h("select", { id: "fg-zone", html: "<option value=''>הכל</option><option>צפון</option><option>מרכז</option><option>דרום</option>" })]),
+        h("div", { "class": "field" }, [txt("label", null, "סטטוס"),
+          h("select", { id: "fg-status", html: "<option value=''>הכל</option><option value='active'>פעיל</option><option value='off'>כבוי</option>" })])
+      ])
+    ]),
     toolbar([["➕ הוספת גן", "addGan"], ["⬆️ ייבוא מקובץ", "impGan"],
              ["📤 ייצוא / הדפסה", "exportGans"]]),
     h("div", { id: "ganTable" }, [
@@ -925,26 +940,84 @@ VIEW.map = function(v){
     box.appendChild(h("label", { "class": "check", html:
       '<input type="checkbox" data-camp="' + c + '" checked> 🏫 ' + c }));
     var inner = h("div", { style: "display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:6px;padding-inline-start:18px" });
-    GANS.filter(function(g){ return g.campus === c; }).forEach(function(g){
+    GANS.filter(function(g){ return g.campus === c; }).forEach(function(g, i){
       inner.appendChild(h("label", { "class": "check", html:
-        '<input type="checkbox" data-gid="' + g.id + '" checked> ' + g.name }));
+        '<input type="checkbox" data-gid="' + g.id + '"' + (i < 3 ? " checked" : "") + '> ' + g.name }));
     });
     box.appendChild(inner); list.appendChild(box);
   });
+
+  /* שלושת הבוררים שמעל המפה, כמו בתוכנה ובלוח */
+  var opts = h("div", { "class": "row", style: "gap:10px;flex-wrap:wrap;margin-top:10px;align-items:end" }, [
+    h("div", { "class": "field" }, [ txt("label", null, "עיר"),
+      h("select", { html: "<option>מודיעין עילית</option><option>ירושלים</option><option>בית שמש</option>" }) ]),
+    h("div", { "class": "field" }, [ txt("label", null, "חינוך"),
+      h("select", { html: "<option>הכל</option><option>רגיל</option><option>ח״מ</option>" }) ]),
+    h("div", { "class": "field" }, [ txt("label", null, "צבע התלמידות"),
+      h("select", { html: "<option>לפי גן</option><option>לפי מרחק</option><option>לפי סטטוס</option>" }) ]),
+    h("label", { "class": "check", html:
+      '<input type="checkbox"> כל התלמידות (גם שאינן רשומות לגנים שנבחרו)' })
+  ]);
+
   var stage = h("div", { id: "map-stage",
-    style: "height:420px;border-radius:16px;margin-top:14px;display:flex;align-items:center;" +
-           "justify-content:center;text-align:center;background:var(--surface-2);border:1px solid var(--border)" },
+    style: "height:430px;border-radius:16px;display:flex;align-items:center;justify-content:center;" +
+           "text-align:center;background:var(--surface-2);border:1px solid var(--border)" },
     [ h("div", { "class": "hint", html:
         "🗺️ המפה החיה (Leaflet + כתובות אמיתיות) אינה נטענת בדמו.<br>" +
         "במערכת מוצגים כאן כל הגנים והתלמידות על מפה, עם שיבוץ אוטומטי לפי קרבה." }) ]);
+
+  /* הפאנל "רשומות לגנים שנבחרו" — בלוח הוא לצד המפה */
+  var side = h("div", { "class": "panel", style: "margin:0" });
+  side.appendChild(txt("h3", null, "רשומות לגנים שנבחרו"));
+  side.appendChild(txt("div", "sub", "לחיצה על שם ממקדת על המפה"));
+  GANS.slice(0, 3).forEach(function(g){
+    var rows = STUDENTS.filter(function(s){ return s.ganId === g.id; }).slice(0, 2);
+    side.appendChild(h("div", { style: "margin-top:12px;font-weight:700;font-size:.86rem" },
+      [ document.createTextNode(g.name + " · " + g.used) ]));
+    rows.forEach(function(s){
+      side.appendChild(h("div", { style: "display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--lab-rule-row)" }, [
+        h("span", { style: "width:9px;height:9px;border-radius:50%;background:" + (g.ink || "#2c6a4c") }),
+        h("div", null, [
+          h("div", { style: "font-weight:600;font-size:.85rem", text: fullName(s) }),
+          h("div", { "class": "hint", text: s.street + " · " + iRnd(120, 800) + " מ׳" })
+        ])
+      ]));
+    });
+  });
+
+  var two = h("div", { style: "display:grid;gap:14px;grid-template-columns:1fr 300px;align-items:start;margin-top:14px" },
+    [ stage, side ]);
+
+  /* תצוגה מקדימה של השיבוץ האוטומטי */
+  var prev = h("div", { "class": "panel", style: "border:2px solid var(--lab-gold);margin-top:14px" }, [
+    h("div", { style: "display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap" }, [
+      h("div", null, [
+        txt("h3", null, "⚡ תצוגה מקדימה — שיבוץ אוטומטי לפי קרבה"),
+        txt("div", "sub", "כל תלמידה לגן הקרוב מבין הנבחרים · מכבד רף שיבוץ, התאמת חינוך וגיל")
+      ]),
+      h("div", { "class": "row", style: "gap:8px" }, [ btn("בצע 3 שיבוצים"), btn("ביטול", "ghost") ])
+    ]),
+    table(["תלמידה", "כתובת", "גן מוצע", "מרחק", "הערה"], [
+      [h("b", { text: "גולדשטיין מירי" }), "חזון איש 8", h("span", { "class": "chip edu reg", text: "גן גפן" }), "180 מ׳",
+       h("span", { style: "color:var(--good)", text: "✓ גיל 2/3 תואם" })],
+      [h("b", { text: "לוינגר ברכי" }), "חפץ חיים 11", h("span", { "class": "chip edu reg", text: "גן דובדבן" }), "260 מ׳",
+       h("span", { style: "color:var(--accent)", text: "אחות בגן דובדבן — נשמרות יחד" })],
+      [h("b", { text: "שטרן טובי" }), "אבני נזר 40", h("span", { "class": "chip edu reg", text: "גן גפן" }), "210 מ׳",
+       h("span", { style: "color:var(--good)", text: "✓ 22/28 אחרי השיבוץ" })],
+      [h("b", { text: "רוזנברג חני" }), "סורוצקין 22", h("span", { "class": "chip", text: "— לא שובצה —" }), "120 מ׳",
+       h("span", { style: "color:var(--bad)", text: "גן רימון מלא 32/32 — חורג מרף השיבוץ" })]
+    ])
+  ]);
+
   v.appendChild(h("div", { "class": "panel" }, [
     h("div", { "class": "section-title" }, [ txt("h2", null, "מפת שיבוץ") ]),
-    toolbar(["⚡ שיבוץ אוטומטי לפי קרבה", "📤 ייצוא"]),
+    toolbar([["⚡ שיבוץ אוטומטי לפי קרבה", "map-auto"], ["⛶ מסך מלא", "map-full"],
+             ["🔄 רענון מיקומים", "map-reload"]]),
     h("details", { "class": "map-fold", open: "" }, [
-      h("summary", { text: "סינון וגנים להצגה" }),
-      h("div", { "class": "map-fold-body" }, [ list ])
+      h("summary", { text: "גנים להצגה" }),
+      h("div", { "class": "map-fold-body" }, [ list, opts ])
     ]),
-    stage
+    two, prev
   ]));
 };
 
@@ -1378,7 +1451,7 @@ window.__uiLab = Object.freeze({
       case "gans":         return T.gans + " גנים · " + camps + " קמפוסים · " + YEAR;
       case "staff":        return "מאגר כללי · " + STAFF.length + " אנשי צוות פעילים · " + YEAR;
       case "assign":       return YEAR + " · " + T.gans + " גנים";
-      case "map":          return YEAR + " · " + T.gans + " גנים";
+      case "map":          return "312 מתוך " + T.total + " מיקומים נטענו · מודיעין עילית";
       case "reports":      return YEAR + " · " + T.total + " תלמידות · " + T.gans + " גנים";
       case "municipality": return T.muni + " נקלטו · " + T.notMuni + " ממתינות · " + byCity().length + " ערים";
       case "messages":     return "שליחה מרוכזת · " + YEAR;
@@ -1547,6 +1620,15 @@ window.__uiLab = Object.freeze({
         '<span style="width:14px;height:14px;border-radius:4px;border:1px solid var(--border);' +
         'background:color-mix(in srgb, ' + AGE_HUE[a] + ' 55%, var(--surface))"></span>גיל ' + a + '</span>';
     }).join(" ");
+  },
+
+  ganChips: function(){
+    return [
+      { sel:"#fg-age",    label:"גיל",   value:"", options:["3","3/4","4","5"] },
+      { sel:"#fg-full",   label:"תפוסה", value:"", options:[["yes","מלאה"],["no","לא מלאה"]] },
+      { sel:"#fg-campus", label:"קמפוס", value:"", options:CAMPUS },
+      { sel:"#fg-zone",   label:"אזור",  value:"", options:["צפון","מרכז","דרום"] }
+    ];
   },
 
   openGan:     function(){ toast("דמו — כרטיס השיבוץ של הגן אינו נפתח כאן."); },
