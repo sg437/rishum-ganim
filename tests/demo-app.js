@@ -270,6 +270,8 @@ VIEW.students = function(v){
              ["📣 שליחת הודעות", "stuMsg"], ["📤 יצוא", "exportStu"],
              ["⬆️ ייבוא מקובץ", "importStu"], ["✏️ עדכון לפי ת\u05F4ז", "importUpdate"]]),
     searchbar("חיפוש שם או ת״ז…"),
+    /* #bulkBar כפי שהתוכנה יוצרת אותו — כדי שהמעבדה תזיז אותו למטה */
+    h("div", { id: "bulkBar" }),
     colsBar,
     h("div", { "class": "filter-panel", id: "stuFilterPanel", hidden: "" }, [
       h("div", { "class": "toolbar", style: "margin-bottom:0" }, [
@@ -300,6 +302,13 @@ VIEW.students = function(v){
     stage,
     h("div", { id: "stuSelBar" })
   ]));
+
+  var bt = document.getElementById("bulkToggle");
+  if(bt) bt.onclick = function(){
+    window.__demoBulk = !window.__demoBulk;
+    bt.textContent = window.__demoBulk ? "✖️ סיום עדכון קבוצתי" : "✔️ עדכון קבוצתי";
+    window.__demoRenderBulk();
+  };
 };
 
 VIEW.gans = function(v){
@@ -1127,6 +1136,35 @@ function boot(){
     document.body.classList.toggle("ai-docked");
   });
   bind("feedbackBtn", function(){ toast("דמו — טופס הפניות אינו פעיל כאן."); });
+
+  /* מדמה את renderBulkBar + renderSelBar: אותו HTML, אותם מזהים */
+  window.__demoBulk = false;
+  window.__demoRenderBulk = function(){
+    var bar = document.getElementById("bulkBar");
+    var sel = document.getElementById("stuSelBar");
+    if(!bar || !sel) return;
+    if(!window.__demoBulk){ bar.innerHTML = ""; sel.innerHTML = ""; return; }
+    bar.innerHTML =
+      '<div class="panel" style="padding:12px;margin:4px 0 12px;background:var(--surface-2)">' +
+      '<div class="row" style="gap:10px;align-items:end;flex-wrap:wrap">' +
+      '<div class="field"><label>שדה לעדכון</label><select id="bulk-field">' +
+      '<option>תשלום ביטוח תלמידים</option><option>משובצת (שיבוץ סופי)</option>' +
+      '<option>קלוט בעירייה</option><option>רישום צהרון</option></select></div>' +
+      '<button class="btn" id="bulk-yes">✔️ סמן כן (1)</button>' +
+      '<button class="btn ghost" id="bulk-no">✖️ סמן לא (1)</button>' +
+      '<button class="btn ghost" id="bulk-selall">בחר/י הכל (412)</button>' +
+      '<button class="btn ghost" id="bulk-clear">נקה בחירה</button></div>' +
+      '<div class="hint" style="margin-top:6px">סמן/י ילדות בעמודה השמאלית, בחר/י שדה וערך, ולחצ/י "סמן כן/לא". הבחירה חלה על השנה והסינון הנוכחיים.</div>' +
+      '</div>';
+    sel.innerHTML =
+      '<div class="selbar"><b>נבחרה תלמידה אחת</b>' +
+      '<button class="btn sm">סמן כקלוט</button>' +
+      '<button class="btn sm light">שיבוץ לגן…</button>' +
+      '<button class="btn sm">📣 שליחת הודעה</button>' +
+      '<button class="btn sm">ניקוי</button></div>';
+    bar.querySelectorAll(".btn").forEach(function(b){ b.onclick = demoAction("הפעולה"); });
+    sel.querySelectorAll(".btn").forEach(function(b){ b.onclick = demoAction("הפעולה"); });
+  };
   bind("aiClose", function(){
     document.getElementById("aiPanel").classList.remove("open");
     document.body.classList.remove("ai-docked");

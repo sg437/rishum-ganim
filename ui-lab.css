@@ -1820,32 +1820,66 @@ html.ui-lab .lab-agechip #f-age{ margin:0 }
 html.ui-lab .lab-mline.lab-narrow{ padding-inline-end:310px }
 @media (max-width:900px){ html.ui-lab .lab-mline.lab-narrow{ padding-inline-end:0 } }
 
-/* ---- הפס התחתון: עדכון קבוצתי + פעולות הבחירה, נשאר גלוי בגלילה ---- */
+/* ===========================================================================
+   הפס התחתון — עדכון קבוצתי ופעולות הבחירה
+   ---------------------------------------------------------------------------
+   פאנל השדות (#bulkBar) נולד בראש המסך ולכן קפץ למעלה בכל פתיחה. כאן הוא
+   יושב בתוך פס נעוץ לתחתית המסך, יחד עם פס הבחירה וכפתור המצב — הכול
+   כגוש כהה אחד שנשאר גלוי בזמן גלילה ברשימה ארוכה.
+   =========================================================================== */
 html.ui-lab .lab-botwrap{
-  position:sticky; bottom:12px; z-index:25;
-  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-  margin-top:14px; pointer-events:none;
+  position:sticky; bottom:12px; z-index:25; margin-top:14px;
+  display:flex; flex-direction:column; gap:0; pointer-events:none;
 }
 html.ui-lab .lab-botwrap > *{ pointer-events:auto }
-html.ui-lab .lab-botwrap #stuSelBar{ flex:1 1 auto; min-width:0 }
-html.ui-lab .lab-botwrap #stuSelBar:empty{ display:none }
-html.ui-lab .lab-botbar{ flex:0 0 auto; margin-inline-start:auto }
-html.ui-lab .lab-botwrap.on .lab-botbar{ margin-inline-start:0 }
-
-/* כשיש בחירה — הכפתור נכנס לתוך אותו פס כהה ונראה חלק ממנו */
-html.ui-lab .lab-botwrap.on{
-  background:var(--lab-deep); border-radius:16px; padding:10px 14px;
-  box-shadow:0 12px 32px rgba(21,52,42,.26);
+html.ui-lab .lab-botrow{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
 }
+html.ui-lab .lab-botrow > #stuSelBar{ flex:1 1 auto; min-width:0 }
+html.ui-lab .lab-botrow > #stuSelBar:empty{ display:none }
+html.ui-lab .lab-botbar{ flex:0 0 auto; margin-inline-start:auto }
+
+/* ---- מצב פעיל: גוש כהה אחד ---- */
+html.ui-lab .lab-botwrap.on{
+  background:var(--lab-deep); border-radius:18px; padding:14px 16px; gap:12px;
+  box-shadow:0 14px 38px rgba(21,52,42,.30);
+}
+html.ui-lab .lab-botwrap.on .lab-botbar{ margin-inline-start:auto }
 html.ui-lab .lab-botwrap.on .selbar{
   background:none; box-shadow:none; padding:0; margin:0; border-radius:0;
 }
-html.ui-lab .lab-botwrap.on .lab-bulkbtn{
-  background:rgba(255,255,255,.12); color:#f3f6f1; border:0;
-}
-html.ui-lab .lab-botwrap.on .lab-bulkbtn:hover{ background:rgba(255,255,255,.22) }
 
-/* בלי בחירה — רק הכפתור, בפינה השמאלית התחתונה */
+/* פאנל השדות בתוך הפס הכהה */
+html.ui-lab .lab-botwrap #bulkBar:empty{ display:none }
+html.ui-lab .lab-botwrap.on #bulkBar > .panel{
+  background:rgba(255,255,255,.07) !important; border:1px solid rgba(255,255,255,.14);
+  border-radius:14px; padding:12px 14px !important; margin:0 !important;
+  box-shadow:none; color:#f3f6f1;
+}
+html.ui-lab .lab-bulklbl{
+  font-size:.74rem; font-weight:700; color:var(--lab-gold-on-deep);
+  letter-spacing:-.01em; margin-bottom:9px;
+}
+html.ui-lab .lab-botwrap.on #bulkBar label{ color:#a9c0b2; font-size:.72rem; font-weight:700 }
+html.ui-lab .lab-botwrap.on #bulkBar select{
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
+  color:#f3f6f1; border-radius:10px; font-size:.85rem; padding:8px 11px;
+}
+html.ui-lab .lab-botwrap.on #bulkBar select option{ color:var(--ink); background:var(--surface) }
+html.ui-lab .lab-botwrap.on #bulkBar .hint{ color:#94a99c; font-size:.74rem }
+html.ui-lab .lab-botwrap.on #bulkBar .btn{
+  background:rgba(255,255,255,.12); border:0; color:#f3f6f1;
+  border-radius:10px; font-weight:600;
+}
+html.ui-lab .lab-botwrap.on #bulkBar .btn:hover{ background:rgba(255,255,255,.22) }
+html.ui-lab .lab-botwrap.on #bulkBar .btn#bulk-yes{ background:#fff; color:var(--lab-deep); font-weight:700 }
+html.ui-lab .lab-botwrap.on #bulkBar .btn#bulk-yes:hover{ background:#e9f1ea }
+html.ui-lab .lab-botwrap.on .lab-bulkbtn{
+  background:rgba(255,255,255,.12); color:#f3f6f1; border:0; box-shadow:none;
+}
+html.ui-lab .lab-botwrap.on .lab-bulkbtn:hover{ background:rgba(255,255,255,.22); color:#fff }
+
+/* ---- מצב רגוע: רק הכפתור, בפינה השמאלית התחתונה ---- */
 html.ui-lab .lab-bulkbtn{
   border-radius:99px; padding:8px 15px; font-size:.82rem; font-weight:600;
   background:var(--surface); border:1px solid var(--border); color:var(--ink-soft);
@@ -1853,3 +1887,10 @@ html.ui-lab .lab-bulkbtn{
 }
 html.ui-lab .lab-bulkbtn:hover{ border-color:var(--accent); color:var(--accent-strong) }
 html.ui-lab .selbar{ position:static }
+/* "שיבוץ לגן…" מסומן .light בקוד — בתוך הפס הכהה הוא נבלע */
+html.ui-lab .lab-botwrap.on .selbar .btn,
+html.ui-lab .lab-botwrap.on .selbar .btn.light{
+  background:rgba(255,255,255,.12); color:#f3f6f1; border:0;
+}
+html.ui-lab .lab-botwrap.on .selbar .btn:hover,
+html.ui-lab .lab-botwrap.on .selbar .btn.light:hover{ background:rgba(255,255,255,.22) }

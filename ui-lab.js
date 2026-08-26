@@ -2367,14 +2367,21 @@ function hideField(node){
    יושב לצידו כאח, מחוץ להישג ידו של ה-innerHTML. */
 function studentsBottom(){
   var host = view.querySelector("#stuSelBar");
+  var bulkBar = view.querySelector("#bulkBar");
   if(!host) return;
 
   var wrap = view.querySelector(".lab-botwrap");
   if(!wrap){
     wrap = el("div", "lab-botwrap");
     host.parentNode.insertBefore(wrap, host);
-    wrap.appendChild(host);
-    wrap.appendChild(el("div", "lab-botbar"));
+    /* #bulkBar נולד בראש המסך — שם הוא קפץ למעלה בכל פתיחה.
+       מזיזים את האלמנט עצמו; renderBulkBar כותב לתוכו לפי id ולכן
+       ממשיך לעבוד בדיוק כמו קודם, רק במקום אחר. */
+    if(bulkBar) wrap.appendChild(bulkBar);
+    var row = el("div", "lab-botrow");
+    row.appendChild(host);
+    row.appendChild(el("div", "lab-botbar"));
+    wrap.appendChild(row);
   }
   var bb = wrap.querySelector(".lab-botbar");
   var bulk = view.querySelector("#bulkToggle");
@@ -2383,9 +2390,18 @@ function studentsBottom(){
     bulk.classList.remove("ghost");
     bb.appendChild(bulk);                   /* העברה — המאזין נשמר */
   }
-  /* בלי בחירה פעילה הפס מציג רק את הכפתור, ולכן נשאר צר ושקוף */
-  var sel = !!host.querySelector(".selbar");
-  if(wrap.classList.contains("on") !== sel) wrap.classList.toggle("on", sel);
+
+  /* תווית "עדכון קבוצתי" בצד ימין של פאנל השדות, כפי שנתבקש */
+  if(bulkBar){
+    var inner = bulkBar.querySelector(".panel");
+    if(inner && !inner.querySelector(".lab-bulklbl")){
+      inner.insertBefore(el("div", "lab-bulklbl", "עדכון קבוצתי"), inner.firstChild);
+    }
+  }
+
+  /* הפס נצבע כהה כשיש בו תוכן — פאנל שדות או בחירה פעילה */
+  var live = !!(host.querySelector(".selbar") || (bulkBar && bulkBar.firstChild));
+  if(wrap.classList.contains("on") !== live) wrap.classList.toggle("on", live);
 }
 
 /* "+" בכותרת הטבלה לעמודות הנוספות — במקום הכפתור עם הטקסט */
