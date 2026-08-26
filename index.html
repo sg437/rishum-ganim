@@ -2668,11 +2668,14 @@ if(document.documentElement.classList.contains("ui-lab")){
       try{
         const base = studentsScopeBase();
 
-        /* "34 מאז מועד ב׳" — המועד האחרון שיש בו רישומים */
+        /* "34 מאז מועד ב׳" — גל הרישום האחרון.
+           ⚠️ "סופי" אינו גל רישום אלא סטטוס, ולכן הוא אינו נספר כאן:
+           בלעדיו השורה הציגה "מאז מועד סופי", שאינו אומר דבר. */
+        const WAVES = PERIODS.filter(p=>p !== "סופי");
         let sincePeriod = "", sinceN = 0;
-        for(let i = PERIODS.length - 1; i >= 0; i--){
-          const n = base.filter(s=>s.period === PERIODS[i]).length;
-          if(n){ sincePeriod = PERIODS[i]; sinceN = n; break; }
+        for(let i = WAVES.length - 1; i >= 0; i--){
+          const n = base.filter(s=>s.period === WAVES[i]).length;
+          if(n){ sincePeriod = WAVES[i]; sinceN = n; break; }
         }
 
         /* "33 מהן בגילאי 3" — הגיל השכיח בקרב הממתינות */

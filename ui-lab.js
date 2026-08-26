@@ -1306,7 +1306,7 @@ function matchLine(hostSel, word, totalFromStats){
     var stage = host.closest(".stu-stage") || host;
     stage.parentNode.insertBefore(line, stage);
   }
-  var txt = shown + " " + word + " תואמים · מתוך " + totalFromStats;
+  var txt = shown + " " + word + " · מתוך " + totalFromStats;
   var t = line.querySelector(".lab-mtxt");
   if(t.textContent !== txt) t.textContent = txt;   /* בלי זה — לולאת צופה */
 }
@@ -2228,7 +2228,7 @@ function applyStuMode(){
    תאריך עברי ושעת עדכון. "עדכון קבוצתי" יורד לפס הבחירה התחתון, ו"שליחת
    הודעות" יורדת לגמרי — יש לה מסך משלה.
    =========================================================================== */
-var STU_TOP  = ["addStu", "exportStu", "importStu"];   /* הסדר בלוח */
+var STU_TOP  = ["addStu", "exportStu", "importStu", "importUpdate"];   /* הסדר בלוח */
 var STU_DROP = ["stuMsg"];                             /* למסך ההודעות יש לשונית */
 
 function studentsTop(){
@@ -2271,22 +2271,101 @@ function studentsTop(){
 
   /* שלושת כפתורי הלוח, בסדר שלו ובשמות שלו. הסדר נאכף בכל מעבר, כי
      screenHeader מסדר אותם לפי סדר ה-DOM המקורי. */
-  orderInto(acts, STU_TOP, { addStu:"+ הוספת ילדה", exportStu:"ייצוא", importStu:"ייבוא" });
+  orderInto(acts, STU_TOP, { addStu:"+ הוספת ילדה", exportStu:"ייצוא",
+                            importStu:"ייבוא", importUpdate:'עדכון לפי ת״ז' });
+  /* התווית "ייבוא / יצוא:" והמפריד נשארו יתומים אחרי שהכפתורים עלו */
+  var row = view.querySelector(".panel > .row");
+  if(row) Array.prototype.slice.call(row.children).forEach(function(c){
+    if(!c.classList.contains("btn")) c.classList.add("lab-hidden");
+  });
   var add = acts.querySelector("#addStu");
   if(add) add.classList.remove("ghost");
 }
 
-/* שורת הסינון: שדה החיפוש וכפתור הסינון הופכים לשורת שבבים אחת עם
-   השבבים הפעילים, כמו בלוח. הפאנל המלא נשאר — הוא רק נפתח בלחיצה. */
+/* שורת הסינון (לוח 01): שדה חיפוש · שלושה שבבי סינון קבועים — גן, גיל,
+   מאפיין · השבבים הפעילים · "נקה" · "עוד ▾" שפותח את הפאנל המלא.
+   כל שבב עוטף את הפקד האמיתי שבפאנל, ולכן אין כאן מנגנון סינון שני. */
 function studentsFilters(){
   var sb = view.querySelector(".searchbar");
   var chips = view.querySelector("#stuChips");
-  if(!sb || !chips || sb.classList.contains("lab-fbar")) return;
-  sb.classList.add("lab-fbar");
-  Array.prototype.slice.call(chips.childNodes).forEach(function(n){ sb.appendChild(n); });
-  chips.classList.add("lab-hidden");
+  if(!sb) return;
+  if(!sb.classList.contains("lab-fbar")) sb.classList.add("lab-fbar");
+
+  if(!sb.dataset.labFixed){
+    sb.dataset.labFixed = "1";
+
+    /* גן — <details class="msel"> בקוד. ה-summary שלו הופך לפני השבב. */
+    var gan = view.querySelector("#f-gan");
+    if(gan){ gan.classList.add("lab-mchip"); hideField(gan); sb.appendChild(gan); }
+
+    /* גיל — שורת כפתורים. עוטפים אותה ב-details כדי שתיפתח כשבב. */
+    var age = view.querySelector("#f-age");
+    if(age){
+      var d = el("details", "lab-mchip lab-agechip");
+      var sum = el("summary", null, "גיל");
+      d.appendChild(sum);
+      var menu = el("div", "msel-menu");
+      hideField(age);
+      menu.appendChild(age);                  /* העברה — המאזינים נשמרים */
+      d.appendChild(menu);
+      sb.appendChild(d);
+    }
+
+    /* מאפיין — <select> רגיל */
+    var flag = view.querySelector("#f-flag");
+    if(flag){
+      var chip = el("label", "lab-selchip");
+      chip.appendChild(el("span", "lab-sclbl", "מאפיין"));
+      hideField(flag);
+      chip.appendChild(flag);                 /* העברה — המאזין נשמר */
+      chip.classList.toggle("on", !!flag.value);
+      flag.addEventListener("change", function(){ chip.classList.toggle("on", !!flag.value); });
+      sb.appendChild(chip);
+    }
+  }
+
+  /* השבבים הפעילים (עם ✕) יושבים מיד אחרי שדה החיפוש — לפני שבבי
+     הסינון הקבועים, כפי שהלוח מציג. "נקה" נשאר בסוף. */
+  if(chips && !chips.classList.contains("lab-hidden")){
+    var after = sb.querySelector(".search-field");
+    Array.prototype.slice.call(chips.childNodes).forEach(function(n){
+      if(n.nodeType === 1 && n.classList.contains("fchip")){
+        sb.insertBefore(n, after ? after.nextSibling : sb.firstChild);
+        after = n;
+      }else{
+        sb.appendChild(n);                  /* "נקה" והתווית — לסוף */
+      }
+    });
+    chips.classList.add("lab-hidden");
+  }
+  var clr = sb.querySelector(".clr");
+  if(clr && clr.textContent !== "נקה") clr.textContent = "נקה";
+
   var tg = sb.querySelector(".filter-toggle");
-  if(tg) sb.appendChild(tg);                  /* כפתור הסינון אחרון, כמו בלוח */
+  if(tg){
+    if(tg.textContent.indexOf("עוד") < 0){
+      var cnt = tg.querySelector(".fcount");
+      tg.textContent = "עוד ▾";
+      if(cnt) tg.appendChild(cnt);
+    }
+    if(tg !== sb.lastElementChild) sb.appendChild(tg);
+  }
+
+  /* סימון פעיל על שבב הגן ושבב הגיל */
+  var g = sb.querySelector("#f-gan");
+  if(g){
+    var sm = g.querySelector("summary");
+    var on = !!(sm && sm.textContent.indexOf("כל הגנים") < 0 && sm.textContent.trim());
+    g.classList.toggle("on", on);
+  }
+  var ac = sb.querySelector(".lab-agechip");
+  if(ac) ac.classList.toggle("on", !!view.querySelector("#f-age .btn:not(.ghost)"));
+}
+
+/* מסתיר את עטיפת ה-.field שנשארה ריקה בפאנל אחרי שהפקד עלה לשבב */
+function hideField(node){
+  var f = node.closest(".field");
+  if(f && f !== node) f.classList.add("lab-hidden");
 }
 
 /* "+" בכותרת הטבלה לעמודות הנוספות — במקום הכפתור עם הטקסט */
@@ -2315,11 +2394,24 @@ function maybeStudents(){
   try{
     styleStuSummary(); studentsRows();
     var sm = view.querySelector("#stuSummary .stat .v");
-    if(sm) matchLine("#stuTable", "תלמידות",
+    if(sm) matchLine("#stuTable", "תלמידות תואמות",
       (parseInt(String(sm.textContent).replace(/[^\d]/g,""),10) || 0));
+    /* הדפסה ושיתוף כבר קיימים בייצוא שלמעלה — כאן הם כפילות */
+    ["#stuGanPrint", "#stuGanShare"].forEach(function(sel){
+      var b = view.querySelector(sel);
+      if(b) b.classList.add("lab-hidden");
+    });
     var host = view.querySelector("#stuTable");   /* אחרי matchLine — הבורר נכנס לתוכו */
     if(host){ stuToggle(host); applyStuMode(); }
     studentsTop(); studentsFilters(); colPlus();
+    /* כשתיק הילדה פתוח, שורת ההתאמות והבורר נעצרים בקצה הטבלה ואינם
+       נמתחים מעל הפאנל — כפי שהלוח מציג. */
+    var q = view.querySelector("#stuQuick");
+    var ml = view.querySelector(".lab-mline");
+    if(ml){
+      var open = !!(q && !q.classList.contains("empty-state"));
+      if(ml.classList.contains("lab-narrow") !== open) ml.classList.toggle("lab-narrow", open);
+    }
   }catch(e){}
   homeBusy = false;
 }

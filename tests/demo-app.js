@@ -268,9 +268,30 @@ VIEW.students = function(v){
     sum,
     toolbar([["➕ הוספת ילדה", "addStu"], ["✔️ עדכון קבוצתי", "bulkToggle"],
              ["📣 שליחת הודעות", "stuMsg"], ["📤 יצוא", "exportStu"],
-             ["⬆️ ייבוא מקובץ", "importStu"]]),
+             ["⬆️ ייבוא מקובץ", "importStu"], ["✏️ עדכון לפי ת\u05F4ז", "importUpdate"]]),
     searchbar("חיפוש שם או ת״ז…"),
     colsBar,
+    h("div", { "class": "filter-panel", id: "stuFilterPanel", hidden: "" }, [
+      h("div", { "class": "toolbar", style: "margin-bottom:0" }, [
+        h("div", { "class": "field" }, [ txt("label", null, "גן (אפשר לבחור כמה)"),
+          h("details", { "class": "msel", id: "f-gan" }, [
+            h("summary", { text: "כל הגנים" }),
+            h("div", { "class": "msel-menu", html:
+              GANS.map(function(g){ return '<label class="msel-opt"><input type="checkbox"> ' + g.name + '</label>'; }).join("") })
+          ]) ]),
+        h("div", { "class": "field" }, [ txt("label", null, "גיל (אפשר לבחור כמה)"),
+          h("div", { "class": "row", id: "f-age", style: "gap:4px;flex-wrap:wrap", html:
+            ["2","3","4","5"].map(function(a){ return '<button type="button" class="btn sm ghost">' + a + '</button>'; }).join("") }) ]),
+        h("div", { "class": "field" }, [ txt("label", null, "עיר"),
+          h("select", { id: "f-city", html: "<option value=''>הכל</option>" + CITY.map(function(c){ return "<option>" + c[0] + "</option>"; }).join("") }) ]),
+        h("div", { "class": "field" }, [ txt("label", null, "מועד"),
+          h("select", { id: "f-period", html: "<option value=''>הכל</option>" + PERIODS.map(function(p){ return "<option>" + p + "</option>"; }).join("") }) ]),
+        h("div", { "class": "field" }, [ txt("label", null, "מאפיין"),
+          h("select", { id: "f-flag", html: "<option value=''>הכל</option><option>נשארות</option><option>צהרון</option><option>קייטנה</option>" }) ]),
+        h("div", { "class": "field" }, [ txt("label", null, "סטטוס"),
+          h("select", { id: "f-status", html: "<option>פעילות</option><option>שסיימו / יצאו</option><option>הכל</option>" }) ])
+      ])
+    ]),
     h("div", { id: "stuChips", "class": "fchips", html:
       '<span style="font-size:.78rem;color:var(--muted);font-weight:700">סינון:</span>' +
       '<span class="fchip">גיל 3–4<button type="button">✕</button></span>' +
@@ -835,7 +856,7 @@ window.__uiLab = Object.freeze({
     var topAge = "", topAgeN = 0;
     Object.keys(ageN).forEach(function(a){ if(ageN[a] > topAgeN){ topAgeN = ageN[a]; topAge = a; } });
     var last = "", lastN = 0;
-    PERIODS.forEach(function(pr){
+    PERIODS.filter(function(p){ return p !== "סופי"; }).forEach(function(pr){
       var n = STUDENTS.filter(function(s){ return s.period === pr; }).length;
       if(n){ last = pr; lastN = n; }
     });
