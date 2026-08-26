@@ -21,6 +21,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="rishum-ganim rg-b05ea2eb">
 <title>סביבת בדיקה · merge-on-write</title>
+<!-- מעבדת עיצוב (UI Lab) — אותה שכבת עיצוב חלופית שרצה ב-index.html.
+     כבויה כברירת מחדל: בלי הדגל הקוד הזה אינו עושה דבר.
+     הפעלה ‎?ui=new‎ · כיבוי ‎?ui=off‎ · הבחירה נזכרת במכשיר (localStorage).
+     העיצוב עצמו יושב כולו ב-ui-lab.css, תחום ל-html.ui-lab. -->
+<script>(function(){try{
+  var p=new URLSearchParams(location.search).get('ui');
+  if(p!==null){ if(p==='off'||p==='0'||p===''){ localStorage.removeItem('uiLab'); } else { localStorage.setItem('uiLab',p); } }
+  if(!localStorage.getItem('uiLab')) return;
+  document.documentElement.classList.add('ui-lab');
+  /* גופני העיצוב מוקדמים לקובץ ה-CSS — ראה את ההערה המקבילה ב-index.html. */
+  ['fonts/assistant-hebrew.woff2','fonts/heebo-hebrew.woff2'].forEach(function(f){
+    var pl=document.createElement('link');
+    pl.rel='preload'; pl.as='font'; pl.type='font/woff2'; pl.crossOrigin='anonymous'; pl.href=f;
+    document.head.appendChild(pl);
+  });
+  var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css'; document.head.appendChild(l);
+  var j=document.createElement('script'); j.src='ui-lab.js'; j.async=false; document.head.appendChild(j);
+  document.addEventListener('DOMContentLoaded',function(){
+    var u=new URL(location.href); u.searchParams.set('ui','off');
+    var a=document.createElement('a');
+    a.className='ui-lab-badge'; a.href=u.pathname+u.search+u.hash;
+    a.textContent='\u{1F9EA} מעבדת עיצוב — יציאה';
+    a.title='חזרה לעיצוב הרגיל';
+    document.body.appendChild(a);
+  });
+}catch(e){}})();</script>
 <style>
   :root{ --bg:#f4f7f2; --card:#fff; --line:#dce6d8; --ink:#17231b; --soft:#586; --accent:#2f6f43; --accent2:#1e5233; --bad:#b0413a; --warn:#9c6b15; --good:#2f6f43; }
   *{box-sizing:border-box}

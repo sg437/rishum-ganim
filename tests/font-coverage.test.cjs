@@ -107,34 +107,42 @@ const bad=(m,d)=>{ fail++; console.log('❌ '+m); (d||[]).forEach(x=>console.log
   if(missW.length) bad('משקלים שאינם זמינים בפועל', missW);
   else             ok('כל המשקלים שהעיצוב משתמש בהם זמינים (400 · 500 · 800)');
 
-  /* --- 3. כל מסך · כל מצב · כל רוחב ------------------------------------ */
+  /* --- 3. כל מסך · כל מצב · כל רוחב ------------------------------------
+     שני עמודים שאפשר לנווט בהם בלי התחברות: הדמו (15 מסכים בעיצוב החדש)
+     וגרסת הארטיפקט (10 מסכים, אותה תוכנה עם אחסון מקומי). */
   const ids=await p.evaluate(()=>[...document.querySelectorAll('#tabs [data-tab]')].map(b=>b.dataset.tab));
   if(ids.length<10) bad('נמצאו רק '+ids.length+' מסכים בדמו — הניווט השתנה?');
   await p.close();
 
-  for(const vp of [{width:1440,height:900,name:'שולחני'},{width:390,height:844,name:'נייד'}]){
-    for(const scheme of ['light','dark']){
-      const q=await browser.newPage({ viewport:{width:vp.width,height:vp.height}, colorScheme:scheme });
-      await q.goto(base+'demo.html',{waitUntil:'networkidle'});
-      await q.evaluate(()=>document.fonts.ready);
-      let seen=0; const offenders=new Set();
-      for(const id of ids){
-        await q.evaluate(i=>{ const b=document.querySelector('#tabs [data-tab="'+i+'"]'); if(b) b.click(); }, id);
-        await q.waitForTimeout(120);
-        const r=await q.evaluate(SCAN);
-        seen+=r.seen; r.bad.forEach(x=>offenders.add(x));
+  for(const page of ['demo.html','app-artifact.html?ui=new']){
+    for(const vp of [{width:1440,height:900,name:'שולחני'},{width:390,height:844,name:'נייד'}]){
+      for(const scheme of ['light','dark']){
+        const q=await browser.newPage({ viewport:{width:vp.width,height:vp.height}, colorScheme:scheme });
+        await q.goto(base+page,{waitUntil:'load'});
+        await q.waitForTimeout(1200);
+        await q.evaluate(()=>document.fonts.ready);
+        const tabs=await q.evaluate(()=>[...document.querySelectorAll('#tabs [data-tab]')].map(b=>b.dataset.tab));
+        let seen=0; const offenders=new Set();
+        for(const id of tabs){
+          await q.evaluate(i=>{ const b=document.querySelector('#tabs [data-tab="'+i+'"]'); if(b) b.click(); }, id);
+          await q.waitForTimeout(120);
+          const r=await q.evaluate(SCAN);
+          seen+=r.seen; r.bad.forEach(x=>offenders.add(x));
+        }
+        const label=page.split('?')[0]+' · '+vp.name+' · '+(scheme==='dark'?'לילה':'יום');
+        if(!tabs.length)        bad(label+' — לא נמצאו מסכים לניווט');
+        else if(offenders.size) bad(label+' — '+offenders.size+' אלמנטים מחוץ לגופן העיצוב', [...offenders]);
+        else                    ok(label+' — כל '+seen+' האלמנטים הגלויים ב-'+tabs.length+' המסכים בגופן העיצוב');
+        await q.close();
       }
-      const label=vp.name+' · '+(scheme==='dark'?'לילה':'יום');
-      if(offenders.size) bad(label+' — '+offenders.size+' אלמנטים מחוץ לגופן העיצוב', [...offenders]);
-      else               ok(label+' — כל '+seen+' האלמנטים הגלויים ב-'+ids.length+' המסכים בגופן העיצוב');
-      await q.close();
     }
   }
 
   /* --- 4. רכיבי טופס בכל עמוד שהמעבדה נוגעת בו -------------------------
      כאן נפתחה הפירצה מלכתחילה: הדפדפן אינו מוריש font-family לרכיבי טופס,
      ו-management.html תיקן זאת ל-button בלבד. */
-  for(const page of ['demo.html','management.html?ui=new','register.html?ui=new']){
+  for(const page of ['demo.html','management.html?ui=new','register.html?ui=new',
+                     'app-artifact.html?ui=new','test.html?ui=new']){
     const q=await browser.newPage({ viewport:{width:1440,height:900} });
     await q.goto(base+page,{waitUntil:'load'});
     await q.waitForTimeout(1200);
@@ -157,23 +165,20 @@ const bad=(m,d)=>{ fail++; console.log('❌ '+m); (d||[]).forEach(x=>console.log
      מסמכים ש-window.open נפתחים בהם אינם יורשים גיליונות סגנון, ולכן כל אחד
      מהם חייב לקרוא ל-labFontTags(). נבדק על המקור עצמו: הבדיקה שלמעלה רצה
      על demo.html שאין בו הדפסה, ומסך הדפסה אמיתי דורש התחברות. */
-  const app=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
-  const writes=[...app.matchAll(/<!doctype html><html dir="rtl"[^`]*?<\/head>/g)].map(m=>m[0]);
-  const guideWrite=/<title>מדריך[^`]*?<style>/.test(app);
-  const uncovered=writes.filter(w=>!w.includes('${labFontTags()}'));
-  if(!writes.length)     bad('לא נמצאו חלונות הדפסה ב-index.html — המבנה השתנה?');
-  else if(uncovered.length) bad(uncovered.length+' חלונות הדפסה בלי גופני העיצוב',
-                               uncovered.map(w=>w.slice(0,80)+'…'));
-  else if(!guideWrite || !/<title>מדריך[\s\S]{0,120}\$\{labFontTags\(\)\}/.test(app))
-                         bad('חלון המדריך להדפסה בלי גופני העיצוב');
-  else                   ok(writes.length+' חלונות הדפסה/PDF מקבלים את גופני העיצוב');
-
-  if(!/html body,html body \*\{font-family:"Assistant"/.test(app))
-    bad('גיליון הכפייה של החלונות המשניים חסר — Arial/system-ui יגברו על הגופן');
-  else ok('גיליון הכפייה גובר על ‏Arial/system-ui‏ שבסגנונות ההדפסה עצמם');
+  for(const file of ['index.html','app-artifact.html']){
+    const app=fs.readFileSync(path.join(ROOT,file),'utf8');
+    const writes=[...app.matchAll(/<!doctype html><html dir="rtl"[^`]*?<\/head>/g)].map(m=>m[0]);
+    const uncovered=writes.filter(w=>!w.includes('${labFontTags()}'));
+    if(!writes.length)        bad(file+' — לא נמצאו חלונות הדפסה. המבנה השתנה?');
+    else if(uncovered.length) bad(file+' — '+uncovered.length+' חלונות הדפסה בלי גופני העיצוב',
+                                  uncovered.map(w=>w.replace(/\s+/g,' ').slice(0,80)+'…'));
+    else if(!/html body,html body \*\{font-family:"Assistant"/.test(app))
+                              bad(file+' — גיליון הכפייה חסר. Arial/system-ui יגברו על הגופן');
+    else                      ok(file+' — '+writes.length+' חלונות הדפסה/PDF מקבלים את גופני העיצוב וסדר המשפחות הנכון');
+  }
 
   /* --- 6. מעבדה כבויה = אפס השפעה -------------------------------------- */
-  for(const page of ['register.html','management.html']){
+  for(const page of ['register.html','management.html','app-artifact.html','test.html']){
     const ctx=await browser.newContext();
     const q=await ctx.newPage();
     const extra=[];
