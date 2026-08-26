@@ -42,7 +42,7 @@
    קבוצת הניתוח וההפקה, כמסך עיון. שתי הנקודות פתוחות להחלטה. */
 var GROUPS = [
   { title:"יומיום",        tabs:["home","students","gans","map","staff","assign"] },
-  { title:"ניתוח והפקה",   tabs:["templates","reports","municipality","management",
+  { title:"ניתוח והפקה",   tabs:["templates","reports","management",
                                  "messages","tools","settings","guide"] }
 ];
 
@@ -57,7 +57,7 @@ var LABELS = { home:"מסך בית", students:"תלמידות", staff:"צוות"
    "מדריך" אינו מופיע בקנבס כלל, ולכן הגליף שלו הוא בחירה שלי. */
 var ICONS = {
   home:"◫", students:"☰", gans:"⌂", map:"⌖", staff:"◈", assign:"⇄",
-  templates:"▢", reports:"◔", municipality:"▤", management:"☏",
+  templates:"▢", reports:"◔", management:"☏",
   messages:"✉", tools:"⚒", settings:"⚙", guide:"▧"
 };
 
@@ -68,21 +68,30 @@ var nav = null, foot = null, view = null;
 
 var busy = false;              /* מונע לולאה: השינויים שלנו מפעילים את הצופה */
 
-/* החלטה 3, מעודכנת: הקנבס הציג "ייצוא" כפריט ניווט, והמעבדה הזריקה אותו
-   לסרגל. זה בוטל — בתוכנה הייצוא יושב *בתוך* המסכים, וכך הוא נשאר: כפתור
-   "ייצוא" שבלשונית התלמידות פותח את אותו viewExport כחלון, ו-exportScreen()
-   מעצב את החלון הזה בדיוק כפי שעיצב את הלשונית. אותו מסך, בלי פריט מיותר.
-   הפונקציה נשארת כדי לנקות סרגל שכבר קיבל את הלשונית ברינדור קודם. */
-function dropExportTab(){
-  var b = nav.querySelector('[data-tab="export"]');
-  if(b) b.remove();
+/* שתי לשוניות שאינן בניווט של העיצוב החדש. renderTabs() בונה את הסרגל
+   מחדש בכל מעבר מסך ומחזיר אותן, ולכן ההסרה חוזרת בכל צביעה.
+
+   "ייצוא" (החלטה 3, מעודכנת): הקנבס הציג אותו כפריט ניווט, אבל בתוכנה
+   הייצוא יושב *בתוך* המסכים — כפתור "ייצוא" שבלשונית התלמידות פותח את
+   viewExport כחלון, ו-exportScreen() מעצב אותו בדיוק כפי שעיצב את הלשונית.
+
+   "עירייה": לשונית שלמה עבור פעולה אחת — הדבקת רשימת ת"ז והתאמה. בעיצוב
+   החדש הפעולה הזאת ירדה לתחתית חלון "עדכון לפי ת"ז" שבלשונית התלמידות,
+   ליד עדכון קבוצתי אחר לפי אותה רשימת ת"ז. אותו מקטע בדיוק, אותו קוד
+   (muniSectionHTML/wireMuniSection ב-index.html) — רק בלי לשונית משלו.
+   המונה "לא נקלט בעירייה" לא אבד: הוא כרטיס במסך הבית, עם קישור לרשימה
+   המסוננת. */
+function dropTabs(){
+  ["export", "municipality"].forEach(function(t){
+    var b = nav.querySelector('[data-tab="' + t + '"]');
+    if(b) b.remove();
+  });
 }
 
-/* החלטה 6: מוני הצוות והעירייה. renderTabs מחשב מונים לתלמידות ולגנים בלבד.
-   מונה העירייה הוא התראה (רקע פליז), כמו בקנבס. */
+/* החלטה 6: מונה הצוות. renderTabs מחשב מונים לתלמידות ולגנים בלבד. */
 function navCounts(s){
   if(!s) return;
-  [["staff", s.staff, false], ["municipality", s.notMuni, true]].forEach(function(x){
+  [["staff", s.staff, false]].forEach(function(x){
     var btn = nav.querySelector('[data-tab="' + x[0] + '"]');
     if(!btn) return;
     var c = btn.querySelector(".count");
@@ -1356,10 +1365,10 @@ function screenHeader(){
   var tabId = curTab();
 
   /* ⚠️ במסכים מרובי־מקטעים (הגדרות, כלים, דוחות) ובמסכים שהמעבדה מזריקה
-     בהם פאנלים משלה (עירייה, הנהלה) אסור לגנוב את ה-h2 של הפאנל הראשון:
+     בהם פאנלים משלה (הנהלה) אסור לגנוב את ה-h2 של הפאנל הראשון:
      הוא כותרת של מקטע, לא של המסך — והפאנל היה נשאר בלי כותרת. שם המסך
      נלקח אז מהניווט, וכל הפאנלים נשארים שלמים. */
-  var OWN = { reports:"דוחות ואחוזים", municipality:"קליטה בעירייה",
+  var OWN = { reports:"דוחות ואחוזים",
               management:"מבט הנהלה",  settings:"הגדרות",
               tools:"כלים ושירותים" };
   /* רק המסכים ברשימה — ספירת פאנלים אינה קריטריון טוב: מסך עם כמה פאנלים
@@ -1441,7 +1450,7 @@ function screenHeader(){
 }
 
 /* ===========================================================================
-   המסכים שנותרו — דוחות, עירייה, הודעות, ייצוא, הגדרות, כלים, הנהלה
+   המסכים שנותרו — דוחות, הודעות, ייצוא, הגדרות, כלים, הנהלה
    ---------------------------------------------------------------------------
    כל אחד מהם מקבל את המבנה של הלוח בלי לפרק את המסך הקיים: מזריקים את
    הבלוקים שהלוח מציג ואינם בתוכנה, ומזיזים (לא בונים מחדש) את מה שכבר קיים.
@@ -1649,63 +1658,6 @@ function reportsScreen(){
   t.appendChild(tb); wrap.appendChild(t); pt.appendChild(wrap);
   frag.appendChild(pt);
 
-  first.parentNode.insertBefore(frag, first);
-}
-
-/* --------------------------------------------------------------- עירייה */
-function muniScreen(){
-  if(curTab() !== "municipality" || hasLab("muni")) return;
-  var d = window.__uiLab && window.__uiLab.muniBoard && window.__uiLab.muniBoard();
-  if(!d) return;
-  var first = view.querySelector(".panel");
-  if(!first) return;
-
-  var frag = document.createDocumentFragment();
-  frag.appendChild(kpiRow([
-    { label:"נקלטו", value:String(d.absorbed), dark:true,
-      sub:d.pct + "% מהתיקים · " + d.year, ring:d.pct },
-    { label:"ממתינות לקליטה", value:String(d.pending), tone:"warn",
-      sub:"מתוך " + d.total + " תיקים" },
-    { label:"מוכנות לשליחה", value:String(d.counts.ready), tone:"good",
-      sub:'ת"ז, שיבוץ ומסמכים תקינים' },
-    { label:"חסומות", value:String(d.counts.tz + d.counts.gan + d.counts.docs),
-      tone:"bad",
-      sub:d.counts.tz + ' ללא ת"ז · ' + d.counts.gan + " ללא שיבוץ · " + d.counts.docs + " מסמכים" }
-  ]));
-
-  var two = el("div", "lab-2col aside");
-  var pc = labPanel("muni", "לפי עיר", "נקלטו מתוך רשומות");
-  if(!d.byCity.length) pc.appendChild(el("div", "lab-empty", "אין נתוני עיר בתיקים."));
-  d.byCity.forEach(function(c){
-    var pct = c.n ? Math.round(c.ok / c.n * 100) : 0;
-    pc.appendChild(barRow(c.city, c.ok + "/" + c.n, pct, toneOf(pct)));
-  });
-  if(d.listed) pc.appendChild(el("div", "lab-note",
-    d.listed + ' ת"ז ברשימת העירייה שנטענה לשנת ' + d.year));
-  var pp = labPanel("muniList", d.rowsTotal + " תיקים ממתינים",
-    d.rowsTotal > d.rows.length ? "מוצגים " + d.rows.length + " הראשונים" : "לפי א״ב");
-  if(!d.rows.length) pp.appendChild(el("div", "lab-empty", "כל התיקים נקלטו בעירייה. 🎉"));
-  else{
-    var wrap = el("div", "table-wrap"), t = el("table"), th = el("thead"), tr = el("tr");
-    ["תלמידה", 'ת"ז', "גן", "עיר", "מה חוסם"].forEach(function(h){ tr.appendChild(el("th", null, h)); });
-    th.appendChild(tr); t.appendChild(th);
-    var tb = el("tbody");
-    d.rows.forEach(function(r){
-      var x = el("tr");
-      x.appendChild(el("td", null, r.name || "—"));
-      var tz = el("td", "lab-num", r.tz || "—"); x.appendChild(tz);
-      x.appendChild(el("td", null, r.gan || "—"));
-      x.appendChild(el("td", null, r.city || "—"));
-      var c = el("td");
-      c.appendChild(el("span", "lab-tag " + r.tone, r.reason));
-      x.appendChild(c);
-      tb.appendChild(x);
-    });
-    t.appendChild(tb); wrap.appendChild(t); pp.appendChild(wrap);
-  }
-  two.appendChild(pp);      /* ימין */
-  two.appendChild(pc);      /* שמאל — כמו בלוח */
-  frag.appendChild(two);
   first.parentNode.insertBefore(frag, first);
 }
 
@@ -2541,7 +2493,6 @@ function maybeHome(){
     maybeStudents(); maybeAssign(); maybeGans(); maybeMap(); maybeStaff();
     homeBusy = true;
     try{ reportsScreen(); }catch(e){}
-    try{ muniScreen(); }catch(e){}
     try{ mgmtScreen(); }catch(e){}
     try{ messagesScreen(); }catch(e){}
     try{ exportScreen(); }catch(e){}
@@ -2560,7 +2511,7 @@ function paint(){
   if(busy) return;
   busy = true;
   try{
-    dropExportTab();
+    dropTabs();
     bottomBar();
     topBar();
     groupNav();
