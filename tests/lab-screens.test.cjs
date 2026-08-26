@@ -21,6 +21,10 @@
         והפס הכהה התחתון.
      7. "עדכון לפי ת"ז" שבייבוא הצוות: מחליף ערכים בתיק קיים, אינו נוגע
         בשדות שלא נבחרו, ופותח תיק חדש לת"ז שאינה במאגר.
+     8. בורר השנה אינו ברצועה העליונה אלא פאנל ראשון בהגדרות — וכשמחליפים
+        בו שנה, שנת העבודה באמת מתחלפת (ה-<select> המקורי נשאר במגירה).
+     9. פס הגלילה של הסרגל: צר, בלי חיצים ובגוון הסרגל — ולא המסילה
+        הלבנה של מערכת ההפעלה.
 
    הרצה:  NODE_PATH=$(npm root) node tests/lab-screens.test.cjs
    ============================================================================ */
@@ -432,6 +436,81 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     bad('ת"ז שאינה במאגר לא נפתחה כתיק חדש', ['נוצר=' + tz.created + ' נייד=' + tz.newMobile]);
   else ok('"עדכון לפי ת"ז" החליף נייד ועיר בתיק קיים, ופתח תיק חדש לת"ז שאינה במאגר');
   await p.evaluate(() => closeModal()); await p.waitForTimeout(400);
+
+  /* --- 8. בורר השנה: לא ברצועה העליונה, אלא ראשון בהגדרות --------------- */
+  await p.evaluate(() => { DB.years = ['תשפ"ז', 'תשפ"ח']; route(); });
+  await goTab(p, 'settings'); await p.waitForTimeout(900);
+  const yr = await p.evaluate(() => {
+    const col   = document.querySelector('.lab-setcol');
+    const first = col && col.firstElementChild;
+    const toc   = [...document.querySelectorAll('.lab-toc .lab-toci')].map(a => a.textContent.trim());
+    return {
+      inTop:   !!document.querySelector('header.top .lab-yearpick, header.top #yearSelect'),
+      inTopChips: !!document.querySelector('.top-chips #yearSelect'),
+      realHome: (document.getElementById('yearSelect') || {}).parentElement
+                  ? document.getElementById('yearSelect').parentElement.className : null,
+      firstPanel: first ? (first.dataset.lab || (first.querySelector('h2,h3') || {}).textContent) : null,
+      firstToc: toc[0] || null,
+      opts: [...document.querySelectorAll('.lab-yearsel option')].map(o => o.textContent),
+      value: (document.querySelector('.lab-yearsel') || {}).value
+    };
+  });
+  if (yr.inTop || yr.inTopChips)
+    bad('בורר השנה עדיין יושב ברצועה העליונה');
+  else if (yr.realHome !== 'drawer-year')
+    bad('ה-<select> המקורי אינו במגירה — הוא לא ישרוד בניית מסך מחדש', ['הורה: ' + yr.realHome]);
+  else if (yr.firstPanel !== 'year')
+    bad('פאנל "שנת עבודה" אינו הראשון בהגדרות', ['ראשון: ' + yr.firstPanel]);
+  else if (yr.firstToc !== 'שנת עבודה')
+    bad('"שנת עבודה" אינו הפריט הראשון ברשימת ההגדרות', ['ראשון: ' + yr.firstToc]);
+  else if (yr.opts.join(',') !== 'תשפ"ז,תשפ"ח' || yr.value !== 'תשפ"ז')
+    bad('הבורר שבהגדרות אינו משקף את רשימת השנים', ['אפשרויות: ' + yr.opts.join(' · ') + ' · נבחר: ' + yr.value]);
+  else ok('בורר השנה ירד מהרצועה העליונה ופותח את מסך ההגדרות (' + yr.opts.join(' · ') + ')');
+
+  /* הבחירה עצמה — חייבת להזיז את DB.activeYear דרך המאזין המקורי */
+  const sw = await p.evaluate(async () => {
+    const sel = document.querySelector('.lab-yearsel');
+    if (!sel) return null;
+    sel.value = 'תשפ"ח';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 500));
+    return { active: DB.activeYear,
+             real: (document.getElementById('yearSelect') || {}).value,
+             again: (document.querySelector('.lab-yearsel') || {}).value };
+  });
+  if (!sw)                       bad('הבורר שבהגדרות לא נמצא');
+  else if (sw.active !== 'תשפ"ח') bad('בחירת שנה בהגדרות לא שינתה את שנת העבודה', ['DB.activeYear=' + sw.active]);
+  else if (sw.real !== 'תשפ"ח')   bad('ה-<select> המקורי לא סונכרן', ['ערך=' + sw.real]);
+  else if (sw.again !== 'תשפ"ח')  bad('הבורר לא נבנה מחדש עם השנה החדשה', ['ערך=' + sw.again]);
+  else ok('בחירת שנה בהגדרות מחליפה את שנת העבודה (תשפ"ז ← תשפ"ח) והמסך נבנה מחדש');
+  await p.evaluate(() => { DB.activeYear = 'תשפ"ז'; DB.years = ['תשפ"ז']; route(); });
+  await p.waitForTimeout(400);
+
+  /* --- 9. פס הגלילה של הסרגל — צר, בלי חיצים, בגוון הסרגל --------------- */
+  const sb = await p.evaluate(() => {
+    const b = document.querySelector('.drawer-body');
+    if (!b) return null;
+    const before = b.style.height;
+    b.style.height = '80px';                 /* מאלץ גלילה כדי שהפס יתפוס רוחב */
+    const w = b.offsetWidth - b.clientWidth;
+    b.style.height = before;
+    const px = (el, pe, prop) => getComputedStyle(el, pe)[prop];
+    return { w: w,
+             gutter: getComputedStyle(b).scrollbarGutter,
+             thumb:  px(b, '::-webkit-scrollbar-thumb', 'backgroundColor'),
+             track:  px(b, '::-webkit-scrollbar-track', 'backgroundColor'),
+             arrow:  px(b, '::-webkit-scrollbar-button', 'display') };
+  });
+  if (!sb)                         bad('לא נמצא גוף המגירה');
+  else if (sb.gutter !== 'stable') bad('רוחב פס הגלילה אינו קבוע — התוכן יזוז כשהוא מופיע', ['gutter=' + sb.gutter]);
+  else if (!(sb.w > 0 && sb.w <= 6))
+    bad('פס הגלילה של הסרגל אינו צר', ['רוחב=' + sb.w + 'px (צפוי 5)']);
+  else if (sb.arrow !== 'none')    bad('החיצים של פס הגלילה לא הוסרו', ['display=' + sb.arrow]);
+  else if (!/^rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)$/.test(sb.track))
+    bad('המסילה הבהירה עדיין מצוירת', ['track=' + sb.track]);
+  else if (/^rgba?\(\s*(0,\s*0,\s*0|255,\s*255,\s*255)/.test(sb.thumb))
+    bad('גליל הגלילה אינו בגוון הסרגל', ['thumb=' + sb.thumb]);
+  else ok('פס הגלילה של הסרגל צר (' + sb.w + 'px), בלי חיצים ובלי מסילה, גליל ' + sb.thumb);
 
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));

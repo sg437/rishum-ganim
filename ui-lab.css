@@ -307,6 +307,40 @@ html.ui-lab .drawer{
 }
 html.ui-lab .drawer.open{ transform:translateX(0) }
 
+/* ---- פס הגלילה של הסרגל --------------------------------------------------
+   ברירת המחדל של המערכת היא מסילה בהירה עם חיצים בשני קצותיה — פס לבן
+   לכל גובה הסרגל הכהה, שחותך את הקו הרציף לשניים. כאן הוא נעשה דק מאוד,
+   בלי חיצים ובלי מסילה, ובגוון שנגזר מ---lab-deep עצמו: מעט בהיר ממנו,
+   כך שהוא נקרא כחלק מהסרגל ולא כרכיב של מערכת ההפעלה.
+   scrollbar-gutter:stable שומר את הרוחב תפוס תמיד, כדי שהתוכן לא יזוז
+   ברגע שהפס מופיע או נעלם.                                                 */
+html.ui-lab .drawer-body{ scrollbar-gutter:stable }
+
+/* ⚠️ שני התקנים אינם מתחברים: ברגע ש-scrollbar-width או scrollbar-color
+   מוגדרים על אלמנט, Chromium מתעלם מכל הפסאודו-אלמנטים ‎::-webkit-scrollbar‎
+   שלו — ו"thin" שלו הוא 10px, לא 5. לכן המילים התקניות חיות רק במנועים
+   שאין בהם ‎::-webkit-scrollbar‎ (Firefox), והפסאודו-אלמנטים חיים לבדם. */
+@supports not selector(::-webkit-scrollbar){
+  html.ui-lab .drawer-body{
+    scrollbar-width:thin;
+    scrollbar-color:color-mix(in srgb, var(--lab-deep) 78%, #fff) transparent;
+  }
+}
+html.ui-lab .drawer-body::-webkit-scrollbar{ width:5px; height:5px }
+html.ui-lab .drawer-body::-webkit-scrollbar-track,
+html.ui-lab .drawer-body::-webkit-scrollbar-corner{ background:transparent }
+/* החיצים — הסיבה העיקרית לכיעור; אין להם מקום בפס של 5px */
+html.ui-lab .drawer-body::-webkit-scrollbar-button{
+  display:none; width:0; height:0;
+}
+html.ui-lab .drawer-body::-webkit-scrollbar-thumb{
+  background:color-mix(in srgb, var(--lab-deep) 78%, #fff);
+  border-radius:999px;
+}
+html.ui-lab .drawer-body:hover::-webkit-scrollbar-thumb{
+  background:color-mix(in srgb, var(--lab-deep) 64%, #fff);
+}
+
 /* בקנבס אין בסרגל בורר שנה ואין את ארבעת כפתורי התחתית — הם עברו למסך 12
    (הגדרות): "שנים ומעבר שנה", "חשבון והתחברות", "פניות והצעות"; והעוזר החכם
    למסך 13. מצב יום/לילה אינו מופיע בשום מסך, וממשיך לעבוד לפי הגדרת מערכת
@@ -430,7 +464,9 @@ html.ui-lab .lu-mail{
   html.ui-lab .backbtn    {
     background:rgba(255,255,255,.12); border:0; color:#fff; border-radius:10px;
   }
-  html.ui-lab header.top .chip.year{ display:none }   /* הוחלף בבורר אמיתי */
+  /* השנה כבר כתובה בכותרת המשנה של המותג שבסרגל (brandSub), ולכן שבב
+     נוסף ברצועה הוא כפילות. במובייל, שם הסרגל סגור, השבב נשאר מוצג. */
+  html.ui-lab header.top .chip.year{ display:none }
   html.ui-lab header.top .chip.edu {
     background:rgba(255,255,255,.1); color:rgba(255,255,255,.78);
     border-color:transparent;
@@ -1757,24 +1793,32 @@ html.ui-lab .aiact .aiact-row .btn:not(.ghost){ flex:2; background:var(--accent)
 html.ui-lab .aiact .aiact-row .btn.ghost{ flex:1 }
 
 /* ===========================================================================
-   16 · הכותרת העליונה — בורר השנה
+   16 · בורר שנת העבודה — פאנל ראשון בהגדרות
+   ---------------------------------------------------------------------------
+   קודם הוא ישב ברצועה העליונה, ליד שבב החינוך. שם הוא קרא כמו מסנן תצוגה
+   שגרתי, בעוד שמעבר בין שנות לימוד הוא פעולה נדירה שמחליפה את כל הנתונים
+   שעל המסך. לכן הוא ירד להגדרות, לצד "שנים" ו"מעבר שנה", ומעוצב ככפתור
+   בחירה של ממש ולא כשבב.
    =========================================================================== */
-html.ui-lab .lab-yearpick{
-  display:inline-flex; align-items:center; gap:6px;
-  background:rgba(255,255,255,.14); border-radius:99px; padding:3px 10px 3px 6px;
-  color:#fff; font-size:.8rem; font-weight:600; cursor:pointer;
+html.ui-lab .lab-yearbox{
+  display:inline-flex; align-items:center; gap:9px;
+  background:var(--surface-2); border:1px solid var(--border);
+  border-radius:14px; padding:9px 14px;
 }
-html.ui-lab .lab-yearpick:hover{ background:rgba(255,255,255,.22) }
-html.ui-lab .lab-ycal{ opacity:.75; font-size:.85rem }
-html.ui-lab .lab-yearpick > select{
-  background:transparent; border:0; color:#fff; font:inherit; font-weight:600;
-  padding:2px 2px; cursor:pointer; min-width:0; width:auto; box-shadow:none;
-  appearance:none; -webkit-appearance:none; text-align:center;
+html.ui-lab .lab-ycal{ opacity:.6; font-size:1rem; color:var(--lab-gold) }
+html.ui-lab .lab-yearsel{
+  background:transparent; border:0; box-shadow:none; padding:2px 4px;
+  width:auto; min-width:0; cursor:pointer;
+  font:inherit; font-family:var(--lab-font-head);
+  font-size:1.15rem; font-weight:600; letter-spacing:-.02em; color:var(--ink);
 }
-html.ui-lab .lab-yearpick > select:focus{ outline:2px solid rgba(255,255,255,.5); border-radius:6px }
-html.ui-lab .lab-yearpick > select option{ color:var(--ink); background:var(--surface) }
+html.ui-lab .lab-yearsel:focus{ outline:2px solid var(--accent); border-radius:8px }
+html.ui-lab .lab-yearnote{
+  margin-top:10px; font-size:.78rem; font-weight:600; color:var(--muted);
+}
 
-/* מקטע השנה במגירה נשאר מוסתר — הבורר עלה לכותרת ואין לשכפל אותו */
+/* מקטע השנה במגירה נשאר מוסתר — הבורר יושב בהגדרות ואין לשכפל אותו.
+   ה-<select> המקורי עצמו נשאר שם חי (ראה yearPanel ב-ui-lab.js). */
 
 /* ===========================================================================
    17 · תלמידות וגנים — סרגל עליון, כרטיסים ושורת סינון (לוחות 01 ו-03)
