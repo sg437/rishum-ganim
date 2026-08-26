@@ -1301,14 +1301,20 @@ function matchLine(hostSel, word, totalFromStats){
   var line = view.querySelector(".lab-mline");
   if(!line){
     line = el("div", "lab-mline");
-    line.appendChild(el("span", "lab-mtxt", ""));
-    /* מחוץ ל-.stu-stage, שאם לא כן הוא הופך לעמודה בתוך ה-flex */
+    var w = el("span", "lab-mtxt");
+    w.appendChild(el("b", "lab-mnum", ""));
+    w.appendChild(el("span", "lab-mof", ""));
+    line.appendChild(w);
+    /* מחוץ ל-.stu-stage, שאם לא כן הוא הופך לעמודה בתוך ה-flex.
+       studentsCard מכניס אותו אחר כך לכרטיס הלבן יחד עם הטבלה. */
     var stage = host.closest(".stu-stage") || host;
     stage.parentNode.insertBefore(line, stage);
   }
-  var txt = shown + " " + word + " · מתוך " + totalFromStats;
-  var t = line.querySelector(".lab-mtxt");
-  if(t.textContent !== txt) t.textContent = txt;   /* בלי זה — לולאת צופה */
+  var head = shown + " " + word;
+  var tail = " · מתוך " + totalFromStats;
+  var bn = line.querySelector(".lab-mnum"), bo = line.querySelector(".lab-mof");
+  if(bn && bn.textContent !== head) bn.textContent = head;   /* בלי זה — לולאת צופה */
+  if(bo && bo.textContent !== tail) bo.textContent = tail;
 }
 
 function maybeStaff(){
@@ -2358,6 +2364,28 @@ function hideField(node){
   if(f && f !== node) f.classList.add("lab-hidden");
 }
 
+/* שורת ההתאמות והטבלה הן כרטיס לבן אחד, כמו בלוח — ולא שורה חשופה
+   מעל כרטיס. הפאנל החיצוני נשאר, אבל בלי רקע ומסגרת משלו. */
+function studentsCard(){
+  var stage = view.querySelector(".stu-stage");
+  var table = view.querySelector("#stuTable");
+  var line  = view.querySelector(".lab-mline");
+  if(!stage || !table) return;
+
+  var panel = stage.closest(".panel");
+  if(panel) panel.classList.add("lab-bare");
+
+  var card = stage.querySelector(".lab-tablecard");
+  if(!card){
+    card = el("div", "lab-tablecard");
+    stage.insertBefore(card, table);
+    if(line) card.appendChild(line);
+    card.appendChild(table);
+  }else if(line && line.parentNode !== card){
+    card.insertBefore(line, card.firstChild);
+  }
+}
+
 /* הפס התחתון (הצילום שצורף): "עדכון קבוצתי" יושב בפס הכהה שבתחתית
    המסך, יחד עם פעולות הבחירה, והפס נשאר גלוי בגלילה.
 
@@ -2436,15 +2464,10 @@ function maybeStudents(){
     });
     var host = view.querySelector("#stuTable");   /* אחרי matchLine — הבורר נכנס לתוכו */
     if(host){ stuToggle(host); applyStuMode(); }
-    studentsTop(); studentsFilters(); colPlus(); studentsBottom();
+    studentsTop(); studentsFilters(); studentsCard(); colPlus(); studentsBottom();
     /* כשתיק הילדה פתוח, שורת ההתאמות והבורר נעצרים בקצה הטבלה ואינם
        נמתחים מעל הפאנל — כפי שהלוח מציג. */
-    var q = view.querySelector("#stuQuick");
-    var ml = view.querySelector(".lab-mline");
-    if(ml){
-      var open = !!(q && !q.classList.contains("empty-state"));
-      if(ml.classList.contains("lab-narrow") !== open) ml.classList.toggle("lab-narrow", open);
-    }
+
   }catch(e){}
   homeBusy = false;
 }

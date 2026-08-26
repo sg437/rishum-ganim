@@ -1816,9 +1816,7 @@ html.ui-lab .lab-mchip .msel-menu{
 html.ui-lab .lab-agechip .msel-menu{ min-width:0 }
 html.ui-lab .lab-agechip #f-age{ margin:0 }
 
-/* שורת ההתאמות נעצרת בקצה הטבלה כשתיק הילדה פתוח */
-html.ui-lab .lab-mline.lab-narrow{ padding-inline-end:310px }
-@media (max-width:900px){ html.ui-lab .lab-mline.lab-narrow{ padding-inline-end:0 } }
+
 
 /* ===========================================================================
    הפס התחתון — עדכון קבוצתי ופעולות הבחירה
@@ -1891,3 +1889,39 @@ html.ui-lab .selbar{ position:static }
 /* הפס נעצר בקצה הטבלה כשתיק הילדה פתוח — לא נכנס מתחתיו */
 html.ui-lab .lab-botwrap.lab-narrow{ margin-inline-end:310px }
 @media (max-width:900px){ html.ui-lab .lab-botwrap.lab-narrow{ margin-inline-end:0 } }
+
+/* ===========================================================================
+   19 · תלמידות — כרטיס הטבלה ותיק הילדה (לוח 01)
+   ---------------------------------------------------------------------------
+   בלוח שורת ההתאמות והטבלה הן כרטיס לבן אחד רציף, ותיק הילדה כרטיס נפרד
+   לצידו — מעוגל מכל כיווניו ובלי גלילה לצדדים.
+   =========================================================================== */
+html.ui-lab .lab-tablecard{
+  flex:1 1 0; min-width:0;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
+}
+html.ui-lab .lab-tablecard > .lab-mline{
+  margin:0; padding:13px 18px; border-bottom:1px solid var(--lab-rule-row);
+}
+html.ui-lab .lab-mnum{ font-weight:700; color:var(--ink); font-size:.92rem }
+html.ui-lab .lab-mof { font-weight:600; color:var(--muted); font-size:.88rem }
+html.ui-lab .lab-tablecard > #stuTable{ margin:0 }
+/* הטבלה גוללת בתוך הכרטיס כשהיא צרה מדי (למשל כשתיק הילדה פתוח) —
+   בלי זה העמודות השמאליות נחתכות מאחורי overflow:hidden של הכרטיס. */
+html.ui-lab .lab-tablecard .table-wrap{
+  border:0; border-radius:0; box-shadow:none; margin:0;
+  overflow-x:auto; max-width:100%;
+}
+html.ui-lab .lab-tablecard table{ border-radius:0 }
+
+/* הפאנל החיצוני הוא העמוד — הכרטיסים שבתוכו נושאים את המסגרות */
+html.ui-lab #view > .panel.lab-bare > .stu-stage{ margin-top:0 }
+
+/* תיק הילדה: מעוגל מכל הכיוונים, בלי גלילה אופקית */
+html.ui-lab .stu-quick{ overflow-x:hidden; overflow-y:auto; padding-inline-start:2px }
+html.ui-lab .stu-quick .qcard{ border-radius:var(--radius); overflow:hidden }
+html.ui-lab .stu-quick .qcard > .qhead{
+  margin:-14px -14px 0; padding:14px; border-radius:0;
+}
+html.ui-lab .stu-quick .qcard > *:not(.qhead){ max-width:100%; min-width:0 }
