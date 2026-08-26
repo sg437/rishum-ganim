@@ -1823,74 +1823,71 @@ html.ui-lab .lab-mline.lab-narrow{ padding-inline-end:310px }
 /* ===========================================================================
    הפס התחתון — עדכון קבוצתי ופעולות הבחירה
    ---------------------------------------------------------------------------
-   פאנל השדות (#bulkBar) נולד בראש המסך ולכן קפץ למעלה בכל פתיחה. כאן הוא
-   יושב בתוך פס נעוץ לתחתית המסך, יחד עם פס הבחירה וכפתור המצב — הכול
-   כגוש כהה אחד שנשאר גלוי בזמן גלילה ברשימה ארוכה.
+   #bulkBar נולד בראש המסך ולכן קפץ למעלה בכל פתיחה. כאן הוא יושב בפס נעוץ
+   לתחתית המסך, בשורה אחת עם מתג המצב. הכול קומפקטי: בלי כותרת, בלי משבצת
+   פנימית ובלי שורת ההסבר — הן הכפילו את גובה הפס בלי להוסיף מידע.
    =========================================================================== */
 html.ui-lab .lab-botwrap{
   position:sticky; bottom:12px; z-index:25; margin-top:14px;
   display:flex; flex-direction:column; gap:0; pointer-events:none;
 }
 html.ui-lab .lab-botwrap > *{ pointer-events:auto }
-html.ui-lab .lab-botrow{
-  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-}
-html.ui-lab .lab-botrow > #stuSelBar{ flex:1 1 auto; min-width:0 }
-html.ui-lab .lab-botrow > #stuSelBar:empty{ display:none }
+html.ui-lab .lab-botline{ display:flex; align-items:center; gap:7px; flex-wrap:wrap }
+html.ui-lab .lab-botline > #bulkBar{ flex:1 1 auto; min-width:0 }
+html.ui-lab .lab-botline > #bulkBar:empty{ display:none }
 html.ui-lab .lab-botbar{ flex:0 0 auto; margin-inline-start:auto }
 
-/* ---- מצב פעיל: גוש כהה אחד ---- */
+/* ---- מצב פעיל: גוש כהה אחד, נמוך ---- */
 html.ui-lab .lab-botwrap.on{
-  background:var(--lab-deep); border-radius:18px; padding:14px 16px; gap:12px;
-  box-shadow:0 14px 38px rgba(21,52,42,.30);
+  background:var(--lab-deep); border-radius:14px; padding:8px 11px; gap:6px;
+  box-shadow:0 12px 30px rgba(21,52,42,.28);
 }
-html.ui-lab .lab-botwrap.on .lab-botbar{ margin-inline-start:auto }
 html.ui-lab .lab-botwrap.on .selbar{
   background:none; box-shadow:none; padding:0; margin:0; border-radius:0;
+  gap:7px; min-height:0; flex-wrap:wrap;
 }
 
-/* פאנל השדות בתוך הפס הכהה */
-html.ui-lab .lab-botwrap #bulkBar:empty{ display:none }
+/* פאנל השדות — שורה בלבד. הכותרת, הרקע הפנימי ושורת ההסבר יורדים. */
 html.ui-lab .lab-botwrap.on #bulkBar > .panel{
-  background:rgba(255,255,255,.07) !important; border:1px solid rgba(255,255,255,.14);
-  border-radius:14px; padding:12px 14px !important; margin:0 !important;
-  box-shadow:none; color:#f3f6f1;
+  background:none !important; border:0 !important; border-radius:0;
+  padding:0 !important; margin:0 !important; box-shadow:none; color:#f3f6f1;
 }
-html.ui-lab .lab-bulklbl{
-  font-size:.74rem; font-weight:700; color:var(--lab-gold-on-deep);
-  letter-spacing:-.01em; margin-bottom:9px;
+html.ui-lab .lab-botwrap.on #bulkBar > .panel > .row{ gap:7px !important; margin:0 }
+html.ui-lab .lab-botwrap.on #bulkBar .hint{ display:none }
+html.ui-lab .lab-bulklbl{ display:none }
+html.ui-lab .lab-botwrap.on #bulkBar .field{
+  display:flex; align-items:center; gap:7px; margin:0;
 }
-html.ui-lab .lab-botwrap.on #bulkBar label{ color:#a9c0b2; font-size:.72rem; font-weight:700 }
+html.ui-lab .lab-botwrap.on #bulkBar label{
+  color:#a9c0b2; font-size:.74rem; font-weight:700; margin:0; white-space:nowrap;
+}
 html.ui-lab .lab-botwrap.on #bulkBar select{
   background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
-  color:#f3f6f1; border-radius:10px; font-size:.85rem; padding:8px 11px;
+  color:#f3f6f1; border-radius:8px; font-size:.8rem; padding:5px 9px; margin:0;
+  line-height:1.4; height:auto; min-height:0;
 }
 html.ui-lab .lab-botwrap.on #bulkBar select option{ color:var(--ink); background:var(--surface) }
-html.ui-lab .lab-botwrap.on #bulkBar .hint{ color:#94a99c; font-size:.74rem }
-html.ui-lab .lab-botwrap.on #bulkBar .btn{
-  background:rgba(255,255,255,.12); border:0; color:#f3f6f1;
-  border-radius:10px; font-weight:600;
-}
-html.ui-lab .lab-botwrap.on #bulkBar .btn:hover{ background:rgba(255,255,255,.22) }
-html.ui-lab .lab-botwrap.on #bulkBar .btn#bulk-yes{ background:#fff; color:var(--lab-deep); font-weight:700 }
-html.ui-lab .lab-botwrap.on #bulkBar .btn#bulk-yes:hover{ background:#e9f1ea }
-html.ui-lab .lab-botwrap.on .lab-bulkbtn{
-  background:rgba(255,255,255,.12); color:#f3f6f1; border:0; box-shadow:none;
-}
-html.ui-lab .lab-botwrap.on .lab-bulkbtn:hover{ background:rgba(255,255,255,.22); color:#fff }
 
-/* ---- מצב רגוע: רק הכפתור, בפינה השמאלית התחתונה ---- */
+/* כפתורים — נמוכים ואחידים בכל הפס */
+html.ui-lab .lab-botwrap.on .btn{
+  background:rgba(255,255,255,.12); border:0; color:#f3f6f1;
+  border-radius:8px; font-weight:600; font-size:.78rem; padding:5px 11px;
+  box-shadow:none; line-height:1.4;
+}
+html.ui-lab .lab-botwrap.on .btn:hover{ background:rgba(255,255,255,.22); color:#fff }
+html.ui-lab .lab-botwrap.on .btn#bulk-yes{ background:#fff; color:var(--lab-deep); font-weight:700 }
+html.ui-lab .lab-botwrap.on .btn#bulk-yes:hover{ background:#e9f1ea }
+html.ui-lab .lab-botwrap.on .selbar > b{ font-size:.85rem; font-weight:700; color:#f3f6f1 }
+
+/* ---- מצב רגוע: רק המתג, בפינה השמאלית התחתונה ---- */
 html.ui-lab .lab-bulkbtn{
-  border-radius:99px; padding:8px 15px; font-size:.82rem; font-weight:600;
+  border-radius:99px; padding:7px 14px; font-size:.8rem; font-weight:600;
   background:var(--surface); border:1px solid var(--border); color:var(--ink-soft);
   box-shadow:0 6px 18px rgba(21,52,42,.12);
 }
 html.ui-lab .lab-bulkbtn:hover{ border-color:var(--accent); color:var(--accent-strong) }
 html.ui-lab .selbar{ position:static }
-/* "שיבוץ לגן…" מסומן .light בקוד — בתוך הפס הכהה הוא נבלע */
-html.ui-lab .lab-botwrap.on .selbar .btn,
-html.ui-lab .lab-botwrap.on .selbar .btn.light{
-  background:rgba(255,255,255,.12); color:#f3f6f1; border:0;
-}
-html.ui-lab .lab-botwrap.on .selbar .btn:hover,
-html.ui-lab .lab-botwrap.on .selbar .btn.light:hover{ background:rgba(255,255,255,.22) }
+
+/* הפס נעצר בקצה הטבלה כשתיק הילדה פתוח — לא נכנס מתחתיו */
+html.ui-lab .lab-botwrap.lab-narrow{ margin-inline-end:310px }
+@media (max-width:900px){ html.ui-lab .lab-botwrap.lab-narrow{ margin-inline-end:0 } }

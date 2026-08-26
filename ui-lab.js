@@ -2377,11 +2377,11 @@ function studentsBottom(){
     /* #bulkBar נולד בראש המסך — שם הוא קפץ למעלה בכל פתיחה.
        מזיזים את האלמנט עצמו; renderBulkBar כותב לתוכו לפי id ולכן
        ממשיך לעבוד בדיוק כמו קודם, רק במקום אחר. */
-    if(bulkBar) wrap.appendChild(bulkBar);
-    var row = el("div", "lab-botrow");
-    row.appendChild(host);
-    row.appendChild(el("div", "lab-botbar"));
-    wrap.appendChild(row);
+    var line = el("div", "lab-botline");
+    if(bulkBar) line.appendChild(bulkBar);
+    line.appendChild(el("div", "lab-botbar"));   /* מתג המצב — באותה שורה */
+    wrap.appendChild(line);
+    wrap.appendChild(host);
   }
   var bb = wrap.querySelector(".lab-botbar");
   var bulk = view.querySelector("#bulkToggle");
@@ -2391,17 +2391,14 @@ function studentsBottom(){
     bb.appendChild(bulk);                   /* העברה — המאזין נשמר */
   }
 
-  /* תווית "עדכון קבוצתי" בצד ימין של פאנל השדות, כפי שנתבקש */
-  if(bulkBar){
-    var inner = bulkBar.querySelector(".panel");
-    if(inner && !inner.querySelector(".lab-bulklbl")){
-      inner.insertBefore(el("div", "lab-bulklbl", "עדכון קבוצתי"), inner.firstChild);
-    }
-  }
-
   /* הפס נצבע כהה כשיש בו תוכן — פאנל שדות או בחירה פעילה */
   var live = !!(host.querySelector(".selbar") || (bulkBar && bulkBar.firstChild));
   if(wrap.classList.contains("on") !== live) wrap.classList.toggle("on", live);
+
+  /* כשתיק הילדה פתוח הפס נעצר בקצה הטבלה ואינו נכנס מתחת לתיק */
+  var q = view.querySelector("#stuQuick");
+  var narrow = !!(q && !q.classList.contains("empty-state"));
+  if(wrap.classList.contains("lab-narrow") !== narrow) wrap.classList.toggle("lab-narrow", narrow);
 }
 
 /* "+" בכותרת הטבלה לעמודות הנוספות — במקום הכפתור עם הטקסט */
