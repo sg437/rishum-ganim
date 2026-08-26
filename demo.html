@@ -635,7 +635,12 @@ var GANNAME = ["רימון","תפוח","דובדבן","שקד","זית","גפן"
   "יסמין","דפנה","מרווה","זעתר","אזוב","לבנדר","ורד","חבצלת","סביון"];
 var PERIODS = ["א׳","ב׳","ג׳","סופי"];
 var DOCS = [["form","נספח"],["id","צילום ת״ז"],["rules","תקנון"]];
-var ROLES = ["גננת","סייעת","סייעת ב׳","סייעת רפואית","סייעת צמודה","גננת משלימה"];
+var ROLES = ["גננת","סייעת","סייעת ב׳","סייעת רפואית","סייעת צמודה","גננת משלימה",
+             "העשרה","מנתחת התנהגות","פרא רפואי","הכנה לכיתה א׳"];
+/* מי שאינו גננת ואינו סייעת — המשבצת "שאר הצוות" ותפריט "תפקידים נוספים" */
+var ROLES_OTHER = ROLES.filter(function(r){
+  return r.indexOf("גננת") < 0 && r.indexOf("סייעת") < 0;
+});
 
 function ini(name){
   var w = String(name || "").trim().split(/\s+/).filter(Boolean);
@@ -700,21 +705,32 @@ function ganName(id){ var g = ganById(id); return g ? g.name : ""; }
 function docsDone(s){ var n = 0; DOCS.forEach(function(d){ if(s.docs[d[0]]) n++; }); return n; }
 
 /* --------------------------------------------------------------- הצוות */
+var PREV_Y = "תשפ״ז";      /* השנה הקודמת — נחוצה כבר כאן, לתנועות שבתיק */
 var STAFF = [];
 (function(){
   for(var i = 0; i < 58; i++){
-    var role = i < 31 ? "גננת" : (i < 52 ? pick(["סייעת","סייעת","סייעת","סייעת רפואית","סייעת צמודה"]) : pick(ROLES));
+    var role = i < 31 ? "גננת" : (i < 52 ? pick(["סייעת","סייעת","סייעת","סייעת רפואית","סייעת צמודה"]) : pick(ROLES_OTHER));
     var g = rnd() > 0.12 ? GANS[i % GANS.length] : null;
+    var last = pick(LAST), first = pick(WOMAN);
+    var city = pick(CITY)[0];
     STAFF.push({
-      id: "m" + i, last: pick(LAST), first: pick(WOMAN),
+      id: "m" + i, last: last, first: first,
       tz: String(iRnd(30000000, 49999999)),
       role: role,
       edu: (g && g.edu) || "רגיל",
       ganId: g ? g.id : "",
       seniority: iRnd(1, 16),
       mobile: "05" + iRnd(2, 4) + "-" + iRnd(1000000, 9999999),
+      phone: "0" + iRnd(2, 8) + "-" + iRnd(1000000, 9999999),
+      email: "s" + i + "@ganim.org",
+      street: pick(STREET), building: String(iRnd(1, 40)), city: city,
       cert: rnd() > 0.16,
-      active: true
+      active: rnd() > 0.07,
+      absences: iRnd(0, 7), lateness: iRnd(0, 4),
+      note: rnd() > 0.72 ? "מבקשת לא לשבץ לצהרון בימי חמישי." : "",
+      /* תנועות בשנים קודמות — לתיק שנפתח בצד */
+      hist: g ? [{ year: PREV_Y, gan: g.name, role: role },
+                 { year: "תשפ״ו", gan: pick(GANS).name, role: role }].slice(0, iRnd(1, 2)) : []
     });
   }
 })();
@@ -785,12 +801,12 @@ function table(cols, rows, cls){
   t.appendChild(tb); wrap.appendChild(t);
   return wrap;
 }
-function searchbar(ph){
-  var f = h("div", { "class": "search-field" }, [
-    txt("span", "mag", "🔎"),
-    h("input", { placeholder: ph })
-  ]);
+function searchbar(ph, inputId, toggleId){
+  var inp = h("input", { placeholder: ph });
+  if(inputId) inp.id = inputId;
+  var f = h("div", { "class": "search-field" }, [ txt("span", "mag", "🔎"), inp ]);
   var tg = h("button", { "class": "filter-toggle", type: "button", html: "☰ סינון" });
+  if(toggleId) tg.id = toggleId;
   tg.onclick = demoAction("פתיחת הסינון");
   return h("div", { "class": "searchbar" }, [f, tg]);
 }
@@ -963,15 +979,30 @@ VIEW.gans = function(v){
   ]));
 };
 
+/* מסך הצוות. הכותרת, שדה החיפוש (#fs-q), בורר הסטטוס (#fs-status) ומזהי
+   הכפתורים חייבים להיות של התוכנה האמיתית — שכבת המעבדה נצמדת אליהם, מזיזה
+   את שדה החיפוש לתוך עמודת הרשימה, עוטפת את הבורר בשבב ובונה את הרשימה
+   בת חמש העמודות מעל ‎__uiLab.staffRows()‎. הטבלה שכאן היא מה שהתוכנה
+   מציגה בעיצוב הקיים, והמעבדה מסתירה אותה. */
 VIEW.staff = function(v){
   v.appendChild(h("div", { "class": "panel" }, [
     h("div", { "class": "section-title" }, [ txt("h2", null, "רשימת צוות הגנים") ]),
-    searchbar("חיפוש שם, ת״ז, טלפון או עיר…"),
+    searchbar("חיפוש שם / טלפון / עיר…", "fs-q", "staffFilterToggle"),
+    h("div", { "class": "filter-panel", id: "staffFilterPanel", hidden: "" }, [
+      h("div", { "class": "toolbar", style: "margin-bottom:0" }, [
+        h("div", { "class": "field" }, [ txt("label", null, "תפקיד"),
+          h("select", { id: "fs-role", html: "<option value=''>הכל</option>" +
+            ROLES.map(function(r){ return "<option>" + r + "</option>"; }).join("") }) ]),
+        h("div", { "class": "field" }, [ txt("label", null, "סטטוס"),
+          h("select", { id: "fs-status", html:
+            "<option value='active'>פעילים/ות</option><option value='left'>עזבו/יצאו</option><option value='all'>הכל</option>" }) ])
+      ])
+    ]),
     toolbar([["➕ הוספת איש/אשת צוות", "addStaff"], ["📣 שליחת הודעות", "staffMsg"],
              ["⬆️ ייבוא מקובץ", "impStaff"]]),
     h("div", { id: "staffTable" }, [
       table(["איש/אשת צוות", "תפקיד", "משובצת ב־", "ותק", "נייד", "תעודה"],
-        STAFF.map(function(m){
+        demoStaffList().map(function(m){
           return [
             h("div", null, [ h("b", { text: m.last + " " + m.first }),
                              h("div", { "class": "hint", style: "direction:ltr;unicode-bidi:isolate", text: m.tz }) ]),
@@ -984,7 +1015,42 @@ VIEW.staff = function(v){
         }))
     ])
   ]));
+  /* שדה החיפוש ובורר הסטטוס אמיתיים גם בדמו — הרשימה מגיבה להם */
+  var q = document.getElementById("fs-q");
+  if(q){ q.value = demoStaff.q; q.oninput = function(){ demoStaff.q = q.value; route(); }; }
+  var st = document.getElementById("fs-status");
+  if(st){ st.value = demoStaff.status; st.onchange = function(){ demoStaff.status = st.value; route(); }; }
 };
+
+/* מצב הסינון והמיון של מסך הצוות בדמו — המקבילה ל-staffFilter/staffSort */
+var demoStaff = { q: "", roles: [], status: "active", sortKey: "lastName", sortDir: 1 };
+
+function demoStaffList(){
+  var q = demoStaff.q.trim().toLowerCase();
+  var list = STAFF.filter(function(m){
+    if(demoStaff.status === "active" && !m.active) return false;
+    if(demoStaff.status === "left"   &&  m.active) return false;
+    if(demoStaff.roles.length && demoStaff.roles.indexOf(m.role) < 0) return false;
+    if(q){
+      var hay = (m.last + " " + m.first + " " + m.tz + " " + m.role + " " +
+                 m.mobile + " " + m.city).toLowerCase();
+      if(hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+  var k = demoStaff.sortKey, d = demoStaff.sortDir;
+  var val = function(m){
+    if(k === "gan")    return m.ganId ? ganName(m.ganId) : "\uffff";   /* הלא־משובצים בסוף */
+    if(k === "status") return m.active ? "0" : "1";
+    if(k === "mobile") return m.mobile;
+    if(k === "role")   return m.role;
+    return m.last;
+  };
+  return list.sort(function(a, b){
+    return (String(val(a)).localeCompare(String(val(b)), "he") * d) ||
+           (a.last + a.first).localeCompare(b.last + b.first, "he");
+  });
+}
 
 VIEW.map = function(v){
   var list = h("div", { id: "map-gan-list", style: "max-height:190px;overflow:auto;padding:9px;border:1px solid var(--border);border-radius:12px" });
@@ -1604,6 +1670,12 @@ window.__uiLab = Object.freeze({
     var kinds = {};
     say.forEach(function(m){ kinds[m.role] = (kinds[m.role] || 0) + 1; });
     var assigned = STAFF.filter(function(m){ return m.ganId; }).length;
+    /* "שאר הצוות" — המשלים של גננות וסייעות, כמו במסך האמיתי */
+    var rest = STAFF.filter(function(m){
+      return m.role.indexOf("גננת") < 0 && m.role.indexOf("סייעת") < 0;
+    });
+    var restKinds = {};
+    rest.forEach(function(m){ restKinds[m.role] = (restKinds[m.role] || 0) + 1; });
     return {
       total: STAFF.length,
       ganenet: gan.length, ganenetSplit: { n: gan.length, special: sp(gan), regular: gan.length - sp(gan) },
@@ -1611,9 +1683,66 @@ window.__uiLab = Object.freeze({
       sayaatKinds: Object.keys(kinds).map(function(k){ return { role: k, n: kinds[k] }; })
                      .sort(function(a, b){ return b.n - a.n; }).slice(0, 3),
       noCert: STAFF.filter(function(m){ return !m.cert; }).length,
+      other: rest.length,
+      otherKinds: Object.keys(restKinds).map(function(k){ return { role: k, n: restKinds[k] }; })
+                    .sort(function(a, b){ return b.n - a.n; }).slice(0, 3),
       assigned: assigned, unassigned: STAFF.length - assigned
     };
   },
+
+  /* ---- לשונית הצוות: הרשימה, הסינון והתיק שבצד (לוח 04) ---------------- */
+  staffRows: function(){
+    var list = demoStaffList();
+    return {
+      total: list.length,
+      pool: STAFF.filter(function(m){ return m.active; }).length,
+      sort: { key: demoStaff.sortKey, dir: demoStaff.sortDir },
+      rows: list.map(function(m){
+        return {
+          id: m.id, name: m.last + " " + m.first, ini: (m.last[0] || "") + (m.first[0] || ""),
+          tz: m.tz, role: m.role, roleInk: "", phone: m.mobile, edu: m.edu,
+          gan: m.ganId ? ganName(m.ganId) : "", ganRole: "",
+          active: m.active, status: m.active ? "פעיל/ה" : "עזב/ה",
+          tone: m.active ? "good" : "bad"
+        };
+      })
+    };
+  },
+  staffFilterState: function(){
+    return { roles: ROLES.slice(), picked: demoStaff.roles.slice(), status: demoStaff.status };
+  },
+  setStaffFilter: function(patch){
+    Object.keys(patch || {}).forEach(function(k){ demoStaff[k] = patch[k]; });
+    route();
+  },
+  setStaffSort: function(key){
+    if(demoStaff.sortKey === key) demoStaff.sortDir *= -1;
+    else { demoStaff.sortKey = key; demoStaff.sortDir = 1; }
+    route();
+  },
+  staffDossier: function(id){
+    var m = STAFF.filter(function(x){ return x.id === id; })[0];
+    if(!m) return null;
+    var g = m.ganId ? ganById(m.ganId) : null;
+    return {
+      id: m.id, name: m.last + " " + m.first, ini: (m.last[0] || "") + (m.first[0] || ""),
+      role: m.role, roleInk: "", tz: m.tz, edu: m.edu,
+      mobile: m.mobile, phone: m.phone, email: m.email,
+      address: m.street + " " + m.building + ", " + m.city,
+      weeklyHours: "", active: m.active, years: m.seniority,
+      placements: g ? [{ gan: g.name, role: m.role, days: "" }] : [],
+      docs: [{ key: "certificate", label: "תעודה", on: m.cert, link: "" }],
+      history: (m.hist || []).map(function(x, i){
+        return { year: i ? x.year : YEAR, gan: x.gan, role: x.role,
+                 ctx: "פעילות הגן", now: i === 0 };
+      }),
+      absences: m.absences, lateness: m.lateness,
+      notes: m.note ? [m.note] : [],
+      year: YEAR
+    };
+  },
+  openStaffFull: function(){ toast("דמו — תיק העובדת המלא אינו נפתח כאן. שום נתון לא נשמר."); },
+  staffExport:   function(){ toast("דמו — הייצוא אינו פעיל כאן. שום נתון לא נשמר."); },
 
   gansBoard: function(){
     var m = {};

@@ -1254,12 +1254,35 @@ function maybeMap(){
 /* ===========================================================================
    צוות הגנים (לוח 04)
    ---------------------------------------------------------------------------
-   שורת KPI מעל הטבלה, ראשי תיבות בשורות, והתפקיד כתגית. הטבלה, החיפוש
-   והסינון נשארים של התוכנה.
+   המסך שהתוכנה בונה הוא פאנל אחד: כותרת, שורת חיפוש, פאנל סינון, שורת
+   כפתורים וטבלה בת תשע עמודות. הלוח מציג משהו אחר לגמרי — ולכן כאן:
+
+     · ארבע משבצות מספרים מעל הכול, הרביעית "שאר הצוות";
+     · שורת החיפוש יורדת *מתחת* למשבצות ונכנסת לעמודת הרשימה, כך שברגע
+       שנפתח תיק בצד היא מתכווצת איתה ואינה נמתחת מתחתיו;
+     · שבבי תפקיד לבחירה מרובה במקום בורר יחיד בפאנל נפתח;
+     · הרשימה מוצגת בחמש עמודות בלבד (שם · טלפון · תפקיד · משובצת ב־ ·
+       סטטוס), בטבלה או בכרטיסים;
+     · תיק מקוצר שנפתח בצד, באותם רכיבים של תיק הילדה (‎.stu-quick‎);
+     · פס כהה בתחתית עם פעולות על מי שנבחרה.
+
+   ⚠️ הרשימה נבנית כאן ואינה מעצבת את הטבלה של התוכנה: ‎renderStaffTable‎
+   עושה ‎innerHTML=‎ ל-‎#staffTable‎ בכל צביעה ומוחק כל דבר שנוגעים בו
+   בתוכו. לכן הרשימה שלנו יושבת כאחות שלו, והוא עצמו מוסתר. המיון, החיפוש
+   והסינון נשארים של התוכנה — הכול עובר דרך ‎__uiLab.setStaffFilter‎ /
+   ‎setStaffSort‎, שקוראים ל-‎renderStaffTable‎ המקורי.
    =========================================================================== */
+var staffMode = "table";     /* טבלה | כרטיסים — "טבלה" הוא הפעיל בלוח */
+var staffOpen = "";          /* מזהה התיק הפתוח בצד ("" = סגור) */
+
+function staffData(){
+  return (window.__uiLab && window.__uiLab.staffRows) ? window.__uiLab.staffRows() : null;
+}
+
+/* --- ארבע המשבצות ------------------------------------------------------- */
 function staffKpis(){
-  var host = view.querySelector("#staffTable");
-  if(!host || view.querySelector(".lab-stkpis")) return;
+  var stage = staffStage();
+  if(!stage || view.querySelector(".lab-stkpis")) return;
   var d = (window.__uiLab && window.__uiLab.staffBoard) ? window.__uiLab.staffBoard() : null;
   if(!d) return;
   var row = el("div", "lh-kpis lab-stkpis");
@@ -1275,36 +1298,581 @@ function staffKpis(){
     sub:(d.sayaatKinds && d.sayaatKinds.length)
         ? d.sayaatKinds.map(function(k){ return k.n + " " + k.role; }).join(" · ")
         : (ss.regular != null ? ss.regular + " רגיל · " + ss.special + " ח״מ" : "") }));
-  row.appendChild(kpi({ label:"ללא תעודה", value:d.noCert, tone:d.noCert ? "bad" : "good",
-    sub:d.total ? Math.round(d.noCert / d.total * 100) + "% מהמאגר" : "" }));
-  host.parentNode.insertBefore(row, host);
+  /* המשבצת הרביעית: המשלים המדויק של שתי שלידה — מי שאינו גננת ואינו סייעת */
+  row.appendChild(kpi({ label:"שאר הצוות", value:d.other || 0,
+    sub:(d.otherKinds && d.otherKinds.length)
+        ? d.otherKinds.map(function(k){ return k.n + " " + k.role; }).join(" · ")
+        : "אין תפקידים נוספים" }));
+  stage.parentNode.insertBefore(row, stage);
 }
 
-function staffRows(){
-  /* ראשי תיבות בתא שם המשפחה, ותגית לתפקיד — כמו בלוח */
-  view.querySelectorAll("#staffTable tbody tr").forEach(function(tr){
-    var tds = tr.children;
-    if(tds.length < 3) return;
-    var nameCell = tds[0], roleCell = tds[2];
-    if(!nameCell.querySelector(".lab-ini")){
-      var last = (nameCell.textContent || "").trim();
-      var first = (tds[1].textContent || "").trim();
-      var ini = initialsFrom((last + " " + first).trim());
-      if(ini){
-        var sp = el("span", "lab-ini", ini);
-        nameCell.insertBefore(sp, nameCell.firstChild);
-        nameCell.classList.add("lab-namecell");
-      }
+/* --- הכותרת וכפתורי הפעולה ---------------------------------------------- */
+/* הסדר בלוח, מימין לשמאל: שליחת הודעות · ייבוא · ייצוא · הוספה.
+   ל"ייצוא" לא היה כפתור בלשונית הזאת — הוא נבנה כאן ופותח את חלון ייצוא
+   הצוות (‎labStaffExport‎), שמייצא בדיוק את הרשימה שעל המסך. */
+var STAFF_TOP = ["staffMsg", "impStaff", "labStaffExp", "addStaff"];
+
+function staffTop(){
+  var head = view.querySelector(".lab-shead");
+  if(!head) return;
+
+  var h2 = head.querySelector("h2");
+  if(h2 && h2.textContent.trim() !== "צוות הגנים") h2.textContent = "צוות הגנים";
+
+  var d = staffData();
+  if(d){
+    var line = head.querySelector(".lab-ssub");
+    if(!line){
+      line = el("div", "lab-ssub");
+      var t = head.querySelector(".lab-shead-t");
+      if(t) t.insertBefore(line, t.firstChild);
     }
-    if(roleCell && !roleCell.querySelector(".lab-role")){
-      var t = (roleCell.textContent || "").trim();
-      if(t && t !== "—"){
-        roleCell.textContent = "";
-        roleCell.appendChild(el("span", "lab-role", t));
-      }
-    }
+    var year = (window.__uiLab && window.__uiLab.stats && window.__uiLab.stats()) || {};
+    var txt = "מאגר כללי · " + d.pool + " אנשי צוות פעילים" + (year.year ? " · " + year.year : "");
+    if(line.textContent !== txt) line.textContent = txt;
+  }
+
+  var acts = head.querySelector(".lab-sacts");
+  if(!acts){ acts = el("div", "lab-sacts"); head.appendChild(acts); }
+
+  if(!acts.querySelector("#labStaffExp")){
+    var xp = el("button", "btn ghost", "↧ ייצוא");
+    xp.id = "labStaffExp";
+    xp.onclick = function(){
+      if(window.__uiLab && window.__uiLab.staffExport) window.__uiLab.staffExport(null);
+    };
+    acts.appendChild(xp);
+  }
+  orderInto(acts, STAFF_TOP, { staffMsg:"✉ שליחת הודעות", impStaff:"↥ ייבוא מקובץ",
+                               labStaffExp:"↧ ייצוא", addStaff:"+ הוספת איש צוות" });
+  var add = acts.querySelector("#addStaff");
+  if(add) add.classList.remove("ghost");
+  [ "#staffMsg", "#impStaff", "#labStaffExp" ].forEach(function(sel){
+    var b = acts.querySelector(sel);
+    if(b && !b.classList.contains("ghost")) b.classList.add("ghost");
   });
 }
+
+/* --- הבמה: עמודת הרשימה + התיק בצד ------------------------------------- */
+/* אותם רכיבים של מסך התלמידות (‎.stu-stage‎ ו-‎.stu-quick‎), ולכן כל שכבת
+   העיצוב שכבר נבנתה להם — כותרת כהה, כפתור דביק, פריסת עמודה בנייד —
+   חלה כאן בלי כפילות. */
+function staffStage(){
+  var host = view.querySelector("#staffTable");
+  if(!host) return null;
+  var stage = view.querySelector(".lab-ststage");
+  if(stage) return stage;
+
+  stage = el("div", "stu-stage lab-ststage");
+  var main = el("div", "lab-stmain");
+  host.parentNode.insertBefore(stage, host);
+  stage.appendChild(main);
+  stage.appendChild(el("aside", "stu-quick lab-stquick empty-state"));
+
+  var card = el("div", "lab-tablecard");
+  main.appendChild(card);
+  card.appendChild(host);                       /* העברה — המאזינים נשמרים */
+
+  var panel = stage.closest(".panel");
+  if(panel) panel.classList.add("lab-bare");
+  return stage;
+}
+
+/* --- שורת החיפוש והשבבים ------------------------------------------------ */
+/* ⚠️ הפקדים *מועברים* ואינם נבנים מחדש: ‎#fs-q‎ נושא את ה-oninput שהתוכנה
+   קשרה אליו, ו-‎#fs-status‎ את ה-onchange שלו. בנייה מחדש הייתה מנתקת את
+   שניהם, והחיפוש והסטטוס היו מפסיקים לסנן. */
+var STAFF_HEAD_ROLES = ["גננת", "סייעת"];       /* שני השבבים הקבועים שבלוח */
+
+function staffFilters(){
+  var stage = view.querySelector(".lab-ststage");
+  var main  = view.querySelector(".lab-stmain");
+  var sb    = view.querySelector(".searchbar");
+  if(!stage || !main || !sb) return;
+
+  if(!sb.classList.contains("lab-fbar")) sb.classList.add("lab-fbar");
+  if(sb.parentNode !== main) main.insertBefore(sb, main.firstChild);   /* מתחת למשבצות */
+
+  var inp = sb.querySelector("#fs-q");
+  if(inp && inp.placeholder !== "חיפוש שם, ת״ז, טלפון או עיר…"){
+    inp.placeholder = "חיפוש שם, ת״ז, טלפון או עיר…";
+  }
+  /* הפאנל הנפתח מיותר — שני הבוררים שבו עלו לשבבים */
+  var tg = sb.querySelector("#staffFilterToggle");
+  if(tg) tg.classList.add("lab-hidden");
+  var fp = view.querySelector("#staffFilterPanel");
+  if(fp) fp.classList.add("lab-hidden");
+
+  var st = (window.__uiLab && window.__uiLab.staffFilterState) ? window.__uiLab.staffFilterState() : null;
+  if(!st) return;
+
+  if(!sb.dataset.labChips){
+    sb.dataset.labChips = "1";
+
+    /* שני השבבים הקבועים — כל אחד מוסיף/מוריד את עצמו מהבחירה */
+    STAFF_HEAD_ROLES.forEach(function(role){
+      var b = el("button", "lab-rchip", role);
+      b.type = "button";
+      b.dataset.role = role;
+      b.onclick = function(){ toggleStaffRole(role); };
+      sb.appendChild(b);
+    });
+
+    /* שאר התפקידים — שבב שנפתח, עם תיבת סימון לכל תפקיד (בחירה מרובה) */
+    var more = el("details", "lab-mchip lab-rmore");
+    var sum  = el("summary", null, "תפקידים נוספים");
+    more.appendChild(sum);
+    var menu = el("div", "msel-menu");
+    st.roles.filter(function(r){ return STAFF_HEAD_ROLES.indexOf(r) < 0; })
+      .forEach(function(role){
+        var lab = el("label", "lab-ropt");
+        var cb  = el("input");
+        cb.type = "checkbox"; cb.value = role;
+        cb.onchange = function(){ toggleStaffRole(role); };
+        lab.appendChild(cb);
+        lab.appendChild(el("span", null, role));
+        menu.appendChild(lab);
+      });
+    more.appendChild(menu);
+    sb.appendChild(more);
+
+    /* "פעילים ▾" — ה-<select> של התוכנה בלבוש שבב */
+    var sel = view.querySelector("#fs-status");
+    if(sel){
+      var chip = el("label", "lab-selchip lab-stchip");
+      hideField(sel);
+      chip.appendChild(sel);                    /* העברה — המאזין נשמר */
+      sb.appendChild(chip);
+    }
+
+    /* "נקה" — יורד רק כשיש מה לנקות */
+    var clr = el("button", "lab-rclear", "נקה");
+    clr.type = "button";
+    clr.onclick = function(){
+      if(!window.__uiLab || !window.__uiLab.setStaffFilter) return;
+      var q = sb.querySelector("#fs-q");
+      if(q) q.value = "";
+      window.__uiLab.setStaffFilter({ roles:[], role:"", q:"", status:"active" });
+    };
+    sb.appendChild(clr);
+  }
+
+  /* סימון המצב — בלי לכתוב אם לא השתנה, אחרת נוצרת לולאת צופה */
+  var picked = st.picked || [];
+  sb.querySelectorAll(".lab-rchip").forEach(function(b){
+    b.classList.toggle("on", picked.indexOf(b.dataset.role) >= 0);
+  });
+  var extra = picked.filter(function(r){ return STAFF_HEAD_ROLES.indexOf(r) < 0; });
+  var more2 = sb.querySelector(".lab-rmore");
+  if(more2){
+    more2.classList.toggle("on", !!extra.length);
+    var lbl = extra.length ? ("תפקידים נוספים · " + extra.length) : "תפקידים נוספים";
+    var sm = more2.querySelector("summary");
+    if(sm && sm.textContent !== lbl) sm.textContent = lbl;
+    more2.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+      var on = picked.indexOf(cb.value) >= 0;
+      if(cb.checked !== on) cb.checked = on;
+    });
+  }
+  var stc = sb.querySelector(".lab-stchip");
+  if(stc) stc.classList.toggle("on", st.status !== "active");
+  var clr2 = sb.querySelector(".lab-rclear");
+  if(clr2){
+    var dirty = !!picked.length || st.status !== "active" ||
+                !!(inp && String(inp.value || "").trim());
+    clr2.classList.toggle("lab-hidden", !dirty);
+  }
+}
+
+function toggleStaffRole(role){
+  if(!window.__uiLab || !window.__uiLab.staffFilterState) return;
+  var st = window.__uiLab.staffFilterState();
+  if(!st) return;
+  var next = (st.picked || []).slice();
+  var i = next.indexOf(role);
+  if(i >= 0) next.splice(i, 1); else next.push(role);
+  window.__uiLab.setStaffFilter({ roles:next });
+}
+
+/* --- שורת ההתאמות והבורר טבלה/כרטיסים ----------------------------------- */
+function staffMatchLine(d){
+  var card = view.querySelector(".lab-ststage .lab-tablecard");
+  if(!card || !d) return;
+  var line = card.querySelector(".lab-mline");
+  if(!line){
+    line = el("div", "lab-mline");
+    var w = el("span", "lab-mtxt");
+    w.appendChild(el("b", "lab-mnum", ""));
+    w.appendChild(el("span", "lab-mof", ""));
+    line.appendChild(w);
+    card.insertBefore(line, card.firstChild);
+
+    var bar = el("div", "lab-gtoggle lab-sttoggle in-line");
+    [["table", "טבלה"], ["cards", "כרטיסים"]].forEach(function(m){
+      var b = el("button", "lg-tab" + (staffMode === m[0] ? " on" : ""), m[1]);
+      b.onclick = function(){
+        if(staffMode === m[0]) return;
+        staffMode = m[0];
+        bar.querySelectorAll(".lg-tab").forEach(function(x){ x.classList.toggle("on", x === b); });
+        staffList();
+      };
+      bar.appendChild(b);
+    });
+    line.appendChild(bar);
+  }
+  var head = d.total + " אנשי צוות תואמים";
+  var tail = " · מתוך " + d.pool;
+  var bn = line.querySelector(".lab-mnum"), bo = line.querySelector(".lab-mof");
+  if(bn && bn.textContent !== head) bn.textContent = head;   /* בלי זה — לולאת צופה */
+  if(bo && bo.textContent !== tail) bo.textContent = tail;
+}
+
+/* --- הרשימה: חמש עמודות, בטבלה או בכרטיסים ------------------------------ */
+/* העמודות שהלוח מציג בחוץ, ורק הן. שאר השדות של התיק (ת״ז, מייל, עיר,
+   חינוך, ותק) נשארים בתיק שנפתח בצד ובייצוא. */
+var STAFF_COLS = [
+  { key:"lastName", label:"שם משפחה ופרטי", sort:true },
+  { key:"mobile",   label:"טלפון",          sort:true },
+  { key:"role",     label:"תפקיד",          sort:true },
+  { key:"gan",      label:"משובצת ב־",      sort:true },
+  { key:"status",   label:"סטטוס",          sort:true }
+];
+
+function staffRowClick(r){
+  return function(e){
+    if(e.detail > 1) return;                    /* לחיצה כפולה — התיק המלא */
+    staffOpen = (staffOpen === r.id) ? "" : r.id;
+    staffPaintList(); staffQuick(); staffBottom();
+  };
+}
+function staffRowDbl(r){
+  return function(){
+    if(window.__uiLab && window.__uiLab.openStaffFull) window.__uiLab.openStaffFull(r.id);
+  };
+}
+
+function staffCell(r, key){
+  if(key === "lastName"){
+    var c = el("div", "lab-namecell");
+    c.appendChild(el("span", "lab-ini", r.ini));
+    var t = el("div", "lab-stname");
+    t.appendChild(el("b", null, r.name));
+    if(r.tz) t.appendChild(el("span", "lab-sttz", r.tz));
+    c.appendChild(t);
+    return c;
+  }
+  if(key === "mobile"){
+    /* בלי אייקוני הפעולה שלצד המספר — הם חוזרים בתיק שנפתח בצד */
+    var p = el("span", "lab-stphone", r.phone || "—");
+    return p;
+  }
+  if(key === "role"){
+    var role = el("span", "lab-role", r.role || "—");
+    if(r.roleInk){
+      role.style.background = "color-mix(in srgb, " + r.roleInk + " 16%, transparent)";
+      role.style.color = r.roleInk;
+    }
+    return role;
+  }
+  if(key === "gan"){
+    if(!r.gan) return el("span", "lab-stpill bad", "לא משובצת");
+    var g = el("div", "lab-stgan");
+    g.appendChild(el("b", null, r.gan));
+    if(r.ganRole) g.appendChild(el("span", null, r.ganRole));
+    return g;
+  }
+  return el("span", "lab-stpill " + r.tone, r.status);
+}
+
+function staffTable(box, d){
+  var wrap = el("div", "table-wrap");
+  var tb = el("table");
+  var thead = el("thead"), tr = el("tr");
+  STAFF_COLS.forEach(function(c){
+    var th = el("th", c.sort ? "sortable" : null, c.label);
+    if(c.sort){
+      if(d.sort && d.sort.key === c.key){
+        th.appendChild(el("span", "arr", d.sort.dir > 0 ? "▲" : "▼"));
+      }
+      th.onclick = function(){
+        if(window.__uiLab && window.__uiLab.setStaffSort) window.__uiLab.setStaffSort(c.key);
+      };
+    }
+    tr.appendChild(th);
+  });
+  thead.appendChild(tr); tb.appendChild(thead);
+  var tbody = el("tbody");
+  d.rows.forEach(function(r){
+    var row = el("tr", "clickable" + (r.id === staffOpen ? " sel" : "") + (r.active ? "" : " lab-left"));
+    row.dataset.sid = r.id;
+    STAFF_COLS.forEach(function(c){
+      var td = el("td");
+      td.appendChild(staffCell(r, c.key));
+      row.appendChild(td);
+    });
+    row.onclick = staffRowClick(r);
+    row.ondblclick = staffRowDbl(r);
+    tbody.appendChild(row);
+  });
+  tb.appendChild(tbody);
+  wrap.appendChild(tb);
+  box.appendChild(wrap);
+  box.appendChild(el("div", "hint lab-sthint",
+    "לחיצה על שורה פותחת את תיק העובדת · לחיצה כפולה פותחת את התיק המלא"));
+}
+
+function staffCards(box, d){
+  var grid = el("div", "lab-stgrid");
+  d.rows.forEach(function(r){
+    var c = el("button", "lab-stcard" + (r.id === staffOpen ? " on" : "") + (r.active ? "" : " lab-left"));
+    c.type = "button";
+    c.dataset.sid = r.id;
+    c.appendChild(el("span", "lab-stpill " + r.tone + " lab-stbadge", r.status));
+
+    var body = el("span", "lab-stcbody");
+    body.appendChild(el("span", "lab-ini", r.ini));
+    var t = el("span", "lab-stct");
+    t.appendChild(el("span", "lab-stcname", r.name));
+    t.appendChild(el("span", "lab-stcsub", r.phone || "ללא טלפון"));
+    body.appendChild(t);
+    c.appendChild(body);
+
+    var foot = el("span", "lab-stcfoot");
+    var role = el("span", "lab-role", r.role || "—");
+    if(r.roleInk){
+      role.style.background = "color-mix(in srgb, " + r.roleInk + " 16%, transparent)";
+      role.style.color = r.roleInk;
+    }
+    foot.appendChild(role);
+    foot.appendChild(el("span", "lab-stcgan" + (r.gan ? "" : " none"), r.gan || "לא משובצת"));
+    c.appendChild(foot);
+
+    c.onclick = staffRowClick(r);
+    c.ondblclick = staffRowDbl(r);
+    grid.appendChild(c);
+  });
+  box.appendChild(grid);
+}
+
+/* חתימת הרשימה — בלי זה כל בנייה מחדש מפעילה את הצופה, שקורא לנו שוב */
+function staffSig(d){
+  return staffMode + "|" + staffOpen + "|" + d.total + "|" + d.pool + "|" +
+         (d.sort ? d.sort.key + d.sort.dir : "") + "|" +
+         d.rows.map(function(r){ return r.id + r.gan + r.role + r.phone + r.status; }).join(",");
+}
+
+function staffList(){
+  var card = view.querySelector(".lab-ststage .lab-tablecard");
+  var host = view.querySelector("#staffTable");
+  if(!card || !host) return;
+  var d = staffData();
+  if(!d) return;
+
+  host.classList.add("lab-hidden");             /* הטבלה של התוכנה — מקור הנתונים בלבד */
+  var box = card.querySelector(".lab-strows");
+  if(!box){ box = el("div", "lab-strows"); card.appendChild(box); }
+
+  var sig = staffSig(d);
+  if(box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = "";
+  box.classList.toggle("cards", staffMode === "cards");
+  if(!d.rows.length){
+    box.appendChild(el("div", "lab-empty", "אין אנשי צוות התואמים לסינון."));
+    return;
+  }
+  if(staffMode === "cards") staffCards(box, d); else staffTable(box, d);
+}
+
+/* סימון השורה הפתוחה בלי לבנות את הרשימה מחדש */
+function staffPaintList(){
+  var box = view.querySelector(".lab-strows");
+  if(!box) return;
+  box.querySelectorAll("[data-sid]").forEach(function(tr){
+    tr.classList.toggle("sel", tr.dataset.sid === staffOpen);
+  });
+  box.querySelectorAll(".lab-stcard").forEach(function(c){
+    c.classList.toggle("on", c.dataset.sid === staffOpen);
+  });
+}
+
+/* --- התיק המקוצר שנפתח בצד --------------------------------------------- */
+function qf(k, v, cls){
+  var f = el("div", "qf");
+  f.appendChild(el("div", "k", k));
+  var val = String(v == null ? "" : v).trim();
+  f.appendChild(el("div", "v" + (val ? (cls ? " " + cls : "") : " dim"), val || "—"));
+  return f;
+}
+
+function staffQuick(){
+  var box = view.querySelector(".lab-stquick");
+  if(!box) return;
+  var d = (staffOpen && window.__uiLab && window.__uiLab.staffDossier)
+            ? window.__uiLab.staffDossier(staffOpen) : null;
+  if(!d){
+    if(!box.classList.contains("empty-state")){
+      box.classList.add("empty-state"); box.innerHTML = "";
+    }
+    return;
+  }
+  if(box.dataset.sid === d.id && !box.classList.contains("empty-state")) return;
+  box.dataset.sid = d.id;
+  box.classList.remove("empty-state");
+  box.innerHTML = "";
+
+  var card = el("div", "qcard");
+
+  /* --- כותרת כהה: ראשי תיבות, שם, ותפקיד · גן · ותק --- */
+  var head = el("div", "qhead");
+  head.appendChild(el("span", "ini", d.ini));
+  var ht = el("div", "lab-stqt");
+  ht.appendChild(el("div", "qname", d.name));
+  var bits = [];
+  if(d.role) bits.push(d.role);
+  if(d.placements.length) bits.push(d.placements.map(function(p){ return p.gan; }).join(" · "));
+  else bits.push("לא משובצת");
+  if(d.years) bits.push(d.years + " שנות ותק");
+  ht.appendChild(el("div", "qtz", bits.join(" · ")));
+  head.appendChild(ht);
+  var x = el("button", "qclose", "✕");
+  x.title = "סגירה";
+  x.setAttribute("aria-label", "סגירת התיק המקוצר");
+  x.onclick = function(){ staffOpen = ""; staffPaintList(); staffQuick(); staffBottom(); };
+  head.appendChild(x);
+  card.appendChild(head);
+
+  /* --- פרטי הזהות והקשר --- */
+  var g1 = el("div", "qgrid");
+  g1.appendChild(qf('ת״ז', d.tz));
+  g1.appendChild(qf("חינוך", d.edu));
+  g1.appendChild(qf("נייד", d.mobile, "lab-ltr"));
+  g1.appendChild(qf("מייל", d.email, "lab-ltr"));
+  card.appendChild(g1);
+  var g2 = el("div", "qgrid one");
+  g2.appendChild(qf("כתובת", d.address));
+  if(d.weeklyHours) g2.appendChild(qf("שעות שבועיות", d.weeklyHours));
+  card.appendChild(g2);
+
+  /* --- שלוש פעולות הקשר, כמו בלוח --- */
+  var acts = el("div", "lab-stqacts");
+  var link = function(label, href, cls){
+    var a = el("a", "lab-stqact" + (cls ? " " + cls : ""), label);
+    a.href = href; a.target = "_blank"; a.rel = "noopener";
+    return a;
+  };
+  var tel = d.mobile || d.phone;
+  if(tel){
+    acts.appendChild(link("☎ חיוג", "tel:" + tel.replace(/[^\d+]/g, "")));
+    var wa = tel.replace(/\D/g, "").replace(/^0/, "972");
+    acts.appendChild(link("💬 וואטסאפ", "https://wa.me/" + wa, "wa"));
+  }
+  if(d.email) acts.appendChild(link("✉ מייל", "mailto:" + d.email));
+  if(acts.children.length) card.appendChild(acts);
+
+  /* --- מסמכים --- */
+  card.appendChild(el("div", "qsep"));
+  card.appendChild(el("div", "qsec", "מסמכים"));
+  d.docs.forEach(function(doc){
+    var row = el("div", "qdoc " + (doc.on ? "on" : "off"));
+    row.appendChild(el("span", "mark", doc.on ? "✓" : "○"));
+    row.appendChild(el("span", null, doc.label));
+    if(doc.link){
+      var a = el("a", "grow", "📎 קובץ");
+      a.href = doc.link; a.target = "_blank"; a.rel = "noopener";
+      a.title = "פתיחת הקובץ";
+      row.appendChild(a);
+    }else{
+      row.appendChild(el("span", "grow lab-stnofile", doc.on ? "ללא קובץ" : "חסר"));
+    }
+    card.appendChild(row);
+  });
+
+  /* --- נוכחות ---
+     ⚠️ הלוח מציג שלוש משבצות ובהן גם "ימי חופש". במודל הצוות אין ימי
+     חופש — יש היעדרויות ואיחורים בלבד. שתי משבצות אמיתיות עדיפות על
+     שלוש שאחת מהן ריקה תמיד. */
+  card.appendChild(el("div", "qsep"));
+  card.appendChild(el("div", "qsec", "נוכחות" + (d.year ? " · " + d.year : "")));
+  var att = el("div", "lab-statt");
+  [["היעדרויות", d.absences], ["איחורים", d.lateness]].forEach(function(a){
+    var t = el("div", "lab-stattc");
+    t.appendChild(el("div", "k", a[0]));
+    t.appendChild(el("div", "v", String(a[1])));
+    att.appendChild(t);
+  });
+  card.appendChild(att);
+
+  var full = el("button", "btn full", "פתיחת תיק העובדת המלא");
+  full.onclick = function(){
+    if(window.__uiLab && window.__uiLab.openStaffFull) window.__uiLab.openStaffFull(d.id);
+  };
+  card.appendChild(full);
+  box.appendChild(card);
+
+  /* --- תנועות בשנים קודמות --- */
+  if(d.history.length){
+    var h = el("div", "qcard");
+    h.appendChild(el("div", "qsec", "תנועות בשנים קודמות"));
+    d.history.slice(0, 8).forEach(function(m){
+      var r = el("div", "lab-sthist" + (m.now ? " now" : ""));
+      r.appendChild(el("span", "dot"));
+      var t = el("div", null);
+      t.appendChild(el("div", "lab-sthname", m.gan + " · " + m.role));
+      t.appendChild(el("div", "lab-sthsub", m.year + (m.now ? " — נוכחי" : "") +
+                                            (m.ctx ? " · " + m.ctx : "")));
+      r.appendChild(t);
+      h.appendChild(r);
+    });
+    box.appendChild(h);
+  }
+
+  /* --- הערות --- */
+  if(d.notes.length){
+    var n = el("div", "qcard");
+    n.appendChild(el("div", "qsec", "הערות"));
+    d.notes.slice(0, 5).forEach(function(t){
+      n.appendChild(el("div", "lab-stnote", t));
+    });
+    box.appendChild(n);
+  }
+}
+
+/* --- הפס הכהה שבתחתית ---------------------------------------------------- */
+/* מופיע רק כשנבחרה עובדת. שלוש הפעולות שבלוח, כולן אמיתיות: מעבר למסך
+   השיבוץ, פתיחת התיק המלא (שם נרשמות ההיעדרויות), וייצוא הבחירה. */
+function staffBottom(){
+  var main = view.querySelector(".lab-stmain");
+  if(!main) return;
+  var bar = main.querySelector(".lab-stbot");
+  var d = (staffOpen && window.__uiLab && window.__uiLab.staffDossier)
+            ? window.__uiLab.staffDossier(staffOpen) : null;
+  if(!d){
+    if(bar) bar.remove();
+    return;
+  }
+  if(!bar){
+    bar = el("div", "lab-stbot");
+    bar.appendChild(el("b", "lab-stbname", ""));
+    var acts = el("div", "lab-stbacts");
+    [["שיבוץ לגן…", "", function(){ go("assign"); }],
+     ["רישום היעדרות", "", function(){
+        if(window.__uiLab && window.__uiLab.openStaffFull) window.__uiLab.openStaffFull(staffOpen); }],
+     ["ייצוא הבחירה", "light", function(){
+        if(window.__uiLab && window.__uiLab.staffExport) window.__uiLab.staffExport([staffOpen]); }]
+    ].forEach(function(a){
+      var b = el("button", "btn" + (a[1] ? " " + a[1] : ""), a[0]);
+      b.onclick = a[2];
+      acts.appendChild(b);
+    });
+    bar.appendChild(acts);
+    main.appendChild(bar);
+  }
+  var nm = bar.querySelector(".lab-stbname");
+  var txt = "נבחרה: " + d.name;
+  if(nm && nm.textContent !== txt) nm.textContent = txt;   /* בלי זה — לולאת צופה */
+}
+
 
 /* שורת "N תואמים · מתוך M" מעל הטבלה, כמו בלוחות. הספירה נלקחת מהדום
    של הטבלה עצמה, ולכן היא תמיד תואמת למה שמוצג בפועל אחרי סינון. */
@@ -1334,12 +1902,18 @@ function matchLine(hostSel, word, totalFromStats){
 function maybeStaff(){
   if(homeBusy || !view) return;
   var b = nav.querySelector('[data-tab="staff"]');
-  if(!(b && b.classList.contains("active"))) return;
+  if(!(b && b.classList.contains("active"))){ staffOpen = ""; return; }
   homeBusy = true;
   try{
-    staffKpis(); staffRows();
-    var sb = (window.__uiLab && window.__uiLab.staffBoard) ? window.__uiLab.staffBoard() : null;
-    if(sb) matchLine("#staffTable", "אנשי צוות", sb.total);
+    staffStage(); staffKpis(); staffTop(); staffFilters();
+    var d = staffData();
+    if(d){
+      /* התיק שהיה פתוח ונשר מהסינון — נסגר, אחרת הפס התחתון היה מציג
+         שם שכבר אינו ברשימה. */
+      if(staffOpen && !d.rows.some(function(r){ return r.id === staffOpen; })) staffOpen = "";
+      staffMatchLine(d);
+    }
+    staffList(); staffQuick(); staffBottom();
   }catch(e){}
   homeBusy = false;
 }

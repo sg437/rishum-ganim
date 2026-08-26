@@ -2119,3 +2119,237 @@ html.ui-lab .stu-quick .qcard > .btn.full{
 }
 /* שאר הכרטיסים (אחים, היסטוריה) שומרים על הריפוד שלהם */
 html.ui-lab .stu-quick .qcard:not(:has(> .btn.full)){ padding-bottom:14px }
+
+
+/* ===========================================================================
+   21 · צוות הגנים — המסך המלא (לוח 04)
+   ---------------------------------------------------------------------------
+   ארבע משבצות מספרים, שורת חיפוש שיושבת *בתוך* עמודת הרשימה (ולכן
+   מתכווצת איתה ברגע שנפתח תיק בצד), רשימה בת חמש עמודות בטבלה או
+   בכרטיסים, תיק מקוצר בצד ופס פעולות כהה בתחתית.
+
+   התיק שבצד נושא את המחלקות ‎.stu-quick‎ ו-‎.qcard‎ של תיק הילדה, ולכן כל
+   מה שכבר נבנה להן — כותרת כהה, פינות מעוגלות, כפתור דביק בתחתית ופריסת
+   עמודה בנייד — חל כאן בלי לשכפל אף כלל.
+   =========================================================================== */
+
+/* -- הבמה: עמודת הרשימה + התיק בצד ---------------------------------------- */
+html.ui-lab .lab-ststage > .lab-stmain{
+  flex:1 1 0; min-width:0; display:flex; flex-direction:column;
+}
+html.ui-lab .lab-ststage > .lab-stquick{ flex:0 0 296px; width:296px }
+html.ui-lab .lab-stmain > .searchbar{ margin-bottom:14px }
+/* הכרטיס הלבן — שורת ההתאמות והרשימה הן גוש אחד, כמו במסך התלמידות */
+html.ui-lab .lab-stmain > .lab-tablecard{ flex:0 0 auto }
+html.ui-lab .lab-strows .table-wrap{
+  border:0; border-radius:0; box-shadow:none; margin:0;
+  overflow-x:auto; max-width:100%;
+}
+html.ui-lab .lab-strows table{ border-radius:0 }
+html.ui-lab .lab-strows .hint.lab-sthint{
+  margin:0; padding:11px 18px; font-size:.76rem; color:var(--muted);
+  border-top:1px solid var(--lab-rule-row);
+}
+
+@media(max-width:1100px){
+  html.ui-lab .lab-ststage{ flex-direction:column; align-items:stretch }
+  html.ui-lab .lab-ststage > .lab-stmain{ width:100%; min-width:0; max-width:100% }
+  html.ui-lab .lab-ststage > .lab-stquick{
+    position:static; flex:1 1 auto; width:100%; max-width:100%; min-width:0;
+    max-height:none; order:-1;
+  }
+}
+
+/* -- שבבי הסינון של הצוות -------------------------------------------------- */
+/* שבב תפקיד קבוע (גננת · סייעת) — לחיצה מוסיפה ומורידה, ולכן אפשר לבחור
+   אחד, שניים או כמה יחד עם התפריט שלצידם. */
+html.ui-lab .lab-rchip{
+  display:inline-flex; align-items:center; white-space:nowrap; cursor:pointer;
+  background:var(--surface); border:1px solid var(--border); border-radius:99px;
+  padding:6px 14px; font-size:.8rem; font-weight:600; color:var(--ink-soft);
+  transition:background .15s, border-color .15s, color .15s;
+}
+html.ui-lab .lab-rchip:hover{ border-color:var(--accent) }
+html.ui-lab .lab-rchip.on{
+  background:var(--lab-deep); border-color:transparent; color:#f3f6f1; font-weight:700;
+}
+/* ✕ על השבב הפעיל — כמו בלוח, בלי כפתור נוסף */
+html.ui-lab .lab-rchip.on::after{ content:"✕"; font-size:.66rem; opacity:.75; margin-inline-start:6px }
+
+html.ui-lab .lab-rmore > summary{ min-width:0 }
+html.ui-lab .lab-rmore .msel-menu{ min-width:230px; padding:7px }
+html.ui-lab .lab-ropt{
+  display:flex; align-items:center; gap:8px; cursor:pointer;
+  padding:6px 9px; border-radius:9px; font-size:.83rem; font-weight:600; color:var(--ink);
+}
+html.ui-lab .lab-ropt:hover{ background:var(--surface-2) }
+html.ui-lab .lab-ropt input{ margin:0; accent-color:var(--accent) }
+
+html.ui-lab .lab-rclear{
+  background:none; border:0; cursor:pointer; padding:6px 6px;
+  font-size:.8rem; font-weight:700; color:var(--muted);
+}
+html.ui-lab .lab-rclear:hover{ color:var(--bad) }
+
+/* -- שורת ההתאמות: המספר מודגש, "מתוך N" לא -------------------------------- */
+html.ui-lab .lab-ststage .lab-tablecard > .lab-mline{
+  margin:0; padding:13px 18px; border-bottom:1px solid var(--lab-rule-row);
+}
+html.ui-lab .lab-sttoggle{ margin:0; flex:0 0 auto }
+
+/* -- הרשימה בטבלה ---------------------------------------------------------- */
+html.ui-lab .lab-strows table{ width:100%; border-collapse:collapse }
+html.ui-lab .lab-strows th{
+  text-align:start; white-space:nowrap; font-size:.76rem; font-weight:700;
+  color:var(--muted); padding:11px 18px; border-bottom:1px solid var(--lab-rule-head);
+  background:var(--surface);
+}
+html.ui-lab .lab-strows th.sortable{ cursor:pointer; user-select:none }
+html.ui-lab .lab-strows th.sortable:hover{ color:var(--accent-strong) }
+html.ui-lab .lab-strows th .arr{ margin-inline-start:5px; font-size:.62rem; color:var(--accent) }
+html.ui-lab .lab-strows td{
+  padding:11px 18px; border-bottom:1px solid var(--lab-rule-row);
+  font-size:.87rem; vertical-align:middle;
+}
+html.ui-lab .lab-strows tbody tr:last-child td{ border-bottom:0 }
+html.ui-lab .lab-strows tbody tr.clickable{ cursor:pointer }
+html.ui-lab .lab-strows tbody tr.clickable:hover{ background:var(--lab-surface-warm) }
+html.ui-lab .lab-strows tbody tr.sel{
+  background:var(--accent-soft);
+  box-shadow:inset 3px 0 0 var(--accent);   /* RTL: הפס נופל בקצה הימני */
+}
+html.ui-lab .lab-strows tr.lab-left{ opacity:.55 }
+
+html.ui-lab .lab-stname{ min-width:0; line-height:1.3 }
+html.ui-lab .lab-stname b{ font-weight:600; font-size:.92rem; letter-spacing:-.02em }
+html.ui-lab .lab-sttz{
+  display:block; font-size:.73rem; color:var(--muted); font-weight:600;
+  direction:ltr; unicode-bidi:isolate; text-align:start;
+}
+html.ui-lab .lab-stphone{
+  font-weight:600; font-size:.86rem; direction:ltr; unicode-bidi:isolate;
+  display:inline-block; text-align:start;
+}
+html.ui-lab .lab-stgan b{ font-weight:600; font-size:.86rem; display:block }
+html.ui-lab .lab-stgan span{ font-size:.73rem; color:var(--muted); font-weight:600 }
+
+/* תגית סטטוס — אותה שפה של ‎.lab-role‎, בשלושת הגוונים */
+html.ui-lab .lab-stpill{
+  display:inline-block; padding:3px 11px; border-radius:999px;
+  font-size:.76rem; font-weight:700; white-space:nowrap;
+  border:1px solid transparent;
+}
+html.ui-lab .lab-stpill.good{ background:var(--accent-soft); color:var(--accent-strong); border-color:#cfe2d4 }
+html.ui-lab .lab-stpill.warn{ background:#f7efd9; color:#7a5a15; border-color:#e8d7a8 }
+html.ui-lab .lab-stpill.bad { background:#fbe6e3; color:#8f342a; border-color:#f0c9c3 }
+
+/* -- הרשימה בכרטיסים ------------------------------------------------------- */
+html.ui-lab .lab-strows.cards{ padding:14px 16px 16px }
+html.ui-lab .lab-stgrid{
+  display:grid; gap:11px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+}
+html.ui-lab .lab-stcard{
+  position:relative; display:flex; flex-direction:column; gap:11px;
+  padding:15px 16px 13px; text-align:start; font:inherit; cursor:pointer;
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  transition:border-color .15s, box-shadow .15s, transform .1s;
+}
+html.ui-lab .lab-stcard:hover{ box-shadow:0 6px 18px rgba(21,52,42,.10); transform:translateY(-1px) }
+html.ui-lab .lab-stcard.on{ border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft) }
+html.ui-lab .lab-stcard.lab-left{ opacity:.6 }
+html.ui-lab .lab-stbadge{
+  position:absolute; inset-block-start:-9px; inset-inline-end:14px;
+}
+html.ui-lab .lab-stcbody{ display:flex; align-items:center; gap:11px; min-width:0 }
+html.ui-lab .lab-stct{ display:flex; flex-direction:column; gap:2px; min-width:0 }
+html.ui-lab .lab-stcname{
+  font-weight:600; font-size:.96rem; letter-spacing:-.02em;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html.ui-lab .lab-stcsub{
+  font-size:.76rem; color:var(--muted); font-weight:600;
+  direction:ltr; unicode-bidi:isolate; text-align:start;
+}
+html.ui-lab .lab-stcfoot{
+  display:flex; align-items:center; justify-content:space-between; gap:9px;
+  padding-top:10px; border-top:1px solid var(--lab-rule-row);
+}
+html.ui-lab .lab-stcgan{
+  font-size:.76rem; font-weight:700; color:var(--ink-soft);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html.ui-lab .lab-stcgan.none{ color:#b4483c }
+
+/* -- התיק המקוצר של איש/אשת הצוות ----------------------------------------- */
+html.ui-lab .lab-stqt{ min-width:0 }
+html.ui-lab .lab-stquick .qhead .qtz{ line-height:1.4 }
+html.ui-lab .lab-ltr{ direction:ltr; unicode-bidi:isolate; text-align:start }
+
+/* שלוש פעולות הקשר */
+html.ui-lab .lab-stqacts{ display:flex; gap:7px; margin-top:13px }
+html.ui-lab .lab-stqact{
+  flex:1 1 0; min-width:0; text-align:center; text-decoration:none;
+  background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+  padding:9px 6px; font-size:.78rem; font-weight:700; color:var(--ink-soft);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+html.ui-lab .lab-stqact:hover{ border-color:var(--accent); color:var(--accent-strong) }
+html.ui-lab .lab-stqact.wa:hover{ border-color:#25955a; color:#1c7a48 }
+html.ui-lab .lab-stnofile{ color:var(--muted); font-weight:600 }
+
+/* נוכחות — משבצות מספר */
+html.ui-lab .lab-statt{ display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:9px }
+html.ui-lab .lab-stattc{
+  background:var(--surface-2); border:1px solid var(--border);
+  border-radius:12px; padding:10px 12px; min-width:0;
+}
+html.ui-lab .lab-stattc .k{ font-size:.72rem; color:var(--muted); font-weight:700 }
+html.ui-lab .lab-stattc .v{
+  font-family:var(--lab-font-head); font-size:1.5rem; font-weight:500;
+  letter-spacing:-.03em; line-height:1.2; margin-top:1px;
+}
+
+/* תנועות בשנים קודמות — ציר עם נקודה לכל שורה */
+html.ui-lab .lab-sthist{ display:flex; align-items:flex-start; gap:10px; padding:7px 0 }
+html.ui-lab .lab-sthist .dot{
+  width:8px; height:8px; border-radius:50%; flex:0 0 auto; margin-top:6px;
+  background:var(--border);
+}
+html.ui-lab .lab-sthist.now .dot{ background:var(--accent) }
+html.ui-lab .lab-sthname{ font-weight:700; font-size:.86rem; line-height:1.3 }
+html.ui-lab .lab-sthsub{ font-size:.74rem; color:var(--muted); font-weight:600 }
+
+html.ui-lab .lab-stnote{
+  background:var(--warn-soft); border-radius:10px; padding:9px 11px;
+  font-size:.83rem; line-height:1.5; white-space:pre-wrap; margin-bottom:6px;
+}
+html.ui-lab .lab-stnote:last-child{ margin-bottom:0 }
+
+/* -- הפס הכהה שבתחתית ------------------------------------------------------ */
+html.ui-lab .lab-stbot{
+  position:sticky; bottom:12px; z-index:25; margin-top:14px;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  background:var(--lab-deep); border-radius:14px; padding:11px 16px;
+  box-shadow:0 12px 30px rgba(21,52,42,.28);
+}
+html.ui-lab .lab-stbname{ font-size:.88rem; font-weight:700; color:#f3f6f1; margin-inline-end:auto }
+html.ui-lab .lab-stbacts{ display:flex; gap:7px; flex-wrap:wrap }
+html.ui-lab .lab-stbot .btn{
+  background:rgba(255,255,255,.12); border:0; color:#f3f6f1;
+  border-radius:9px; font-weight:600; font-size:.79rem; padding:7px 13px;
+  box-shadow:none; white-space:nowrap;
+}
+html.ui-lab .lab-stbot .btn:hover{ background:rgba(255,255,255,.22); color:#fff }
+html.ui-lab .lab-stbot .btn.light{ background:#fff; color:var(--lab-deep); font-weight:700 }
+html.ui-lab .lab-stbot .btn.light:hover{ background:#e9f1ea }
+
+/* -- חלון הייבוא: שני מצבים (ייבוא חדשים · עדכון לפי ת"ז) ------------------ */
+html.ui-lab .lab-modes{
+  display:inline-flex; gap:2px; padding:3px; margin:10px 0 14px;
+  background:var(--surface-2); border:1px solid var(--border); border-radius:12px;
+}
+html.ui-lab .lab-mode{
+  background:none; border:0; border-radius:9px; padding:8px 16px;
+  font:inherit; font-size:.85rem; font-weight:600; color:var(--ink-soft); cursor:pointer;
+}
+html.ui-lab .lab-mode.on{ background:var(--surface); color:var(--ink); box-shadow:var(--shadow) }

@@ -15,6 +15,12 @@
         העמודות, עם הלוח הכהה שמונה את השורות.
      5. "עדכון לפי ת"ז" פותח חלון שבתחתיתו מקטע "רשימת העירייה" — ושהוא
         עובד: הדבקת ת"ז והתאמה מסמנת את התיקים כ"קלוט בעירייה".
+     6. מסך הצוות: הכותרת, סדר כפתורי הפעולה, המשבצת "שאר הצוות", חמש
+        עמודות הרשימה, שורת החיפוש שיושבת בתוך עמודת הרשימה (ולכן
+        מתכווצת כשנפתח תיק בצד), שבבי התפקיד לבחירה מרובה, התיק שבצד
+        והפס הכהה התחתון.
+     7. "עדכון לפי ת"ז" שבייבוא הצוות: מחליף ערכים בתיק קיים, אינו נוגע
+        בשדות שלא נבחרו, ופותח תיק חדש לת"ז שאינה במאגר.
 
    הרצה:  NODE_PATH=$(npm root) node tests/lab-screens.test.cjs
    ============================================================================ */
@@ -95,7 +101,28 @@ const SEED = `(() => {
     street:'הרב שך', building:String(i), city:'מודיעין עילית', fatherName:'יעקב', motherName:'רבקה',
     momMobile:'050123456'+i, email:'p'+i+'@example.com', period:'א',
     docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{} }));
-  DB.staff=[]; DB.management=[]; DB.settings=DB.settings||{};
+  DB.staff=[
+    {id:'m1',lastName:'ברקוביץ',firstName:'שרה',tz:'039112881',email:'sara@ganim.org',role:'גננת',
+     education:'רגיל',phone:'02-9990001',mobile:'052-8841190',street:'חפץ חיים',building:'18',
+     city:'מודיעין עילית',active:true,certificate:true,createdAt:'2012-09-01T00:00:00.000Z',
+     movements:[{type:'entry',date:'2012-09-01',detail:'תחילת עבודה'}],
+     notesList:['מבקשת לא לשבץ לצהרון בימי חמישי.'],
+     absences:[{date:'2025-01-02',reason:'מחלה'}],lateness:[],docFiles:{}},
+    {id:'m2',lastName:'פישר',firstName:'נחמה',tz:'039112882',email:'',role:'סייעת',
+     education:'רגיל',phone:'',mobile:'053-7781004',city:'מודיעין עילית',active:true,
+     certificate:false,createdAt:'2018-09-01T00:00:00.000Z',
+     movements:[],notesList:[],absences:[],lateness:[],docFiles:{}},
+    {id:'m3',lastName:'נויהאוז',firstName:'אסתי',tz:'039112883',email:'',role:'העשרה',
+     education:'ח"מ',phone:'',mobile:'053-8820164',city:'ביתר עילית',active:true,
+     certificate:false,createdAt:'2020-09-01T00:00:00.000Z',
+     movements:[],notesList:[],absences:[],lateness:[],docFiles:{}},
+    {id:'m4',lastName:'כהן',firstName:'רבקה',tz:'039112884',email:'',role:'גננת',
+     education:'רגיל',phone:'',mobile:'050-1112223',city:'מודיעין עילית',active:false,
+     certificate:false,createdAt:'2015-09-01T00:00:00.000Z',
+     movements:[],notesList:[],absences:[],lateness:[],docFiles:{}}
+  ];
+  DB.assignments={'תשפ"ז':{activity:{ g1:{'גננת':{staffId:'m1',name:'ברקוביץ שרה'}} }}};
+  DB.management=[]; DB.settings=DB.settings||{};
   __set('eduPicked',true); __set('activeEdu',null);
   document.body.classList.remove('locked');
   return 'ok';
@@ -276,6 +303,135 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     else ok('"רשימת העירייה" יושב בתחתית "עדכון לפי ת"ז" ומסמן (' + after.marked.join(', ') + ')');
   }
   await p.evaluate(() => closeModal()); await p.waitForTimeout(300);
+
+  /* --- 6. מסך הצוות — מבנה, חמש עמודות, תיק בצד ופס תחתון ------------- */
+  /* שיבוצי הצוות נזרעים כאן ולא ב-SEED: החלונות שנפתחו בבדיקות שמעל קוראים
+     ל-save(), והוא מריץ את מיזוג-הכתיבה שמחזיר את השנה ואת מפת השיבוצים
+     למצב שבמסד המדומה. */
+  await p.evaluate(() => {
+    DB.activeYear = 'תשפ"ז';
+    DB.assignments = { 'תשפ"ז': { activity: { g1: { 'גננת': { staffId:'m1', name:'ברקוביץ שרה' } } } } };
+  });
+  await goTab(p, 'staff'); await p.waitForTimeout(1000);
+  const st = await p.evaluate(() => ({
+    title: (document.querySelector('.lab-shead h2') || {}).textContent,
+    sub:   (document.querySelector('.lab-ssub') || {}).textContent,
+    acts:  [...document.querySelectorAll('.lab-sacts .btn')].map(b => b.id),
+    kpis:  [...document.querySelectorAll('.lab-stkpis .lh-k')].map(x => x.textContent.trim()),
+    cols:  [...document.querySelectorAll('.lab-strows th')].map(t => t.textContent.replace(/[▲▼]/g, '').trim()),
+    rows:  document.querySelectorAll('.lab-strows tbody tr').length,
+    /* שורת החיפוש חייבת לשבת בתוך עמודת הרשימה, לא מעל הבמה */
+    sbIn:  !!document.querySelector('.lab-stmain > .searchbar'),
+    chips: [...document.querySelectorAll('.lab-rchip')].map(b => b.dataset.role),
+    /* הטבלה של התוכנה נשארת כמקור נתונים, מוסתרת */
+    appTableHidden: !!(document.querySelector('#staffTable') || {}).classList.contains('lab-hidden'),
+  }));
+  if (st.title !== 'צוות הגנים')
+    bad('כותרת מסך הצוות אינה "צוות הגנים"', ['התקבל: ' + st.title]);
+  else if (st.acts.join(',') !== 'staffMsg,impStaff,labStaffExp,addStaff')
+    bad('סדר כפתורי הפעולה אינו: שליחת הודעות · ייבוא · ייצוא · הוספה', [st.acts.join(' · ')]);
+  else if (st.kpis[3] !== 'שאר הצוות')
+    bad('המשבצת הרביעית אינה "שאר הצוות"', ['התקבל: ' + st.kpis[3]]);
+  else if (st.cols.join('|') !== 'שם משפחה ופרטי|טלפון|תפקיד|משובצת ב־|סטטוס')
+    bad('עמודות הרשימה אינן חמש המבוקשות', [st.cols.join(' · ')]);
+  else if (!st.sbIn)
+    bad('שורת החיפוש אינה יושבת בתוך עמודת הרשימה — היא לא תתכווץ כשייפתח תיק בצד');
+  else if (!st.appTableHidden)
+    bad('הטבלה של התוכנה לא הוסתרה — שתי רשימות מוצגות זו על זו');
+  else if (st.rows !== 3)
+    bad('הרשימה אינה מציגה את שלושת הפעילים', ['מוצגות ' + st.rows + ' שורות']);
+  else ok('מסך הצוות: ' + st.cols.length + ' עמודות, ' + st.kpis.length + ' משבצות (' + st.kpis[3] + '), חיפוש בתוך עמודת הרשימה');
+
+  /* שבבי התפקיד — בחירה מרובה */
+  const roleFilter = await p.evaluate(async () => {
+    const wait = () => new Promise(r => setTimeout(r, 450));
+    const hit = r => [...document.querySelectorAll('.lab-rchip')].find(b => b.dataset.role === r);
+    hit('גננת').click(); await wait();
+    const one = document.querySelectorAll('.lab-strows tbody tr').length;
+    hit('סייעת').click(); await wait();
+    const two = document.querySelectorAll('.lab-strows tbody tr').length;
+    const extra = [...document.querySelectorAll('.lab-rmore input')].find(c => c.value === 'העשרה');
+    extra.click(); await wait();
+    const three = document.querySelectorAll('.lab-strows tbody tr').length;
+    document.querySelector('.lab-rclear').click(); await wait();
+    return { one, two, three, all: document.querySelectorAll('.lab-strows tbody tr').length,
+             num: (document.querySelector('.lab-mnum') || {}).textContent };
+  });
+  if (roleFilter.one !== 1 || roleFilter.two !== 2 || roleFilter.three !== 3)
+    bad('שבבי התפקיד אינם מצטברים', ['גננת=' + roleFilter.one + ' +סייעת=' + roleFilter.two + ' +העשרה=' + roleFilter.three]);
+  else if (roleFilter.all !== 3)
+    bad('"נקה" לא החזיר את הרשימה המלאה', ['נשארו ' + roleFilter.all]);
+  else ok('שבבי התפקיד מצטברים (1 → 2 → 3) ו"נקה" מחזיר הכול');
+
+  /* התיק בצד — נפתח, מצטמצם על הרשימה, ומביא נתונים אמיתיים */
+  const before = await p.evaluate(() => document.querySelector('.searchbar').getBoundingClientRect().width);
+  await p.evaluate(() => { const r = document.querySelector('.lab-strows tbody tr'); if (r) r.click(); });
+  await p.waitForTimeout(700);
+  const dossier = await p.evaluate(() => {
+    const q = document.querySelector('.lab-stquick');
+    if (!q || q.classList.contains('empty-state')) return null;
+    return {
+      name: (q.querySelector('.qname') || {}).textContent,
+      sub:  (q.querySelector('.qtz') || {}).textContent,
+      acts: [...q.querySelectorAll('.lab-stqact')].map(a => a.textContent.trim()),
+      docs: [...q.querySelectorAll('.qdoc')].map(d => d.textContent.trim()),
+      att:  [...q.querySelectorAll('.lab-stattc .v')].map(v => v.textContent),
+      hist: q.querySelectorAll('.lab-sthist').length,
+      note: !!q.querySelector('.lab-stnote'),
+      full: !!q.querySelector('.btn.full'),
+      sbW:  document.querySelector('.searchbar').getBoundingClientRect().width,
+      bot:  (document.querySelector('.lab-stbot .lab-stbname') || {}).textContent,
+      botBtns: document.querySelectorAll('.lab-stbot .btn').length,
+    };
+  });
+  if (!dossier)                    bad('לחיצה על שורה לא פתחה את התיק בצד');
+  else if (!/ברקוביץ/.test(dossier.name)) bad('נפתח תיק של מישהו אחר', ['התקבל: ' + dossier.name]);
+  else if (!/גננת/.test(dossier.sub) || !/ותק/.test(dossier.sub))
+    bad('שורת המשנה בתיק אינה "תפקיד · גן · ותק"', ['התקבל: ' + dossier.sub]);
+  else if (dossier.acts.length !== 3)
+    bad('אין שלוש פעולות קשר בתיק', [dossier.acts.join(' · ')]);
+  else if (dossier.att.join(',') !== '1,0')
+    bad('משבצות הנוכחות אינן קוראות מהנתונים', ['התקבל: ' + dossier.att.join(', ')]);
+  else if (!dossier.hist)          bad('אין "תנועות בשנים קודמות" למי שמשובצת');
+  else if (!dossier.note)          bad('ההערה שבתיק אינה מוצגת');
+  else if (!dossier.full)          bad('אין כפתור "פתיחת תיק העובדת המלא"');
+  else if (!(dossier.sbW < before - 100))
+    bad('שורת החיפוש לא התכווצה כשנפתח התיק', ['לפני ' + Math.round(before) + 'px · אחרי ' + Math.round(dossier.sbW) + 'px']);
+  else if (!/ברקוביץ/.test(dossier.bot) || dossier.botBtns !== 3)
+    bad('הפס הכהה התחתון אינו מציג את הבחירה עם שלוש הפעולות', [dossier.bot + ' · ' + dossier.botBtns + ' כפתורים']);
+  else ok('התיק בצד נפתח על ' + dossier.name.trim() + ', החיפוש התכווץ ל-' + Math.round(dossier.sbW) + 'px, והפס התחתון מציג את הבחירה');
+
+  /* --- 7. "עדכון לפי ת"ז" בייבוא הצוות מעדכן תיקים ופותח חדשים -------- */
+  await p.evaluate(() => { const b = document.querySelector('#impStaff'); if (b) b.click(); });
+  await p.waitForTimeout(700);
+  const tz = await p.evaluate(async () => {
+    const m = document.querySelector('#modal');
+    const mode = [...m.querySelectorAll('.lab-mode')].find(b => b.dataset.m === 'tz');
+    if (!mode) return { noMode: true };
+    mode.click();
+    m.querySelector('#stu-text').value = 'ת"ז,נייד,עיר\n039112881,050-9999999,ביתר עילית\n888888888,050-7777777,אלעד';
+    m.querySelector('#stu-preview').click();
+    await new Promise(r => setTimeout(r, 350));
+    const stats = [...m.querySelectorAll('#stu-out .stat .v')].map(x => x.textContent);
+    /* ⚠️ נקרא מיד אחרי הלחיצה, בלי המתנה: save() מתזמן דחיפה אחרי 250ms,
+       ומול ה-Firestore המדומה היא מנקה את הרשומות שנכתבו. */
+    m.querySelector('#stu-do').click();
+    const a = DB.staff.find(x => x.tz === '039112881');
+    const n = DB.staff.find(x => x.tz === '888888888');
+    return { stats, mobile: a && a.mobile, city: a && a.city, name: a && a.lastName,
+             created: !!n, newMobile: n && n.mobile, out: (m.querySelector('#stu-out') || {}).textContent };
+  });
+  if (tz.noMode)                bad('אין מצב "עדכון לפי ת"ז" בחלון ייבוא הצוות');
+  else if (tz.stats.join(',') !== '1,1,2')
+    bad('התצוגה המקדימה של העדכון אינה מדווחת נכון', ['התקבל: ' + tz.stats.join(' · ') + ' (צפוי 1 · 1 · 2)']);
+  else if (tz.mobile !== '050-9999999' || tz.city !== 'ביתר עילית')
+    bad('העדכון לא החליף את הערכים הקיימים', ['נייד=' + tz.mobile + ' עיר=' + tz.city]);
+  else if (tz.name !== 'ברקוביץ')
+    bad('העדכון דרס שדה שלא נבחר', ['שם משפחה=' + tz.name]);
+  else if (!tz.created || tz.newMobile !== '050-7777777')
+    bad('ת"ז שאינה במאגר לא נפתחה כתיק חדש', ['נוצר=' + tz.created + ' נייד=' + tz.newMobile]);
+  else ok('"עדכון לפי ת"ז" החליף נייד ועיר בתיק קיים, ופתח תיק חדש לת"ז שאינה במאגר');
+  await p.evaluate(() => closeModal()); await p.waitForTimeout(400);
 
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));
