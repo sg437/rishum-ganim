@@ -9,9 +9,12 @@
         "כרטיסים" ל"טבלה" שינה לא רק את המראה אלא גם את מה שאפשר לעשות.
      2. תיק הילדה שנפתח בצד — הכפתור הדביק שבתחתית חייב לשבת בדיוק על רוחב
         הכרטיס. קודם הוא נמתח החוצה מצד אחד ונשאר קצר מהשני.
-     3. אין לשונית "ייצוא" בניווט — בתוכנה הייצוא יושב בתוך המסכים.
+     3. אין לשוניות "ייצוא" ו"עירייה" בניווט — שתי הפעולות יושבות בתוך
+        לשונית התלמידות.
      4. כפתור "ייצוא" שבלשונית התלמידות פותח את מסך הייצוא בעיצוב שתי
         העמודות, עם הלוח הכהה שמונה את השורות.
+     5. "עדכון לפי ת"ז" פותח חלון שבתחתיתו מקטע "רשימת העירייה" — ושהוא
+        עובד: הדבקת ת"ז והתאמה מסמנת את התיקים כ"קלוט בעירייה".
 
    הרצה:  NODE_PATH=$(npm root) node tests/lab-screens.test.cjs
    ============================================================================ */
@@ -181,11 +184,12 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     bad('הכפתור אינו דביק', ['position=' + q.position]);
   else ok('הפס התחתון בתיק הילדה יושב בדיוק על רוחב הכרטיס ונשאר דביק');
 
-  /* --- 3. אין לשונית "ייצוא" בניווט ------------------------------------ */
+  /* --- 3. אין לשוניות "ייצוא" ו"עירייה" בניווט -------------------------- */
   const navTabs = await p.evaluate(() => [...document.querySelectorAll('#tabs [data-tab]')].map(b => b.dataset.tab));
   if (navTabs.includes('export')) bad('לשונית "ייצוא" חזרה לניווט', [navTabs.join(' · ')]);
+  else if (navTabs.includes('municipality')) bad('לשונית "עירייה" חזרה לניווט', [navTabs.join(' · ')]);
   else if (navTabs.length < 10)   bad('הניווט נראה חסר — ' + navTabs.length + ' לשוניות בלבד', [navTabs.join(' · ')]);
-  else ok(navTabs.length + ' לשוניות בניווט, בלי "ייצוא" — הייצוא יושב בתוך המסכים');
+  else ok(navTabs.length + ' לשוניות בניווט, בלי "ייצוא" ובלי "עירייה" — שתיהן יושבות בתוך לשונית התלמידות');
 
   /* --- 4. "ייצוא" בלשונית התלמידות פותח את המסך המעוצב ----------------- */
   await p.evaluate(() => { const b = document.querySelector('#exportStu'); if (b) b.click(); });
@@ -220,6 +224,58 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     if (after.big !== '6') bad('המונה שבלוח הכהה אינו עוקב אחרי התצוגה המקדימה', ['התקבל: ' + after.big + ' (צפוי 6)']);
     else ok('"ייצוא" פותח את מסך שתי העמודות — ' + x.fields + ' שדות, מונה חי (' + after.big + ' ' + after.meta + ')');
   }
+
+  await p.evaluate(() => closeModal()); await p.waitForTimeout(400);
+
+  /* --- 5. "עדכון לפי ת"ז" מכיל את רשימת העירייה, והיא עובדת ------------ */
+  await goTab(p, 'students'); await p.waitForTimeout(900);
+  await p.evaluate(() => { const b = document.querySelector('#importUpdate'); if (b) b.click(); });
+  await p.waitForTimeout(700);
+  const bi = await p.evaluate(() => {
+    const m = document.querySelector('#modal');
+    if (!m || !m.querySelector('#bi-text')) return null;
+    const fs = m.querySelector('#bi-muni');
+    const kids = [...m.children];
+    const cancel = m.querySelector('#bi-cancel');
+    return {
+      title:  (m.querySelector('h3') || {}).textContent,
+      muni:   !!fs,
+      legend: fs ? (fs.querySelector('legend') || {}).textContent : null,
+      /* המקטע חייב להיות *מתחת* למקטע העדכון לפי שדה, לא לפניו */
+      afterOut: fs ? kids.indexOf(fs) > kids.indexOf(m.querySelector('#bi-text').closest('fieldset')) : false,
+      /* ו"עדכן" יושב בתוך המקטע שלו, לא בין השניים */
+      doInList: !!(m.querySelector('#bi-text').closest('fieldset').querySelector('#bi-do')),
+      /* ו"סגירה" מתחתיו — הוא סוגר את החלון כולו */
+      cancelLast: !!(cancel && fs && kids.indexOf(cancel.parentNode) > kids.indexOf(fs)),
+      run:    !!(fs && fs.querySelector('#muni-run')),
+      csv:    !!(fs && fs.querySelector('#muni-file')),
+    };
+  });
+  if (!bi)             bad('כפתור "עדכון לפי ת"ז" לא פתח את החלון');
+  else if (!bi.muni)   bad('אין מקטע "רשימת העירייה" בחלון "עדכון לפי ת"ז"');
+  else if (!bi.run || !bi.csv) bad('מקטע העירייה חסר פקדים', ['התאמה=' + bi.run + ' CSV=' + bi.csv]);
+  else if (!bi.doInList)   bad('"עדכן" נשאר בין שני המקטעים ולא בתוך המקטע שלו');
+  else if (!bi.afterOut)   bad('מקטע העירייה אינו בתחתית החלון');
+  else if (!bi.cancelLast) bad('"סגירה" נשאר באמצע החלון, מעל מקטע העירייה');
+  else {
+    /* לא רק שהוא שם — הוא גם מסמן. שתי ת"ז מתוך השש שבנתוני הבדיקה. */
+    const before = await p.evaluate(() => DB.students.filter(s => s.absorbedMunicipality).length);
+    await p.evaluate(() => {
+      document.querySelector('#modal #muni-text').value = '123456781\n123456782';
+      document.querySelector('#modal #muni-run').click();
+    });
+    await p.waitForTimeout(500);
+    const after = await p.evaluate(() => ({
+      marked: DB.students.filter(s => s.absorbedMunicipality).map(s => s.tz),
+      result: (document.querySelector('#modal #muni-result .stat.hero .v') || {}).textContent,
+    }));
+    if (before !== 0)              bad('נתוני הבדיקה כבר סומנו — הבדיקה אינה אומרת דבר');
+    else if (after.marked.length !== 2)
+      bad('ההתאמה מהחלון לא סימנה את התיקים', ['סומנו: ' + after.marked.join(', ')]);
+    else if (after.result !== '2') bad('לוח התוצאה אינו מדווח נכון', ['התקבל: ' + after.result]);
+    else ok('"רשימת העירייה" יושב בתחתית "עדכון לפי ת"ז" ומסמן (' + after.marked.join(', ') + ')');
+  }
+  await p.evaluate(() => closeModal()); await p.waitForTimeout(300);
 
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));

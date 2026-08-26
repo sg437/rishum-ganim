@@ -2442,12 +2442,6 @@ if(document.documentElement.classList.contains("ui-lab")){
           case "assign":   return y + " · " + gans.length + " גנים";
           case "map":      return y + " · " + gans.length + " גנים";
           case "reports":  return y + " · " + stu + " תלמידות · " + gans.length + " גנים";
-          case "municipality": {
-            const all = eduScope(studentsOfYear().filter(s=>!s.finished));
-            const ok  = all.filter(s=>s.absorbedMunicipality).length;
-            const cities = new Set(all.map(s=>String(s.city||"").trim()).filter(Boolean)).size;
-            return ok + " נקלטו · " + (all.length-ok) + " ממתינות · " + cities + " ערים";
-          }
           case "messages": return "שליחה מרוכזת · " + y;
           case "export":   return "בחר/י מה לייצא, לאיזה פורמט ולמי";
           case "templates":return "מסמכים ותבניות · " + y;
@@ -2535,55 +2529,6 @@ if(document.documentElement.classList.contains("ui-lab")){
           placedPct:Math.round(placed/total*100),    placedN:placed,
           total: stu.length, byCity, byAge, perGan,
           prevYear, prev
-        };
-      }catch(e){ return null; }
-    },
-
-    /* לוח 09 — "קליטה בעירייה". ⚠️ הלוח מציג מעקב משלוחים לרשויות: "טרם
-       נשלח", "נדחה — כתובת", "ימים בהמתנה", "משלוחים אחרונים". במודל הנתונים
-       אין שדה משלוח, אין תאריך ואין רשות — יש רק absorbedMunicipality (דו-ערכי).
-       לכן במקום להמציא סטטוסים, הפירוט כאן נשען על החסמים האמיתיים שמונעים
-       הגשה: חסרה ת"ז, אין שיבוץ, חסרים מסמכים — או מוכן לשליחה. */
-    muniBoard(){
-      try{
-        const stu = eduScope(studentsOfYear().filter(s=>!s.finished));
-        const ok  = stu.filter(s=>s.absorbedMunicipality);
-        const pend= stu.filter(s=>!s.absorbedMunicipality);
-
-        const reasonOf = s=>{
-          if(!digits(s.tz)) return {key:"tz",   label:'חסרה ת"ז',      tone:"bad"};
-          if(!s.ganId)      return {key:"gan",  label:"חסר שיבוץ",     tone:"warn"};
-          const d=s.docs||{};
-          if(STUDENT_DOCS.some(x=>!d[x[0]])) return {key:"docs", label:"מסמכים חסרים", tone:"warn"};
-          return {key:"ready", label:"מוכן לשליחה", tone:"good"};
-        };
-
-        const counts = {tz:0, gan:0, docs:0, ready:0};
-        const rows = pend.map(s=>{
-          const r = reasonOf(s); counts[r.key]++;
-          return {
-            id:s.id,
-            name:(String(s.lastName||"").trim()+" "+String(s.firstName||"").trim()).trim(),
-            tz:digits(s.tz), gan:s.ganId?ganName(s.ganId):"",
-            city:String(s.city||"").trim(),
-            reason:r.label, tone:r.tone
-          };
-        }).sort((a,b)=>a.name.localeCompare(b.name,"he"));
-
-        const cmap={};
-        stu.forEach(s=>{
-          const c=String(s.city||"").trim() || "אחר";
-          const e=cmap[c]||(cmap[c]={city:c,n:0,ok:0});
-          e.n++; if(s.absorbedMunicipality) e.ok++;
-        });
-        const byCity=Object.keys(cmap).map(k=>cmap[k]).sort((a,b)=>b.n-a.n).slice(0,8);
-
-        return {
-          year:DB.activeYear||"", total:stu.length,
-          absorbed:ok.length, pending:pend.length,
-          pct: stu.length ? Math.round(ok.length/stu.length*100) : 0,
-          counts, rows:rows.slice(0,60), rowsTotal:rows.length, byCity,
-          listed:((DB.municipality||{})[DB.activeYear]||[]).length
         };
       }catch(e){ return null; }
     },
@@ -5579,6 +5524,7 @@ function openBulkImport(){
   </div>
   <div id="bi-out" style="margin-top:14px"></div>`);
   $("#bi-cancel").onclick=closeModal;
+  labMuniInBulk();
   $("#bi-do").onclick=()=>{
     const fieldKey=$("#bi-field").value, val=$("#bi-val").value==="yes";
     const f=BULK_FIELDS.find(x=>x.key===fieldKey); if(!f) return;
@@ -5594,6 +5540,38 @@ function openBulkImport(){
       +(transferred?` · ${transferred} הועברו להשארות`:'')+(failed?` · ${failed} לא הועברו`:'')
       +(notFound.length?`<div class="hint" style="color:var(--warn);margin-top:6px">לא נמצאו ${notFound.length} ת"ז: ${notFound.slice(0,30).map(esc).join(", ")}${notFound.length>30?'…':''}</div>`:'');
   };
+}
+/* מעבדת עיצוב בלבד — בעיצוב החדש אין לשונית "עירייה", ולכן רשימת העירייה
+   יושבת כאן: מקטע נוסף בתחתית חלון "עדכון לפי ת"ז", אחרי העדכון לפי שדה.
+   בעיצוב הקיים הלשונית במקומה, הפונקציה יוצאת מיד והחלון אינו משתנה כלל.
+   ראה docs/UI_LAB.md. */
+function labMuniInBulk(){
+  if(!document.documentElement.classList.contains("ui-lab")) return;
+  const m=$("#modal"); if(!m || m.querySelector("#bi-muni")) return;
+
+  /* מרגע שיש בחלון שני מקטעים, לכל מקטע הכפתור שלו — אחרת "עדכן" נראה
+     כאילו הוא מפעיל את שניהם. "עדכן" והתוצאה שלו נכנסים לתוך מקטע
+     "רשימת ת"ז"; האלמנטים מועברים ולא נבנים מחדש, ולכן כל המאזינים
+     שכבר נקשרו אליהם נשמרים. */
+  const list=m.querySelector("#bi-text").closest("fieldset");
+  const doBtn=m.querySelector("#bi-do"), out=m.querySelector("#bi-out");
+  const row=doBtn && doBtn.parentNode;
+  if(list && doBtn){
+    const r=document.createElement("div");
+    r.className="row"; r.style.marginTop="10px";
+    r.appendChild(doBtn); list.appendChild(r);
+    if(out) list.appendChild(out);
+  }
+
+  const fs=document.createElement("fieldset");
+  fs.id="bi-muni";
+  fs.innerHTML=`<legend>רשימת העירייה</legend>${muniSectionHTML("hint")}`;
+  m.appendChild(fs);
+
+  /* מה שנשאר בשורה המקורית — "סגירה" — יורד לתחתית: הוא סוגר את החלון
+     כולו, ומקומו אחרי שני המקטעים ולא באמצע. */
+  if(row){ row.style.marginTop="12px"; m.appendChild(row); }
+  wireMuniSection(m, true);
 }
 function openImport(){
   const state={ list:[], mapped:[] };
@@ -8445,27 +8423,36 @@ function parseMuniInput(text){
   if(!structured) tzList=(String(text||"").match(/\d{5,}/g)||[]);
   return { nums:[...new Set(tzList)], parents, structured };
 }
-function viewMunicipality(root){
+/* ---------- רשימת העירייה — מקטע אחד, שני מקומות ----------
+   הגוף של מסך "רשימת העירייה" (הדבקת ת"ז, טעינת CSV, התאמה וסימון) נבנה
+   כאן ולא בתוך viewMunicipality, כדי שאותו מקטע בדיוק ישרת שני מקומות:
+   הלשונית "עירייה" בעיצוב הקיים, ובעיצוב החדש (מעבדת העיצוב) — התחתית של
+   חלון "עדכון לפי ת"ז", ששם הלשונית בוטלה. ראה docs/UI_LAB.md.
+   אין כאן שני עותקים של הלוגיקה: הכפתור, ההתאמה והשמירה זהים בשני המקומות. */
+function muniSectionHTML(descClass){
   const stored = DB.municipality[DB.activeYear]||[];
-  root.innerHTML=`
-  <div class="panel">
-    <h2>רשימת העירייה · שנת ${esc(DB.activeYear)}</h2>
-    <div class="sub">הדבק/י או העלה/י את רשימת תעודות הזהות שקיבלת מהעירייה. המערכת תבצע התאמה (VLOOKUP) לפי ת"ז ותסמן כל תלמידה כ"קלוט בעירייה". אם הקובץ כולל כותרות עם עמודות "שם אב" / "שם אם" — המערכת תשלים אותן לתיקים שבהם הן חסרות.</div>
+  return `
+    <div class="${descClass||"sub"}">הדבק/י או העלה/י את רשימת תעודות הזהות שקיבלת מהעירייה. המערכת תבצע התאמה (VLOOKUP) לפי ת"ז ותסמן כל תלמידה כ"קלוט בעירייה". אם הקובץ כולל כותרות עם עמודות "שם אב" / "שם אם" — המערכת תשלים אותן לתיקים שבהם הן חסרות.</div>
     <div class="grid g2">
       <div>
         <label>הדבקת ת"ז (שורה לכל אחת) — או טבלה עם כותרות: ת"ז, שם אב, שם אם</label>
         <textarea id="muni-text" rows="8" placeholder="123456789&#10;987654321&#10;…&#10;— או —&#10;ת&quot;ז,שם אב,שם אם&#10;123456789,יעקב,רבקה">${stored.join("\n")}</textarea>
         <div class="row" style="margin-top:8px">
-          <button class="btn" id="muni-run">🔗 בצע התאמה וסמן</button>
+          <button class="btn" id="muni-run" type="button">🔗 בצע התאמה וסמן</button>
           <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="muni-file" accept=".csv,.txt" hidden></label>
         </div>
       </div>
       <div id="muni-result"><div class="hint">התוצאה תופיע כאן לאחר ההתאמה.</div></div>
-    </div>
-  </div>`;
-  $("#muni-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; readFileSmart(f, txt=>{ $("#muni-text").value=txt; toast('הקובץ נטען — לחצ/י "בצע התאמה"'); }); };
-  $("#muni-run").onclick=()=>{
-    const { nums, parents, structured } = parseMuniInput($("#muni-text").value);
+    </div>`;
+}
+/* חיווט המקטע. root — הלשונית או החלון שבו הוא יושב (שניהם לעולם לא פתוחים
+   יחד, אבל החיפוש תחום כדי שלא יסתמך על כך). inModal — כשהמקטע יושב בחלון,
+   סימון תיקים משנה את הרשימה שמאחוריו, ולכן היא מתרעננת עם סגירת החלון. */
+function wireMuniSection(root, inModal){
+  const q = s => (root||document).querySelector(s);
+  q("#muni-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; readFileSmart(f, txt=>{ q("#muni-text").value=txt; toast('הקובץ נטען — לחצ/י "בצע התאמה"'); }); };
+  q("#muni-run").onclick=()=>{
+    const { nums, parents, structured } = parseMuniInput(q("#muni-text").value);
     DB.municipality[DB.activeYear]=nums;
     const set=new Set(nums);
     let matched=0, already=0, filled=0;
@@ -8480,9 +8467,10 @@ function viewMunicipality(root){
       }
     });
     save();
+    if(inModal) pendingRender=true;   // רענון הרשימה שמאחורי החלון עם סגירתו
     const inSystem=new Set(rows.map(s=>digits(s.tz)).filter(Boolean));
     const notFound=nums.filter(n=>!inSystem.has(n));
-    $("#muni-result").innerHTML=`
+    q("#muni-result").innerHTML=`
       <div class="stats">
         <div class="stat hero"><div class="k">סומנו כקלוטות עכשיו</div><div class="v">${matched}</div></div>
         <div class="stat"><div class="k">כבר היו מסומנות</div><div class="v">${already}</div></div>
@@ -8493,6 +8481,14 @@ function viewMunicipality(root){
       ${notFound.length?`<div class="note" style="margin-top:10px">${notFound.length} ת"ז מופיעות ברשימת העירייה אך אינן במערכת (ייתכן שטרם נרשמו אצלנו):<br>${notFound.slice(0,40).map(esc).join(", ")}${notFound.length>40?' …':''}</div>`:''}`;
     toast("ההתאמה בוצעה");
   };
+}
+function viewMunicipality(root){
+  root.innerHTML=`
+  <div class="panel">
+    <h2>רשימת העירייה · שנת ${esc(DB.activeYear)}</h2>
+    ${muniSectionHTML()}
+  </div>`;
+  wireMuniSection(root, false);
 }
 
 /* ============================================================

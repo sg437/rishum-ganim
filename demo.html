@@ -924,6 +924,11 @@ VIEW.students = function(v){
      לניווט; הלשונית בוטלה, והמסך נשאר נגיש מהמקום הנכון. */
   var xb = v.querySelector("#exportStu");
   if(xb) xb.onclick = function(){ route("export"); };
+
+  /* "עדכון לפי ת״ז" — אותו סיפור: בתוכנה חלון, כאן מסך. שם יושבת עכשיו גם
+     רשימת העירייה, שלשונית "עירייה" בוטלה בעיצוב החדש. */
+  var ub = v.querySelector("#importUpdate");
+  if(ub) ub.onclick = function(){ route("bulkUpdate"); };
 };
 
 VIEW.gans = function(v){
@@ -1146,20 +1151,45 @@ VIEW.reports = function(v){
   ]));
 };
 
-VIEW.municipality = function(v){
+/* "עדכון לפי ת״ז" — בתוכנה זה חלון שנפתח מלשונית התלמידות; בדמו אין
+   מודאלים, ולכן הוא מוצג כמסך מלא (בדיוק כמו מסך הייצוא). שני המקטעים
+   שבו הם אותם שני המקטעים שבתוכנה: עדכון שדה לפי רשימת ת״ז, ומתחתיו
+   רשימת העירייה — שבעיצוב החדש אין לה לשונית משלה. */
+VIEW.bulkUpdate = function(v){
+  var tzs = STUDENTS.slice(0, 9).map(function(s){ return s.tz; }).join("\n");
   v.appendChild(h("div", { "class": "panel" }, [
-    txt("h2", null, "רשימת העירייה · שנת " + YEAR),
-    txt("div", "sub", 'הדבק/י או העלה/י את רשימת תעודות הזהות שקיבלת מהעירייה. המערכת תבצע התאמה (VLOOKUP) לפי ת״ז ותסמן כל תלמידה כ"קלוט בעירייה".'),
-    h("div", { "class": "grid g2" }, [
-      h("div", null, [
-        txt("label", null, 'הדבקת ת״ז (שורה לכל אחת)'),
-        h("textarea", { rows: "8", text: STUDENTS.slice(0, 9).map(function(s){ return s.tz; }).join("\n") }),
-        h("div", { "class": "row", style: "margin-top:8px" }, [
-          btn("🔗 בצע התאמה וסמן"), btn("📄 טעינת קובץ CSV", "ghost")
-        ])
-      ]),
-      h("div", { id: "muni-result" }, [ txt("div", "hint", "התוצאה תופיע כאן לאחר ההתאמה.") ])
-    ])
+    txt("h2", null, 'עדכון קבוצתי מרשימת ת״ז · שנת ' + YEAR),
+    txt("div", "note", 'מדביקים רשימת מספרי זהות (אחד בכל שורה, או מופרדים בפסיק/רווח), בוחרים שדה וערך — והמערכת מעדכנת את כל הילדות התואמות בשנה הפעילה (בכל סוגי החינוך). לא נוצרות תלמידות חדשות; ת״ז שלא נמצאה — תדווח.'),
+    h("fieldset", { style: "margin-top:12px" }, [
+      txt("legend", null, "שדה וערך"),
+      h("div", { "class": "row", style: "gap:10px;align-items:end;flex-wrap:wrap" }, [
+        h("div", { "class": "field" }, [ txt("label", null, "שדה לעדכון"),
+          h("select", { html: "<option>תשלום ביטוח תלמידים</option><option>קלוט בעירייה</option><option>נרשמה על ידינו</option><option>משובצת</option>" }) ]),
+        h("div", { "class": "field" }, [ txt("label", null, "ערך"),
+          h("select", { html: "<option>כן</option><option>לא</option>" }) ])
+      ])
+    ]),
+    h("fieldset", null, [
+      txt("legend", null, 'רשימת ת״ז'),
+      h("textarea", { rows: "8", text: tzs }),
+      h("div", { "class": "row", style: "margin-top:10px" }, [ btn("⬆️ עדכן") ]),
+      h("div", { id: "bi-out", style: "margin-top:14px" })
+    ]),
+    h("fieldset", { id: "bi-muni" }, [
+      txt("legend", null, "רשימת העירייה"),
+      txt("div", "hint", 'הדבק/י או העלה/י את רשימת תעודות הזהות שקיבלת מהעירייה. המערכת תבצע התאמה (VLOOKUP) לפי ת״ז ותסמן כל תלמידה כ"קלוט בעירייה". אם הקובץ כולל כותרות עם עמודות "שם אב" / "שם אם" — המערכת תשלים אותן לתיקים שבהם הן חסרות.'),
+      h("div", { "class": "grid g2" }, [
+        h("div", null, [
+          txt("label", null, 'הדבקת ת״ז (שורה לכל אחת) — או טבלה עם כותרות: ת״ז, שם אב, שם אם'),
+          h("textarea", { rows: "8", text: tzs }),
+          h("div", { "class": "row", style: "margin-top:8px" }, [
+            btn("🔗 בצע התאמה וסמן"), btn("📄 טעינת קובץ CSV", "ghost")
+          ])
+        ]),
+        h("div", { id: "muni-result" }, [ txt("div", "hint", "התוצאה תופיע כאן לאחר ההתאמה.") ])
+      ])
+    ]),
+    h("div", { "class": "row", style: "margin-top:12px" }, [ btn("סגירה", "ghost") ])
   ]));
 };
 
@@ -1501,7 +1531,7 @@ window.__uiLab = Object.freeze({
       case "assign":       return YEAR + " · " + T.gans + " גנים";
       case "map":          return "312 מתוך " + T.total + " מיקומים נטענו · מודיעין עילית";
       case "reports":      return YEAR + " · " + T.total + " תלמידות · " + T.gans + " גנים";
-      case "municipality": return T.muni + " נקלטו · " + T.notMuni + " ממתינות · " + byCity().length + " ערים";
+      case "bulkUpdate":   return 'עדכון שדה לפי רשימת ת״ז · ' + YEAR;
       case "messages":     return "שליחה מרוכזת · " + YEAR;
       case "export":       return "בחר/י מה לייצא, לאיזה פורמט ולמי";
       case "templates":    return "מסמכים ותבניות · " + YEAR;
@@ -1541,25 +1571,6 @@ window.__uiLab = Object.freeze({
                  docs: rows.length ? Math.round(ok / rows.length * 100) : 0 };
       }).sort(function(a, b){ return b.occ - a.occ; })
     };
-  },
-
-  muniBoard: function(){
-    var pend = STUDENTS.filter(function(s){ return !s.muni; });
-    var counts = { tz: 0, gan: 0, docs: 0, ready: 0 };
-    var rows = pend.map(function(s){
-      var r;
-      if(!s.tz)            r = { key: "tz",   label: 'חסרה ת״ז',      tone: "bad" };
-      else if(!s.ganId)    r = { key: "gan",  label: "חסר שיבוץ",     tone: "warn" };
-      else if(docsDone(s) < DOCS.length) r = { key: "docs", label: "מסמכים חסרים", tone: "warn" };
-      else                 r = { key: "ready", label: "מוכן לשליחה", tone: "good" };
-      counts[r.key]++;
-      return { id: s.id, name: fullName(s), tz: s.tz, gan: ganName(s.ganId),
-               city: s.city, reason: r.label, tone: r.tone };
-    }).sort(function(a, b){ return a.name.localeCompare(b.name, "he"); });
-    return { year: YEAR, total: T.total, absorbed: T.muni, pending: pend.length,
-             pct: Math.round(T.muni / T.total * 100), counts: counts,
-             rows: rows.slice(0, 60), rowsTotal: rows.length,
-             byCity: byCity().slice(0, 8), listed: T.muni };
   },
 
   mgmtBoard: function(){
