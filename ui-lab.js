@@ -2356,6 +2356,18 @@ function studentsFilters(){
   }
   var ac = sb.querySelector(".lab-agechip");
   if(ac) ac.classList.toggle("on", !!view.querySelector("#f-age .btn:not(.ghost)"));
+
+  markSetFields();
+}
+
+/* שדה בפאנל שנבחר בו ערך נצבע כהה, כמו שבב פעיל בשורה שבחוץ */
+function markSetFields(){
+  view.querySelectorAll(".filter-panel .field").forEach(function(f){
+    var c = f.querySelector("select, input[type=text], input:not([type])");
+    if(!c) return;
+    var on = !!String(c.value || "").trim();
+    if(f.classList.contains("lab-set") !== on) f.classList.toggle("lab-set", on);
+  });
 }
 
 /* מסתיר את עטיפת ה-.field שנשארה ריקה בפאנל אחרי שהפקד עלה לשבב */
@@ -2418,6 +2430,24 @@ function studentsBottom(){
     bulk.classList.remove("ghost");
     bb.appendChild(bulk);                   /* העברה — המאזין נשמר */
   }
+
+  /* כשהתיק פתוח הכרטיס צר, והשורה נשברה לשתיים. תוויות קצרות יותר
+     מחזירות אותה לשורה אחת בלי לוותר על אף פקד. */
+  var SHORT = { "bulk-selall":"הכל", "bulk-clear":"נקה" };
+  Object.keys(SHORT).forEach(function(id){
+    var b = view.querySelector("#" + id);
+    if(!b) return;
+    var n = (String(b.textContent).match(/\((\d+)\)/) || [])[0] || "";
+    var t = SHORT[id] + (n ? " " + n : "");
+    if(b.textContent !== t) b.textContent = t;      /* בלי זה — לולאת צופה */
+  });
+  if(bulk){
+    var t = bulk.textContent.indexOf("סיום") >= 0 ? "✕ סיום" : "✔ עדכון קבוצתי";
+    if(bulk.textContent !== t) bulk.textContent = t;
+  }
+  /* "שדה לעדכון" — הבורר מדבר בעד עצמו, והתווית גזלה שליש מהשורה */
+  var fl = view.querySelector("#bulkBar label");
+  if(fl) fl.classList.add("lab-hidden");
 
   /* הפס נצבע כהה כשיש בו תוכן — פאנל שדות או בחירה פעילה */
   var live = !!(host.querySelector(".selbar") || (bulkBar && bulkBar.firstChild));
