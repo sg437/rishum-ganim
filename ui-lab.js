@@ -2035,9 +2035,10 @@ function screenHeader(){
    בכל לוח יש רצועה כהה לרוחב המסך שנמשכת מהסרגל הימני בלי תפר. קודם הכותרת
    רוקנה והפכה שקופה, ואז נוצר "מדרגה" בין הסרגל הכהה לתוכן הבהיר.
 
-   ⚠️ בורר השנה: המעבדה הסתירה את מקטע השנה במגירה, ובכך הפכה את בחירת
-   השנה לבלתי אפשרית. ה-<select> המקורי *מועבר* לכאן — אותו אלמנט, אותו
-   מאזין change — כך שהמנגנון נשמר והשנה שוב ניתנת לבחירה.
+   ⚠️ בורר השנה אינו יושב כאן. שלב קודם העלה אותו לרצועה העליונה, ושם הוא
+   הפריע: מעבר בין שנות לימוד הוא פעולה נדירה ורבת־משמעות, ובראש כל מסך
+   הוא נראה כמו מסנן תצוגה שגרתי. הוא ירד למסך ההגדרות, כפאנל הראשון
+   ("שנת עבודה"), לצד "שנים" ו"מעבר שנה" — ראה yearPanel().
    =========================================================================== */
 function topBar(){
   var inner = document.querySelector("header.top .top-inner");
@@ -2050,17 +2051,6 @@ function topBar(){
   }
   var t = labelOfTab(curTab()) || "";
   if(name.textContent !== t) name.textContent = t;
-
-  var chips = inner.querySelector(".top-chips");
-  if(chips && !chips.querySelector("#yearSelect")){
-    var sel = document.getElementById("yearSelect");
-    if(sel){
-      var chip = el("label", "lab-yearpick");
-      chip.appendChild(el("span", "lab-ycal", "▤"));
-      chip.appendChild(sel);            /* העברה — המאזין נשמר */
-      chips.insertBefore(chip, chips.firstChild);
-    }
-  }
 }
 
 /* מסדר את הכפתורים לפי הסדר שבלוח — ורק אם הם אינם כבר בו.
@@ -2480,6 +2470,45 @@ var SET_GROUPS = [
   ["מערכת והרשאות", ["מי מחובר", "יומן פעילות", "מנהלי מערכת", "ניהול משתמשים", "חשבון והתחברות"]],
   ["מראה והתקנה", ["מיתוג", "התקנה כאפליקציה", "פניות והצעות"]]
 ];
+/* בורר שנת העבודה — הפאנל הראשון בהגדרות.
+   ---------------------------------------------------------------------------
+   ה-<select> המקורי (#yearSelect) *נשאר במגירה*, מוסתר. זה מכוון: הוא יושב
+   מחוץ ל-#view, ולכן שורד את בנייתו מחדש של המסך בכל מעבר לשונית, ומחזיק
+   את מאזין ה-change שכותב את ההעדפה ומרענן את המסלול. אילו היינו מעבירים
+   אותו פיזית לתוך המסך, היציאה מההגדרות הייתה מוחקת אותו — ובחירת השנה
+   הייתה נעלמת עד רענון הדף.
+
+   לכן כאן נבנה בורר מקביל, שקורא ממנו וכותב אליו: אותה רשימת שנים, ובכל
+   שינוי — השמה + dispatch של change על המקורי. המנגנון המקורי לא נגע. */
+function yearPanel(){
+  var real = document.getElementById("yearSelect");
+  if(!real || !real.options.length) return null;
+
+  var p   = labPanel("year", "שנת עבודה",
+                     "כל המסכים — תלמידות, גנים, צוות ודוחות — מציגים את הנתונים של השנה שנבחרה כאן.");
+  var box = el("div", "lab-yearbox");
+  box.appendChild(el("span", "lab-ycal", "▤"));
+
+  var sel = el("select", "lab-yearsel");
+  Array.prototype.forEach.call(real.options, function(o){
+    var n = document.createElement("option");
+    n.value = o.value; n.textContent = o.textContent;
+    sel.appendChild(n);
+  });
+  sel.value = real.value;
+  sel.addEventListener("change", function(){
+    if(sel.value === real.value) return;
+    real.value = sel.value;
+    real.dispatchEvent(new Event("change", {bubbles:true}));
+  });
+  box.appendChild(sel);
+  p.appendChild(box);
+  p.appendChild(el("div", "lab-yearnote",
+                   "הבחירה נזכרת במכשיר הזה בלבד. הוספת שנה ומחיקתה — בפאנל \"שנים\"; " +
+                   "העתקת תלמידות לשנה חדשה — ב\"מעבר שנה\"."));
+  return p;
+}
+
 function settingsScreen(){
   if(curTab() !== "settings" || view.querySelector(".lab-toc")) return;
   var panels = Array.prototype.slice.call(view.querySelectorAll(":scope > .panel"));
@@ -2540,6 +2569,20 @@ function settingsScreen(){
   });
   order.forEach(function(p){ col.appendChild(p); });
   panels.forEach(function(p){ if(p.parentNode !== col) col.appendChild(p); });
+
+  /* שנת העבודה פותחת את המסך — הפאנל הראשון בעמודה והפריט הראשון ברשימה,
+     בראש הקבוצה שכבר מרכזת את "שנים" ו"מעבר שנה". */
+  var yp = yearPanel();
+  if(yp){
+    yp.id = "labYearSec";
+    col.insertBefore(yp, col.firstChild);
+    var ya = el("a", "lab-toci", "שנת עבודה");
+    ya.href = "#labYearSec";
+    var firstG = toc.querySelector(".lab-tocg");
+    if(firstG) toc.insertBefore(ya, firstG.nextSibling);
+    else       toc.insertBefore(ya, toc.firstChild);
+    items.unshift({ id:yp.id, title:"שנת עבודה", el:yp });
+  }
 
   /* סימון הפריט הפעיל בגלילה */
   var links = toc.querySelectorAll(".lab-toci");
