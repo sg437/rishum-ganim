@@ -1343,7 +1343,7 @@ function staffTop(){
     };
     acts.appendChild(xp);
   }
-  orderInto(acts, STAFF_TOP, { staffMsg:"✉ שליחת הודעות", impStaff:"↥ ייבוא מקובץ",
+  orderInto(acts, STAFF_TOP, { staffMsg:"✉ שליחת הודעות", impStaff:"↥ ייבוא",
                                labStaffExp:"↧ ייצוא", addStaff:"+ הוספת איש צוות" });
   var add = acts.querySelector("#addStaff");
   if(add) add.classList.remove("ghost");
