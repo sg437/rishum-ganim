@@ -2259,16 +2259,6 @@ function studentsTop(){
     if(b) b.classList.add("lab-hidden");
   });
 
-  /* "עדכון קבוצתי" יורד לשורת ההתאמות שמעל הטבלה — לא לכותרת.
-     ⚠️ screenHeader כבר אסף אותו לשורת הפעולות, ולכן לא די בבדיקת ההורה:
-     צריך להוציא אותו משם במפורש. */
-  var bulk = view.querySelector("#bulkToggle");
-  var mline = view.querySelector(".lab-mline");
-  if(bulk && mline && bulk.parentNode !== mline){
-    bulk.classList.add("lab-bulkbtn", "ghost");
-    mline.appendChild(bulk);                  /* העברה — המאזין נשמר */
-  }
-
   /* שלושת כפתורי הלוח, בסדר שלו ובשמות שלו. הסדר נאכף בכל מעבר, כי
      screenHeader מסדר אותם לפי סדר ה-DOM המקורי. */
   orderInto(acts, STU_TOP, { addStu:"+ הוספת ילדה", exportStu:"ייצוא",
@@ -2368,6 +2358,36 @@ function hideField(node){
   if(f && f !== node) f.classList.add("lab-hidden");
 }
 
+/* הפס התחתון (הצילום שצורף): "עדכון קבוצתי" יושב בפס הכהה שבתחתית
+   המסך, יחד עם פעולות הבחירה, והפס נשאר גלוי בגלילה.
+
+   ⚠️ renderSelBar עושה innerHTML="" ל-#stuSelBar בכל רינדור. אילו
+   #bulkToggle היה יושב בתוכו הוא היה נמחק — ואז אי אפשר בכלל להיכנס
+   למצב הבחירה. לכן נבנית עטיפה: פס התוכנה נשאר שלם בתוכה, והכפתור
+   יושב לצידו כאח, מחוץ להישג ידו של ה-innerHTML. */
+function studentsBottom(){
+  var host = view.querySelector("#stuSelBar");
+  if(!host) return;
+
+  var wrap = view.querySelector(".lab-botwrap");
+  if(!wrap){
+    wrap = el("div", "lab-botwrap");
+    host.parentNode.insertBefore(wrap, host);
+    wrap.appendChild(host);
+    wrap.appendChild(el("div", "lab-botbar"));
+  }
+  var bb = wrap.querySelector(".lab-botbar");
+  var bulk = view.querySelector("#bulkToggle");
+  if(bulk && bulk.parentNode !== bb){
+    bulk.classList.add("lab-bulkbtn");
+    bulk.classList.remove("ghost");
+    bb.appendChild(bulk);                   /* העברה — המאזין נשמר */
+  }
+  /* בלי בחירה פעילה הפס מציג רק את הכפתור, ולכן נשאר צר ושקוף */
+  var sel = !!host.querySelector(".selbar");
+  if(wrap.classList.contains("on") !== sel) wrap.classList.toggle("on", sel);
+}
+
 /* "+" בכותרת הטבלה לעמודות הנוספות — במקום הכפתור עם הטקסט */
 function colPlus(){
   var b = view.querySelector("#stuColsBtn");
@@ -2403,7 +2423,7 @@ function maybeStudents(){
     });
     var host = view.querySelector("#stuTable");   /* אחרי matchLine — הבורר נכנס לתוכו */
     if(host){ stuToggle(host); applyStuMode(); }
-    studentsTop(); studentsFilters(); colPlus();
+    studentsTop(); studentsFilters(); colPlus(); studentsBottom();
     /* כשתיק הילדה פתוח, שורת ההתאמות והבורר נעצרים בקצה הטבלה ואינם
        נמתחים מעל הפאנל — כפי שהלוח מציג. */
     var q = view.querySelector("#stuQuick");
