@@ -2357,6 +2357,18 @@ function studentsFilters(){
   var ac = sb.querySelector(".lab-agechip");
   if(ac) ac.classList.toggle("on", !!view.querySelector("#f-age .btn:not(.ghost)"));
 
+  /* "עיר" מיותר — הרחוב והקמפוס כבר מצמצמים מספיק, והוא זה שדחף את
+     "ניקוי" לשורה נפרדת. */
+  var city = view.querySelector("#f-city");
+  if(city) hideField(city);
+
+  /* "התאם לעמוד אחד" בשורת רשימת הגן — מיותר */
+  var op = view.querySelector("#stuGanOnepage");
+  if(op){
+    var lab = op.closest("label");
+    if(lab) lab.classList.add("lab-hidden");
+  }
+
   markSetFields();
 }
 

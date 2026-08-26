@@ -1990,3 +1990,24 @@ html.ui-lab .filter-panel .field:has(> .btn) > label{ display:none }
 html.ui-lab .filter-panel .field > .btn{
   border-radius:99px; padding:6px 13px; font-size:.8rem; font-weight:600;
 }
+
+/* ---- תיק הילדה: "פתיחת התיק המלא" תמיד נגיש -------------------------------
+   הפאנל גולל בתוך max-height, ולכן הכפתור הראשי נשאר מציץ בקצה התחתון
+   ולא ניתן ללחוץ עליו בלי לגלול. הוא נדבק לתחתית הפאנל, מעל הגלילה. */
+/* ⚠️ max-height של הפאנל בקוד מחסיר גם את גובה שורת המספרים הדביקה,
+   ולכן הוא יצא גבוה מהמקום שבאמת נשאר — תחתית הפאנל, ואיתה הכפתור
+   הראשי, נפלה מתחת לקצה המסך. כאן הוא נגזר מהחלון ומהכותרת בלבד. */
+html.ui-lab .stu-quick{
+  top:calc(var(--top-h,61px) + 12px);
+  max-height:calc(100vh - var(--top-h,61px) - 24px);
+  padding-bottom:0;
+}
+html.ui-lab .stu-quick .qcard{ padding-bottom:0 }
+html.ui-lab .stu-quick .qcard > .btn.full{
+  position:sticky; bottom:0; z-index:3; margin:12px -14px 0; width:calc(100% + 28px);
+  border-radius:0 0 var(--radius) var(--radius);
+  padding:12px 14px; font-weight:700;
+  box-shadow:0 -10px 18px -12px rgba(21,52,42,.35);
+}
+/* שאר הכרטיסים (אחים, היסטוריה) שומרים על הריפוד שלהם */
+html.ui-lab .stu-quick .qcard:not(:has(> .btn.full)){ padding-bottom:14px }
