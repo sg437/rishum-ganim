@@ -33,6 +33,12 @@
   if(p!==null){ if(p==='off'||p==='0'||p===''){ localStorage.removeItem('uiLab'); } else { localStorage.setItem('uiLab',p); } }
   if(!localStorage.getItem('uiLab')) return;
   document.documentElement.classList.add('ui-lab');
+  /* גופני העיצוב מוקדמים לקובץ ה-CSS — ראה את ההערה המקבילה ב-index.html. */
+  ['fonts/assistant-hebrew.woff2','fonts/heebo-hebrew.woff2'].forEach(function(f){
+    var pl=document.createElement('link');
+    pl.rel='preload'; pl.as='font'; pl.type='font/woff2'; pl.crossOrigin='anonymous'; pl.href=f;
+    document.head.appendChild(pl);
+  });
   var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css'; document.head.appendChild(l);
   var j=document.createElement('script'); j.src='ui-lab.js'; j.async=false; document.head.appendChild(j);
   document.addEventListener('DOMContentLoaded',function(){

@@ -317,6 +317,12 @@ VIEW.students = function(v){
     bt.textContent = window.__demoBulk ? "✖️ סיום עדכון קבוצתי" : "✔️ עדכון קבוצתי";
     window.__demoRenderBulk();
   };
+
+  /* "ייצוא" פותח את מסך ייצוא הרשימות — בתוכנה זה חלון שנפתח מאותו כפתור,
+     כאן מסך מלא. עד עכשיו הוא היה תלוי בלשונית "ייצוא" שהמעבדה הזריקה
+     לניווט; הלשונית בוטלה, והמסך נשאר נגיש מהמקום הנכון. */
+  var xb = v.querySelector("#exportStu");
+  if(xb) xb.onclick = function(){ route("export"); };
 };
 
 VIEW.gans = function(v){
@@ -1073,6 +1079,10 @@ window.__uiLab = Object.freeze({
   },
 
   openGan:     function(){ toast("דמו — כרטיס השיבוץ של הגן אינו נפתח כאן."); },
+  editGan:     function(){ toast("דמו — תיק הגן אינו נפתח כאן."); },
+  /* בתוכנה זה נפתח כחלון מעל המסך; בדמו אין מודאלים, ולכן מסך הייצוא
+     מוצג כמסך מלא. אותו מסך, אותו עיצוב — רק בלי החלון סביבו. */
+  openExport:  function(){ route("export"); },
   openStudent: function(){ toast("דמו — תיק התלמידה אינו נפתח כאן."); },
   addStudent:  function(){ toast("דמו — הוספת ילדה אינה פעילה כאן."); },
   openMenu:    function(){ openDrawer(); },

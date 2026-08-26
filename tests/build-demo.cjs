@@ -67,6 +67,10 @@ const out = `<!doctype html>
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#15342a">
 <title>רשת הגנים · דמו עיצוב</title>
+<!-- גופני העיצוב מוקדמים ל-ui-lab.css כדי שהעמוד לא יהבהב בגופן המערכת
+     לפני שהם מגיעים. ההגדרות עצמן (@font-face) יושבות בתוך ui-lab.css. -->
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/assistant-hebrew.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/heebo-hebrew.woff2">
 ${style}
 <link rel="stylesheet" href="ui-lab.css">
 <style>

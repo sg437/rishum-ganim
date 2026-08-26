@@ -68,25 +68,14 @@ var nav = null, foot = null, view = null;
 
 var busy = false;              /* מונע לולאה: השינויים שלנו מפעילים את הצופה */
 
-/* החלטה 3: "ייצוא" מופיע בסרגל בקנבס, ו-viewExport כבר קיים בקוד ומחובר
-   ב-route() — רק מנותק מהניווט. הלשונית מוזרקת כאן ולא נוספת ל-TABS, כדי
-   שהתוכנה הרגילה תישאר בדיוק כפי שהיא עד לאישור הסופי. */
-function exportTab(){
-  if(nav.querySelector('[data-tab="export"]')) return;
-  var after = nav.querySelector('[data-tab="municipality"]');
-  if(!after) return;
-  var b = document.createElement("button");
-  b.dataset.tab = "export";
-  b.innerHTML = '<span class="ic"></span><span class="tl"></span>';
-  b.querySelector(".ic").textContent = "↧";
-  b.querySelector(".tl").textContent = "ייצוא";
-  b.onclick = function(){ go("export"); };
-  after.parentNode.insertBefore(b, after.nextSibling);
-  if(window.__uiLab && window.__uiLab.activeTab &&
-     window.__uiLab.activeTab() === "export"){
-    nav.querySelectorAll("[data-tab].active").forEach(function(x){ x.classList.remove("active"); });
-    b.classList.add("active");
-  }
+/* החלטה 3, מעודכנת: הקנבס הציג "ייצוא" כפריט ניווט, והמעבדה הזריקה אותו
+   לסרגל. זה בוטל — בתוכנה הייצוא יושב *בתוך* המסכים, וכך הוא נשאר: כפתור
+   "ייצוא" שבלשונית התלמידות פותח את אותו viewExport כחלון, ו-exportScreen()
+   מעצב את החלון הזה בדיוק כפי שעיצב את הלשונית. אותו מסך, בלי פריט מיותר.
+   הפונקציה נשארת כדי לנקות סרגל שכבר קיבל את הלשונית ברינדור קודם. */
+function dropExportTab(){
+  var b = nav.querySelector('[data-tab="export"]');
+  if(b) b.remove();
 }
 
 /* החלטה 6: מוני הצוות והעירייה. renderTabs מחשב מונים לתלמידות ולגנים בלבד.
@@ -965,6 +954,22 @@ function ganCard(g){
   var c = el("div", "lg-card" + (g.active ? "" : " off"));
   if(g.ageInk) c.style.setProperty("--age-ink", g.ageInk);
 
+  /* לחיצה על כרטיס פותחת את תיק הגן — בדיוק כמו לחיצה על שורה בטבלה.
+     בלי זה לוח הכרטיסים היה לצפייה בלבד, והמעבר בין "כרטיסים" ל"טבלה"
+     שינה לא רק את המראה אלא גם את מה שאפשר לעשות במסך.
+     role/tabindex ומקלדת — כי זה div ולא כפתור: כפתור עוטף היה מבטל את
+     פריסת ה-flex של הכרטיס ואת הגלישה של שם הגן. */
+  c.setAttribute("role", "button");
+  c.tabIndex = 0;
+  c.title = "פתיחת תיק הגן";
+  var openFile = function(){
+    if(window.__uiLab && window.__uiLab.editGan) window.__uiLab.editGan(g.id);
+  };
+  c.onclick = openFile;
+  c.onkeydown = function(e){
+    if(e.key === "Enter" || e.key === " " || e.key === "Spacebar"){ e.preventDefault(); openFile(); }
+  };
+
   var top = el("div", "lg-top");
   var t = el("div", "lg-ttl");
   t.appendChild(el("b", null, g.name));
@@ -1422,7 +1427,7 @@ function screenHeader(){
     var pr = el("button", "btn ghost", "🖨️ הדפסה");
     pr.onclick = function(){ window.print(); };
     var xp = el("button", "btn", "↧ ייצוא");
-    xp.onclick = function(){ go("export"); };
+    xp.onclick = function(){ if(window.__uiLab && window.__uiLab.openExport) window.__uiLab.openExport(); };
     acts.appendChild(xp); acts.appendChild(pr);
   }
 
@@ -1874,10 +1879,18 @@ function messagesScreen(){
 }
 
 /* ---------------------------------------------------------------- ייצוא */
-function exportScreen(){
-  if(curTab() !== "export") return;
-  var panel = view.querySelector(".panel");
-  if(!panel || panel.querySelector(".lab-work")) return;
+/* מסך ייצוא הרשימות — שתי עמודות: "מה לייצא" בכרטיס, והלוח הכהה שמונה
+   את השורות ונושא את כפתורי הייצוא.
+   ⚠️ קודם זה רץ רק על לשונית הייצוא, ולכן החלון שנפתח מכפתור "ייצוא"
+   שבלשונית התלמידות נשאר בעיצוב הישן — אותו viewExport בדיוק, בשני מראות
+   שונים. עכשיו הפונקציה מקבלת host ומזהה את המסך לפי התוכן שלו (#x-out),
+   ולא לפי הלשונית הפעילה, ולכן היא מעצבת גם את הלשונית וגם את החלון. */
+function exportScreen(host){
+  var root = host || view;
+  if(!root) return;
+  var panel = root.querySelector(".panel");
+  if(!panel || !panel.querySelector("#x-out")) return;   /* לא מסך הייצוא */
+  if(panel.querySelector(".lab-work")) return;           /* כבר עוצב */
   var tools = panel.querySelector(":scope > .toolbar");
   var fs    = panel.querySelector(":scope > fieldset");
   if(!tools || !fs) return;
@@ -2547,7 +2560,7 @@ function paint(){
   if(busy) return;
   busy = true;
   try{
-    exportTab();
+    dropExportTab();
     bottomBar();
     topBar();
     groupNav();
@@ -2566,6 +2579,9 @@ function init(){
   var modalBox = document.getElementById("modal");
   if(modalBox) new MutationObserver(function(){
     try{ dossierTabs(); }catch(e){}
+    /* חלון הייצוא מקבל את אותו עיצוב שקיבלה הלשונית שבוטלה. הזיהוי הוא
+       לפי התוכן (#x-out), ולכן כל חלון אחר עובר כאן בלי להיגע. */
+    try{ exportScreen(modalBox); }catch(e){}
   }).observe(modalBox, {childList:true});
   foot = document.querySelector(".drawer-foot");
   view = document.getElementById("view");
