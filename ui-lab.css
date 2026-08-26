@@ -118,14 +118,99 @@ html.ui-lab[data-theme="dark"]{
 }
 
 
-/* ── 2. טיפוגרפיה ─────────────────────────────────────────────────────────
+/* ── 2. טיפוגרפיה ─────────────────────────────────────────────
    גוף Assistant · כותרות ומספרים Heebo במשקל 500–600 עם letter-spacing שלילי.
-   ⚠️ הגופנים נטענים מהמכשיר בלבד. ה-CSP חוסם fonts.googleapis.com
-   (‎font-src 'self' data:‎), ולכן מי שאין לו Assistant/Heebo מותקנים יקבל
-   נפילה אחורה. טעינה אמיתית תדרוש קובצי גופן במאגר ו-@font-face.            */
+
+   הגופנים יושבים במאגר (תיקיית fonts/) ונטענים מכאן. קודם לכן הם נלקחו
+   מהמכשיר בלבד — ומי שאין לו Assistant/Heebo מותקנים (כלומר רוב המשתמשים) ראה
+   עיצוב אחר לגמרי. ה-CSP מתיר זאת כבר עכשיו (‎font-src 'self' data:‎) — מה שהוא חוסם
+   הוא fonts.googleapis.com בלבד, ואירוח עצמי אינו נוגע בו.
+
+   שני הקבצים הם variable — קובץ אחד נושא את כל המשקלים (Assistant 200–800,
+   Heebo 100–900), ולכן אין צורך בקובץ לכל משקל. ה-unicode-range דואג שהדפדפן
+   יוריד רק את מה שהעמוד באמת מציג: בעברית כ-19KB לשתי המשפחות יחד.
+
+   מקור, גדלים ורישוי (SIL OFL 1.1): fonts/README.md.                          */
+
+@font-face{
+  font-family:"Assistant"; font-style:normal; font-weight:200 800; font-display:swap;
+  src:url("fonts/assistant-hebrew.woff2") format("woff2");
+  unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;
+}
+@font-face{
+  font-family:"Assistant"; font-style:normal; font-weight:200 800; font-display:swap;
+  src:url("fonts/assistant-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:"Assistant"; font-style:normal; font-weight:200 800; font-display:swap;
+  src:url("fonts/assistant-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face{
+  font-family:"Heebo"; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url("fonts/heebo-hebrew.woff2") format("woff2");
+  unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;
+}
+@font-face{
+  font-family:"Heebo"; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url("fonts/heebo-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:"Heebo"; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url("fonts/heebo-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* שני אסימונים — מקור אמת אחד לכל הקובץ. משפחות האמוג'י נסגרות את
+   הרשימה כדי שהאמוג'י שבממשק (הלשוניות, התגיות) לא ייפול לגופן אקראי. */
+html.ui-lab{
+  --lab-font:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif,
+             "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji";
+  --lab-font-head:"Heebo","Assistant","Segoe UI",system-ui,sans-serif,
+                  "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji";
+}
+
+/* הגופן חל על הכל — בלי יוצא מן הכלל.
+   להציב את הגופן על body ולסמוך על ירושה זה מה שהיה כאן קודם, וזה לא מספיק:
+   רכיבי טופס (input, select, textarea, button) אינם יורשים font-family — הדפדפן
+   כופה עליהם גופן מערכת משלו. index.html ו-register.html מתקנים זאת בעצמם
+   (‎font:inherit‎), אבל management.html מתקן רק ‎button‎ — ולכן במעבדה כל השדות
+   והבוררים של מסך ההנהלה הופיעו בגופן ברירת המחדל של הדפדפן.
+   הכלל האוניברסלי סוגר את הפירצה בכל העמודים ולכל רכיב, גם כאלה שייכתבו בעתיד.
+
+   ‎html.ui-lab *‎ הוא (0,1,1) בספציפיות, ולכן כל כלל עם שם מחלקה או שם תגית —
+   ובראשם כללי ה-Heebo שמיד למטה — עדיין גובר עליו. רשימת התגיות המפורשת
+   מוסיפה מרווח ביטחון (0,1,2) מול כללי העמודים עצמם.                        */
+html.ui-lab,
+html.ui-lab *,
+html.ui-lab input,
+html.ui-lab select,
+html.ui-lab textarea,
+html.ui-lab button,
+html.ui-lab optgroup,
+html.ui-lab option,
+html.ui-lab dialog,
+html.ui-lab [popover],
+html.ui-lab .leaflet-container{
+  font-family:var(--lab-font);
+}
+
+/* פסאודו-אלמנטים של רכיבי טופס — כל אחד בכלל נפרד משלו, בכוונה:
+   סלקטור שדפדפן אינו מכיר מפיל את *כל* רשימת הסלקטורים שהוא יושב בה, וכך
+   כלל אחד משותף היה נמחק בשלמותו בפיירפוקס בגלל הווריאנטים של WebKit.
+   ‎::before‎/‎::after‎/‎::marker‎ אינם כאן במתכוון — הם יורשים מהאלמנט שיצר
+   אותם, ודחיפת הגופן אליהם דווקא הייתה מבטלת להם את Heebo של הכותרות.     */
+html.ui-lab ::placeholder{ font-family:var(--lab-font) }
+html.ui-lab ::file-selector-button{ font-family:var(--lab-font) }
+html.ui-lab ::-webkit-input-placeholder{ font-family:var(--lab-font) }
+html.ui-lab ::-webkit-file-upload-button{ font-family:var(--lab-font) }
+html.ui-lab ::-webkit-datetime-edit{ font-family:var(--lab-font) }
+html.ui-lab ::-webkit-calendar-picker-indicator{ font-family:var(--lab-font) }
 
 html.ui-lab body{
-  font-family:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif;
+  font-family:var(--lab-font);
   font-size:15px; line-height:1.6;
 }
 html.ui-lab h1,
@@ -133,7 +218,7 @@ html.ui-lab h2,
 html.ui-lab h3,
 html.ui-lab .stat .v,
 html.ui-lab .brand .txt .t1{
-  font-family:"Heebo","Assistant","Segoe UI",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-weight:600; letter-spacing:-.03em;
 }
 html.ui-lab .section-title{ font-size:1.75rem; font-weight:600; letter-spacing:-.03em }
@@ -289,7 +374,7 @@ html.ui-lab .lt-head{ display:flex; justify-content:space-between; align-items:b
 html.ui-lab .lt-lbl,
 html.ui-lab .lt-year{ font-size:.74rem; font-weight:800; color:var(--muted) }
 html.ui-lab .lt-num{
-  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-size:1.7rem; font-weight:500; letter-spacing:-.03em; color:#eef2ec;
   margin-top:2px;
   /* כלל ה-bidi: יחס מספרי מבודד, אחרת 24/30 מוצג כ-30/24 */
@@ -363,7 +448,7 @@ html.ui-lab .lab-home{ display:flex; flex-direction:column; gap:18px; padding:8p
 html.ui-lab .lh-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap }
 html.ui-lab .lh-date{ font-size:.8rem; color:var(--muted); font-weight:600 }
 html.ui-lab .lh-greet{
-  margin:2px 0 0; font-family:"Heebo","Assistant",system-ui,sans-serif;
+  margin:2px 0 0; font-family:var(--lab-font-head);
   font-size:1.75rem; font-weight:600; letter-spacing:-.03em;
 }
 html.ui-lab .lh-hsub{ font-size:.9rem; color:var(--ink-soft); margin-top:2px }
@@ -391,7 +476,7 @@ html.ui-lab .lh-spacer{ flex:1 }
 html.ui-lab .lh-k{ font-size:.79rem; color:var(--muted); font-weight:600 }
 html.ui-lab .lh-kpi.dark .lh-k{ color:rgba(255,255,255,.6); font-size:.8rem }
 html.ui-lab .lh-v{
-  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-size:2.1rem; font-weight:500; letter-spacing:-.03em; margin-top:2px; line-height:1.15;
 }
 html.ui-lab .lh-kpi.dark .lh-v{ font-size:2.6rem; letter-spacing:-.04em; line-height:1.1 }
@@ -434,7 +519,7 @@ html.ui-lab .lh-panel{
 }
 html.ui-lab .lh-phead{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:6px }
 html.ui-lab .lh-phead h3{
-  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-size:1.02rem; font-weight:600; letter-spacing:-.03em;
 }
 html.ui-lab .lh-plink{ background:none; border:0; padding:0; cursor:pointer; font-size:.8rem; font-weight:700; color:var(--accent) }
@@ -553,7 +638,7 @@ html.ui-lab #stuSummary .stat{
 }
 html.ui-lab #stuSummary .stat .k{ font-size:.79rem; color:var(--muted); font-weight:600 }
 html.ui-lab #stuSummary .stat .v{
-  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-size:2.1rem; font-weight:500; letter-spacing:-.03em; margin-top:2px;
 }
 /* המשבצת הראשונה — כהה עם טבעת, כמו בלוח */
@@ -646,7 +731,7 @@ html.ui-lab .lab-ganflag{
   display:inline-flex; align-items:center; gap:7px;
   background:var(--flagc,#2c6a4c); color:#fff;
   padding:5px 11px; border-radius:999px;
-  font:700 .78rem/1 "Assistant","Heebo",system-ui,sans-serif;
+  font:700 .78rem/1 var(--lab-font);
   box-shadow:0 3px 10px rgba(0,0,0,.32);
 }
 html.ui-lab .lab-ganflag.full{ background:#a5342b }
@@ -803,7 +888,7 @@ html.ui-lab .la-kids { font-size:.73rem; color:var(--accent-strong); margin-top:
 
 html.ui-lab .la-side{ display:flex; flex-direction:column; align-items:center; gap:7px; flex:0 0 auto }
 html.ui-lab .la-count{
-  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-size:.95rem; font-weight:700; color:var(--muted);
 }
 html.ui-lab .la-count.full{ color:var(--good) }
@@ -906,7 +991,7 @@ html.ui-lab .lab-shead{
 html.ui-lab .lab-shead-t{ min-width:0 }
 html.ui-lab .lab-ssub{ font-size:.8rem; color:var(--muted); font-weight:600; margin-bottom:2px }
 html.ui-lab .lab-shead h2{
-  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-size:1.75rem; font-weight:600; letter-spacing:-.03em; margin:0;
 }
 html.ui-lab .lab-sacts{ display:flex; gap:9px; flex-wrap:wrap; align-items:center; flex:0 0 auto }
@@ -919,11 +1004,11 @@ html.ui-lab .lab-sacts .btn{ margin:0 }
 
 /* כותרת מסך */
 html.ui-lab .section-title h2{
-  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-size:1.75rem; font-weight:600; letter-spacing:-.03em;
 }
 html.ui-lab .panel > h2{
-  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-size:1.02rem; font-weight:600; letter-spacing:-.03em;
 }
 
@@ -964,7 +1049,7 @@ html.ui-lab .hcard.acc .k{ color:rgba(255,255,255,.6) }
 html.ui-lab .hcard.acc .v small{ color:rgba(255,255,255,.55) }
 html.ui-lab .hcard .k{ font-size:.79rem; font-weight:600; color:var(--muted) }
 html.ui-lab .hcard .v{
-  font-family:"Heebo","Assistant",system-ui,sans-serif;
+  font-family:var(--lab-font-head);
   font-size:2.4rem; font-weight:500; letter-spacing:-.04em;
 }
 html.ui-lab .hcard .ic{ opacity:.28 }
@@ -1186,7 +1271,7 @@ html.ui-lab .ui-lab-badge{
   display:inline-flex; align-items:center; gap:6px;
   padding:6px 12px; border-radius:999px;
   background:#7a2e2e; color:#fff;
-  font:700 .78rem/1 "Assistant","Heebo","Segoe UI",system-ui,sans-serif;
+  font:700 .78rem/1 var(--lab-font);
   text-decoration:none; box-shadow:0 4px 14px rgba(0,0,0,.28);
   opacity:.85; transition:opacity .15s;
 }

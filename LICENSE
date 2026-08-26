@@ -47,7 +47,13 @@ Copyright © 2026 Shmuel Goldman. All rights reserved.
    ולפי אמנות בין־לאומיות. בעל הזכויות שומר על מלוא זכויותיו וסעדיו, לרבות
    צו מניעה ופיצוי ללא הוכחת נזק.
 
-8. יצירת קשר לרישוי
+8. רכיבי צד שלישי
+   קובצי הגופן שבתיקייה fonts/ (Assistant, Heebo) אינם חלק מהתוכנה הקניינית
+   ואינם כפופים לרישיון זה. הם מסופקים ברישיון SIL Open Font License 1.1,
+   שנוסחו נשמר לצידם בקבצים fonts/OFL-Assistant.txt ו-fonts/OFL-Heebo.txt.
+   כל שאר תוכן המאגר — לרבות גיליונות הסגנון שמפעילים אותם — כפוף לרישיון זה.
+
+9. יצירת קשר לרישוי
    פניות לקבלת רישיון שימוש: sg@taharat.org
 
 ================================================================================
@@ -100,5 +106,13 @@ English
    The Owner reserves all rights and remedies, including injunctive relief
    and statutory damages.
 
-8. LICENSING CONTACT
+8. THIRD-PARTY COMPONENTS
+   The font files in the fonts/ directory (Assistant, Heebo) are not part of
+   the proprietary software and are not covered by this license. They are
+   provided under the SIL Open Font License 1.1, whose text is retained
+   alongside them in fonts/OFL-Assistant.txt and fonts/OFL-Heebo.txt.
+   Everything else in this repository — including the stylesheets that load
+   them — remains subject to this license.
+
+9. LICENSING CONTACT
    sg@taharat.org
