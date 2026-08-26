@@ -1728,6 +1728,12 @@ function ganById(id){ return DB.gans.find(g=>g.id===id); }
 function ganName(id){ const g=ganById(id); return g? (g.ganName || g.teacherName || ("גן "+ (g.ganSymbol||g.internalSymbol||""))) : "—"; }
 /* שם איש/אשת צוות: משפחה + פרטי, עם נפילה לשם ישן (סעיף 1) */
 function staffName(m){ if(!m) return ""; return [m.lastName,m.firstName].filter(Boolean).join(" ") || m.name || ""; }
+/* ראשי תיבות לאייקון הזהות של איש/אשת צוות (משפחה + פרטי) */
+function staffInitials(m){
+  if(!m) return "?";
+  const a=String(m.lastName||"").trim(), b=String(m.firstName||"").trim();
+  return ((a[0]||"")+(b[0]||"")) || (a[0]||b[0]||String(m.name||"?")[0]||"?");
+}
 function studentsOfYear(y=DB.activeYear){ return DB.students.filter(s=>s.year===y); }
 /* מצב קיבולת הגן ביחס למספר הרשומות:
    'ok'    — בתוך הקיבולת (עד 35 בגן רגיל)
@@ -2704,9 +2710,10 @@ if(document.documentElement.classList.contains("ui-lab")){
 
     /* מסך צוות הגנים (לוח 04 במסמך — מסך שאינו קיים בקנבס הישן).
        ⚠️ הלוח מציג "מסמכים חסרים" עם חוזה העסקה / אישור העדר עבירות /
-       תעודת הוראה. שלושתם אינם קיימים במודל הצוות. מה שכן קיים הוא
-       certificate (תעודה), ולכן המשבצת הרביעית מציגה "ללא תעודה" —
-       נתון אמיתי מאותה משפחה, במקום מספר מומצא. */
+       תעודת הוראה. שלושתם אינם קיימים במודל הצוות — מה שקיים הוא
+       certificate (תעודה) בלבד. המשבצת הרביעית מציגה לכן "שאר הצוות":
+       כל מי שאינו גננת ואינו סייעת, כלומר המשלים המדויק של שתי המשבצות
+       שלידה — נתון אמיתי, ובלי לחזור על מה שכבר מוצג. */
     staffBoard(){
       try{
         const all = (DB.staff||[]).filter(m=>staffIsActive(m));
@@ -2729,17 +2736,154 @@ if(document.documentElement.classList.contains("ui-lab")){
           const r = String(m.role||"").trim();
           sayKinds[r] = (sayKinds[r]||0) + 1;
         });
+        /* "שאר הצוות" — המשלים של שתי המשבצות שלידה: כל מי שאינו גננת
+           ואינו סייעת (העשרה, מנתחת התנהגות, פרא רפואי וכו'). */
+        const rest = all.filter(m=>{
+          const r = String(m.role||"");
+          return r.indexOf("גננת") < 0 && r.indexOf("סייעת") < 0;
+        });
+        const restKinds = {};
+        rest.forEach(m=>{
+          const r = String(m.role||"").trim() || "ללא תפקיד";
+          restKinds[r] = (restKinds[r]||0) + 1;
+        });
         return {
           total: all.length,
           ganenet: gan.n, ganenetSplit: gan,
           sayaat:  say.n, sayaatSplit: say,
           sayaatKinds: Object.keys(sayKinds).map(k=>({role:k, n:sayKinds[k]}))
                              .sort((a,b)=>b.n-a.n).slice(0,3),
+          other: rest.length,
+          otherKinds: Object.keys(restKinds).map(k=>({role:k, n:restKinds[k]}))
+                            .sort((a,b)=>b.n-a.n).slice(0,3),
           noCert:  all.filter(m=>!m.certificate).length,
           assigned, unassigned: all.length - assigned
         };
       }catch(e){ return null; }
     },
+
+    /* ---- לשונית הצוות: רשימה, תיק בצד וסינון (לוח 04) ------------------
+       הרשימה מבוססת על staffFiltered() — בדיוק אותה רשימה שהטבלה של
+       התוכנה מציגה, כך שהחיפוש, הסינון והמיון של המסך תקפים גם כאן.
+       קריאה בלבד. */
+    staffRows(){
+      try{
+        const list = staffFiltered();
+        const idx  = staffAsgIndex("activity", null);
+        return {
+          total: list.length,
+          pool:  eduScope(DB.staff||[]).filter(m=>staffIsActive(m)).length,
+          sort:  { key:staffSort.key, dir:staffSort.dir },
+          rows: list.map(m=>{
+            const at  = idx[m.id] || [];
+            const gan = staffGanNames(idx, m.id);
+            return {
+              id:      m.id,
+              name:    staffName(m) || "—",
+              ini:     staffInitials(m),
+              tz:      String(m.tz||""),
+              role:    String(m.role||""),
+              roleInk: roleColor(m.role) || "",
+              phone:   String(m.mobile||m.phone||""),
+              edu:     eduLabel(m),
+              gan,
+              /* התפקיד שבו היא משובצת בפועל, כשהוא שונה מתפקיד התיק */
+              ganRole: (at.length===1 && at[0].role!==m.role) ? at[0].role : "",
+              active:  staffIsActive(m),
+              status:  staffIsActive(m) ? "פעיל/ה" : "עזב/ה",
+              tone:    staffIsActive(m) ? "good" : "bad"
+            };
+          })
+        };
+      }catch(e){ return null; }
+    },
+
+    /* רשימת התפקידים לשבבי הסינון, ומצב הסינון הנוכחי */
+    staffFilterState(){
+      try{
+        return {
+          roles: STAFF_ROLES.slice(),
+          picked: (Array.isArray(staffFilter.roles)?staffFilter.roles:[]).slice(),
+          status: staffFilter.status || "active"
+        };
+      }catch(e){ return null; }
+    },
+    /* כתיבה למצב הממשק בלבד (סינון ומיון) — אין כאן נתיב כתיבה למסד. */
+    setStaffFilter(patch){
+      try{
+        Object.keys(patch||{}).forEach(k=>{ staffFilter[k] = patch[k]; });
+        if(patch && patch.roles) staffFilter.role = "";   // המערך גובר על הבורר הבודד
+        renderStaffTable();
+      }catch(e){}
+    },
+    setStaffSort(key){
+      try{
+        if(staffSort.key===key) staffSort.dir *= -1; else { staffSort.key=key; staffSort.dir=1; }
+        renderStaffTable();
+      }catch(e){}
+    },
+
+    /* התיק המקוצר שנפתח בצד. כל מה שהתיק מציג הוא נתון קיים במודל
+       הצוות: פרטי קשר, תעודה והקבצים שצורפו, היעדרויות ואיחורים,
+       תנועות (כניסה/יציאה) והערות. */
+    staffDossier(id){
+      try{
+        const m = (DB.staff||[]).find(x=>x.id===id);
+        if(!m) return null;
+        const idx = staffAsgIndex("activity", null);
+        const at  = (idx[m.id]||[]).map(a=>({
+          gan: ganName(a.ganId), role:a.role, days:(a.days||[]).join(", ")
+        }));
+        /* מסמכים: התעודה היא המסמך היחיד שהמודל מנהל בדגל משלו; כל קובץ
+           אחר שצורף לתיק מוצג לצידה בשמו, ולא ממציאים מסמכים שאינם. */
+        const files = m.docFiles || {};
+        const docs = [{
+          key:"certificate", label:"תעודה", on:!!m.certificate,
+          link:(files.certificate && files.certificate.link) || ""
+        }].concat(Object.keys(files).filter(k=>k!=="certificate").map(k=>({
+          key:k, label:(files[k] && files[k].name) || k, on:true,
+          link:(files[k] && files[k].link) || ""
+        })));
+        /* ותק — הנתון אינו שדה בתיק, ולכן הוא נגזר מהמוקדם שבין תאריכי
+           התנועות לבין מועד פתיחת התיק. ריק כשאין ממה לגזור. */
+        const dates = (m.movements||[]).map(x=>normDateVal(x.date)).filter(Boolean);
+        if(m.createdAt) dates.push(String(m.createdAt).slice(0,10));
+        let years = 0;
+        if(dates.length){
+          const first = new Date(dates.sort()[0]);
+          if(!isNaN(first)) years = Math.max(0, Math.floor((Date.now()-first)/(365.25*24*3600*1000)));
+        }
+        /* תנועות בשנים קודמות — השיבוצים בכל השנים, החדשה בראש */
+        const hist = staffAssignmentsFull(m.id)
+          .map(a=>({ year:a.year, gan:ganName(a.ganId), role:a.role, ctx:ctxLabel(a.ctx),
+                     now:a.year===DB.activeYear }))
+          .sort((a,b)=> String(b.year).localeCompare(String(a.year),"he"));
+        return {
+          id:m.id, name:staffName(m)||"—", ini:staffInitials(m),
+          role:String(m.role||""), roleInk:roleColor(m.role)||"",
+          tz:String(m.tz||""), edu:eduLabel(m),
+          mobile:String(m.mobile||""), phone:String(m.phone||""),
+          email:String(m.email||""),
+          address:[m.street, m.building, m.city].filter(Boolean).join(" "),
+          weeklyHours:String(m.weeklyHours||""),
+          active:staffIsActive(m), years,
+          placements:at, docs, history:hist,
+          absences:(m.absences||[]).length,
+          lateness:(m.lateness||[]).length,
+          notes:(m.notesList||[]).filter(Boolean).concat(
+                  (!(m.notesList||[]).length && m.notes) ? [m.notes] : []),
+          year: DB.activeYear || ""
+        };
+      }catch(e){ return null; }
+    },
+
+    /* פתיחת התיק המלא — בדיוק מה שלחיצה על שורה בטבלה עושה, כולל
+       ההעתק העמוק (עריכה שבוטלה אינה נוגעת בנתונים). */
+    openStaffFull(id){
+      try{ const m=(DB.staff||[]).find(x=>x.id===id); if(m) openStaff(JSON.parse(JSON.stringify(m))); }catch(e){}
+    },
+    /* ייצוא רשימת הצוות — החלון נבנה ב-labStaffExport (מעבדה בלבד). */
+    staffExport(ids){ try{ labStaffExport(ids||null); }catch(e){} },
 
     /* צבעי הגנים במפה — ganColor() כבר קיים ומשמש לדגלים ולנקודות.
        נחשף כדי שהשבבים בבורר הגנים יישאו את אותו צבע, כמו בלוח 05. */
@@ -8494,24 +8638,41 @@ function viewMunicipality(root){
 /* ============================================================
    טאב צוות — מאגר אנשי צוות הגנים (סעיף 16), עם מיון וסינון (סעיף 13)
    ============================================================ */
-let staffFilter = { q:"", role:"", status:"active" }; // status: active / left / all
+let staffFilter = { q:"", role:"", roles:[], status:"active" }; // status: active / left / all
 let staffFiltersOpen=false;
 const staffIsActive = m => m.active!==false;              // רשומות ישנות ללא הדגל = פעילות
 let staffSort = { key:"lastName", dir:1 };
+/* שמות הגנים שבהם איש/אשת הצוות משובץ/ת בשנה ובהקשר שנבחרו. הקריאה נעשית
+   מול אינדקס שנבנה פעם אחת (staffAsgIndex יקר), ולכן הוא מתקבל כפרמטר. */
+function staffGanNames(idx, id){
+  return (idx[id]||[]).map(a=>ganName(a.ganId)).filter(Boolean).join(" · ");
+}
 function staffFiltered(){
   const q=staffFilter.q.trim().toLowerCase();
+  /* בחירת תפקידים מרובה. staffFilter.role (בודד) נשאר לתאימות — הפאנל
+     הקיים עדיין כותב אליו, והמערך גובר עליו רק כשיש בו ערכים. */
+  const roles=(Array.isArray(staffFilter.roles)?staffFilter.roles:[]).filter(Boolean);
   const list=eduScope(DB.staff).filter(m=>{ // מכבד את בורר החינוך הראשי (רגיל/מיוחד)
     if(staffFilter.status==='active' && !staffIsActive(m)) return false;   // הסתרת מי שעזב/ה
     if(staffFilter.status==='left'   &&  staffIsActive(m)) return false;
-    if(staffFilter.role && m.role!==staffFilter.role) return false;
+    if(roles.length){ if(!roles.includes(m.role)) return false; }
+    else if(staffFilter.role && m.role!==staffFilter.role) return false;
     if(q){ const hay=(staffName(m)+" "+m.tz+" "+m.email+" "+m.role+" "+m.phone+" "+m.mobile+" "+m.city).toLowerCase(); if(!hay.includes(q)) return false; }
     return true;
   });
   const k=staffSort.key, d=staffSort.dir;
   const roleIdx=m=>{ const i=STAFF_ROLES.indexOf(m.role); return i<0?99:i; };
   const keyVal=m=> k==='name'? staffName(m) : String(m[k]||"");
+  /* מיון לפי הגן המשובץ ולפי הסטטוס — שתי עמודות שאינן שדה ברשומה.
+     האינדקס נבנה פעם אחת לכל מיון, ולא בכל השוואה. */
+  const gIdx = k==='gan' ? staffAsgIndex("activity", null) : null;
   return list.sort((a,b)=>{
     let r; if(k==='role') r=roleIdx(a)-roleIdx(b);
+    else if(k==='gan'){
+      const A=staffGanNames(gIdx,a.id), B=staffGanNames(gIdx,b.id);
+      r=(A?0:1)-(B?0:1) || A.localeCompare(B,"he");   // הלא־משובצים תמיד בסוף
+    }
+    else if(k==='status') r=(staffIsActive(a)?0:1)-(staffIsActive(b)?0:1);
     else r=keyVal(a).localeCompare(keyVal(b),"he");
     return r*d || staffName(a).localeCompare(staffName(b),"he");
   });
@@ -8779,6 +8940,292 @@ function openStaff(m){
   if(!isNew && !canEditRec(m)) makeModalReadOnly(["saveSt","delSt"]);
   else if(isNew){ const sc=myEditScope(); if(sc==="צופה") makeModalReadOnly(["saveSt","delSt"]); else if(sc){ const e=$("#st-education"); if(e){ e.value=sc; e.disabled=true; } } }
 }
+/* זיהוי תפקיד מתוך טקסט חופשי שבקובץ — משותף לייבוא ולעדכון לפי ת"ז */
+function normStaffRole(v){
+  const t=String(v||"").replace(/\s/g,"");
+  const hit=STAFF_ROLES.find(r=>r.replace(/\s/g,"")===t); if(hit) return hit;
+  const has=(...w)=>w.every(x=>t.includes(x));
+  if(has("גננת","משלימה")) return "גננת משלימה";
+  if(has("סייעת","משלימה")) return "סייעת משלימה";
+  if(has("גננת","ממלאתמקום")||has("גננת","ממלאת")) return "גננת ממלאת מקום";
+  if(has("סייעת","ממלאתמקום")||has("סייעת","ממלאת")) return "סייעת ממלאת מקום";
+  return t.includes("גננת")?"גננת":(t.includes("רפואי")?"סייעת רפואית":(t.includes("צמוד")?"סייעת צמודה":(/ב'?$/.test(t)&&t.includes("סייעת")?"סייעת ב'":"סייעת")));
+}
+
+/* כל השדות שאפשר לעדכן בתיק איש/אשת צוות, במקום אחד: התווית שמוצגת,
+   הכותרות שמזוהות בקובץ, וההמרה מטקסט לערך שנשמר. זה המקור היחיד גם
+   לרשימת התיבות שבחלון העדכון וגם לעמודות שבייצוא. */
+const STAFF_FIELDS = [
+  { key:"lastName",   label:"שם משפחה",     heads:["שםמשפחה","משפחה"],                    val:v=>String(v).trim() },
+  { key:"firstName",  label:"שם פרטי",      heads:["שםפרטי","פרטי"],                      val:v=>String(v).trim() },
+  { key:"email",      label:"מייל",         heads:["מייל","אימייל","דואל","דוארלקטרוני","email"], val:v=>String(v).trim() },
+  { key:"role",       label:"תפקיד",        heads:["תפקיד"],                               val:v=>normStaffRole(v) },
+  { key:"education",  label:"חינוך",        heads:["חינוך","סוגחינוך"],                    val:v=>normEduVal(v) },
+  { key:"phone",      label:"טלפון",        heads:["טלפון","טל"],                          val:v=>String(v).trim() },
+  { key:"mobile",     label:"נייד",         heads:["נייד","סלולרי","פלאפון","טלפוןנייד"],  val:v=>fixPhone(v) },
+  { key:"street",     label:"רחוב",         heads:["רחוב"],                                val:v=>String(v).trim() },
+  { key:"building",   label:"מספר בית",     heads:["מספרבית","בית","בניין"],               val:v=>String(v).trim() },
+  { key:"city",       label:"עיר",          heads:["עיר","יישוב","ישוב"],                  val:v=>String(v).trim() },
+  { key:"weeklyHours",label:"שעות שבועיות", heads:["שעותשבועיות","שעות"],                  val:v=>String(v).trim() },
+  { key:"certificate",label:"תעודה",        heads:["תעודה","ישתעודה"],                     val:v=>staffBoolVal(v) },
+  { key:"active",     label:"פעיל/ה",       heads:["פעיל","פעילה","סטטוס"],                val:v=>staffBoolVal(v) },
+  { key:"notes",      label:"הערות",        heads:["הערות","הערה"],                        val:v=>String(v).trim() }
+];
+/* "כן / לא / 1 / 0 / ✓ / עזב" — ההמרה היחידה לשדות הדגל */
+function staffBoolVal(v){
+  const t=String(v==null?"":v).trim();
+  if(!t) return false;
+  if(/^(לא|no|false|0|✗|✕|עזב|עזבה|עזב\/ה|לאפעיל|לאפעילה)$/i.test(t.replace(/\s/g,""))) return false;
+  return true;
+}
+
+/* ===========================================================================
+   מעבדת עיצוב בלבד — עדכון תיקי צוות לפי מספר זהות
+   ---------------------------------------------------------------------------
+   מצב שני בתוך חלון הייבוא: מדביקים קובץ שבו עמודת ת"ז ולצידה כל עמודה
+   שרוצים לעדכן (טלפון, תפקיד, עיר…), והמערכת מעדכנת את התיקים הקיימים.
+   ת"ז שאינה במאגר נפתחת כתיק חדש (ניתן לכבות), ותא ריק אינו מוחק ערך
+   קיים אלא אם ביקשו זאת במפורש.
+
+   בעיצוב הקיים הפונקציה יוצאת מיד וחלון הייבוא אינו משתנה כלל.
+   ראה docs/UI_LAB.md.
+   =========================================================================== */
+function labStaffTzUpdate(){
+  if(!document.documentElement.classList.contains("ui-lab")) return;
+  const m=$("#modal"); if(!m || m.querySelector("#stu-modes")) return;
+
+  /* כל מה שהחלון כבר מכיל הופך למצב א' — האלמנטים מועברים ולא נבנים
+     מחדש, ולכן כל המאזינים שכבר נקשרו אליהם ממשיכים לעבוד. */
+  const h3=m.querySelector("h3");
+  /* הכותרת מדברת בעד שני המצבים, לא רק בעד הראשון */
+  h3.textContent="ייבוא ועדכון אנשי צוות";
+  const modes=document.createElement("div");
+  modes.id="stu-modes"; modes.className="lab-modes";
+  modes.innerHTML='<button type="button" class="lab-mode on" data-m="new">ייבוא אנשי צוות חדשים</button>'
+                 +'<button type="button" class="lab-mode" data-m="tz">עדכון לפי ת&quot;ז</button>';
+  const paneNew=document.createElement("div"); paneNew.id="stu-pane-new";
+  while(h3.nextSibling) paneNew.appendChild(h3.nextSibling);
+  h3.after(modes); modes.after(paneNew);
+
+  const paneTz=document.createElement("div");
+  paneTz.id="stu-pane-tz"; paneTz.hidden=true;
+  paneTz.innerHTML=`
+    <div class="note">מדביקים/מעלים קובץ שבו עמודת ת"ז, ולצידה כל עמודה שרוצים לעדכן — למשל רשימת ת"ז ומספרי טלפון. כל תיק שה-ת"ז שלו נמצא במאגר יתעדכן, וערך קיים יוחלף בערך שבקובץ. ת"ז שאינה במאגר תיפתח כתיק חדש.</div>
+    <fieldset style="margin-top:10px"><legend>קובץ / הדבקה</legend>
+      <div class="row" style="margin-bottom:8px">
+        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="stu-file" accept=".csv,.txt" hidden></label>
+        <button class="btn ghost sm" id="stu-template" type="button">⬇️ הורדת תבנית</button>
+      </div>
+      <textarea id="stu-text" rows="6" placeholder="ת&quot;ז,נייד&#10;123456789,050-1234567&#10;987654321,052-7654321"></textarea>
+    </fieldset>
+    <fieldset><legend>שדות לעדכון</legend>
+      <div class="hint" style="margin-bottom:8px">רק שדות מסומנים יתעדכנו, ורק אם העמודה שלהם קיימת בקובץ.</div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn ghost sm" id="stu-all" type="button">סמן הכל</button>
+        <button class="btn ghost sm" id="stu-none" type="button">נקה הכל</button>
+      </div>
+      <div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+        ${STAFF_FIELDS.map(f=>`<label class="check"><input type="checkbox" class="stu-col" value="${esc(f.key)}" checked> ${esc(f.label)}</label>`).join("")}
+      </div>
+    </fieldset>
+    <fieldset><legend>הגדרות</legend>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="stu-create" checked> פתיחת תיק חדש לת"ז שאינה במאגר</label>
+        <label class="check"><input type="checkbox" id="stu-blank"> תא ריק בקובץ מוחק את הערך הקיים</label>
+      </div>
+    </fieldset>
+    <div class="row">
+      <button class="btn ghost" id="stu-preview" type="button">🔎 תצוגה מקדימה</button>
+      <button class="btn" id="stu-do" type="button" disabled>✏️ עדכן</button>
+      <button class="btn ghost" id="stu-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
+    </div>
+    <div id="stu-out" style="margin-top:10px"></div>`;
+  paneNew.after(paneTz);
+
+  modes.querySelectorAll(".lab-mode").forEach(b=>b.onclick=()=>{
+    modes.querySelectorAll(".lab-mode").forEach(x=>x.classList.toggle("on", x===b));
+    const tz = b.dataset.m==="tz";
+    paneNew.hidden=tz; paneTz.hidden=!tz;
+  });
+
+  const state={ rows:[], cols:[] };
+  $("#stu-cancel").onclick=closeModal;
+  const picked=()=>[...paneTz.querySelectorAll(".stu-col:checked")].map(c=>c.value);
+  $("#stu-all").onclick =()=>paneTz.querySelectorAll(".stu-col").forEach(c=>c.checked=true);
+  $("#stu-none").onclick=()=>paneTz.querySelectorAll(".stu-col").forEach(c=>c.checked=false);
+  $("#stu-template").onclick=()=>{
+    const csv=['ת"ז,'+STAFF_FIELDS.map(f=>f.label).join(","),
+               '123456789,'+STAFF_FIELDS.map(()=>"").join(",")].join("\r\n");
+    downloadBlob(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),"עדכון-צוות-לפי-תז.csv");
+  };
+  $("#stu-file").onchange=e=>{ const f=e.target.files[0]; if(!f) return;
+    readFileSmart(f, txt=>{ $("#stu-text").value=txt; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }); };
+
+  /* ניתוח הקובץ: איתור עמודת ת"ז ועמודות השדות, ואז שורה לכל ת"ז */
+  const build=()=>{
+    const rows=parseTable($("#stu-text").value);
+    if(rows.length<2) return null;
+    const header=rows[0].map(normHeader);
+    const tzHeads=["תז","מספרזהות","זהות"];
+    const tzAt=header.findIndex(h=>tzHeads.includes(h));
+    if(tzAt<0) return { noTz:true };
+    const at={};
+    STAFF_FIELDS.forEach(f=>{ const i=header.findIndex(h=>f.heads.includes(h)); if(i>=0) at[f.key]=i; });
+    const byTz={}; (DB.staff||[]).forEach(x=>{ const d=digits(x.tz); if(d && !byTz[d]) byTz[d]=x; });
+    const out=[], seen=new Set();
+    for(let r=1;r<rows.length;r++){
+      const c=rows[r], tz=digits(c[tzAt]);
+      if(!tz || seen.has(tz)) continue;
+      seen.add(tz);
+      const vals={};
+      STAFF_FIELDS.forEach(f=>{ if(at[f.key]==null) return; vals[f.key]=String(c[at[f.key]]??"").trim(); });
+      out.push({ tz, vals, hit:byTz[tz]||null });
+    }
+    return { list:out, cols:Object.keys(at) };
+  };
+
+  $("#stu-preview").onclick=()=>{
+    const out=$("#stu-out"), b=build();
+    const fail=t=>{ out.innerHTML=`<div class="note">${t}</div>`; $("#stu-do").disabled=true; };
+    if(!b) return fail('לא זוהו שורות נתונים. ודא/י ששורה ראשונה היא כותרות ואחריה שורה לכל איש/אשת צוות.');
+    if(b.noTz) return fail('לא זוהתה עמודת ת"ז. הכותרת צריכה להיות "ת"ז" / "מספר זהות". הורד/י את התבנית.');
+    state.rows=b.list; state.cols=b.cols;
+    const use=picked().filter(k=>b.cols.includes(k));
+    if(!b.list.length) return fail('לא נמצאו מספרי זהות בקובץ.');
+    if(!use.length) return fail('אף אחת מהעמודות שבקובץ אינה מסומנת לעדכון.');
+    const hit=state.rows.filter(x=>x.hit).length;
+    const miss=state.rows.filter(x=>!x.hit);
+    const F=STAFF_FIELDS.filter(f=>use.includes(f.key));
+    out.innerHTML=`
+      <div class="stats" style="margin-bottom:10px">
+        <div class="stat hero"><div class="k">תיקים לעדכון</div><div class="v">${hit}</div></div>
+        <div class="stat"><div class="k">ת"ז שאינה במאגר</div><div class="v">${miss.length}</div></div>
+        <div class="stat"><div class="k">שדות מעודכנים</div><div class="v">${use.length}</div></div>
+      </div>
+      <div class="hint" style="margin-bottom:8px">שדות שיתעדכנו: ${F.map(f=>esc(f.label)).join(", ")}.</div>
+      <div class="table-wrap"><table><thead><tr><th>ת"ז</th><th>תיק קיים</th>${F.map(f=>`<th>${esc(f.label)}</th>`).join("")}</tr></thead><tbody>
+      ${state.rows.slice(0,25).map(x=>`<tr>
+        <td dir="ltr">${esc(x.tz)}</td>
+        <td>${x.hit?esc(staffName(x.hit)||"—"):'<span class="pill warn">חדש</span>'}</td>
+        ${F.map(f=>`<td>${esc(x.vals[f.key]||"")||'<span style="color:var(--muted)">—</span>'}</td>`).join("")}
+      </tr>`).join("")}</tbody></table></div>
+      <div class="hint">${state.rows.length>25?`מוצגות 25 מתוך ${state.rows.length} שורות. `:""}לחצ/י "עדכן".</div>`;
+    $("#stu-do").disabled=false;
+  };
+
+  $("#stu-do").onclick=()=>{
+    if(!state.rows.length){ toast('לחצ/י קודם "תצוגה מקדימה"'); return; }
+    const use=picked().filter(k=>state.cols.includes(k));
+    if(!use.length){ toast("לא נבחר שדה לעדכון"); return; }
+    const create=$("#stu-create").checked, blank=$("#stu-blank").checked;
+    const F=STAFF_FIELDS.filter(f=>use.includes(f.key));
+    let updated=0, added=0, touched=0; const notFound=[];
+    state.rows.forEach(x=>{
+      let rec=x.hit;
+      if(!rec){
+        if(!create){ notFound.push(x.tz); return; }
+        rec=makeStaff(); rec.tz=x.tz; DB.staff.push(rec); added++;
+      }
+      let any=false;
+      F.forEach(f=>{
+        const raw=x.vals[f.key];
+        if((raw==null || raw==="") && !blank) return;   /* תא ריק אינו מוחק */
+        const v=(raw==null||raw==="") ? (typeof f.val("")==="boolean"?false:"") : f.val(raw);
+        if(rec[f.key]===v) return;
+        rec[f.key]=v; any=true; touched++;
+      });
+      rec.name=[rec.lastName,rec.firstName].filter(Boolean).join(" ")||rec.name;
+      if(any && x.hit) updated++;
+    });
+    save(); pendingRender=true;
+    $("#stu-out").innerHTML=`<b style="color:var(--good)">עודכנו ${updated} תיקים</b>`
+      +(added?(added===1?" · נפתח תיק חדש אחד":` · נפתחו ${added} תיקים חדשים`):"")
+      +(touched===1?" · שדה אחד שונה":` · ${touched} שדות שונו`)
+      +(notFound.length?`<div class="hint" style="color:var(--warn);margin-top:6px">לא נמצאו ${notFound.length} ת"ז: ${notFound.slice(0,30).map(esc).join(", ")}${notFound.length>30?"…":""}</div>`:"");
+    toast(`עודכנו ${updated} תיקי צוות`);
+  };
+}
+
+/* ===========================================================================
+   מעבדת עיצוב בלבד — ייצוא רשימת הצוות
+   ---------------------------------------------------------------------------
+   ללשונית הצוות לא היה ייצוא (מסך הייצוא הקיים הוא של התלמידות בלבד).
+   כאן אותו רכיב בדיוק — בחירת שדות, תצוגה מקדימה, אקסל / CSV / PDF —
+   מעל רשימת הצוות המסוננת שעל המסך. ids: הגבלה לבחירה מהפס התחתון.
+   =========================================================================== */
+let staffExportSel = null;
+function labStaffExport(ids){
+  if(!document.documentElement.classList.contains("ui-lab")) return;
+  const idx=staffAsgIndex("activity", null);
+  const COLS=[
+    ["name",  "שם מלא",   m=>staffName(m)],
+    ["tz",    'ת"ז',      m=>m.tz||""],
+    ["role",  "תפקיד",    m=>m.role||""],
+    ["gan",   "משובצת ב־",m=>staffGanNames(idx,m.id)||"לא משובצת"],
+    ["status","סטטוס",    m=>staffIsActive(m)?"פעיל/ה":"עזב/ה"]
+  ].concat(STAFF_FIELDS.filter(f=>!["lastName","firstName","role"].includes(f.key))
+    .map(f=>[f.key, f.label, m=>{
+      const v=m[f.key];
+      return typeof v==="boolean" ? (v?"כן":"לא") : String(v==null?"":v);
+    }]));
+  if(!staffExportSel) staffExportSel=new Set(["name","tz","role","gan","status","mobile"]);
+
+  const pick=ids && ids.length ? new Set(ids) : null;
+  const base=()=>staffFiltered().filter(m=>!pick || pick.has(m.id));
+  modal(`
+    <h3>ייצוא רשימת הצוות · שנת ${esc(DB.activeYear)}</h3>
+    <div class="sub">מיוצאת הרשימה שעל המסך — כולל החיפוש והסינון הפעילים${pick?" ורק הבחירה שסומנה":""}.</div>
+    <fieldset style="margin-top:10px"><legend>שדות לייצוא</legend>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn ghost sm" id="sx-all" type="button">סמן הכל</button>
+        <button class="btn ghost sm" id="sx-none" type="button">נקה הכל</button>
+      </div>
+      <div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+        ${COLS.map(c=>`<label class="check"><input type="checkbox" class="sx-col" value="${esc(c[0])}" ${staffExportSel.has(c[0])?"checked":""}> ${esc(c[1])}</label>`).join("")}
+      </div>
+    </fieldset>
+    <div class="row" style="flex-wrap:wrap">
+      <button class="btn" id="sx-xls" type="button">🎨 אקסל צבעוני</button>
+      <button class="btn ghost" id="sx-csv" type="button">⬇️ ייצוא לאקסל (CSV)</button>
+      <button class="btn ghost" id="sx-pdf" type="button">🖨️ ייצוא ל-PDF / הדפסה</button>
+      <button class="btn ghost" id="sx-close" type="button" style="margin-inline-start:auto">סגירה</button>
+    </div>
+    <div id="sx-out" style="margin-top:12px"></div>`);
+  $("#sx-close").onclick=closeModal;
+
+  const cols=()=>COLS.filter(c=>staffExportSel.has(c[0]));
+  const preview=()=>{
+    const rows=base(), C=cols(), out=$("#sx-out");
+    if(!C.length){ out.innerHTML='<div class="note">בחר/י לפחות שדה אחד לייצוא.</div>'; return; }
+    if(!rows.length){ out.innerHTML='<div class="empty">אין אנשי צוות התואמים לסינון.</div>'; return; }
+    out.innerHTML=`<div class="table-wrap"><table><thead><tr>${C.map(c=>`<th>${esc(c[1])}</th>`).join("")}</tr></thead>
+      <tbody>${rows.slice(0,50).map(m=>`<tr>${C.map(c=>`<td>${esc(c[2](m)??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      <div class="hint">${rows.length} שורות · ${C.length} עמודות${rows.length>50?" · מוצגות 50 הראשונות":""}.</div>`;
+  };
+  document.querySelectorAll(".sx-col").forEach(cb=>cb.onchange=()=>{
+    if(cb.checked) staffExportSel.add(cb.value); else staffExportSel.delete(cb.value); preview(); });
+  const setAll=on=>{ staffExportSel = on ? new Set(COLS.map(c=>c[0])) : new Set();
+    document.querySelectorAll(".sx-col").forEach(cb=>cb.checked=on); preview(); };
+  $("#sx-all").onclick=()=>setAll(true);
+  $("#sx-none").onclick=()=>setAll(false);
+
+  const data=()=>{ const rows=base(), C=cols();
+    if(!C.length){ toast("בחר/י לפחות שדה אחד"); return null; }
+    if(!rows.length){ toast("אין נתונים לייצוא"); return null; }
+    return { C, rows, body:rows.map(m=>C.map(c=>c[2](m))) }; };
+  $("#sx-xls").onclick=()=>{ const d=data(); if(!d) return;
+    tableToXls(`צוות_${DB.activeYear}.xls`, d.C.map(c=>c[1]), d.body, { title:"צוות הגנים · "+DB.activeYear });
+    toast("קובץ אקסל צבעוני נוצר"); };
+  $("#sx-csv").onclick=()=>{ const d=data(); if(!d) return;
+    const csv=[d.C.map(c=>c[1]).join(",")].concat(d.body.map(r=>r.map(csvCell).join(","))).join("\r\n");
+    downloadBlob(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}), `צוות_${DB.activeYear}.csv`);
+    toast("קובץ אקסל נוצר"); };
+  $("#sx-pdf").onclick=()=>{ const d=data(); if(!d) return;
+    printReport({ title:"צוות הגנים", subtitle:"שנת "+DB.activeYear,
+      headers:d.C.map(c=>c[1]), rows:d.body, footNote:d.rows.length+" אנשי צוות · שנת "+DB.activeYear }); };
+  preview();
+}
+
 function openStaffImport(){
   const state={ list:[], mapped:[] };
   modal(`
@@ -8807,14 +9254,9 @@ function openStaffImport(){
     "תז":"tz","מספרזהות":"tz","זהות":"tz","מייל":"email","אימייל":"email","דואל":"email","דוארלקטרוני":"email","email":"email",
     "תפקיד":"role","טלפון":"phone","טל":"phone","נייד":"mobile","סלולרי":"mobile","פלאפון":"mobile","טלפוןנייד":"mobile",
     "עיר":"city","יישוב":"city","ישוב":"city","הערות":"notes","הערה":"notes","חינוך":"education","סוגחינוך":"education" };
-  const normRole=v=>{ const t=String(v||"").replace(/\s/g,""); const hit=STAFF_ROLES.find(r=>r.replace(/\s/g,"")===t); if(hit) return hit;
-    const has=(...w)=>w.every(x=>t.includes(x));
-    if(has("גננת","משלימה")) return "גננת משלימה";
-    if(has("סייעת","משלימה")) return "סייעת משלימה";
-    if(has("גננת","ממלאתמקום")||has("גננת","ממלאת")) return "גננת ממלאת מקום";
-    if(has("סייעת","ממלאתמקום")||has("סייעת","ממלאת")) return "סייעת ממלאת מקום";
-    return t.includes("גננת")?"גננת":(t.includes("רפואי")?"סייעת רפואית":(t.includes("צמוד")?"סייעת צמודה":(/ב'?$/.test(t)&&t.includes("סייעת")?"סייעת ב'":"סייעת"))); };
+  const normRole=normStaffRole;
   $("#sti-cancel").onclick=closeModal;
+  labStaffTzUpdate();
   $("#sti-template").onclick=()=>{ const csv=['שם משפחה,שם פרטי,ת"ז,מייל,תפקיד,טלפון,נייד,עיר,הערות',"כהן,מרים,123456789,mk@mail.com,גננת,02-1234567,050-1234567,ירושלים,"].join("\r\n"); downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}),"תבנית-צוות.csv"); };
   $("#sti-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; readFileSmart(f, txt=>{ $("#sti-text").value=txt; toast("הקובץ נטען — לחצ/י תצוגה מקדימה"); }); };
   const skipdup=()=>$("#sti-skipdup").checked;
