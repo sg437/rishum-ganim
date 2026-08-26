@@ -945,7 +945,12 @@ html.ui-lab .lg-card{
   display:flex; flex-direction:column; gap:2px; min-width:0;
 }
 html.ui-lab .lg-card.off{ opacity:.55 }
+/* הכרטיס פותח את תיק הגן, ולכן הוא נראה ומתנהג כמשטח לחיץ */
+html.ui-lab .lg-card{ cursor:pointer }
 html.ui-lab .lg-card:hover{ box-shadow:var(--shadow-lg) }
+html.ui-lab .lg-card:focus-visible{
+  outline:2px solid var(--accent); outline-offset:3px; box-shadow:var(--shadow-lg);
+}
 html.ui-lab .lg-top{ display:flex; align-items:center; justify-content:space-between; gap:10px }
 html.ui-lab .lg-ttl{ display:flex; align-items:center; gap:7px; min-width:0 }
 html.ui-lab .lg-ttl b{ font-size:1rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
@@ -2016,11 +2021,22 @@ html.ui-lab #view > .panel.lab-bare > .stu-stage{ margin-top:0 }
 
 /* תיק הילדה: מעוגל מכל הכיוונים, בלי גלילה אופקית */
 html.ui-lab .stu-quick{ overflow-x:hidden; overflow-y:auto; padding-inline-start:2px }
-html.ui-lab .stu-quick .qcard{ border-radius:var(--radius); overflow:hidden }
+/* ⚠️ כאן היה ‎overflow:hidden‎ — הוא עיגל את הפינות אבל עשה את הכרטיס עצמו
+   למכל־גלילה, וכל ‎position:sticky‎ שבתוכו נצמד אליו במקום לפאנל הגולל.
+   כלומר הוא ביטל בשקט את הכפתור הדביק שבתחתית (סעיף 21 למטה).
+   במקומו: הכותרת מעגלת את עצמה מלמעלה, הכפתור מלמטה, והכרטיס נשאר שקוף
+   לגלילה. ‎calc(var(--radius) - 1px)‎ — הרדיוס הפנימי, בתוך המסגרת. */
+html.ui-lab .stu-quick .qcard{ border-radius:var(--radius) }
 html.ui-lab .stu-quick .qcard > .qhead{
-  margin:-14px -14px 0; padding:14px; border-radius:0;
+  margin:-14px -14px 0; padding:14px;
+  border-radius:calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
 }
-html.ui-lab .stu-quick .qcard > *:not(.qhead){ max-width:100%; min-width:0 }
+/* ⚠️ ‎.btn.full‎ מוחרג בכוונה: הוא נמתח אל מעבר לריפוד הכרטיס במרווח שלילי,
+   ו-‎max-width:100%‎ קיצץ אותו בחזרה לרוחב התוכן — כך יצא שהמרווח השלילי
+   משך אותו החוצה מצד אחד והרוחב החסר השאיר אותו קצר מהצד השני. זה הפס
+   הכהה שברח מהמקום. */
+html.ui-lab .stu-quick .qcard > *:not(.qhead):not(.btn){ max-width:100%; min-width:0 }
+html.ui-lab .stu-quick .qcard > .btn{ min-width:0 }
 
 /* ===========================================================================
    20 · פאנל הסינון "עוד" — שורה אחת, בשפת השבבים שבחוץ
@@ -2089,8 +2105,15 @@ html.ui-lab .stu-quick{
 }
 html.ui-lab .stu-quick .qcard{ padding-bottom:0 }
 html.ui-lab .stu-quick .qcard > .btn.full{
-  position:sticky; bottom:0; z-index:3; margin:12px -14px 0; width:calc(100% + 28px);
-  border-radius:0 0 var(--radius) var(--radius);
+  position:sticky; bottom:0; z-index:3;
+  /* ‎max-width:none‎ הוא התיקון: הכפתור נמתח ב-28px מעבר לרוחב התוכן כדי
+     לכסות את הריפוד משני הצדדים, וכלל ה-‎max-width:100%‎ שלמעלה קיצץ אותו
+     בדיוק בחזרה — כך שהמרווח השלילי משך אותו החוצה מצד אחד והרוחב החסר
+     השאיר אותו קצר מהשני. ‎display:flex‎ נכתב במפורש כי ‎width:auto‎ על
+     ‎inline-flex‎ מכווץ לתוכן. שני המספרים (28 והמרווח) נגזרים מריפוד
+     ה-‎.qcard‎ שהוא 14px — משנים אותו, משנים גם כאן. */
+  display:flex; margin:12px -14px 0; width:calc(100% + 28px); max-width:none;
+  border-radius:0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
   padding:12px 14px; font-weight:700;
   box-shadow:0 -10px 18px -12px rgba(21,52,42,.35);
 }

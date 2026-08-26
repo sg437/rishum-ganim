@@ -2859,10 +2859,21 @@ if(document.documentElement.classList.contains("ui-lab")){
        הבדוקים שלו (סייעת ב׳ מ-30, אין בגן חובה, ימים, תקופה, כפילות). */
     openGan(ganId){ try{ openGanAssign(ganId); }catch(e){} },
 
+    /* פתיחת תיק הגן לעריכה — בדיוק מה שלחיצה על שורה בטבלת הגנים עושה,
+       כולל ההעתק העמוק (עריכה שבוטלה לא נוגעת בנתונים). לוח הכרטיסים
+       שבמעבדה קורא לזה, כדי שכרטיס וטבלה יתנהגו אותו דבר. */
+    editGan(ganId){ try{
+      const g = DB.gans.find(x=>x.id===ganId);
+      if(g) openGan(JSON.parse(JSON.stringify(g)));
+    }catch(e){} },
+
+    /* מסך ייצוא הרשימות. בתוכנה הרגילה הוא נפתח כחלון מלשונית התלמידות,
+       ואת אותו חלון המעבדה מעצבת מחדש — ולכן אין צורך בלשונית נפרדת. */
+    openExport(){ try{ openExportModal(); }catch(e){} },
+
     /* ניווט ללשונית, עם סינון מוקדם אופציונלי — "שורת דורש טיפול מנווטת
        לרשימה מסוננת מראש" (HANDOFF.md). נוגע ב-state של הממשק בלבד. */
-    /* המסך הפעיל. "ייצוא" אינו ב-TABS — הכפתור שלו מוזרק על ידי המעבדה
-       ולכן renderTabs לעולם אינו מסמן אותו כפעיל. */
+    /* המסך הפעיל. */
     activeTab(){ try{ return active; }catch(e){ return ""; } },
 
     go(tab, filter){
