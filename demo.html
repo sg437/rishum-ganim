@@ -1053,61 +1053,142 @@ function demoStaffList(){
 }
 
 VIEW.map = function(v){
-  var list = h("div", { id: "map-gan-list", style: "max-height:190px;overflow:auto;padding:9px;border:1px solid var(--border);border-radius:12px" });
-  CAMPUS.forEach(function(c){
-    var box = h("div", { style: "border-top:1px dashed var(--border);padding:7px 0;margin-top:5px" });
-    box.appendChild(h("label", { "class": "check", html:
-      '<input type="checkbox" data-camp="' + c + '" checked> 🏫 ' + c }));
-    var inner = h("div", { style: "display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:6px;padding-inline-start:18px" });
-    GANS.filter(function(g){ return g.campus === c; }).forEach(function(g, i){
-      inner.appendChild(h("label", { "class": "check", html:
-        '<input type="checkbox" data-gid="' + g.id + '"' + (i < 3 ? " checked" : "") + '> ' + g.name }));
-    });
-    box.appendChild(inner); list.appendChild(box);
-  });
-
-  /* שלושת הבוררים שמעל המפה, כמו בתוכנה ובלוח */
-  var opts = h("div", { "class": "row", style: "gap:10px;flex-wrap:wrap;margin-top:10px;align-items:end" }, [
-    h("div", { "class": "field" }, [ txt("label", null, "עיר"),
-      h("select", { html: "<option>מודיעין עילית</option><option>ירושלים</option><option>בית שמש</option>" }) ]),
-    h("div", { "class": "field" }, [ txt("label", null, "חינוך"),
-      h("select", { html: "<option>הכל</option><option>רגיל</option><option>ח״מ</option>" }) ]),
-    h("div", { "class": "field" }, [ txt("label", null, "צבע התלמידות"),
-      h("select", { html: "<option>לפי גן</option><option>לפי מרחק</option><option>לפי סטטוס</option>" }) ]),
-    h("label", { "class": "check", html:
-      '<input type="checkbox"> כל התלמידות (גם שאינן רשומות לגנים שנבחרו)' })
+  /* המבנה כאן הוא בדיוק המבנה ש-viewMap בונה ב-index.html — אותם מזהים ואותן
+     מחלקות. כך שכבת המעבדה (‎ui-lab.js‎) מעבדת את המסך בדמו בדיוק כמו בייצור:
+     כותרת עם שלושה כפתורים, כרטיס סינון אחד, חלון "גנים להצגה" לפי קמפוסים,
+     רשימת צד וכרטיסי כלים. מה שמומצא כאן הוא הנתונים בלבד. */
+  var head = h("div", { "class": "row", style: "align-items:center;gap:10px;flex-wrap:wrap" }, [
+    txt("h2", null, "🗺️ מפת שיבוץ"),
+    h("span", { "class": "pill neutral", id: "map-status",
+                text: "גנים 12/12 מוצגים · תלמידות 312 ממוקמות · 100 ממתינות" }),
+    h("div", { style: "margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap" }, [
+      (function(){ var b = btn("🗺️ הצג על המפה"); b.id = "map-apply"; b.className = "btn sm"; return b; })(),
+      (function(){ var b = btn("⚡ שיבוץ אוטומטי לפי קרבה"); b.id = "map-auto"; b.className = "btn sm"; return b; })(),
+      (function(){ var b = btn("⛶ מסך מלא"); b.id = "map-full-btn"; b.className = "btn ghost sm"; return b; })()
+    ])
   ]);
 
-  var stage = h("div", { id: "map-stage",
-    style: "height:430px;border-radius:16px;display:flex;align-items:center;justify-content:center;" +
-           "text-align:center;background:var(--surface-2);border:1px solid var(--border)" },
-    [ h("div", { "class": "hint", html:
-        "🗺️ המפה החיה (Leaflet + כתובות אמיתיות) אינה נטענת בדמו.<br>" +
-        "במערכת מוצגים כאן כל הגנים והתלמידות על מפה, עם שיבוץ אוטומטי לפי קרבה." }) ]);
-
-  /* הפאנל "רשומות לגנים שנבחרו" — בלוח הוא לצד המפה */
-  var side = h("div", { "class": "panel", style: "margin:0" });
-  side.appendChild(txt("h3", null, "רשומות לגנים שנבחרו"));
-  side.appendChild(txt("div", "sub", "לחיצה על שם ממקדת על המפה"));
-  GANS.slice(0, 3).forEach(function(g){
-    var rows = STUDENTS.filter(function(s){ return s.ganId === g.id; }).slice(0, 2);
-    side.appendChild(h("div", { style: "margin-top:12px;font-weight:700;font-size:.86rem" },
-      [ document.createTextNode(g.name + " · " + g.used) ]));
-    rows.forEach(function(s){
-      side.appendChild(h("div", { style: "display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--lab-rule-row)" }, [
-        h("span", { style: "width:9px;height:9px;border-radius:50%;background:" + (g.ink || "#2c6a4c") }),
-        h("div", null, [
-          h("div", { style: "font-weight:600;font-size:.85rem", text: fullName(s) }),
-          h("div", { "class": "hint", text: s.street + " · " + iRnd(120, 800) + " מ׳" })
-        ])
-      ]));
+  /* --- מקטע הסינון והגנים (המעבדה מפרקת אותו לכרטיס ולחלון) --- */
+  var list = h("div", { id: "map-gan-list",
+    style: "max-height:150px;overflow:auto;margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:10px" });
+  CAMPUS.forEach(function(c){
+    var inCamp = GANS.filter(function(g){ return g.campus === c; });
+    var box = h("div", { style: "border-top:1px dashed var(--border);padding:6px 0;margin-top:4px" });
+    box.appendChild(h("label", { "class": "check", style: "margin:0;font-weight:700", html:
+      '<input type="checkbox" data-camp="' + c + '" checked> 🏫 ' + c +
+      ' <span class="hint">(' + inCamp.length + ')</span>' }));
+    var inner = h("div", { style: "display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:5px;padding-inline-start:18px" });
+    inCamp.forEach(function(g, i){
+      inner.appendChild(h("label", { "class": "check", style: "margin:0;white-space:nowrap", html:
+        '<input type="checkbox" data-gid="' + g.id + '"' + (i < 3 ? " checked" : "") + '> ' + g.name }));
     });
+    box.appendChild(inner);
+    list.appendChild(box);
   });
 
-  var two = h("div", { style: "display:grid;gap:14px;grid-template-columns:1fr 300px;align-items:start;margin-top:14px" },
-    [ stage, side ]);
+  var fold1 = h("details", { "class": "map-fold", open: "" }, [
+    txt("summary", null, "⚙️ סינון וגנים להצגה"),
+    h("div", { "class": "map-fold-body" }, [
+      h("div", { "class": "grid g3", style: "gap:12px" }, [
+        h("div", { "class": "field" }, [ txt("label", null, "עיר"),
+          h("select", { id: "map-city", html: "<option>מודיעין עילית</option><option>ירושלים</option><option>בית שמש</option>" }) ]),
+        h("div", { "class": "field" }, [ txt("label", null, "חינוך"),
+          h("select", { id: "map-edu", html: "<option>הכל</option><option>רגיל</option><option>ח״מ</option>" }) ]),
+        h("div", { "class": "field" }, [ txt("label", null, "תלמידות להצגה"),
+          h("label", { "class": "check", style: "margin:0", html:
+            '<input type="checkbox" id="map-all-students"> כל התלמידות (גם שאינן רשומות לגנים שנבחרו)' }) ])
+      ]),
+      h("div", { "class": "row", style: "align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px" }, [
+        txt("b", null, "גנים (לפי קמפוס)"),
+        (function(){ var b = btn("בחר הכל", "ghost"); b.id = "map-gan-all"; b.className = "btn ghost sm"; return b; })(),
+        (function(){ var b = btn("נקה", "ghost"); b.id = "map-gan-none"; b.className = "btn ghost sm"; return b; })()
+      ]),
+      list
+    ])
+  ]);
 
-  /* תצוגה מקדימה של השיבוץ האוטומטי */
+  /* --- מקטע הכלים (המעבדה הופכת אותו לשלושה כרטיסים) --- */
+  var fold2 = h("details", { "class": "map-fold" }, [
+    txt("summary", null, "🔧 כלים נוספים — חיפוש תלמידה · מיקום ידני · טעינה ורענון"),
+    h("div", { "class": "map-fold-body" }, [
+      h("div", { "class": "row", style: "gap:8px;align-items:center;flex-wrap:wrap" }, [
+        txt("b", null, "🔎 חיפוש תלמידה"),
+        h("input", { id: "map-child-search", placeholder: "שם תלמידה — מיקוד ובדיקת מרחקים לגנים",
+                     style: "flex:1;min-width:200px" }),
+        (function(){ var b = btn("מיקוד"); b.id = "map-child-go"; b.className = "btn sm"; return b; })()
+      ]),
+      h("div", { "class": "row", style: "margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:8px" }, [
+        txt("b", null, "📍 מיקום ידני"),
+        h("select", { id: "place-kind", style: "width:auto", html: "<option>גן</option><option>תלמידה</option>" }),
+        h("select", { id: "place-gan", style: "width:auto", html:
+          GANS.slice(0, 8).map(function(g){ return "<option>" + g.name + "</option>"; }).join("") }),
+        h("input", { id: "place-addr", placeholder: "כתובת לקפיצה (רחוב + מספר)", style: "flex:1;min-width:160px" }),
+        (function(){ var b = btn("↗️ קפוץ לכתובת", "ghost"); b.id = "place-jump"; b.className = "btn ghost sm"; return b; })(),
+        (function(){ var b = btn("💾 שמור מיקום"); b.id = "place-save"; b.className = "btn sm"; return b; })(),
+        h("div", { "class": "hint", id: "place-hint", style: "flex-basis:100%;margin:0",
+                   text: "בוחרים גן או תלמידה → מקלידים כתובת ו\"קפוץ\" (או גוררים על המפה) → \"שמור מיקום\"." })
+      ]),
+      h("div", { "class": "row", style: "margin-top:10px;gap:8px;flex-wrap:wrap" }, [
+        (function(){ var b = btn("📍 טעינת מיקומי תלמידות", "ghost"); b.id = "map-load-students"; b.className = "btn ghost sm"; return b; })(),
+        (function(){ var b = btn("🔄 רענון מיקומים", "ghost"); b.id = "map-refresh"; b.className = "btn ghost sm"; return b; })()
+      ])
+    ])
+  ]);
+
+  /* --- בורר צבע התלמידות והמקרא שלו --- */
+  var colorRow = h("div", { "class": "sub", style: "margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap" }, [
+    h("label", { style: "display:flex;align-items:center;gap:6px;margin:0", html: "צבע התלמידות:" }),
+    h("span", { id: "map-legend-txt", html:
+      'צבע התלמידה = צבע הגן שאליו היא רשומה · <span style="outline:2px solid #e0b000;border-radius:50%;padding:0 5px">◯</span> אח/ות' })
+  ]);
+  colorRow.firstChild.appendChild(h("select", { id: "map-color", style: "width:auto",
+    html: "<option>לפי גן (מי רשומה לאן)</option><option>לפי מרחק</option>" }));
+
+  /* --- הבמה: מפה (שלט בדמו) ורשימת הצד --- */
+  var stage = h("div", { id: "map-stage",
+    style: "display:flex;gap:12px;margin-top:10px;align-items:stretch;flex-wrap:wrap" });
+  stage.appendChild(h("div", { id: "leaflet-map",
+    style: "flex:1 1 460px;height:70vh;min-height:420px;border-radius:12px;border:1px solid var(--border);" +
+           "background:var(--surface-2);display:flex;align-items:center;justify-content:center;text-align:center" },
+    [ h("div", { "class": "hint", html:
+        "🗺️ המפה החיה (Leaflet + כתובות אמיתיות) אינה נטענת בדמו.<br>" +
+        "במערכת מוצגים כאן כל הגנים והתלמידות, עם שיבוץ אוטומטי לפי קרבה." }) ]));
+
+  var side = h("div", { id: "map-side",
+    style: "flex:0 1 260px;min-width:200px;max-height:70vh;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--surface)" });
+  var colors = window.__uiLab.ganColors();
+  side.appendChild(h("div", { "class": "map-side-title", style: "font-weight:700;margin-bottom:2px",
+                              text: "רשומות (312/412 על המפה)" }));
+  side.appendChild(h("div", { "class": "hint map-side-hint", style: "margin-bottom:6px",
+                              text: '○ = טרם מוקמה על המפה — לחצ/י "טעינת מיקומי תלמידות"' }));
+  GANS.slice(0, 3).forEach(function(g){
+    var col = colors[g.id] || "#2c6a4c";
+    var grp = h("div", { "class": "map-side-group", style: "margin-bottom:8px" });
+    grp.appendChild(h("div", { "class": "map-side-ghead", html:
+      '<span style="width:12px;height:12px;border-radius:50%;background:' + col + ';flex:none"></span>' +
+      '<span style="flex:1">' + g.name + '</span><span class="hint">' + g.used + '</span>',
+      style: "display:flex;align-items:center;gap:6px;font-weight:700;background:" + col +
+             "22;border-inline-start:3px solid " + col + ";border-radius:6px;padding:3px 6px" }));
+    STUDENTS.filter(function(s){ return s.ganId === g.id; }).slice(0, 3).forEach(function(s){
+      grp.appendChild(h("div", { "class": "map-side-kid", "data-sub": s.street + " · " + iRnd(120, 800) + " מ׳",
+        style: "cursor:pointer;padding:3px 4px;border-radius:6px;font-size:13px;--kid-ink:" + col,
+        text: fullName(s) }));
+    });
+    side.appendChild(grp);
+  });
+  var none = h("div", { "class": "map-side-group", style: "margin-bottom:8px" });
+  none.appendChild(h("div", { "class": "map-side-nohead", style: "font-weight:700;color:#666;padding:3px 6px",
+    html: 'ללא גן / אחר <span class="hint">2</span>' }));
+  STUDENTS.filter(function(s){ return !s.ganId; }).slice(0, 2).forEach(function(s){
+    none.appendChild(h("div", { "class": "map-side-kid",
+      "data-sub": s.street + " · הקרוב: " + GANS[1].name + " " + iRnd(120, 400) + " מ׳",
+      style: "cursor:pointer;padding:3px 4px;border-radius:6px;font-size:13px;--kid-ink:#a5342b",
+      text: fullName(s) }));
+  });
+  side.appendChild(none);
+  stage.appendChild(side);
+
+  /* תצוגה מקדימה של השיבוץ האוטומטי — בתוכנה היא חלון, בלוח היא בלוק במסך */
   var prev = h("div", { "class": "panel", style: "border:2px solid var(--lab-gold);margin-top:14px" }, [
     h("div", { style: "display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap" }, [
       h("div", null, [
@@ -1128,16 +1209,8 @@ VIEW.map = function(v){
     ])
   ]);
 
-  v.appendChild(h("div", { "class": "panel" }, [
-    h("div", { "class": "section-title" }, [ txt("h2", null, "מפת שיבוץ") ]),
-    toolbar([["⚡ שיבוץ אוטומטי לפי קרבה", "map-auto"], ["⛶ מסך מלא", "map-full"],
-             ["🔄 רענון מיקומים", "map-reload"]]),
-    h("details", { "class": "map-fold", open: "" }, [
-      h("summary", { text: "גנים להצגה" }),
-      h("div", { "class": "map-fold-body" }, [ list, opts ])
-    ]),
-    two, prev
-  ]));
+  v.appendChild(h("div", { "class": "panel" }, [ head, fold1, fold2, colorRow, stage ]));
+  v.appendChild(prev);
 };
 
 VIEW.assign = function(v){
@@ -1793,6 +1866,13 @@ window.__uiLab = Object.freeze({
       })
     };
   },
+
+  /* לוח 04 — המספרים שבכרטיס "טעינת מיקומי תלמידות" */
+  mapBoard: function(){
+    return { ganPicked:12, ganTotal:GANS.length, ganShown:12, ganNoCity:4,
+             stuLoc:312, stuPending:100, stuNoAddr:0 };
+  },
+  mapShow: function(){},
 
   ganColors: function(){
     var out = {};

@@ -837,7 +837,174 @@ html.ui-lab .lml-r{ display:flex; align-items:center; gap:7px; padding:2px 0 }
 html.ui-lab .lml-d{ width:9px; height:9px; border-radius:50%; flex:0 0 auto }
 html.ui-lab .lml-more{ color:var(--muted); margin-top:4px }
 
-/* ---- כרטיסי הכלים והסינון ---- */
+/* ---- הכותרת: שורת המצב של התוכנה היא תת־הכותרת ---- */
+html.ui-lab .lab-maphead #map-status{
+  display:block; background:none; border:0; box-shadow:none;
+  padding:0; margin:2px 0 0;
+  font-size:.8rem; font-weight:600; color:var(--muted);
+}
+
+/* ---- כרטיס הסינון: גנים להצגה · בוררים · מקרא הצבע ---- */
+html.ui-lab .lab-mapfilter{
+  background:var(--surface); border:1px solid var(--border); border-radius:18px;
+  padding:16px 20px; margin-bottom:16px;
+}
+html.ui-lab .lab-mfrow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+html.ui-lab .lab-mfgans{ margin-bottom:13px }
+html.ui-lab .lab-mflab{ font-size:.92rem }
+/* מספר הגנים שנבחרו — בגוון בהיר לצד "גנים להצגה" */
+html.ui-lab .lab-mfcount{ font-size:.82rem; font-weight:600; color:var(--muted) }
+html.ui-lab .lab-mfpick{ margin-inline-start:auto }
+html.ui-lab .lab-mfgans .btn{ margin:0 }
+/* "בחר הכל" · "נקה" הם קישורי טקסט בלוח, לא כפתורים */
+html.ui-lab .lab-mfgans #map-gan-all,
+html.ui-lab .lab-mfgans #map-gan-none{
+  background:none; border:0; box-shadow:none; padding:0 2px; min-height:0;
+  font-size:.82rem; font-weight:700;
+}
+html.ui-lab .lab-mfgans #map-gan-all{ color:var(--accent) }
+html.ui-lab .lab-mfgans #map-gan-none{ color:var(--muted) }
+html.ui-lab .lab-mfsel{ gap:12px }
+/* הבוררים בלוח הם תיבות מרובעות בגוון קרם, לא שבבים עגולים */
+html.ui-lab .lab-mfchip{
+  border-radius:10px; padding:9px 12px; font-size:.85rem;
+  background:var(--lab-surface-warm); color:var(--ink);
+}
+html.ui-lab .lab-mfchip.on{ background:var(--lab-surface-warm); color:var(--ink); border-color:var(--border) }
+html.ui-lab .lab-mfall{
+  display:flex; align-items:center; gap:7px; margin:0;
+  font-size:.84rem; font-weight:600;
+  background:none !important; border:0 !important; padding:0 !important;
+}
+html.ui-lab .lab-mflegend{ margin-top:11px; font-size:.8rem; color:var(--muted); font-weight:600 }
+html.ui-lab .lab-mfhold{ display:none }
+
+/* ---- חלון בחירת הגנים (לפי קמפוסים) ---- */
+html.ui-lab .lab-pickov{
+  position:fixed; inset:0; z-index:9999; padding:18px;
+  background:rgba(17,29,22,.5);
+  display:flex; align-items:center; justify-content:center;
+}
+html.ui-lab .lab-pick{
+  width:min(720px,100%); max-height:86vh; overflow:hidden;
+  display:flex; flex-direction:column;
+  background:var(--surface); border:1px solid var(--border); border-radius:20px;
+  box-shadow:var(--shadow-lg);
+}
+html.ui-lab .lab-pick-h{
+  display:flex; align-items:flex-start; gap:12px;
+  padding:16px 20px; background:var(--lab-deep); color:#fff;
+}
+html.ui-lab .lab-pick-t{ font-family:var(--lab-font-head); font-weight:600; font-size:1.05rem }
+html.ui-lab .lab-pick-s{ font-size:.78rem; font-weight:600; color:rgba(255,255,255,.6) }
+html.ui-lab .lab-pick-x{
+  margin-inline-start:auto; width:32px; height:32px; flex:0 0 auto;
+  border:0; border-radius:10px; cursor:pointer; font:inherit; font-size:.9rem;
+  background:rgba(255,255,255,.12); color:#fff;
+}
+html.ui-lab .lab-pick-x:hover{ background:rgba(255,255,255,.22) }
+html.ui-lab .lab-pick-b{ flex:1 1 auto; overflow:auto; padding:16px 20px }
+/* כותרת הקמפוס: תיבת הסימון ראשונה, ואז השם — כמו בכל שאר התוכנה */
+html.ui-lab .lab-pick-b .lab-campchip{
+  display:flex !important; align-items:center; gap:7px;
+  font-size:.78rem !important; margin:2px 0 8px !important;
+}
+html.ui-lab .lab-pick-f{
+  display:flex; align-items:center; gap:9px; padding:13px 20px;
+  border-top:1px solid var(--lab-rule-head); background:var(--lab-surface-warm);
+}
+html.ui-lab .lab-pick-c{ font-size:.82rem; font-weight:600; color:var(--muted); margin-inline-end:auto }
+html.ui-lab .lab-pick-ok{ background:var(--accent); color:#fff; border:0; font-weight:700 }
+html.ui-lab .lab-pick-ok:hover{ opacity:.92 }
+@media(max-width:700px){
+  html.ui-lab .lab-pickov{ padding:0 }
+  html.ui-lab .lab-pick{ max-height:100dvh; height:100dvh; border-radius:0; border:0 }
+}
+
+/* ---- הבמה: מפה ורשימת הצד, שתי עמודות כמו בלוח ---- */
+html.ui-lab #map-stage{
+  display:grid !important; grid-template-columns:minmax(0,1fr) 300px;
+  gap:16px !important; align-items:start;
+}
+@media(max-width:1000px){
+  html.ui-lab #map-stage{ grid-template-columns:minmax(0,1fr) }
+  /* בעמודה אחת המקראה אינה יכולה לרחף — היא הייתה נוחתת על רשימת הצד.
+     כאן היא בלוק רגיל בין המפה לרשימה. */
+  html.ui-lab #leaflet-map{ order:1 }
+  html.ui-lab .lab-maplegend{
+    position:static; order:2; max-width:none; box-shadow:none;
+    display:flex !important; flex-wrap:wrap; align-items:center; gap:4px 14px;
+  }
+  html.ui-lab #map-side{ order:3 }
+}
+/* מסך מלא — הבמה מקבלת את כל הגובה, ולכן שורה אחת שנמתחת */
+html.ui-lab #map-stage.map-full-native,
+html.ui-lab #map-stage.map-full,
+html.ui-lab #map-stage:fullscreen{ align-items:stretch; grid-template-rows:100% }
+html.ui-lab #leaflet-map{ border-radius:18px; border-color:var(--border) }
+
+/* ---- רשימת הצד: כרטיס אחד עם כותרת, קבוצות ושורות ---- */
+html.ui-lab #map-side{
+  background:var(--surface) !important; border:1px solid var(--border) !important;
+  border-radius:18px !important; padding:0 !important; overflow:auto;
+}
+html.ui-lab .map-side-warn{ margin:14px 17px 0 !important }
+html.ui-lab .map-side-title{
+  font-family:var(--lab-font-head); font-size:1rem; font-weight:600 !important;
+  padding:14px 17px 12px; margin:0 !important;
+  border-bottom:1px solid var(--lab-rule-head);
+}
+html.ui-lab .map-side-title:has(+ .map-side-hint){ border-bottom:0; padding-bottom:2px }
+html.ui-lab .map-side-hint{
+  padding:0 17px 13px; margin:0 !important;
+  border-bottom:1px solid var(--lab-rule-head);
+}
+html.ui-lab .map-side-group{ margin:0 !important }
+html.ui-lab .map-side-ghead,
+html.ui-lab .map-side-nohead{
+  padding:10px 17px !important; border-radius:0 !important;
+  border-inline-start:0 !important; border-bottom:1px solid var(--lab-rule-head);
+  font-size:.85rem;
+}
+html.ui-lab .map-side-nohead{ background:var(--bad-soft) !important; color:var(--bad) !important }
+html.ui-lab .map-side-kid{
+  display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:9px;
+  padding:11px 17px !important; border-radius:0 !important;
+  border-bottom:1px solid var(--lab-rule-row);
+  font-size:.85rem !important; font-weight:700;
+}
+html.ui-lab .map-side-kid::before{
+  content:""; grid-column:1; grid-row:1 / span 2; align-self:start;
+  width:8px; height:8px; margin-top:7px; border-radius:50%;
+  background:var(--kid-ink,var(--muted));
+}
+html.ui-lab .map-side-kid::after{
+  content:attr(data-sub); grid-column:2; grid-row:2;
+  font-size:.75rem; font-weight:600; color:var(--muted);
+}
+html.ui-lab .map-side-kid[data-sub=""]::after{ display:none }
+html.ui-lab .map-side-kid:hover{ background:var(--surface-2) }
+
+/* ---- שלושת כרטיסי הכלים שמתחת למפה ---- */
+html.ui-lab .lab-maptools{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px;
+}
+@media(max-width:900px){ html.ui-lab .lab-maptools{ grid-template-columns:1fr } }
+html.ui-lab .lab-mtool{
+  background:var(--surface); border:1px solid var(--border); border-radius:16px;
+  padding:15px 18px;
+}
+html.ui-lab .lab-mtool[open]{ border-color:var(--accent) }
+html.ui-lab .lab-mtool > summary{ display:block; cursor:pointer; list-style:none }
+html.ui-lab .lab-mtool > summary::-webkit-details-marker{ display:none }
+html.ui-lab .lab-mt-t{ font-weight:700; font-size:.88rem; margin-bottom:4px }
+html.ui-lab .lab-mt-s{ font-size:.8rem; color:var(--muted) }
+html.ui-lab .lab-mt-b{
+  margin-top:12px; padding-top:12px; border-top:1px solid var(--lab-rule-head);
+}
+html.ui-lab .lab-mt-b .row{ margin:0 }
+
+/* המקטעים המתקפלים של התוכנה נשארים בדף (מוסתרים) — כל מה שבהם עבר לכרטיסים */
 html.ui-lab .map-fold{
   border-radius:16px; border:1px solid var(--border); background:var(--surface);
   margin-top:14px;
@@ -850,12 +1017,14 @@ html.ui-lab #map-auto{
 }
 html.ui-lab #map-auto:hover{ opacity:.92 }
 
-/* פאנל הצד של המפה */
-html.ui-lab .map-side-kid{ border-radius:11px; padding:9px 11px }
-html.ui-lab .map-fold{ border-radius:14px }
-html.ui-lab .map-fold>summary{ padding:12px 16px; font-weight:600 }
+/* ---- חלון השיבוץ האוטומטי: בורר הגנים שבתוכו ---- */
+html.ui-lab .aa-ganbox{
+  border-radius:14px !important; background:var(--lab-surface-warm);
+  border-color:var(--border) !important;
+}
+html.ui-lab .aa-camphead{ font-size:.82rem }
+html.ui-lab .aa-gan{ font-size:.84rem }
 
-/* טבלת ההצעה של השיבוץ האוטומטי — סיבת חסימה בולטת */
 html.ui-lab .leaflet-container{ border-radius:16px }
 
 
