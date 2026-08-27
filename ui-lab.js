@@ -651,9 +651,14 @@ function tintBars(){
 }
 
 /* ===========================================================================
-   שלב 6 — לוח התקנים בשיבוץ צוות (לוח 05 בקנבס)
+   שלב 6 — שיבוץ צוות (לוח 05 בקנבס)
    ---------------------------------------------------------------------------
-   שתי סטיות מכוונות מהלוח, ושתיהן לטובת נאמנות לנתונים:
+   המסך בנוי כמו בלוח: כותרת ותת־כותרת, כפתור "ייצוא" בצד שמאל, רצועת
+   ההקשרים ולצידה בורר "כרטיסים | טבלה", שלוש משבצות מספרים, ומתחתן שתי
+   עמודות — "איוש לפי גן" והטור שבצד (זמינים לשיבוץ · ימי חופש · מניעת
+   שיבוץ כפול).
+
+   שלוש סטיות מכוונות מהלוח, כולן לטובת נאמנות לנתונים:
 
    1. אין תקרה של שלושה תקנים. הלוח מציג n/3, אבל במערכת 17 תפקידים, וגן עם
       גננת, סייעת, סייעת רפואית וגננת משלימה היה נחתך שם בלי להודיע. כאן
@@ -661,10 +666,15 @@ function tintBars(){
    2. אין גרירה. קלף פנוי פותח את מודאל openGanAssign הקיים — שמכיר את כל
       הכללים ובדוק. כך המעבדה נשארת קוראת-בלבד, וזו הסיבה שמותר להריץ אותה
       על הנתונים החיים.
+   3. למקרא נוסף "נעול עד לסף" — מצב שלישי שקיים בנתונים (סייעת ב׳ שטרם
+      הגיעה לסף הבנות) ואינו מיוצג בשני הצבעים שבלוח.
 
-   מוחלף רק תוכן #asgList. בורר ההקשר, הסיכום, בוחר הגן וכפתור הייצוא
-   נשארים כמו שהם.
+   "בחירת גן לשיבוץ" — הטבלה הכפולה שמעל הרשימה — מוסתרת: היא חוזרת על
+   אותם גנים עצמם, ולחיצה על תקן פנוי כבר פותחת את אותו מודאל שיבוץ.
+   הפקדים עצמם נשארים בדום ומחווטים, ולכן שום מנגנון לא אבד.
    =========================================================================== */
+
+var asgMode = "list";              /* טבלה (רשימות) | כרטיסים */
 
 function slotCard(o){
   /* החלטה 1: קלף פנוי הוא כפתור שפותח את מודאל השיבוץ — שם כל 17 התפקידים,
@@ -686,118 +696,282 @@ function slotCard(o){
   return c;
 }
 
+/* קלפי התקנים של גן אחד — זהים בשני מצבי התצוגה (סעיף 6: הכרטיסיות
+   נשארות בדיוק כפי שהן; רק האריזה סביבן משתנה). */
+function ganSlots(g){
+  var open = function(){
+    if(window.__uiLab && window.__uiLab.openGan) window.__uiLab.openGan(g.id);
+  };
+  var slots = el("div", "la-slots");
+  var byRole = {};
+  g.filled.forEach(function(f){ byRole[f.role] = f; });
+
+  var shown = {}, filledN = 0, slotN = 0;
+  function addRole(role, opts){
+    opts = opts || {};
+    var f = byRole[role];
+    shown[role] = true;
+    if(f){ filledN++; slotN++;
+      slots.appendChild(slotCard({ role:role, name:f.name, cls:"on",
+        extra: f.extra ? (f.extraLabel ? f.extraLabel + ": " + f.extra : f.extra) : "",
+        students: f.students }));
+    }else if(opts.locked){
+      slots.appendChild(slotCard({ role:role, cls:"lock",
+        emptyText:"נפתחת מ-" + g.bMin + " בנות · כרגע " + g.reg }));
+    }else{ slotN++;
+      slots.appendChild(slotCard({ role:role, cls:"free", emptyText:"+ שיבוץ",
+        onOpen:open }));
+    }
+  }
+
+  /* שלושת תקני הליבה */
+  addRole("גננת");
+  addRole("סייעת");
+  if(!g.mandatory) addRole(g.bRole, { locked: !g.bEligible });
+
+  /* וכל תפקיד אחר שמשובץ בפועל — בלי תקרה */
+  g.filled.forEach(function(f){
+    if(shown[f.role]) return;
+    filledN++; slotN++;
+    slots.appendChild(slotCard({ role:f.role, name:f.name, cls:"on",
+      extra: f.extra ? (f.extraLabel ? f.extraLabel + ": " + f.extra : f.extra) : "",
+      students: f.students }));
+  });
+  /* קלף "+" בסוף — כל תפקיד אחר מתוך 17, דרך המודאל */
+  var add = el("button", "la-slot la-add");
+  add.title = "הוספת תפקיד נוסף";
+  add.appendChild(el("span", "la-add-plus", "+"));
+  add.appendChild(el("span", "la-add-txt", "תפקיד נוסף"));
+  add.onclick = open;
+  slots.appendChild(add);
+
+  return { box:slots, filled:filledN, total:slotN };
+}
+
+/* פרטי הגן — הבלוק הימני בשורה ובראש הכרטיס */
+function ganInfo(g){
+  var info = el("div", "la-gan");
+  var top = el("div", "la-gan-top");
+  top.appendChild(el("b", null, g.name));
+  if(g.edu && g.edu !== "רגיל") top.appendChild(el("span", "lh-gan-edu", g.edu));
+  info.appendChild(top);
+  var meta = [];
+  if(g.symbol) meta.push("סמל " + g.symbol);
+  if(g.age)    meta.push("גיל " + g.age);
+  if(g.campus) meta.push(g.campus);
+  info.appendChild(el("div", "la-gan-meta", meta.join(" · ")));
+  info.appendChild(el("div", "la-gan-reg", g.reg + " רשומות"));
+  if(g.mandatory) info.appendChild(el("div", "la-gan-mand", "גן חובה"));
+  return info;
+}
+
+/* שורת ימי החופש של הגן — ⚠️ בלי ההגנה הזו, שדה freeDays חסר זורק,
+   וכל הלוח נעלם בשקט (הקריאה עטופה ב-try/catch). */
+function ganFreeLine(g){
+  var fd = g.freeDays || [];
+  if(!fd.length) return null;
+  return el("div", "la-free", "🏖️ יום חופשי: " +
+    fd.map(function(x){ return x.role + " (" + (x.days || []).join(", ") + ")"; }).join(" · "));
+}
+
+function editBtn(g){
+  var b = el("button", "la-edit", "עריכה");
+  b.onclick = function(){ if(window.__uiLab && window.__uiLab.openGan) window.__uiLab.openGan(g.id); };
+  return b;
+}
+
+/* --- מצב "טבלה": שורה בתוך לוח "איוש לפי גן", כמו בלוח ------------------ */
+function ganRow(g){
+  var row = el("div", "la-row");
+  if(g.ageInk) row.style.setProperty("--age-ink", g.ageInk);   /* סעיף 9 */
+  row.appendChild(ganInfo(g));
+
+  var s = ganSlots(g);
+  row.appendChild(s.box);
+
+  var side = el("div", "la-side");
+  var cnt = el("div", "la-count" + (s.filled === s.total ? " full" : ""));
+  cnt.appendChild(ratio(s.filled, s.total));    /* בלי רווחים סביב הלוכסן */
+  side.appendChild(cnt);
+  side.appendChild(editBtn(g));
+  row.appendChild(side);
+
+  var free = ganFreeLine(g);
+  if(free) row.appendChild(free);
+  return row;
+}
+
+/* --- מצב "כרטיסים": כרטיס לכל גן, במסגרת צבע הגיל ---------------------- */
+function ganAsgCard(g){
+  var c = el("div", "la-card");
+  if(g.ageInk) c.style.setProperty("--age-ink", g.ageInk);     /* סעיף 9 */
+
+  var head = el("div", "la-card-head");
+  head.appendChild(ganInfo(g));
+  var s = ganSlots(g);
+  var cnt = el("div", "la-count" + (s.filled === s.total ? " full" : ""));
+  cnt.appendChild(ratio(s.filled, s.total));
+  head.appendChild(cnt);
+  c.appendChild(head);
+
+  c.appendChild(s.box);
+
+  var free = ganFreeLine(g);
+  if(free) c.appendChild(free);
+
+  var foot = el("div", "la-card-foot");
+  foot.appendChild(editBtn(g));
+  c.appendChild(foot);
+  return c;
+}
+
+/* --- הטור שבצד (סעיף 10) ------------------------------------------------ */
+function asidePanel(title, sub){
+  var p = el("div", "la-panel");
+  var h = el("div", "la-panel-h");
+  h.appendChild(el("div", "la-panel-t", title));
+  if(sub) h.appendChild(el("div", "la-panel-s", sub));
+  p.appendChild(h);
+  return p;
+}
+
+var POOL_MAX = 12;             /* הטור בצד אינו רשימת הצוות המלאה */
+
+function poolPanel(d){
+  var pool = d.pool || [];
+  var p = asidePanel("זמינים לשיבוץ", "רק צוות מאותו חינוך של הגן");
+  if(!pool.length){
+    p.appendChild(el("div", "la-panel-empty", "כל הצוות הפעיל משובץ בהקשר זה."));
+    return p;
+  }
+  pool.slice(0, POOL_MAX).forEach(function(m){
+    var r = el("button", "la-prow");
+    r.title = "פתיחת תיק איש/אשת הצוות";
+    r.onclick = function(){
+      if(window.__uiLab && window.__uiLab.openStaffFull) window.__uiLab.openStaffFull(m.id);
+    };
+    var ini = el("span", "la-ini", m.ini || initialsFrom(m.name));
+    if(m.roleInk) ini.style.setProperty("--role-ink", m.roleInk);
+    r.appendChild(ini);
+    var b = el("div", "la-pmain");
+    b.appendChild(el("div", "la-pname", m.name));
+    var meta = [];
+    if(m.role)  meta.push(m.role);
+    if(m.years) meta.push(m.years + " שנות ותק");
+    if(m.last)  meta.push(m.last);
+    b.appendChild(el("div", "la-pmeta", meta.join(" · ")));
+    r.appendChild(b);
+    p.appendChild(r);
+  });
+  if(pool.length > POOL_MAX)
+    p.appendChild(el("div", "la-panel-more", "ועוד " + (pool.length - POOL_MAX) + " במאגר הצוות"));
+  return p;
+}
+
+function freeDaysPanel(d){
+  var p = asidePanel("🏖️ ימי חופש בגנים", "");
+  var rows = [];
+  (d.gans || []).forEach(function(g){
+    (g.freeDays || []).forEach(function(x){
+      rows.push({ gan:g.name, role:x.role, days:(x.days || []).join(", ") });
+    });
+  });
+  if(!rows.length){
+    p.appendChild(el("div", "la-panel-empty", "לא נרשמו ימי חופש בהקשר זה."));
+    return p;
+  }
+  rows.forEach(function(r){
+    var line = el("div", "la-fday");
+    line.appendChild(el("b", null, r.gan));
+    line.appendChild(el("span", null, " · " + r.role + ": " + r.days));
+    p.appendChild(line);
+  });
+  return p;
+}
+
+function dupesPanel(d){
+  var dupes = d.dupes || [];
+  var p = asidePanel("מניעת שיבוץ כפול", "");
+  if(!dupes.length){
+    p.appendChild(el("div", "la-note ok", "אין שיבוץ כפול בהקשר זה ✓"));
+    return p;
+  }
+  dupes.forEach(function(x){
+    var n = el("div", "la-note");
+    n.appendChild(el("span", "la-note-i", "⚠"));
+    n.appendChild(el("div", null, x.name + " משובצת ב" + x.gans.join(" וב") +
+      " באותו הקשר — שיבוץ נוסף ייחסם"));
+    p.appendChild(n);
+  });
+  return p;
+}
+
+/* --- הלוח כולו --------------------------------------------------------- */
 function renderAssignBoard(host){
   var d = (window.__uiLab && window.__uiLab.assignBoard) ? window.__uiLab.assignBoard() : null;
   if(!d || !d.gans) return false;
 
-  var board = el("div", "lab-asg");
+  var wrap = el("div", "lab-asg lab-2col aside");
 
+  /* --- לוח "איוש לפי גן" --- */
+  var main = el("div", "la-main");
+  var head = el("div", "la-phead");
+  var ht = el("div", "la-phead-t");
+  ht.appendChild(el("div", "la-ptitle", "איוש לפי גן"));
+  var bMin = (d.gans[0] && d.gans[0].bMin) || 30;
+  ht.appendChild(el("div", "la-psub",
+    "לחיצה על תקן פנוי פותחת את שיבוץ הגן · סייעת ב׳ נפתחת מ-" + bMin +
+    " בנות · בגן חובה (גיל 5) אין סייעת ב׳"));
+  head.appendChild(ht);
+
+  /* המקרא — שלושה מצבים, לא שניים (סעיף 5) */
   var legend = el("div", "la-legend");
   legend.appendChild(el("span", "la-lg on",   "מאויש"));
   legend.appendChild(el("span", "la-lg free", "תקן פנוי"));
   legend.appendChild(el("span", "la-lg lock", "נעול עד לסף"));
-  board.appendChild(legend);
+  head.appendChild(legend);
+  main.appendChild(head);
 
-  d.gans.forEach(function(g){
-    var row = el("div", "la-row");
+  /* הגנים — כבר ממוינים לפי גיל עולה ואז א״ב (סעיף 8), בשני המצבים */
+  if(asgMode === "cards"){
+    var grid = el("div", "la-grid");
+    d.gans.forEach(function(g){ grid.appendChild(ganAsgCard(g)); });
+    main.appendChild(grid);
+  }else{
+    var list = el("div", "la-list");
+    d.gans.forEach(function(g){ list.appendChild(ganRow(g)); });
+    main.appendChild(list);
+  }
 
-    /* פרטי הגן */
-    var info = el("div", "la-gan");
-    var top = el("div", "la-gan-top");
-    top.appendChild(el("b", null, g.name));
-    if(g.edu && g.edu !== "רגיל") top.appendChild(el("span", "lh-gan-edu", g.edu));
-    info.appendChild(top);
-    var meta = [];
-    if(g.symbol) meta.push("סמל " + g.symbol);
-    if(g.age)    meta.push("גיל " + g.age);
-    if(g.campus) meta.push(g.campus);
-    info.appendChild(el("div", "la-gan-meta", meta.join(" · ")));
-    info.appendChild(el("div", "la-gan-reg", g.reg + " רשומות"));
-    if(g.mandatory) info.appendChild(el("div", "la-gan-mand", "גן חובה"));
-    row.appendChild(info);
-
-    /* הכרטיסים */
-    var slots = el("div", "la-slots");
-    var byRole = {};
-    g.filled.forEach(function(f){ byRole[f.role] = f; });
-
-    var shown = {}, filledN = 0, slotN = 0;
-    var openThis = function(){
-      if(window.__uiLab && window.__uiLab.openGan) window.__uiLab.openGan(g.id);
-    };
-    function addRole(role, opts){
-      opts = opts || {};
-      var f = byRole[role];
-      shown[role] = true;
-      if(f){ filledN++; slotN++;
-        slots.appendChild(slotCard({ role:role, name:f.name, cls:"on",
-          extra: f.extra ? (f.extraLabel ? f.extraLabel + ": " + f.extra : f.extra) : "",
-          students: f.students }));
-      }else if(opts.locked){
-        slots.appendChild(slotCard({ role:role, cls:"lock",
-          emptyText:"נפתחת מ-" + g.bMin + " בנות · כרגע " + g.reg }));
-      }else{ slotN++;
-        slots.appendChild(slotCard({ role:role, cls:"free", emptyText:"+ שיבוץ",
-          onOpen:openThis }));
-      }
-    }
-
-    /* שלושת תקני הליבה */
-    addRole("גננת");
-    addRole("סייעת");
-    if(!g.mandatory) addRole(g.bRole, { locked: !g.bEligible });
-
-    /* וכל תפקיד אחר שמשובץ בפועל — בלי תקרה */
-    g.filled.forEach(function(f){
-      if(shown[f.role]) return;
-      filledN++; slotN++;
-      slots.appendChild(slotCard({ role:f.role, name:f.name, cls:"on",
-        extra: f.extra ? (f.extraLabel ? f.extraLabel + ": " + f.extra : f.extra) : "",
-        students: f.students }));
-    });
-    /* קלף "+" בסוף השורה — כל תפקיד אחר מתוך 17, דרך המודאל */
-    var add = el("button", "la-slot la-add");
-    add.title = "הוספת תפקיד נוסף";
-    add.appendChild(el("span", "la-add-plus", "+"));
-    add.appendChild(el("span", "la-add-txt", "תפקיד נוסף"));
-    add.onclick = openThis;
-    slots.appendChild(add);
-
-    row.appendChild(slots);
-
-    /* המונה — בלי רווחים סביב הלוכסן */
-    var side = el("div", "la-side");
-    var cnt = el("div", "la-count" + (filledN === slotN ? " full" : ""));
-    cnt.appendChild(ratio(filledN, slotN));
-    side.appendChild(cnt);
-    var edit = el("button", "la-edit", "עריכה");
-    edit.onclick = function(){ if(window.__uiLab && window.__uiLab.openGan) window.__uiLab.openGan(g.id); };
-    side.appendChild(edit);
-    row.appendChild(side);
-
-    /* ⚠️ בלי ההגנה הזו, שדה freeDays חסר זורק — וכל הלוח נעלם בשקט
-       (הקריאה עטופה ב-try/catch). */
-    var fd = g.freeDays || [];
-    if(fd.length){
-      row.appendChild(el("div", "la-free", "🏖️ יום חופשי: " +
-        fd.map(function(x){ return x.role + " (" + (x.days || []).join(", ") + ")"; }).join(" · ")));
-    }
-    board.appendChild(row);
-  });
-
-  board.appendChild(el("div", "lh-empty",
+  main.appendChild(el("div", "la-foot",
     d.gans.length + " גנים · הקשר: " + d.contextLabel));
 
+  /* מקראת הגילאים — אותה מקראה של לשונית הגנים (סעיף 9) */
+  var lg = (window.__uiLab && window.__uiLab.ageLegend) ? window.__uiLab.ageLegend() : "";
+  if(lg){ var box = el("div", "lh-legend"); box.innerHTML = lg; main.appendChild(box); }
+
+  wrap.appendChild(main);
+
+  /* --- הטור שבצד --- */
+  var side = el("div", "la-aside");
+  side.appendChild(poolPanel(d));
+  side.appendChild(freeDaysPanel(d));
+  side.appendChild(dupesPanel(d));
+  wrap.appendChild(side);
+
   host.innerHTML = "";
-  host.appendChild(board);
+  host.appendChild(wrap);
   return true;
 }
 
 /* בורר ההקשר הוא <select> בקוד. הוא נשאר — ולצידו מוזרקות לשוניות
-   שמניעות אותו, כמו בלוח. כך אין אובדן מנגנון. */
+   שמניעות אותו, כמו בלוח. כך אין אובדן מנגנון. לצידן, בקצה השמאלי של
+   אותה שורה, בורר "כרטיסים | טבלה" (סעיף 4). */
 function assignTabs(){
   var sel = view.querySelector("#asgCtxSel");
-  if(!sel || view.querySelector(".lab-ctx")) return;
+  if(!sel || view.querySelector(".la-bar")) return;
+
+  var bar   = el("div", "la-bar");
   var strip = el("div", "lab-ctx");
   Array.prototype.slice.call(sel.options).forEach(function(o){
     var b = el("button", "lab-ctxb" + (o.selected ? " on" : ""), o.textContent);
@@ -807,9 +981,60 @@ function assignTabs(){
     };
     strip.appendChild(b);
   });
+  bar.appendChild(strip);
+
+  var tg = el("div", "la-mode");
+  [["cards", "כרטיסים"], ["list", "טבלה"]].forEach(function(m){
+    var b = el("button", "la-modeb" + (asgMode === m[0] ? " on" : ""), m[1]);
+    b.dataset.mode = m[0];
+    b.onclick = function(){
+      if(asgMode === m[0]) return;
+      asgMode = m[0];
+      tg.querySelectorAll(".la-modeb").forEach(function(x){ x.classList.toggle("on", x === b); });
+      var host = view.querySelector("#asgList");
+      if(!host) return;
+      homeBusy = true;
+      try{ renderAssignBoard(host); }catch(e){}
+      homeBusy = false;
+    };
+    tg.appendChild(b);
+  });
+  bar.appendChild(tg);
+
+  /* הרצועה נכנסת *לפני* השורה הישנה של הבורר והכפתור, והשורה עצמה
+     מסומנת — assignTop מסתיר אותה אחרי שהוא מוציא ממנה את "ייצוא". */
   var field = sel.closest(".field") || sel.parentNode;
-  field.parentNode.insertBefore(strip, field);
-  field.style.display = "none";          /* ה-select נשאר בדום ומחווט */
+  var row   = sel.closest(".row") || field;
+  row.classList.add("la-oldrow");
+  row.parentNode.insertBefore(bar, row);
+  field.classList.add("lab-hidden");     /* ה-select נשאר בדום ומחווט */
+}
+
+/* הכותרת: "ייצוא" בצד שמאל, באותו כפתור שהתוכנה כבר חיווטה (סעיף 2) */
+function assignTop(){
+  var head = view.querySelector(".lab-shead");
+  if(!head) return;
+  var acts = head.querySelector(".lab-sacts");
+  if(!acts){ acts = el("div", "lab-sacts"); head.appendChild(acts); }
+  var xp = view.querySelector("#exportAsg");
+  if(xp){
+    if(xp.textContent.trim() !== "ייצוא") xp.textContent = "ייצוא";
+    if(xp.parentNode !== acts) acts.appendChild(xp);     /* העברה — המאזין נשמר */
+  }
+  /* השורה שהחזיקה את הבורר ואת הכפתור נשארה ריקה — מסתירים אותה */
+  var row = view.querySelector(".la-oldrow");
+  if(row && !row.querySelector(".btn")) row.classList.add("lab-hidden");
+}
+
+/* "בחירת גן לשיבוץ" והכותרת שמעל הרשימה — כפילות מול הלוח (סעיף 7) */
+function assignTrim(){
+  var pick = view.querySelector(".asg-picker");
+  if(pick) pick.classList.add("lab-hidden");
+  var panel = view.querySelector(".panel");
+  if(panel) panel.classList.add("lab-bare");
+  view.querySelectorAll(".panel > h3").forEach(function(h){
+    if(/רשימת השיבוץ/.test(h.textContent)) h.classList.add("lab-hidden");
+  });
 }
 
 function assignKpis(){
@@ -838,9 +1063,10 @@ function assignKpis(){
     label:"גנים ללא גננת", value:noTeacher, tone:noTeacher ? "bad" : "good",
     sub:noTeacher ? "לשיבוץ לפני תחילת השנה" : ""
   }));
-  if(st) row.appendChild(kpi({
-    label:"זמינים לשיבוץ", value:st.unassigned, tone:"good",
-    sub:st.ganenet + " גננות · " + st.sayaat + " סייעות"
+  var pool = (d.pool || []).length;
+  row.appendChild(kpi({
+    label:"זמינים לשיבוץ", value:pool, tone:"good",
+    sub: st ? (st.ganenet + " גננות · " + st.sayaat + " סייעות במאגר") : ""
   }));
   host.parentNode.insertBefore(row, host);
 }
@@ -850,7 +1076,7 @@ function maybeAssign(){
   var b = nav.querySelector('[data-tab="assign"]');
   if(!(b && b.classList.contains("active"))) return;
   homeBusy = true;
-  try{ assignTabs(); assignKpis(); }catch(e){}
+  try{ assignTabs(); assignKpis(); assignTop(); assignTrim(); }catch(e){}
   homeBusy = false;
   var host = view.querySelector("#asgList");
   if(!host || host.querySelector(".lab-asg")) return;
@@ -1955,7 +2181,6 @@ function screenHeader(){
 
   var sub = (window.__uiLab && window.__uiLab.subtitle && tabId)
               ? window.__uiLab.subtitle(tabId) : "";
-  if(sub) lft.appendChild(el("div", "lab-ssub", sub));
 
   var anchor = st || h2 || panel;
   anchor.parentNode.insertBefore(head, anchor);
@@ -1965,6 +2190,8 @@ function screenHeader(){
   }else{
     lft.appendChild(h2);                         /* העברה — המאזינים נשמרים */
   }
+  /* תת־הכותרת יושבת *מתחת* לכותרת, כמו בלוחות */
+  if(sub) lft.appendChild(el("div", "lab-ssub", sub));
   head.appendChild(lft);
 
   /* איסוף כפתורי הפעולה: השורה/הסרגל הראשון שאחרי הכותרת שמכיל .btn */

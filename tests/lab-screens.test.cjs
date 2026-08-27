@@ -25,6 +25,10 @@
         בו שנה, שנת העבודה באמת מתחלפת (ה-<select> המקורי נשאר במגירה).
      9. פס הגלילה של הסרגל: צר, בלי חיצים ובגוון הסרגל — ולא המסילה
         הלבנה של מערכת ההפעלה.
+    10. מסך שיבוץ הצוות: תת־כותרת מתחת לכותרת, "ייצוא" בכותרת, רצועת
+        ההקשרים ולצידה בורר "כרטיסים | טבלה", מקרא בן שלושה מצבים (כולל
+        "נעול עד לסף"), סדר הגנים לפי גיל עם צבע הגיל סביבם, הטור שבצד,
+        ו"בחירת גן לשיבוץ" שירדה בלי שהבורר יאבד את החיווט.
 
    הרצה:  NODE_PATH=$(npm root) node tests/lab-screens.test.cjs
    ============================================================================ */
@@ -511,6 +515,94 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
   else if (/^rgba?\(\s*(0,\s*0,\s*0|255,\s*255,\s*255)/.test(sb.thumb))
     bad('גליל הגלילה אינו בגוון הסרגל', ['thumb=' + sb.thumb]);
   else ok('פס הגלילה של הסרגל צר (' + sb.w + 'px), בלי חיצים ובלי מסילה, גליל ' + sb.thumb);
+
+  /* --- 10. שיבוץ צוות — כותרת, רצועה, מקרא, סדר לפי גיל ובורר התצוגה ---- */
+  /* זריעה מחדש: החלונות שנפתחו למעלה קראו ל-save(), והוא החזיר את המסד
+     המדומה (הריק) על השיבוצים ועל הצוות. */
+  await p.evaluate(SEED);
+  await p.evaluate(() => {
+    DB.assignments = { 'תשפ"ז': { activity: {
+      /* m3 (העשרה) נשארת בלי שיבוץ — כך יש מה להציג ב"זמינים לשיבוץ" */
+      g1: { 'גננת': { staffId:'m1', name:'ברקוביץ שרה' },
+            'סייעת': { staffId:'m2', name:'פישר נחמה' } } } } };
+  });
+  await goTab(p, 'assign'); await p.waitForTimeout(1200);
+  const asg = await p.evaluate(() => {
+    const pick = document.querySelector('.asg-picker');
+    const h3   = [...document.querySelectorAll('h3')].find(h => /רשימת השיבוץ/.test(h.textContent));
+    return {
+      sub:    (document.querySelector('.lab-ssub') || {}).textContent,
+      /* תת־הכותרת חייבת לשבת *מתחת* לכותרת */
+      subAfterTitle: !!(document.querySelector('.lab-shead h2 + .lab-ssub')),
+      exp:    (document.querySelector('.lab-sacts #exportAsg') || {}).textContent,
+      ctx:    [...document.querySelectorAll('.lab-ctx .lab-ctxb')].map(b => b.textContent),
+      /* הבורר יושב באותה שורה של ההקשרים, בקצה השמאלי */
+      modes:  [...document.querySelectorAll('.la-bar .la-mode .la-modeb')].map(b => b.dataset.mode),
+      modeEnd: (() => { const bar = document.querySelector('.la-bar');
+                        return !!(bar && bar.lastElementChild.classList.contains('la-mode')); })(),
+      kpis:   [...document.querySelectorAll('.lab-akpis .lh-k')].map(x => x.textContent),
+      legend: [...document.querySelectorAll('.la-legend .la-lg')].map(x => x.textContent),
+      rows:   [...document.querySelectorAll('.la-row')].map(r => ({
+                name: r.querySelector('.la-gan-top b').textContent,
+                age:  (r.querySelector('.la-gan-meta').textContent.match(/גיל (\d)/) || [])[1],
+                ink:  getComputedStyle(r).borderInlineStartColor })),
+      /* הטור שבצד — שלושת הלוחות */
+      aside:  [...document.querySelectorAll('.la-aside .la-panel-t')].map(x => x.textContent),
+      pool:   document.querySelectorAll('.la-prow').length,
+      /* "בחירת גן לשיבוץ" והכותרת הכפולה — מוסתרות, אך הבורר עדיין מחווט */
+      pickHidden: !pick || getComputedStyle(pick).display === 'none',
+      h3Hidden:   !h3   || getComputedStyle(h3).display === 'none',
+      selWired:   !!(document.querySelector('#asgCtxSel') || {}).onchange,
+    };
+  });
+  const ages = asg.rows.map(r => r.age);
+  if (!/^שיבוץ אנשי צוות לגנים לפי הקשר · שנת /.test(asg.sub || ''))
+    bad('תת־הכותרת של השיבוץ אינה לפי הלוח', ['התקבל: ' + asg.sub]);
+  else if (!asg.subAfterTitle)
+    bad('תת־הכותרת אינה יושבת מתחת לכותרת');
+  else if ((asg.exp || '').trim() !== 'ייצוא')
+    bad('"ייצוא" אינו בכותרת, או שנשאר "ייצוא / הדפסה"', ['התקבל: ' + asg.exp]);
+  else if (asg.ctx.length !== 5)
+    bad('רצועת ההקשרים אינה חמשת ההקשרים', [asg.ctx.join(' · ')]);
+  else if (asg.modes.join(',') !== 'cards,list' || !asg.modeEnd)
+    bad('בורר "כרטיסים | טבלה" אינו בקצה שורת ההקשרים', [asg.modes.join(' · ') + ' end=' + asg.modeEnd]);
+  else if (asg.kpis.length !== 3)
+    bad('אין שלוש משבצות מספרים', [asg.kpis.join(' · ')]);
+  else if (asg.legend.join('|') !== 'מאויש|תקן פנוי|נעול עד לסף')
+    bad('המקרא אינו שלושת המצבים', [asg.legend.join(' · ')]);
+  else if (ages.join('') !== ages.slice().sort().join(''))
+    bad('הגנים אינם ממוינים לפי גיל', [asg.rows.map(r => r.name + ' (' + r.age + ')').join(' · ')]);
+  else if (new Set(asg.rows.map(r => r.ink)).size < 2)
+    bad('אין צבע גיל סביב השורות', asg.rows.map(r => r.name + ' ' + r.ink));
+  else if (asg.aside.join('|') !== 'זמינים לשיבוץ|🏖️ ימי חופש בגנים|מניעת שיבוץ כפול')
+    bad('הטור שבצד אינו שלושת הלוחות', [asg.aside.join(' · ')]);
+  else if (!asg.pool)
+    bad('"זמינים לשיבוץ" ריק — הצוות שאינו משובץ אינו מגיע לטור');
+  else if (!asg.pickHidden) bad('"בחירת גן לשיבוץ" עדיין מוצג');
+  else if (!asg.h3Hidden)   bad('הכותרת הכפולה מעל הרשימה עדיין מוצגת');
+  else if (!asg.selWired)   bad('בורר ההקשר איבד את החיווט');
+  else ok('שיבוץ צוות: ' + asg.ctx.length + ' הקשרים, מקרא בן 3, סדר לפי גיל (' +
+          ages.join(' · ') + '), ' + asg.pool + ' זמינים בטור');
+
+  /* מצב "כרטיסים" — אותם קלפים, במסגרת צבע הגיל */
+  const asgCards = await p.evaluate(async () => {
+    const b = [...document.querySelectorAll('.la-modeb')].find(x => x.dataset.mode === 'cards');
+    if (!b) return null;
+    b.click();
+    await new Promise(r => setTimeout(r, 500));
+    return { cards: document.querySelectorAll('.la-card').length,
+             rows:  document.querySelectorAll('.la-row').length,
+             slots: document.querySelectorAll('.la-card .la-slot').length,
+             inks:  new Set([...document.querySelectorAll('.la-card')]
+                      .map(c => getComputedStyle(c).borderInlineStartColor)).size };
+  });
+  if (!asgCards)                bad('לא נמצא בורר "כרטיסים"');
+  else if (!asgCards.cards || asgCards.rows)
+    bad('מצב "כרטיסים" לא החליף את הרשימה', [JSON.stringify(asgCards)]);
+  else if (!asgCards.slots)     bad('הכרטיסים ריקים מקלפי תקנים');
+  else if (asgCards.inks < 2)   bad('אין צבע גיל סביב הכרטיסים');
+  else ok('מצב "כרטיסים": ' + asgCards.cards + ' כרטיסים · ' + asgCards.slots +
+          ' קלפי תקנים · ' + asgCards.inks + ' צבעי גיל');
 
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));
