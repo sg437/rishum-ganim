@@ -847,6 +847,12 @@ const SUPPORT_ROLE_MAP = {
   "הכנה לכיתה א'":"prepA"
 };
 function supportKeyForRole(role){ return SUPPORT_ROLE_MAP[role] || (role && role.indexOf("שילוב")>=0 ? "shiluv" : ""); }
+/* תפקידים שמותר להם להיות בכמה גנים באותו הקשר: תפקידי "לפי ימים" (משלימה
+   וחברותיה — כל יום בגן אחר) ותפקידי סיוע שנצמדים לילדה ולא לגן. רק אצל
+   שאר התפקידים שיבוץ בגן שני הוא שיבוץ כפול. */
+function roleAllowsMultiGan(role){
+  return EXTRA_BY_ROLE[role]==="days" || !!supportKeyForRole(role);
+}
 
 /* ===== מטא-נתונים לתפקידי צוות: שיוך חינוך + צבע (סעיפים 4, 9) =====
    נשמר ב-DB.settings.roleMeta = { [role]: { edu:"both"|"רגיל"|'ח"מ', color:"#rrggbb" } } */
@@ -2436,21 +2442,49 @@ if(document.documentElement.classList.contains("ui-lab")){
               .sort((a,b)=> b.years-a.years || a.name.localeCompare(b.name,"he"));
           })(),
 
-          /* ── מניעת שיבוץ כפול ──────────────────────────────────────────
-             מי שמשובץ ביותר מגן אחד באותו הקשר. הכלל עצמו נאכף במודאל
-             השיבוץ; כאן זו תמונת מצב של מה שכבר קיים בנתונים. */
-          dupes: (()=>{
+          /* ── שיבוץ בכמה גנים ───────────────────────────────────────────
+             שני מצבים שונים לחלוטין, ולכן שתי רשימות:
+
+             conflicts — שיבוץ כפול אמיתי. שניים בלבד:
+               · אותו יום בשני גנים (משלימה שנקרעת לשניים), או
+               · תפקיד "בלעדי" (שאינו לפי ימים ואינו תפקיד סיוע) בשני גנים.
+             multi — מי שמשובצ/ת בכמה גנים כדין: משלימות ותפקידי סיוע.
+               קודם הן נצבעו אדום כמו תקלה, והן דווקא המצב התקין.
+
+             אלה בדיוק הכללים שמודאל השיבוץ אוכף (ראה roleAllowsMultiGan
+             ואת נעילת הימים ב-daysBoxHtml) — כאן רק מוצגת תמונת המצב. */
+          ...(()=>{
             const idx = staffAsgIndex(asgContext, null);
-            const out = [];
+            const conflicts = [], multi = [];
             Object.keys(idx).forEach(sid=>{
               const at = idx[sid] || [];
-              const uniq = [...new Set(at.map(x=>x.ganId))];
-              if(uniq.length < 2) return;
+              if([...new Set(at.map(x=>x.ganId))].length < 2) return;
               const m = (DB.staff||[]).find(x=>x.id===sid);
               if(!m) return;
-              out.push({ name:staffName(m)||"—", gans:uniq.map(id=>ganName(id)) });
+
+              /* אותו יום בשני גנים */
+              const seen = {}, clash = [];
+              at.forEach(x=>(x.days||[]).forEach(d=>{
+                if(seen[d] && seen[d]!==x.ganId){ if(!clash.includes(d)) clash.push(d); }
+                else seen[d] = x.ganId;
+              }));
+              /* תפקיד בלעדי בשני גנים */
+              const excl = [...new Set(at.filter(x=>!roleAllowsMultiGan(x.role)).map(x=>x.ganId))];
+
+              const where = at.map(x=>({ gan:ganName(x.ganId), role:x.role, days:(x.days||[]).slice() }))
+                              .sort((a,b)=>a.gan.localeCompare(b.gan,"he"));
+              const row = { id:sid, name:staffName(m)||"—", ini:staffInitials(m), where };
+              if(clash.length || excl.length > 1){
+                row.reason = clash.length
+                  ? "אותו יום בשני גנים: " + clash.join(", ")
+                  : "תפקיד שאינו לפי ימים בשני גנים";
+                conflicts.push(row);
+              }else{
+                multi.push(row);
+              }
             });
-            return out.sort((a,b)=>a.name.localeCompare(b.name,"he"));
+            const byName = (a,b)=>a.name.localeCompare(b.name,"he");
+            return { dupes:conflicts.sort(byName), multi:multi.sort(byName) };
           })(),
 
           gans: gans.map(g=>{
@@ -2930,6 +2964,49 @@ if(document.documentElement.classList.contains("ui-lab")){
        ההעתק העמוק (עריכה שבוטלה אינה נוגעת בנתונים). */
     openStaffFull(id){
       try{ const m=(DB.staff||[]).find(x=>x.id===id); if(m) openStaff(JSON.parse(JSON.stringify(m))); }catch(e){}
+    },
+
+    /* תיק השיבוץ של איש/אשת צוות — איפה משובצ/ת בשנה הפעילה, ושיבוץ
+       למקום חדש. כל הכללים נאכפים שם, ולא כאן. */
+    openStaffAssign(id){ try{ openStaffAssign(id); }catch(e){} },
+
+    /* חיפוש איש/אשת צוות במסך השיבוץ.
+       · עם שאילתה (שני תווים ומעלה) — כל מי שתואם, לפי א״ב.
+       · בלעדיה — מדגם אקראי, כדי שהחלון לא יהיה ריק ולא ינסה להציג
+         את כל המאגר בטור צר בן 320 פיקסלים.
+       לכל אחד/ת מצורפים המקומות שבהם הוא/היא משובצ/ת בשנה הפעילה,
+       בכל ההקשרים — הגן, התפקיד וההקשר. */
+    staffFind(q, n){
+      try{
+        const lim = Math.max(1, Number(n) || 8);
+        const ql  = String(q||"").trim();
+        const all = eduScope((DB.staff||[]).filter(m=>staffIsActive(m)));
+        let list;
+        if(ql.length >= 2){
+          const hay = m => (staffName(m)+" "+(m.role||"")+" "+(m.mobile||"")+" "+(m.phone||"")+" "+(m.tz||""));
+          list = all.filter(m=>hay(m).includes(ql))
+                    .sort((a,b)=>staffName(a).localeCompare(staffName(b),"he"))
+                    .slice(0, lim);
+        }else{
+          const pool = all.slice();
+          list = [];
+          while(pool.length && list.length < lim)
+            list.push(pool.splice(Math.floor(Math.random()*pool.length), 1)[0]);
+        }
+        return {
+          total: all.length,
+          query: ql,
+          rows: list.map(m=>{
+            const at = staffAssignmentsFull(m.id).filter(x=>x.year===DB.activeYear);
+            return {
+              id:m.id, name:staffName(m)||"—", ini:staffInitials(m),
+              role:String(m.role||""), roleInk:roleColor(m.role)||"",
+              edu:eduLabel(m),
+              places: at.map(x=>({ gan:ganName(x.ganId), role:x.role, ctx:ctxLabel(x.ctx) }))
+            };
+          })
+        };
+      }catch(e){ return { total:0, query:"", rows:[] }; }
     },
     /* ייצוא רשימת הצוות — החלון נבנה ב-labStaffExport (מעבדה בלבד). */
     staffExport(ids){ try{ labStaffExport(ids||null); }catch(e){} },
@@ -9705,6 +9782,262 @@ function openGanAssign(ganId){
     save(); closeModal(); route(); toast("השיבוץ נשמר");
   };
 }
+/* ============================================================
+   תיק השיבוץ של איש/אשת צוות — כל השיבוצים בשנה הפעילה, בכל חמשת
+   ההקשרים, עם עריכה, הסרה והוספה.
+   ------------------------------------------------------------
+   אותם כללים של openGanAssign, כי הם היחידים שנאכפים במערכת:
+   · רק גנים מאותו חינוך של איש/אשת הצוות;
+   · "סייעת ב'" רק בגן שאינו גן חובה ושהגיע ל-ASSISTANT_B_MIN בנות;
+   · ימים שכבר תפוסים בגן אחר באותו הקשר — נעולים;
+   · שיבוץ כפול נחסם — למעט תפקידים שמותר להם כמה גנים
+     (roleAllowsMultiGan): תפקידי "לפי ימים" ותפקידי סיוע.
+   · תקן שכבר מאויש בידי מישהו אחר — דורש אישור להחלפה.
+   ============================================================ */
+function openStaffAssign(staffId){
+  const m = DB.staff.find(x=>x.id===staffId);
+  if(!m){ toast("איש/אשת הצוות לא נמצא/ה"); return; }
+  const edu     = eduLabel(m);
+  const canEdit = canEditEdu(edu);
+  const year    = DB.activeYear;
+
+  /* מצב עבודה בזיכרון — נכתב למסד רק ב"שמירה" */
+  const key = r => r.ctx+"|"+r.ganId+"|"+r.role;
+  let rows = staffAssignmentsFull(staffId)
+    .filter(a=>a.year===year)
+    .map(a=>({ ctx:a.ctx, ganId:a.ganId, role:a.role,
+               days:(a.days||[]).slice(), durType:a.durType||"",
+               durFrom:a.durFrom||"", durTo:a.durTo||"" }))
+    .sort((a,b)=> ASSIGN_CONTEXTS.findIndex(c=>c.id===a.ctx) - ASSIGN_CONTEXTS.findIndex(c=>c.id===b.ctx)
+                  || ganName(a.ganId).localeCompare(ganName(b.ganId),"he"));
+  const before = rows.map(key);
+  let add = { ctx:asgContext, ganId:"", role:"", days:[], durType:"", durFrom:"", durTo:"" };
+
+  /* גנים מאותו חינוך, לפי גיל ואז א״ב — אותו סדר של מסך השיבוץ */
+  const ageKeyOf = g => Number((String(g&&g.age||"").match(/\d+/g)||[])[0]) || 99;
+  const gans = () => DB.gans.filter(g=>g.active!==false && eduLabel(g)===edu)
+    .sort((a,b)=> (ageKeyOf(a)-ageKeyOf(b)) || ganName(a.id).localeCompare(ganName(b.id),"he"));
+
+  const ganReg = id => studentsOfYear().filter(s=>!s.finished && s.ganId===id).length;
+
+  /* התפקידים האפשריים בגן מסוים — לפי חינוך וסף "סייעת ב'" */
+  function rolesFor(ganId){
+    const g = ganById(ganId); if(!g) return [];
+    const mand = isMandatoryGan(g), reg = ganReg(ganId);
+    return assignRoles()
+      .filter(x=> roleFitsEdu(x.role, edu))
+      .filter(x=> x.role!==ASSISTANT_B_ROLE || (!mand && reg>=ASSISTANT_B_MIN));
+  }
+
+  /* ימים שהעובד/ת כבר תפוס/ה בהם בגן אחר, באותו הקשר → { יום: שם הגן } */
+  function takenDays(ctx, ganId, role){
+    const out={};
+    rows.forEach(r=>{
+      if(r.ctx!==ctx || (r.ganId===ganId && r.role===role)) return;
+      (r.days||[]).forEach(d=>{ if(!out[d]) out[d]=ganName(r.ganId); });
+    });
+    return out;
+  }
+
+  /* הסיבה שבגללה אי אפשר להוסיף את השיבוץ — או "" כשמותר */
+  function blockReason(ctx, ganId, role){
+    if(rows.some(r=>r.ctx===ctx && r.ganId===ganId && r.role===role))
+      return "השיבוץ הזה כבר ברשימה.";
+    if(!roleAllowsMultiGan(role)){
+      const other = rows.find(r=>r.ctx===ctx && r.ganId!==ganId && !roleAllowsMultiGan(r.role));
+      if(other) return "שיבוץ כפול נחסם: כבר משובצ/ת ב"+ganName(other.ganId)+" כ\""+other.role+
+                       "\" ב"+ctxLabel(ctx)+". יש להסיר את השיבוץ ההוא קודם.";
+    }
+    return "";
+  }
+
+  const daysBox = (cls, chosen, taken) => WEEK_DAYS.map(d=>{
+    const lock = !!taken[d];
+    return `<label class="check" style="${lock?'opacity:.55':''}" ${lock?`title="כבר משובצ/ת ב${esc(taken[d])} ביום ${esc(d)}"`:''}>`+
+      `<input type="checkbox" class="${cls}" value="${esc(d)}" ${chosen.includes(d)&&!lock?'checked':''} ${lock?'disabled':''}> ${esc(d)}${lock?' 🔒':''}</label>`;
+  }).join("");
+
+  const durBox = (pfx, r) => {
+    const on = (r.durType==='dates'||r.durType==='months');
+    return `<div class="field" style="min-width:150px"><label>תקופה</label>
+        <select class="${pfx}-durtype">
+          <option value="" ${!r.durType?'selected':''}>—</option>
+          <option value="year" ${r.durType==='year'?'selected':''}>שנה</option>
+          <option value="dates" ${on?'selected':''}>מתאריך עד תאריך</option>
+        </select></div>
+      <div class="field ${pfx}-dates" style="min-width:150px;${on?'':'display:none'}"><label>מתאריך</label>
+        <input type="date" class="${pfx}-durfrom" value="${esc(r.durFrom||'')}"></div>
+      <div class="field ${pfx}-dates" style="min-width:150px;${on?'':'display:none'}"><label>עד תאריך</label>
+        <input type="date" class="${pfx}-durto" value="${esc(r.durTo||'')}"></div>`;
+  };
+
+  /* --- ציור מחדש של החלון כולו (הרשימה קצרה, ולכן זה זול וברור) --- */
+  function render(){
+    const addGan   = add.ganId ? ganById(add.ganId) : null;
+    const addRoles = add.ganId ? rolesFor(add.ganId) : [];
+    if(add.role && !addRoles.some(x=>x.role===add.role)) add.role = "";
+    const addExtra = add.role ? EXTRA_BY_ROLE[add.role] : "";
+    const why      = (add.ganId && add.role) ? blockReason(add.ctx, add.ganId, add.role) : "";
+
+    modal(`
+      <h3>תיק שיבוץ — ${esc(staffName(m))}
+        <span style="color:var(--muted);font-weight:400">· שנת ${esc(year)}</span></h3>
+      <div class="hint" style="margin-bottom:10px">
+        ${roleChip(m.role||"")} · חינוך ${esc(edu==='ח"מ'?'מיוחד':'רגיל')}
+        ${(m.mobile||m.phone)?` · ${phoneCell(m.mobile||m.phone)}`:""}
+        ${staffYears(m)?` · ${staffYears(m)} שנות ותק`:""}
+      </div>
+
+      <fieldset><legend>שיבוצים בשנת ${esc(year)}</legend>
+        ${rows.length ? rows.map((r,i)=>{
+          const ex = EXTRA_BY_ROLE[r.role];
+          return `<div class="panel" style="padding:10px;margin:0 0 8px" data-i="${i}">
+            <div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap">
+              <div style="min-width:190px;flex:1">
+                <b>${esc(ganName(r.ganId))}</b>
+                <div style="font-size:.85rem;color:var(--muted)">${roleChip(r.role)} · ${esc(ctxLabel(r.ctx))}</div>
+              </div>
+              ${ex==="days" ? `<div class="field" style="min-width:250px;flex:2"><label>ימים</label>
+                  <div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:4px">
+                    ${daysBox("row-day", r.days, takenDays(r.ctx, r.ganId, r.role))}
+                  </div></div>` : ""}
+              ${ex==="duration" ? durBox("row", r) : ""}
+              <button class="btn ghost sm row-gan" type="button" title="פתיחת שיבוץ הגן">🏫 לגן</button>
+              <button class="btn ghost sm row-del" type="button" title="הסרת השיבוץ">🗑️ הסרה</button>
+            </div>
+          </div>`;
+        }).join("") : `<div class="empty">אין שיבוץ בשנת ${esc(year)}.</div>`}
+      </fieldset>
+
+      <fieldset style="margin-top:10px"><legend>הוספת שיבוץ</legend>
+        <div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div class="field" style="min-width:150px"><label>הקשר</label>
+            <select id="sa-ctx">${ASSIGN_CONTEXTS.map(c=>`<option value="${esc(c.id)}" ${c.id===add.ctx?'selected':''}>${esc(c.label)}</option>`).join("")}</select></div>
+          <div class="field" style="min-width:200px;flex:1"><label>גן</label>
+            <select id="sa-gan"><option value="">— בחר/י גן —</option>${gans().map(g=>{
+              const taken = Object.keys(ganAsg(g.id, add.ctx)||{}).length;
+              return `<option value="${esc(g.id)}" ${g.id===add.ganId?'selected':''}>${esc(ganName(g.id))} · גיל ${esc(g.age||'—')}${taken?` · ${taken} משובצים`:''}</option>`;
+            }).join("")}</select></div>
+          <div class="field" style="min-width:180px;flex:1"><label>תפקיד</label>
+            <select id="sa-role" ${add.ganId?'':'disabled'}>
+              <option value="">— בחר/י תפקיד —</option>
+              ${addRoles.map(x=>{
+                const cur = (ganAsg(add.ganId, add.ctx)||{})[x.role];
+                const busy = cur && cur.staffId && cur.staffId!==staffId ? ` · מאויש: ${cur.name||''}` : "";
+                return `<option value="${esc(x.role)}" ${x.role===add.role?'selected':''}>${esc(x.role)}${esc(busy)}</option>`;
+              }).join("")}</select></div>
+        </div>
+        ${addExtra==="days" ? `<div class="field" style="margin-top:8px"><label>ימים</label>
+            <div class="checks" style="grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:4px">
+              ${daysBox("sa-day", add.days, takenDays(add.ctx, add.ganId, add.role))}
+            </div></div>` : ""}
+        ${addExtra==="duration" ? `<div class="row" style="gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:8px">${durBox("sa", add)}</div>` : ""}
+        ${addGan && isMandatoryGan(addGan) ? `<div class="hint" style="margin-top:8px">💡 ${esc(ganName(addGan.id))} הוא גן חובה (גיל 5) — אין בו "${esc(ASSISTANT_B_ROLE)}".</div>` : ""}
+        ${addGan && !isMandatoryGan(addGan) && ganReg(addGan.id)<ASSISTANT_B_MIN ? `<div class="hint" style="margin-top:8px">💡 "${esc(ASSISTANT_B_ROLE)}" ייפתח כשהגן יגיע ל-${ASSISTANT_B_MIN} בנות (כרגע ${ganReg(addGan.id)}).</div>` : ""}
+        ${why ? `<div class="note" style="margin-top:8px;background:var(--bad-soft);color:var(--bad);border-color:var(--bad)">⚠️ ${esc(why)}</div>` : ""}
+        <div class="row" style="margin-top:8px">
+          <button class="btn sm" id="sa-add" ${(!add.ganId||!add.role||why)?'disabled':''}>➕ הוספה לרשימה</button>
+        </div>
+      </fieldset>
+
+      <div class="foot">
+        <button class="btn" id="sa-save" style="margin-inline-start:auto">💾 שמירה</button>
+        <button class="btn ghost" id="sa-file">📁 התיק המלא</button>
+        <button class="btn ghost" id="sa-cancel">ביטול</button>
+      </div>`);
+
+    /* --- חיווט השורות הקיימות --- */
+    $("#modal").querySelectorAll("[data-i]").forEach(box=>{
+      const r = rows[+box.dataset.i];
+      box.querySelectorAll(".row-day").forEach(c=> c.onchange = ()=>{
+        r.days = [...box.querySelectorAll(".row-day:checked")].map(x=>x.value);
+      });
+      const dt = box.querySelector(".row-durtype");
+      if(dt) dt.onchange = ()=>{ r.durType = dt.value;
+        box.querySelectorAll(".row-dates").forEach(w=> w.style.display = dt.value==='dates'?'':'none'); };
+      const df = box.querySelector(".row-durfrom"); if(df) df.onchange = ()=>{ r.durFrom = df.value; };
+      const dto= box.querySelector(".row-durto");   if(dto) dto.onchange = ()=>{ r.durTo   = dto.value; };
+      box.querySelector(".row-del").onclick = ()=>{
+        rows = rows.filter(x=>x!==r); render();
+      };
+      box.querySelector(".row-gan").onclick = ()=>{
+        asgContext = r.ctx; openGanAssign(r.ganId);   /* אותו מודאל שיבוץ של הגן */
+      };
+    });
+
+    /* --- חיווט טופס ההוספה --- */
+    const ctxSel=$("#sa-ctx"), ganSel=$("#sa-gan"), roleSel=$("#sa-role");
+    ctxSel.onchange  = ()=>{ add.ctx=ctxSel.value; add.days=[]; render(); };
+    ganSel.onchange  = ()=>{ add.ganId=ganSel.value; add.role=""; add.days=[]; render(); };
+    roleSel.onchange = ()=>{ add.role=roleSel.value; add.days=[]; render(); };
+    $("#modal").querySelectorAll(".sa-day").forEach(c=> c.onchange = ()=>{
+      add.days = [...$("#modal").querySelectorAll(".sa-day:checked")].map(x=>x.value); });
+    const sdt=$("#modal").querySelector(".sa-durtype");
+    if(sdt) sdt.onchange = ()=>{ add.durType=sdt.value;
+      $("#modal").querySelectorAll(".sa-dates").forEach(w=> w.style.display = sdt.value==='dates'?'':'none'); };
+    const sdf=$("#modal").querySelector(".sa-durfrom"); if(sdf) sdf.onchange = ()=>{ add.durFrom=sdf.value; };
+    const sdto=$("#modal").querySelector(".sa-durto");  if(sdto) sdto.onchange = ()=>{ add.durTo =sdto.value; };
+
+    $("#sa-add").onclick = ()=>{
+      const why2 = blockReason(add.ctx, add.ganId, add.role);
+      if(why2){ toast(why2); return; }
+      const cur = (ganAsg(add.ganId, add.ctx)||{})[add.role];
+      if(cur && cur.staffId && cur.staffId!==staffId &&
+         !confirm(`התקן "${add.role}" ב${ganName(add.ganId)} מאויש כרגע ע"י ${cur.name||"—"}.\n\nלהחליף?`)) return;
+      rows.push({ ctx:add.ctx, ganId:add.ganId, role:add.role, days:add.days.slice(),
+                  durType:add.durType, durFrom:add.durFrom, durTo:add.durTo });
+      rows.sort((a,b)=> ASSIGN_CONTEXTS.findIndex(c=>c.id===a.ctx) - ASSIGN_CONTEXTS.findIndex(c=>c.id===b.ctx)
+                        || ganName(a.ganId).localeCompare(ganName(b.ganId),"he"));
+      add = { ctx:add.ctx, ganId:"", role:"", days:[], durType:"", durFrom:"", durTo:"" };
+      render();
+      toast("נוסף לרשימה — יש לשמור");
+    };
+
+    $("#sa-cancel").onclick = closeModal;
+    $("#sa-file").onclick   = ()=> openStaff(JSON.parse(JSON.stringify(m)));
+    $("#sa-save").onclick   = saveAll;
+    if(!canEdit) makeModalReadOnly(["sa-save","sa-add"]);
+  }
+
+  /* --- כתיבה למסד: מה שנוסף/עודכן, ומה שהוסר --- */
+  function saveAll(){
+    if(!canEdit){ toast("אין הרשאת עריכה בחינוך זה"); return; }
+    const now = new Set(rows.map(key));
+
+    /* הסרות — רק שיבוצים של העובד/ת הזה/זו */
+    before.forEach(k=>{
+      if(now.has(k)) return;
+      const [ctx, ganId, role] = k.split("|");
+      const cmap = asgCtxMap(ctx), entry = cmap[ganId];
+      if(!entry || !entry[role] || entry[role].staffId!==staffId) return;
+      delete entry[role];
+      if(!Object.keys(entry).length) delete cmap[ganId];
+    });
+
+    /* הוספות ועדכונים — שדות שאינם מנוהלים כאן (טלפון, שעות, ילדות) נשמרים */
+    rows.forEach(r=>{
+      const cmap = asgCtxMap(r.ctx);
+      const entry = cmap[r.ganId] || (cmap[r.ganId] = {});
+      const prev  = (entry[r.role] && entry[r.role].staffId===staffId) ? entry[r.role] : {};
+      const val   = Object.assign({}, prev, { staffId:staffId, name:staffName(m) });
+      if(!val.phone && (m.mobile||m.phone)) val.phone = m.mobile||m.phone;
+      const ex = EXTRA_BY_ROLE[r.role];
+      if(ex==="days"){ if(r.days.length) val.days = r.days.slice(); else delete val.days; }
+      if(ex==="duration"){
+        if(r.durType){ val.durType=r.durType;
+          if(r.durType==='dates'){ if(r.durFrom) val.durFrom=r.durFrom; if(r.durTo) val.durTo=r.durTo; }
+          else { delete val.durFrom; delete val.durTo; }
+        } else { delete val.durType; delete val.durFrom; delete val.durTo; }
+      }
+      entry[r.role] = val;
+    });
+
+    save(); closeModal(); route(); toast("השיבוץ נשמר");
+  }
+
+  render();
+}
+
 /* ייצוא/הדפסה של שיבוץ (סעיפים 8, 18) */
 function openAsgExport(){
   modal(`

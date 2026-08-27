@@ -29,6 +29,9 @@
         ההקשרים ולצידה בורר "כרטיסים | טבלה", מקרא בן שלושה מצבים (כולל
         "נעול עד לסף"), סדר הגנים לפי גיל עם צבע הגיל סביבם, הטור שבצד,
         ו"בחירת גן לשיבוץ" שירדה בלי שהבורר יאבד את החיווט.
+    11. תיק השיבוץ של איש/אשת צוות: נפתח מחלון החיפוש שבטור, מציג את
+        השיבוצים של השנה, חוסם שיבוץ כפול, נועל ימים תפוסים, ושומר.
+        ולצידו הכלל החדש: משלימה בכמה גנים בימים זרים אינה התנגשות.
 
    הרצה:  NODE_PATH=$(npm root) node tests/lab-screens.test.cjs
    ============================================================================ */
@@ -574,8 +577,8 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     bad('הגנים אינם ממוינים לפי גיל', [asg.rows.map(r => r.name + ' (' + r.age + ')').join(' · ')]);
   else if (new Set(asg.rows.map(r => r.ink)).size < 2)
     bad('אין צבע גיל סביב השורות', asg.rows.map(r => r.name + ' ' + r.ink));
-  else if (asg.aside.join('|') !== 'זמינים לשיבוץ|🏖️ ימי חופש בגנים|מניעת שיבוץ כפול')
-    bad('הטור שבצד אינו שלושת הלוחות', [asg.aside.join(' · ')]);
+  else if (asg.aside.join('|') !== 'זמינים לשיבוץ|🏖️ ימי חופש בגנים|חיפוש איש צוות|שיבוץ בכמה גנים')
+    bad('הטור שבצד אינו ארבעת הלוחות', [asg.aside.join(' · ')]);
   else if (!asg.pool)
     bad('"זמינים לשיבוץ" ריק — הצוות שאינו משובץ אינו מגיע לטור');
   else if (!asg.pickHidden) bad('"בחירת גן לשיבוץ" עדיין מוצג');
@@ -603,6 +606,153 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
   else if (asgCards.inks < 2)   bad('אין צבע גיל סביב הכרטיסים');
   else ok('מצב "כרטיסים": ' + asgCards.cards + ' כרטיסים · ' + asgCards.slots +
           ' קלפי תקנים · ' + asgCards.inks + ' צבעי גיל');
+
+  /* --- 11. תיק השיבוץ של איש/אשת צוות, החיפוש, וכלל השיבוץ הכפול ------- */
+  await p.evaluate(SEED);
+  await p.evaluate(() => {
+    /* גן רביעי (רגיל) — כדי שיהיה גן פנוי לנסות לשבץ אליו מתוך התיק */
+    DB.gans.push({ id:'g4', ganName:'גן התמר', active:true, education:'רגיל', age:'3',
+      capacity:'30', assignCap:'28', teacherName:'', campus:'קמפוס מרכז', ganSymbol:'567893',
+      address:'רבי עקיבא', building:'2', city:'מודיעין עילית' });
+    /* m1 "גננת" בשני גנים — התנגשות אמיתית.
+       m2 "סייעת משלימה" בשני גנים בימים זרים — משלימה, וזה תקין. */
+    const N = (id, nm, extra) => Object.assign({ staffId:id, name:nm }, extra||{});
+    DB.assignments = { 'תשפ"ז': { activity: {
+      g1: { 'גננת': N('m1','ברקוביץ שרה'),
+            'סייעת משלימה': N('m2','פישר נחמה', { days:['ראשון','שלישי'] }) },
+      g2: { 'גננת': N('m1','ברקוביץ שרה'),
+            'סייעת משלימה': N('m2','פישר נחמה', { days:['שני','רביעי'] }) } } } };
+  });
+  await goTab(p, 'assign'); await p.waitForTimeout(1200);
+
+  const split = await p.evaluate(() => {
+    const d = window.__uiLab.assignBoard();
+    return { dup:   d.dupes.map(x => x.name + ' | ' + x.reason),
+             multi: d.multi.map(x => x.name),
+             red:   document.querySelectorAll('.la-aside button.la-note').length,
+             calm:  !!document.querySelector('.la-panel-sub') };
+  });
+  if (split.dup.length !== 1 || !/ברקוביץ/.test(split.dup[0]))
+    bad('התנגשות אמיתית אינה מזוהה', split.dup);
+  else if (split.multi.join() !== 'פישר נחמה')
+    bad('משלימה בימים זרים אינה "כמה גנים כדין"', [split.multi.join(' · ')]);
+  else if (split.red !== 1)
+    bad('מספר ההתראות האדומות שגוי — משלימה נצבעת אדום', ['' + split.red]);
+  else if (!split.calm)
+    bad('אין מקטע נפרד למי שמשובצת בכמה גנים כדין');
+  else ok('שיבוץ בכמה גנים: אדום = ' + split.dup[0] + ' · כדין = ' + split.multi.join());
+
+  /* חלון החיפוש — מדגם עם שורת "איפה משובצ/ת", וחיפוש חי */
+  const search = await p.evaluate(async () => {
+    const inp = document.querySelector('.la-findi');
+    if (!inp) return null;
+    const sample = document.querySelectorAll('.la-findlist .la-prow').length;
+    const subs   = [...document.querySelectorAll('.la-findlist .la-pmeta')].map(x => x.textContent);
+    inp.focus(); inp.value = 'ברקוביץ';
+    inp.dispatchEvent(new Event('input', { bubbles:true }));
+    await new Promise(r => setTimeout(r, 250));
+    const rows = [...document.querySelectorAll('.la-findlist .la-prow')].map(r => ({
+      name: r.querySelector('.la-pname').textContent,
+      sub:  (r.querySelector('.la-pmeta') || {}).textContent }));
+    return { sample, subs, rows, kept: document.activeElement === inp };
+  });
+  if (!search)                bad('אין שדה חיפוש איש צוות בטור שבצד');
+  else if (!search.sample)    bad('רשימת המדגם ריקה');
+  else if (!search.subs.some(x => /גן /.test(x)))
+    bad('אין שורת משנה של המקום והתפקיד מתחת לשם', search.subs);
+  else if (search.rows.length !== 1 || search.rows[0].name !== 'ברקוביץ שרה')
+    bad('החיפוש לא צמצם לאיש הצוות המבוקש', [JSON.stringify(search.rows)]);
+  else if (!/^גן .+ · גננת/.test(search.rows[0].sub))
+    bad('שורת המשנה אינה "גן · תפקיד"', [search.rows[0].sub]);
+  else if (!search.kept)      bad('הפוקוס אבד באמצע ההקלדה — אי אפשר להקליד שם שלם');
+  else ok('חיפוש: מדגם ' + search.sample + ' → "ברקוביץ" → ' +
+          search.rows[0].name + ' (' + search.rows[0].sub + ')');
+
+  /* לחיצה על תוצאה פותחת את תיק השיבוץ */
+  await p.evaluate(() => document.querySelector('.la-findlist .la-prow').click());
+  await p.waitForTimeout(600);
+  const asgFile = await p.evaluate(() => {
+    const m = document.querySelector('#modal');
+    if (!m) return null;
+    return { title: (m.querySelector('h3') || {}).textContent.replace(/\s+/g, ' ').trim(),
+             rows:  [...m.querySelectorAll('[data-i]')].map(b => b.querySelector('b').textContent),
+             gans:  [...m.querySelectorAll('#sa-gan option')].map(o => o.textContent),
+             ctxs:  m.querySelectorAll('#sa-ctx option').length };
+  });
+  if (!asgFile)                                 bad('לחיצה על תוצאת חיפוש לא פתחה חלון');
+  else if (!/תיק שיבוץ — ברקוביץ שרה/.test(asgFile.title)) bad('נפתח חלון אחר', [asgFile.title]);
+  else if (asgFile.rows.length !== 2)           bad('התיק אינו מציג את שני השיבוצים', asgFile.rows);
+  else if (asgFile.ctxs !== 5)                  bad('אין חמישה הקשרים בהוספה', ['' + asgFile.ctxs]);
+  /* ברקוביץ שרה — חינוך רגיל. גן שקד (ח"מ) לא אמור להיות מוצע לה. */
+  else if (asgFile.gans.some(g => /שקד/.test(g)))
+    bad('גן מחינוך אחר מוצע לשיבוץ', asgFile.gans);
+  else ok('תיק השיבוץ: ' + asgFile.rows.join(' · ') + ' · ' +
+          (asgFile.gans.length - 1) + ' גנים מוצעים (בלי ח"מ)');
+
+  /* השיבוץ הכפול נחסם מתוך התיק */
+  const guard = await p.evaluate(async () => {
+    const pick = async (sel, test) => {
+      const m = document.querySelector('#modal'), e = m.querySelector(sel);
+      const o = [...e.options].find(x => test.test(x.textContent));
+      if (!o) return false;
+      e.value = o.value; e.dispatchEvent(new Event('change', { bubbles:true }));
+      await new Promise(r => setTimeout(r, 250));
+      return true;
+    };
+    if (!await pick('#sa-gan', /התמר/)) return { noGan:true };
+    if (!await pick('#sa-role', /^גננת$/)) return { noRole:true };
+    const m = document.querySelector('#modal');
+    return { note: (m.querySelector('.note') || {}).textContent || '',
+             disabled: (m.querySelector('#sa-add') || {}).disabled };
+  });
+  if (guard.noGan || guard.noRole)         bad('טופס ההוספה אינו נבנה', [JSON.stringify(guard)]);
+  else if (!/שיבוץ כפול נחסם/.test(guard.note)) bad('שיבוץ כפול לא נחסם בתיק', [guard.note]);
+  else if (!guard.disabled)                bad('"הוספה" פעיל למרות החסימה');
+  else ok('שיבוץ כפול נחסם מתוך התיק');
+
+  /* משלימה: מותרת בגן נוסף, והימים התפוסים נעולים; הוספה ושמירה נכתבות */
+  await p.evaluate(() => closeModal()); await p.waitForTimeout(300);
+  const comp = await p.evaluate(async () => {
+    window.__uiLab.openStaffAssign('m2');          /* פישר נחמה — סייעת משלימה */
+    await new Promise(r => setTimeout(r, 400));
+    const pick = async (sel, test) => {
+      const m = document.querySelector('#modal'), e = m.querySelector(sel);
+      const o = [...e.options].find(x => test.test(x.textContent));
+      if (!o) return false;
+      e.value = o.value; e.dispatchEvent(new Event('change', { bubbles:true }));
+      await new Promise(r => setTimeout(r, 250));
+      return true;
+    };
+    if (!await pick('#sa-gan', /התמר/))         return { noGan:true };
+    if (!await pick('#sa-role', /סייעת משלימה/)) return { noRole:true };
+    let m = document.querySelector('#modal');
+    const locked = [...m.querySelectorAll('.sa-day')].filter(c => c.disabled).map(c => c.value);
+    const free   = [...m.querySelectorAll('.sa-day')].filter(c => !c.disabled).map(c => c.value);
+    const note   = (m.querySelector('.note') || {}).textContent || '';
+    const day = m.querySelector('.sa-day:not(:disabled)');
+    if (day) day.click();
+    m.querySelector('#sa-add').click();
+    await new Promise(r => setTimeout(r, 300));
+    m = document.querySelector('#modal');
+    const listed = m.querySelectorAll('[data-i]').length;
+    m.querySelector('#sa-save').click();
+    /* נקרא מיד — save() מתזמן דחיפה מול המסד המדומה */
+    const e4 = (DB.assignments['תשפ"ז'].activity.g4 || {})['סייעת משלימה'];
+    return { locked, free, note, listed, day: day ? day.value : '',
+             wrote: e4 ? { id:e4.staffId, days:e4.days || [] } : null };
+  });
+  if (comp.noGan || comp.noRole)   bad('טופס ההוספה של המשלימה אינו נבנה', [JSON.stringify(comp)]);
+  else if (comp.note)              bad('משלימה נחסמה בטעות כשיבוץ כפול', [comp.note]);
+  else if (comp.locked.join(',') !== 'ראשון,שני,שלישי,רביעי')
+    bad('הימים התפוסים בגנים האחרים אינם נעולים', ['נעולים: ' + comp.locked.join(',')]);
+  else if (comp.free.join(',') !== 'חמישי,שישי')
+    bad('הימים הפנויים שגויים', ['פנויים: ' + comp.free.join(',')]);
+  else if (comp.listed !== 3)      bad('ההוספה לא נכנסה לרשימת התיק', ['' + comp.listed]);
+  else if (!comp.wrote)            bad('השמירה לא כתבה את השיבוץ החדש');
+  else if (comp.wrote.id !== 'm2' || comp.wrote.days.join() !== comp.day)
+    bad('נכתב שיבוץ שגוי', [JSON.stringify(comp.wrote)]);
+  else ok('משלימה: ' + comp.locked.length + ' ימים נעולים, שובצה לגן שלישי ביום ' + comp.day);
+  await p.waitForTimeout(400);
 
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));
