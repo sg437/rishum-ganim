@@ -1492,14 +1492,287 @@ function maybeGans(){
 }
 
 /* ===========================================================================
-   מפת שיבוץ (לוח 05)
+   מפת שיבוץ (לוח 04)
    ---------------------------------------------------------------------------
-   בורר הגנים נשאר תיבות סימון בקוד — רק נראה כשבבים. הצבע של כל שבב הוא
-   הצבע של אותו גן במפה (ganColor), כך שהשבב, הדגל והנקודה מדברים באותה
-   שפה. אין נגיעה בהתנהגות, בסינון או ב-Leaflet.
+   בלוח המסך בנוי מארבעה בלוקים, בסדר הזה: כותרת עם שלושה כפתורים · כרטיס
+   סינון אחד · המפה עם רשימת הצד · שלושה כרטיסי כלים מתחת. בתוכנה אותם
+   פקדים מפוזרים בשני מקטעים מתקפלים ובשורת סינון נפרדת, ולכן כאן הם
+   *מועברים* ואינם נבנים מחדש: כל מאזין שהתוכנה כבר קשרה ממשיך לעבוד —
+   הסינון, הגאוקוד, Leaflet והשיבוץ האוטומטי אינם יודעים שהמסך זז.
+
+   שלוש החלטות שאינן בלוח עצמו:
+     · "🗺️ הצג על המפה" יורד — בלוח אין כפתור כזה, ולכן כל שינוי בבחירה
+       מחיל את עצמו (‎__uiLab.mapShow‎ = ‎mapApply‎ של התוכנה).
+     · בורר החינוך יורד — בורר החינוך הכללי (הכל · רגיל · ח״מ) כבר קובע
+       את כל התוכנה. הסנכרון עצמו יושב ב-‎viewMap‎, במעבדה בלבד.
+     · בורר הגנים נפתח כחלון לפי קמפוסים, ובראש הכרטיס נרשם — בגוון בהיר —
+       כמה גנים נבחרו.
    =========================================================================== */
+
+/* --- הכותרת: שם המסך, שורת המצב שהתוכנה כותבת, ושלושת הכפתורים --------- */
+var MAP_TOP = ["map-refresh", "map-full-btn", "map-auto"];
+
+function mapHead(){
+  var panel = view.querySelector(".panel");
+  if(!panel) return;
+  var head = view.querySelector(".lab-maphead");
+  if(!head){
+    var h2 = panel.querySelector("h2");
+    if(!h2) return;
+    head = el("div", "lab-shead lab-maphead");
+    var t = el("div", "lab-shead-t");
+    h2.textContent = "מפת שיבוץ";                /* בלוח בלי האימוג׳י */
+    t.appendChild(h2);                           /* העברה — לא בנייה מחדש */
+    /* תת־הכותרת היא שורת המצב של התוכנה עצמה — ‎mapStatus()‎ ממשיך לכתוב
+       אליה, ולכן היא תמיד אומרת את האמת על הטעינה ועל מה שמוצג. */
+    var stt = view.querySelector("#map-status");
+    if(stt) t.appendChild(stt);
+    else{                                        /* דמו — אין שורת מצב חיה */
+      var sub = (window.__uiLab && window.__uiLab.subtitle) ? window.__uiLab.subtitle("map") : "";
+      if(sub) t.appendChild(el("div", "lab-ssub", sub));
+    }
+    head.appendChild(t);
+    head.appendChild(el("div", "lab-sacts"));
+    view.insertBefore(head, view.firstChild);
+    panel.classList.add("lab-bare");             /* בלוח אין כרטיס עוטף */
+  }
+  orderInto(head.querySelector(".lab-sacts"), MAP_TOP);
+  var apply = view.querySelector("#map-apply");
+  if(apply && !apply.classList.contains("lab-hidden")) apply.classList.add("lab-hidden");
+  /* השורה שהחזיקה את הכותרת התרוקנה — "הצג על המפה" הוא כל מה שנשאר בה */
+  var row = panel.querySelector(":scope > .row");
+  if(row && !row.classList.contains("lab-hidden") && !row.querySelector(".btn:not(.lab-hidden)")){
+    row.classList.add("lab-hidden");
+  }
+}
+
+/* --- החלה מחדש אחרי שינוי בבחירה (במקום "הצג על המפה") ------------------ */
+var mapApplyT = 0;
+function mapApplySoon(){
+  clearTimeout(mapApplyT);
+  mapApplyT = setTimeout(function(){
+    try{ if(window.__uiLab && window.__uiLab.mapShow) window.__uiLab.mapShow(); }catch(e){}
+  }, 60);
+}
+
+/* --- כרטיס הסינון: גנים להצגה · עיר · צבע התלמידות · כל התלמידות ------- */
+var MAP_SELS = [ { sel:"#map-city", label:"עיר" }, { sel:"#map-color", label:"צבע התלמידות" } ];
+
+function mapFilters(){
+  var stage = view.querySelector("#map-stage");
+  if(!stage) return;
+  var card = view.querySelector(".lab-mapfilter");
+  if(!card){
+    card = el("div", "lab-mapfilter");
+    var r1 = el("div", "lab-mfrow lab-mfgans");
+    r1.appendChild(el("b", "lab-mflab", "גנים להצגה"));
+    r1.appendChild(el("span", "lab-mfcount", ""));
+    var pick = el("button", "btn ghost sm lab-mfpick", "בחירת גנים");
+    pick.type = "button";
+    pick.onclick = function(){ mapPickOpen(); };
+    r1.appendChild(pick);
+    card.appendChild(r1);
+    card.appendChild(el("div", "lab-mfrow lab-mfsel"));
+    card.appendChild(el("div", "lab-mflegend"));
+    card.appendChild(el("div", "lab-mfhold"));   /* מחסן לבורר הגנים בין פתיחות */
+    stage.parentNode.insertBefore(card, stage);
+  }
+
+  /* "בחר הכל" · "נקה" — הכפתורים של התוכנה עצמם, עם החלה מיד אחרי הלחיצה.
+     addEventListener ולא onclick, כדי לא לדרוס את המאזין הקיים. */
+  var gans = card.querySelector(".lab-mfgans");
+  ["map-gan-all", "map-gan-none"].forEach(function(id){
+    var b = view.querySelector("#" + id);
+    if(!b) return;
+    if(!b.dataset.labApply){ b.dataset.labApply = "1"; b.addEventListener("click", mapApplySoon); }
+    if(b.parentNode !== gans) gans.appendChild(b);
+  });
+
+  /* הבוררים — <select> מועבר, לא נבנה מחדש */
+  var sels = card.querySelector(".lab-mfsel");
+  MAP_SELS.forEach(function(c){
+    var sel = view.querySelector(c.sel);
+    if(!sel || sel.closest(".lab-selchip")) return;
+    var chip = el("label", "lab-selchip lab-mfchip");
+    chip.appendChild(el("span", "lab-sclbl", c.label + ":"));
+    hideField(sel);
+    chip.appendChild(sel);
+    if(c.sel === "#map-city") sel.addEventListener("change", mapApplySoon);
+    sels.appendChild(chip);
+  });
+  var all = view.querySelector("#map-all-students");
+  if(all){
+    var lab = all.closest("label");
+    if(lab && lab.parentNode !== sels){
+      lab.classList.add("lab-mfall");
+      hideField(all);
+      sels.appendChild(lab);
+      all.addEventListener("change", mapApplySoon);
+    }
+  }
+  /* המקרא של "צבע התלמידות" — שורה משלו מתחת לבוררים, כפי שביקש הלוח */
+  var lg = view.querySelector("#map-legend-txt");
+  var lgBox = card.querySelector(".lab-mflegend");
+  if(lg && lgBox && lg.parentNode !== lgBox){
+    var subRow = lg.closest(".sub");
+    lgBox.appendChild(lg);
+    if(subRow) subRow.classList.add("lab-hidden");
+  }
+  /* בורר הגנים של התוכנה נשמר במחסן כל עוד החלון סגור */
+  var hold = card.querySelector(".lab-mfhold");
+  var list = document.getElementById("map-gan-list");
+  if(!mapPickBox && list && hold && list.parentNode !== hold) hold.appendChild(list);
+}
+
+/* --- חלון בחירת הגנים (לפי קמפוסים) ------------------------------------ */
+/* ⚠️ החלון *מארח* את ‎#map-gan-list‎ של התוכנה ואינו משכפל אותו: כל תיבת
+   סימון נשארת עם ה-onchange שהתוכנה קשרה לה, כולל תיבת הקמפוס שמסמנת את
+   כל הגנים שבו. ‎mapRenderGanList‎ בונה את התוכן מחדש בכל סימון, ולכן צופה
+   קטן מחזיר עליו את מראה השבבים ומעדכן את המונה. */
+var mapPickBox = null, mapPickMo = null;
+
+function mapPickKey(e){ if(e.key === "Escape") mapPickClose(); }
+
+function mapPickOpen(){
+  if(mapPickBox) return;
+  var list = document.getElementById("map-gan-list");
+  if(!list) return;
+
+  var ov  = el("div", "lab-pickov");
+  var box = el("div", "lab-pick");
+
+  var h = el("div", "lab-pick-h"), ht = el("div");
+  ht.appendChild(el("div", "lab-pick-t", "גנים להצגה"));
+  ht.appendChild(el("div", "lab-pick-s", "סימון לפי קמפוס · מה שנבחר יוצג על המפה"));
+  h.appendChild(ht);
+  var x = el("button", "lab-pick-x", "✕");
+  x.type = "button"; x.title = "סגירה";
+  x.onclick = function(){ mapPickClose(); };
+  h.appendChild(x);
+  box.appendChild(h);
+
+  var body = el("div", "lab-pick-b");
+  body.appendChild(list);                        /* העברה — המאזינים נשמרים */
+  box.appendChild(body);
+
+  var f = el("div", "lab-pick-f");
+  f.appendChild(el("span", "lab-pick-c", ""));
+  [["בחר הכל", "#map-gan-all"], ["נקה", "#map-gan-none"]].forEach(function(o){
+    var b = el("button", "btn ghost sm", o[0]);
+    b.type = "button";
+    b.onclick = function(){ var t = view.querySelector(o[1]); if(t) t.click(); };
+    f.appendChild(b);
+  });
+  var done = el("button", "btn lab-pick-ok", "סיום");
+  done.type = "button";
+  done.onclick = function(){ mapPickClose(); };
+  f.appendChild(done);
+  box.appendChild(f);
+
+  ov.appendChild(box);
+  ov.onclick = function(e){ if(e.target === ov) mapPickClose(); };
+  document.body.appendChild(ov);
+  mapPickBox = ov;
+  document.addEventListener("keydown", mapPickKey);
+  /* childList בלבד — mapChips משנה מאפיינים, ולכן אינו מעיר את הצופה */
+  mapPickMo = new MutationObserver(function(){ mapChips(); mapPickCount(); });
+  mapPickMo.observe(body, { childList:true, subtree:true });
+  mapChips(); mapPickCount();
+}
+
+function mapPickClose(silent){
+  var ov = mapPickBox;
+  if(!ov) return;
+  mapPickBox = null;
+  document.removeEventListener("keydown", mapPickKey);
+  if(mapPickMo){ mapPickMo.disconnect(); mapPickMo = null; }
+  var list = ov.querySelector("#map-gan-list");
+  var hold = view && view.querySelector(".lab-mfhold");
+  if(list){
+    /* המסך נבנה מחדש בזמן שהחלון היה פתוח → יש כבר בורר חדש, וזה שבידינו
+       הוא עותק מת. מחזירים רק כשהמחסן עדיין על המסך. */
+    if(hold && hold.isConnected) hold.appendChild(list);
+    else list.remove();
+  }
+  ov.remove();
+  mapPickCount();
+  if(!silent) mapApplySoon();
+}
+
+/* המונה שליד "גנים להצגה" — בגוון בהיר, וגם בתחתית החלון */
+function mapPickCount(){
+  var list = document.getElementById("map-gan-list");
+  if(!list) return;
+  var all = list.querySelectorAll("input[data-gid]").length;
+  var on  = list.querySelectorAll("input[data-gid]:checked").length;
+  var txt = !all ? "אין גנים פעילים"
+          : !on  ? "לא נבחרו גנים"
+          : on === 1 ? "גן אחד נבחר מתוך " + all
+          : on + " גנים נבחרו מתוך " + all;
+  [".lab-mfcount", ".lab-pick-c"].forEach(function(sel){
+    var n = (sel === ".lab-pick-c" && mapPickBox) ? mapPickBox.querySelector(sel) : view.querySelector(sel);
+    if(n && n.textContent !== txt) n.textContent = txt;   /* בלי זה — לולאת צופה */
+  });
+}
+
+/* --- שלושת כרטיסי הכלים שמתחת למפה ------------------------------------- */
+/* הכותרות והתיאורים מהלוח; הפקדים עצמם הם של התוכנה ומועברים פנימה, כך
+   שהחיפוש, המיקום הידני והטעינה עובדים בדיוק כמו במקטע "כלים נוספים". */
+var MAP_TOOLS = [
+  { key:"find",  title:"🔎 חיפוש תלמידה",
+    sub:"מיקוד על המפה + טבלת מרחקים לגנים, בלי לפתוח את המפה הגדולה",
+    pick:function(){ var i = view.querySelector("#map-child-search"); return i && i.closest(".row"); } },
+  { key:"place", title:"📍 מיקום ידני — גן או תלמידה",
+    sub:"קפיצה לכתובת, גרירה על המפה ושמירה — לא נדרס ע״י גאוקוד",
+    pick:function(){ var i = view.querySelector("#place-kind"); return i && i.closest(".row"); } },
+  { key:"load",  title:"🔄 טעינת מיקומי תלמידות",
+    sub:"הכתובות מומרות פעם אחת ונשמרות",
+    pick:function(){ var b = view.querySelector("#map-load-students"); return b && b.closest(".row"); } }
+];
+
+function mapTools(){
+  var stage = view.querySelector("#map-stage");
+  if(!stage) return;
+  var row = view.querySelector(".lab-maptools");
+  if(!row){
+    row = el("div", "lab-maptools");
+    MAP_TOOLS.forEach(function(t){
+      var card = el("details", "lab-mtool");
+      card.dataset.tool = t.key;
+      var sum = el("summary");
+      sum.appendChild(el("div", "lab-mt-t", t.title));
+      sum.appendChild(el("div", "lab-mt-s", t.sub));
+      card.appendChild(sum);
+      card.appendChild(el("div", "lab-mt-b"));
+      row.appendChild(card);
+    });
+    stage.parentNode.insertBefore(row, stage.nextSibling);
+  }
+  MAP_TOOLS.forEach(function(t){
+    var card = row.querySelector('[data-tool="' + t.key + '"]');
+    var body = card && card.querySelector(".lab-mt-b");
+    var src  = t.pick();
+    if(body && src && src.parentNode !== body) body.appendChild(src);   /* העברה */
+  });
+  /* המספרים החיים שהלוח מציג בכרטיס הטעינה */
+  var d = (window.__uiLab && window.__uiLab.mapBoard) ? window.__uiLab.mapBoard() : null;
+  var s = row.querySelector('[data-tool="load"] .lab-mt-s');
+  if(d && s){
+    var txt = d.stuLoc + " נטענו · " + d.stuPending + " ממתינות"
+            + (d.stuNoAddr ? " · " + d.stuNoAddr + " ללא כתובת" : "")
+            + (d.ganNoCity ? " · " + d.ganNoCity + " גנים ללא עיר בכרטיס" : "");
+    if(s.textContent !== txt) s.textContent = txt;      /* בלי זה — לולאת צופה */
+  }
+  /* שני המקטעים המתקפלים של התוכנה — כל מה שבהם כבר עבר לכרטיסים */
+  view.querySelectorAll("details.map-fold").forEach(function(fold){
+    fold.classList.add("lab-hidden");
+  });
+}
+
+/* בורר הגנים נשאר תיבות סימון בקוד — רק נראה כשבבים. הצבע של כל שבב הוא
+   הצבע של אותו גן במפה (ganColor), כך שהשבב, הדגל והנקודה מדברים באותה שפה. */
 function mapChips(){
-  var box = view.querySelector("#map-gan-list");
+  var box = document.getElementById("map-gan-list");
   if(!box) return;
   var colors = (window.__uiLab && window.__uiLab.ganColors) ? window.__uiLab.ganColors() : null;
   if(!colors) return;
@@ -1529,7 +1802,8 @@ function mapLegend(){
     stage.appendChild(box);
   }
   var rows = [];
-  view.querySelectorAll("#map-gan-list input[data-gid]").forEach(function(inp){
+  var list = document.getElementById("map-gan-list");
+  if(list) list.querySelectorAll("input[data-gid]").forEach(function(inp){
     if(!inp.checked) return;
     var lab = inp.closest("label");
     rows.push([colors[inp.dataset.gid] || "#8894a0", (lab ? lab.textContent : "").trim()]);
@@ -1557,7 +1831,7 @@ function maybeMap(){
   var b = nav.querySelector('[data-tab="map"]');
   if(!(b && b.classList.contains("active"))) return;
   homeBusy = true;
-  try{ mapChips(); mapLegend(); }catch(e){}
+  try{ mapHead(); mapFilters(); mapTools(); mapChips(); mapLegend(); mapPickCount(); }catch(e){}
   homeBusy = false;
 }
 
@@ -3414,6 +3688,8 @@ function isHome(){
 
 function maybeHome(){
   if(homeBusy || !view) return;
+  /* חלון בחירת הגנים שייך למסך המפה בלבד — יציאה ממנו סוגרת אותו */
+  if(mapPickBox && curTab() !== "map"){ try{ mapPickClose(true); }catch(e){} }
   try{ tintBars(); }catch(e){}
   try{ topBar(); }catch(e){}
   try{ screenHeader(); }catch(e){}

@@ -66,7 +66,24 @@ window.__ready=true;
   return html.slice(0, i) + expose + html.slice(i);
 }
 
-fs.writeFileSync(path.join(TMP, 'noop.js'), 'window.L=window.L||{};');
+/* Leaflet מדומה — רק מה שקוד המפה קורא לו. בלעדיו mapInit נופל מיד,
+   ומסך המפה לעולם אינו מגיע ל-mapApply (ולכן גם לא לרשימת הצד). */
+fs.writeFileSync(path.join(TMP, 'noop.js'), `
+(function(){
+  const chain=o=>new Proxy(o,{get:(t,k)=> k in t ? t[k] : ()=>chain(t)});
+  const layer=()=>chain({ addTo(){return this}, clearLayers(){}, bindTooltip(){return this},
+    bindPopup(){return this}, on(){return this}, setLatLng(){return this},
+    setContent(){return this}, openOn(){return this}, remove(){} });
+  window.L={
+    map(){ return chain({ setView(){return this}, remove(){}, invalidateSize(){}, closePopup(){},
+      fitBounds(){}, on(){}, off(){}, removeLayer(){},
+      getCenter(){ return {lat:31.93,lng:35.04}; }, getZoom(){ return 14; } }); },
+    tileLayer(){ return layer(); }, layerGroup(){ return layer(); },
+    marker(){ return layer(); }, circleMarker(){ return layer(); }, popup(){ return layer(); },
+    divIcon(o){ return o; }, latLngBounds(){ return chain({ pad(){ return this } }); }
+  };
+})();
+`);
 fs.writeFileSync(path.join(TMP, 'fbstub.js'), `
 const noop=()=>{}; const P=()=>Promise.resolve();
 export const initializeApp=()=>({name:'stub'});
@@ -753,6 +770,123 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     bad('נכתב שיבוץ שגוי', [JSON.stringify(comp.wrote)]);
   else ok('משלימה: ' + comp.locked.length + ' ימים נעולים, שובצה לגן שלישי ביום ' + comp.day);
   await p.waitForTimeout(400);
+
+  /* --- 12. מסך המפה: כותרת, כרטיס סינון, חלון הגנים, רשימת הצד וכרטיסי הכלים --- */
+  await p.evaluate(() => {
+    /* בדיקת בורר השנה שקדמה החליפה את שנת העבודה — חוזרים לשנת הנתונים */
+    DB.activeYear = 'תשפ"ז';
+    /* מיקום ידני לכל הגנים ולכל התלמידות — כדי שהמפה תעבוד בלי גאוקוד ברשת */
+    DB.gans.forEach((g, i) => { g.geo = { lat:31.930 + i * 0.0015, lng:35.041 + i * 0.0012, manual:true }; });
+    DB.students.forEach((s, i) => { s.geo = { lat:31.9305 + i * 0.0008, lng:35.0425 - i * 0.0006, q:'x' }; });
+  });
+  await goTab(p, 'map'); await p.waitForTimeout(1800);
+
+  const map = await p.evaluate(() => {
+    const q = s => document.querySelector(s), t = e => e ? e.textContent.trim() : null;
+    return {
+      title:   t(q('.lab-maphead h2')),
+      sub:     t(q('.lab-maphead #map-status')),
+      acts:    [...document.querySelectorAll('.lab-maphead .lab-sacts > *')].map(b => b.textContent.trim()),
+      applyGone: !!(q('#map-apply') && q('#map-apply').closest('.lab-hidden')),
+      count:   t(q('.lab-mfcount')),
+      eduGone: !!(q('#map-edu') && q('#map-edu').closest('.lab-hidden')),
+      color:   !!q('.lab-mfsel #map-color'),
+      city:    !!q('.lab-mfsel #map-city'),
+      legend:  t(q('.lab-mflegend #map-legend-txt')),
+      folds:   [...document.querySelectorAll('details.map-fold')].every(f => f.classList.contains('lab-hidden')),
+      tools:   [...document.querySelectorAll('.lab-mtool')].map(d => ({
+                 t:t(d.querySelector('.lab-mt-t')), has:d.querySelector('.lab-mt-b').children.length })),
+      sideTitle: t(q('#map-side .map-side-title')),
+      kidSub:  (q('#map-side .map-side-kid') || {}).dataset ? q('#map-side .map-side-kid').dataset.sub : null,
+      dot:     q('#map-side .map-side-kid') ? getComputedStyle(q('#map-side .map-side-kid'), '::before').width : ''
+    };
+  });
+  if (map.title !== 'מפת שיבוץ')      bad('כותרת המפה אינה כשל הלוח', ['התקבל: ' + map.title]);
+  else if (!/גנים/.test(map.sub || ''))
+    bad('שורת המצב של התוכנה אינה יושבת מתחת לכותרת', ['התקבל: ' + map.sub]);
+  else if (map.acts.join(' | ') !== '🔄 רענון מיקומים | ⛶ מסך מלא | ⚡ שיבוץ אוטומטי לפי קרבה')
+    bad('שלושת כפתורי הכותרת אינם בסדר של הלוח', [map.acts.join(' | ')]);
+  else if (!map.applyGone)            bad('"הצג על המפה" עדיין מוצג — בלוח אין כפתור כזה');
+  else if (!map.eduGone)              bad('בורר החינוך של המפה לא ירד מהמסך');
+  else if (!map.city || !map.color)   bad('בוררי העיר וצבע התלמידות אינם בכרטיס הסינון');
+  else if (!map.legend)               bad('המקרא של צבע התלמידות אינו מתחת לבורר');
+  else if (!/גנים נבחרו מתוך/.test(map.count || ''))
+    bad('מונה הגנים שנבחרו אינו מוצג ליד "גנים להצגה"', ['התקבל: ' + map.count]);
+  else if (!map.folds)                bad('המקטעים המתקפלים של התוכנה לא הוסתרו');
+  else if (map.tools.length !== 3 || map.tools.some(x => !x.has))
+    bad('שלושת כרטיסי הכלים אינם מכילים את הפקדים', [JSON.stringify(map.tools)]);
+  else if (!/^רשומות \(\d+\/\d+ על המפה\)$/.test(map.sideTitle || ''))
+    bad('כותרת רשימת הצד אינה זו שבתוכנה', ['התקבל: ' + map.sideTitle]);
+  else if (!/·/.test(map.kidSub || ''))
+    bad('שורת התלמידה ברשימת הצד בלי כתובת ומרחק', ['התקבל: ' + map.kidSub]);
+  else ok('מפה: כותרת + שורת מצב, 3 כפתורים, ' + map.count + ', כלים בשלושה כרטיסים, "' + map.kidSub + '"');
+
+  /* חלון בחירת הגנים — מארח את הבורר של התוכנה, מעדכן מונה, וסוגר בחזרה */
+  await p.evaluate(() => document.querySelector('.lab-mfpick').click());
+  await p.waitForTimeout(400);
+  const pick = await p.evaluate(() => {
+    const ov = document.querySelector('.lab-pickov');
+    if (!ov) return null;
+    const before = ov.querySelector('.lab-pick-c').textContent;
+    const cb = ov.querySelector('input[data-gid]');
+    const name = cb.closest('label').textContent.trim();
+    cb.click();
+    return { before, name,
+      camps: [...ov.querySelectorAll('input[data-camp]')].length,
+      gans:  [...ov.querySelectorAll('input[data-gid]')].length,
+      hosts: !!ov.querySelector('#map-gan-list') };
+  });
+  await p.waitForTimeout(300);
+  const after = await p.evaluate(() => {
+    const c = document.querySelector('.lab-pick-c').textContent;
+    document.querySelector('.lab-pick-ok').click();
+    return c;
+  });
+  await p.waitForTimeout(700);
+  const back = await p.evaluate(() => ({
+    open:  !!document.querySelector('.lab-pickov'),
+    held:  !!document.querySelector('.lab-mfhold #map-gan-list'),
+    count: document.querySelector('.lab-mfcount').textContent
+  }));
+  if (!pick)             bad('חלון בחירת הגנים לא נפתח');
+  else if (!pick.hosts)  bad('החלון אינו מארח את בורר הגנים של התוכנה (שוכפל במקום להיות מועבר)');
+  else if (pick.camps < 2 || pick.gans < 3)
+    bad('החלון אינו מציג את הגנים לפי קמפוסים', [JSON.stringify(pick)]);
+  else if (pick.before === after)
+    bad('ביטול סימון של גן לא עדכן את המונה שבחלון', ['לפני ואחרי: ' + after]);
+  else if (back.open)    bad('"סיום" לא סגר את החלון');
+  else if (!back.held)   bad('בורר הגנים לא חזר למחסן שבכרטיס הסינון');
+  else if (back.count !== after)
+    bad('המונה שליד "גנים להצגה" לא התעדכן אחרי הסגירה', [back.count + ' ≠ ' + after]);
+  else ok('חלון הגנים: ' + pick.camps + ' קמפוסים · ' + pick.gans + ' גנים · ' + pick.before + ' ← ' + after);
+
+  /* השיבוץ האוטומטי: בוחרים גנים בתוך החלון, והמאגר כולל מי שאין לה גן */
+  await p.evaluate(() => { document.querySelector('#map-gan-all').click(); });
+  await p.waitForTimeout(500);
+  await p.evaluate(() => document.querySelector('#map-auto').click());
+  await p.waitForTimeout(600);
+  const aa = await p.evaluate(() => {
+    const m = document.querySelector('#modal');
+    if (!m || !m.querySelector('#aa-ganlist')) return null;
+    return {
+      camps: [...m.querySelectorAll('input[data-aacamp]')].length,
+      gans:  [...m.querySelectorAll('input[data-aagan]')].length,
+      on:    [...m.querySelectorAll('input[data-aagan]')].filter(c => c.checked).length,
+      cnt:   (m.querySelector('#aa-gancnt') || {}).textContent,
+      out:   (m.querySelector('#aa-out') || {}).textContent || '',
+      apply: !m.querySelector('#aa-apply').disabled
+    };
+  });
+  if (!aa)                bad('חלון השיבוץ האוטומטי נפתח בלי בורר גנים');
+  else if (aa.camps < 2 || aa.gans < 3)
+    bad('בורר הגנים שבחלון אינו מקובץ לפי קמפוסים', [JSON.stringify(aa)]);
+  else if (!/נבחרו מתוך/.test(aa.cnt || ''))
+    bad('אין מונה לגנים שנבחרו בחלון', ['התקבל: ' + aa.cnt]);
+  else if (!/נבדקו 2 תלמידות/.test(aa.out))
+    bad('המאגר אינו כולל את מי שאין לה גן כלל', [aa.out.slice(0, 160)]);
+  else if (!aa.apply)     bad('"ביצוע השיבוץ" נשאר מנוטרל אף שיש תוכנית');
+  else ok('שיבוץ אוטומטי: ' + aa.on + '/' + aa.gans + ' גנים נבחרים · ' + aa.cnt + ' · שתי הבלתי משובצות נכנסו למאגר');
+  await p.evaluate(() => closeModal()); await p.waitForTimeout(300);
 
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));
