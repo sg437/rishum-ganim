@@ -837,6 +837,31 @@ function asidePanel(title, sub){
 
 var POOL_MAX = 12;             /* הטור בצד אינו רשימת הצוות המלאה */
 
+/* שורת צוות בטור שבצד — לחיצה פותחת את תיק השיבוץ: איפה משובצ/ת בשנה
+   הפעילה, ומשם אפשר לשנות ולשבץ. אותו כרטיס בשלושת הלוחות שבטור. */
+function staffRow(m, sub){
+  var r = el("button", "la-prow");
+  r.title = "פתיחת תיק השיבוץ";
+  r.onclick = function(){
+    if(window.__uiLab && window.__uiLab.openStaffAssign) window.__uiLab.openStaffAssign(m.id);
+  };
+  var ini = el("span", "la-ini", m.ini || initialsFrom(m.name));
+  if(m.roleInk) ini.style.setProperty("--role-ink", m.roleInk);
+  r.appendChild(ini);
+  var b = el("div", "la-pmain");
+  b.appendChild(el("div", "la-pname", m.name));
+  if(sub) b.appendChild(el("div", "la-pmeta", sub));
+  r.appendChild(b);
+  return r;
+}
+
+/* "איפה משובצ/ת ובאיזה שיבוץ" — שורת המשנה הקטנה שמתחת לשם */
+function placesLine(places, none){
+  if(!places || !places.length) return none || "ללא שיבוץ בשנה זו";
+  var first = places[0].gan + " · " + places[0].role;
+  return places.length > 1 ? first + " · ועוד " + (places.length - 1) : first;
+}
+
 function poolPanel(d){
   var pool = d.pool || [];
   var p = asidePanel("זמינים לשיבוץ", "רק צוות מאותו חינוך של הגן");
@@ -845,26 +870,59 @@ function poolPanel(d){
     return p;
   }
   pool.slice(0, POOL_MAX).forEach(function(m){
-    var r = el("button", "la-prow");
-    r.title = "פתיחת תיק איש/אשת הצוות";
-    r.onclick = function(){
-      if(window.__uiLab && window.__uiLab.openStaffFull) window.__uiLab.openStaffFull(m.id);
-    };
-    var ini = el("span", "la-ini", m.ini || initialsFrom(m.name));
-    if(m.roleInk) ini.style.setProperty("--role-ink", m.roleInk);
-    r.appendChild(ini);
-    var b = el("div", "la-pmain");
-    b.appendChild(el("div", "la-pname", m.name));
     var meta = [];
     if(m.role)  meta.push(m.role);
     if(m.years) meta.push(m.years + " שנות ותק");
     if(m.last)  meta.push(m.last);
-    b.appendChild(el("div", "la-pmeta", meta.join(" · ")));
-    r.appendChild(b);
-    p.appendChild(r);
+    p.appendChild(staffRow(m, meta.join(" · ")));
   });
   if(pool.length > POOL_MAX)
     p.appendChild(el("div", "la-panel-more", "ועוד " + (pool.length - POOL_MAX) + " במאגר הצוות"));
+  return p;
+}
+
+/* --- חלון החיפוש: מדגם אקראי, וחיפוש חי שקופץ כבר מהתו השני -------------
+   הטור צר מכדי להחזיק מאגר של עשרות אנשי צוות, ולכן ברירת המחדל היא מדגם;
+   מי שמחפש מישהו מסוים מקליד ומקבל אותו מיד. */
+var FIND_MAX = 8;
+var findQ = "";                /* נשמר בין רינדורים של הלוח */
+
+function findPanel(){
+  var p = asidePanel("חיפוש איש צוות", "");
+  var head = p.querySelector(".la-panel-h");
+
+  var box = el("div", "la-find");
+  var inp = el("input", "la-findi");
+  inp.type = "search";
+  inp.placeholder = "הקלד/י שם, תפקיד או טלפון…";
+  inp.value = findQ;
+  box.appendChild(el("span", "la-findmag", "🔎"));
+  box.appendChild(inp);
+  head.appendChild(box);
+
+  var list = el("div", "la-findlist");
+  p.appendChild(list);
+
+  function paintList(){
+    var d = (window.__uiLab && window.__uiLab.staffFind)
+              ? window.__uiLab.staffFind(findQ, FIND_MAX) : null;
+    list.innerHTML = "";
+    if(!d || !d.rows.length){
+      list.appendChild(el("div", "la-panel-empty",
+        findQ ? "אין איש/אשת צוות בשם הזה." : "אין צוות פעיל במאגר."));
+      return;
+    }
+    d.rows.forEach(function(m){
+      list.appendChild(staffRow(m, placesLine(m.places)));
+    });
+    if(!d.query && d.total > d.rows.length)
+      list.appendChild(el("div", "la-panel-more",
+        "מדגם מתוך " + d.total + " אנשי צוות — הקלד/י שם כדי למצוא מישהו/י מסוים/ת"));
+  }
+
+  /* ⚠️ בלי ה-blur/focus הזה הרינדור מחדש היה גוזל את הפוקוס באמצע ההקלדה */
+  inp.oninput = function(){ findQ = inp.value; paintList(); };
+  paintList();
   return p;
 }
 
@@ -889,20 +947,45 @@ function freeDaysPanel(d){
   return p;
 }
 
+/* שיבוץ בכמה גנים — שני מצבים שונים לחלוטין, ולכן שתי רשימות.
+   משלימה שכל יום בגן אחר אינה תקלה אלא המצב התקין, וקודם היא נצבעה
+   אדום כמו התנגשות. אדום נשמר לשתי ההתנגשויות האמיתיות בלבד:
+   אותו יום בשני גנים, או תפקיד שאינו לפי ימים בשני גנים. */
 function dupesPanel(d){
-  var dupes = d.dupes || [];
-  var p = asidePanel("מניעת שיבוץ כפול", "");
-  if(!dupes.length){
+  var dupes = d.dupes || [], multi = d.multi || [];
+  var p = asidePanel("שיבוץ בכמה גנים", "");
+
+  if(!dupes.length && !multi.length){
     p.appendChild(el("div", "la-note ok", "אין שיבוץ כפול בהקשר זה ✓"));
     return p;
   }
+
   dupes.forEach(function(x){
-    var n = el("div", "la-note");
+    var n = el("button", "la-note la-note-b");
+    n.title = "פתיחת תיק השיבוץ";
+    n.onclick = function(){
+      if(window.__uiLab && window.__uiLab.openStaffAssign) window.__uiLab.openStaffAssign(x.id);
+    };
     n.appendChild(el("span", "la-note-i", "⚠"));
-    n.appendChild(el("div", null, x.name + " משובצת ב" + x.gans.join(" וב") +
-      " באותו הקשר — שיבוץ נוסף ייחסם"));
+    var b = el("div", null);
+    b.appendChild(el("div", "la-pname", x.name));
+    b.appendChild(el("div", "la-note-w", x.reason));
+    b.appendChild(el("div", "la-note-w", (x.where || []).map(function(w){
+      return w.gan + " (" + w.role + (w.days && w.days.length ? " · " + w.days.join(", ") : "") + ")";
+    }).join(" · ")));
+    n.appendChild(b);
     p.appendChild(n);
   });
+
+  if(multi.length){
+    p.appendChild(el("div", "la-panel-sub",
+      "משובצות בכמה גנים כדין — לפי ימים או בתפקיד סיוע:"));
+    multi.forEach(function(x){
+      p.appendChild(staffRow(x, (x.where || []).map(function(w){
+        return w.gan + (w.days && w.days.length ? " (" + w.days.join(", ") + ")" : "");
+      }).join(" · ")));
+    });
+  }
   return p;
 }
 
@@ -956,6 +1039,7 @@ function renderAssignBoard(host){
   var side = el("div", "la-aside");
   side.appendChild(poolPanel(d));
   side.appendChild(freeDaysPanel(d));
+  side.appendChild(findPanel());
   side.appendChild(dupesPanel(d));
   wrap.appendChild(side);
 
