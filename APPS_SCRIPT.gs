@@ -91,7 +91,7 @@ function doPost(e){
       case 'sendMailBulk':   return json_(out, sendMailBulk_(req.items, req.opts));
       case 'mailDoc':        return json_(out, mailDoc_(req.to, req.subject, req.body, req.fileName, req.mimeType, req.dataB64));
       case 'mailQuota':      return json_(out, mailQuota_());
-      case 'msgGateway':     return json_(out, msgGateway_(req.channel, req.items));
+      case 'msgGateway':     return json_(out, msgGateway_(req.channel, req.items, req.voice));
       case 'msgGatewayStatus': return json_(out, msgGatewayStatus_());
       case 'regConfigGet':   return json_(out, regConfigGet_());
       case 'regConfigSet':   return json_(out, regConfigSet_(req.config));
@@ -316,7 +316,11 @@ function msgGatewayStatus_(){
   });
   return { ok:true, channels:out };
 }
-function msgGateway_(channel, items){
+/* voice — בערוץ הקולי בלבד: הקול, המהירות והגובה שנבחרו בתוכנה.
+   נכנסים לתבנית הגוף של הספק כ-{{voice}} / {{rate}} / {{pitch}}, כדי
+   שההקראה אצלו תישמע כמו התצוגה המקדימה שבמסך. ספק שאינו תומך —
+   פשוט אינו כולל אותם בתבנית. */
+function msgGateway_(channel, items, voice){
   var key = msgChannelKey_(channel);
   if(!key) return { ok:false, error:'bad-channel' };
   var props = PropertiesService.getScriptProperties();
@@ -327,6 +331,11 @@ function msgGateway_(channel, items){
   var from    = props.getProperty('MSG_' + key + '_FROM') || '';
   var headers = {};
   try{ headers = JSON.parse(props.getProperty('MSG_' + key + '_HEADERS') || '{}'); }catch(e){ headers = {}; }
+  voice = voice || {};
+  var vName  = String(voice.name  || props.getProperty('MSG_' + key + '_VOICE') || '');
+  var vLang  = String(voice.lang  || 'he-IL');
+  var vRate  = String(voice.rate  == null ? 1 : voice.rate);
+  var vPitch = String(voice.pitch == null ? 1 : voice.pitch);
 
   var sent = 0, failed = 0, errors = [];
   (items || []).forEach(function(it){
@@ -336,7 +345,11 @@ function msgGateway_(channel, items){
       var payload = bodyTpl
         .split('{{to}}').join(msgJsonEsc_(it.to))
         .split('{{text}}').join(msgJsonEsc_(it.text || ''))
-        .split('{{from}}').join(msgJsonEsc_(from));
+        .split('{{from}}').join(msgJsonEsc_(from))
+        .split('{{voice}}').join(msgJsonEsc_(vName))
+        .split('{{lang}}').join(msgJsonEsc_(vLang))
+        .split('{{rate}}').join(msgJsonEsc_(vRate))
+        .split('{{pitch}}').join(msgJsonEsc_(vPitch));
       var res = UrlFetchApp.fetch(url, {
         method: method, contentType:'application/json', headers: headers,
         payload: payload, muteHttpExceptions: true
