@@ -1734,6 +1734,17 @@ function staffInitials(m){
   const a=String(m.lastName||"").trim(), b=String(m.firstName||"").trim();
   return ((a[0]||"")+(b[0]||"")) || (a[0]||b[0]||String(m.name||"?")[0]||"?");
 }
+/* ותק בשנים — אינו שדה בתיק, ולכן נגזר מהמוקדם שבין תאריכי התנועות לבין
+   מועד פתיחת התיק. 0 כשאין ממה לגזור. */
+function staffYears(m){
+  if(!m) return 0;
+  const dates=(m.movements||[]).map(x=>normDateVal(x.date)).filter(Boolean);
+  if(m.createdAt) dates.push(String(m.createdAt).slice(0,10));
+  if(!dates.length) return 0;
+  const first=new Date(dates.sort()[0]);
+  if(isNaN(first)) return 0;
+  return Math.max(0, Math.floor((Date.now()-first)/(365.25*24*3600*1000)));
+}
 function studentsOfYear(y=DB.activeYear){ return DB.students.filter(s=>s.year===y); }
 /* מצב קיבולת הגן ביחס למספר הרשומות:
    'ok'    — בתוך הקיבולת (עד 35 בגן רגיל)
@@ -2393,12 +2404,55 @@ if(document.documentElement.classList.contains("ui-lab")){
        סייעת ב׳ לפי זכאות), ובנוסף כרטיס לכל תפקיד אחר שמשובץ בפועל. */
     assignBoard(){
       try{
+        /* המיון לפי גיל עולה (3 · 4 · 5) ואז א״ב — אותו סדר שבלשונית הגנים,
+           כך שגן נמצא באותו מקום בשני המסכים. */
+        const ageKeyOf = g => Number((String(g&&g.age||"").match(/\d+/g)||[])[0]) || 99;
         const gans  = eduScope(DB.gans.slice())
-                        .sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+                        .sort((a,b)=> (ageKeyOf(a)-ageKeyOf(b)) ||
+                                      ganName(a.id).localeCompare(ganName(b.id),"he"));
         const roles = assignRoles();
         return {
           context: asgContext,
           contextLabel: ctxLabel(asgContext),
+
+          /* ── הטור שבצד: מי פנוי לשיבוץ ─────────────────────────────────
+             צוות פעיל שאין לו שיבוץ באותה שנה ובאותו הקשר. הכיתוב מתחתיו
+             הוא התפקיד, הוותק והשיבוץ האחרון שהיה לו — הכול נגזר מהתיק. */
+          pool: (()=>{
+            const idx = staffAsgIndex(asgContext, null);
+            return eduScope((DB.staff||[]).filter(m=>staffIsActive(m)))
+              .filter(m=>!idx[m.id])
+              .map(m=>{
+                const past = staffAssignmentsFull(m.id)
+                  .filter(x=>x.year!==DB.activeYear)
+                  .sort((a,b)=>String(b.year).localeCompare(String(a.year),"he"))[0];
+                return {
+                  id:m.id, name:staffName(m)||"—", ini:staffInitials(m),
+                  role:String(m.role||""), roleInk:roleColor(m.role)||"",
+                  years:staffYears(m),
+                  last: past ? (ganName(past.ganId)+" "+past.year) : ""
+                };
+              })
+              .sort((a,b)=> b.years-a.years || a.name.localeCompare(b.name,"he"));
+          })(),
+
+          /* ── מניעת שיבוץ כפול ──────────────────────────────────────────
+             מי שמשובץ ביותר מגן אחד באותו הקשר. הכלל עצמו נאכף במודאל
+             השיבוץ; כאן זו תמונת מצב של מה שכבר קיים בנתונים. */
+          dupes: (()=>{
+            const idx = staffAsgIndex(asgContext, null);
+            const out = [];
+            Object.keys(idx).forEach(sid=>{
+              const at = idx[sid] || [];
+              const uniq = [...new Set(at.map(x=>x.ganId))];
+              if(uniq.length < 2) return;
+              const m = (DB.staff||[]).find(x=>x.id===sid);
+              if(!m) return;
+              out.push({ name:staffName(m)||"—", gans:uniq.map(id=>ganName(id)) });
+            });
+            return out.sort((a,b)=>a.name.localeCompare(b.name,"he"));
+          })(),
+
           gans: gans.map(g=>{
             const a   = ganAsg(g.id);
             const reg = studentsOfYear().filter(s=>!s.finished && s.ganId===g.id).length;
@@ -2420,6 +2474,8 @@ if(document.documentElement.classList.contains("ui-lab")){
               id:g.id, name:ganName(g.id),
               symbol:String(g.ganSymbol||g.internalSymbol||"").trim(),
               age:String(g.age||"").trim(),
+              /* צבע הגיל — אותו --age-ink של כרטיסי הגנים (AGE_HUE) */
+              ageInk: ganAgeInk(g) || "",
               edu:eduLabel(g),
               campus:String(g.campus||"").trim(),
               reg, mandatory,
@@ -2445,7 +2501,7 @@ if(document.documentElement.classList.contains("ui-lab")){
           case "students": return stu + " תלמידות · " + y;
           case "gans":     return gans.length + " גנים · " + camps + " קמפוסים · " + y;
           case "staff":    return "מאגר כללי · " + staff + " אנשי צוות פעילים · " + y;
-          case "assign":   return y + " · " + gans.length + " גנים";
+          case "assign":   return "שיבוץ אנשי צוות לגנים לפי הקשר · שנת " + y;
           case "map":      return y + " · " + gans.length + " גנים";
           case "reports":  return y + " · " + stu + " תלמידות · " + gans.length + " גנים";
           case "messages": return "שליחה מרוכזת · " + y;
@@ -2844,15 +2900,8 @@ if(document.documentElement.classList.contains("ui-lab")){
           key:k, label:(files[k] && files[k].name) || k, on:true,
           link:(files[k] && files[k].link) || ""
         })));
-        /* ותק — הנתון אינו שדה בתיק, ולכן הוא נגזר מהמוקדם שבין תאריכי
-           התנועות לבין מועד פתיחת התיק. ריק כשאין ממה לגזור. */
-        const dates = (m.movements||[]).map(x=>normDateVal(x.date)).filter(Boolean);
-        if(m.createdAt) dates.push(String(m.createdAt).slice(0,10));
-        let years = 0;
-        if(dates.length){
-          const first = new Date(dates.sort()[0]);
-          if(!isNaN(first)) years = Math.max(0, Math.floor((Date.now()-first)/(365.25*24*3600*1000)));
-        }
+        /* ותק — נגזר, לא שדה בתיק (ראה staffYears) */
+        const years = staffYears(m);
         /* תנועות בשנים קודמות — השיבוצים בכל השנים, החדשה בראש */
         const hist = staffAssignmentsFull(m.id)
           .map(a=>({ year:a.year, gan:ganName(a.ganId), role:a.role, ctx:ctxLabel(a.ctx),
