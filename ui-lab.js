@@ -2622,8 +2622,8 @@ function screenHeader(){
 
    ⚠️ בורר השנה אינו יושב כאן. שלב קודם העלה אותו לרצועה העליונה, ושם הוא
    הפריע: מעבר בין שנות לימוד הוא פעולה נדירה ורבת־משמעות, ובראש כל מסך
-   הוא נראה כמו מסנן תצוגה שגרתי. הוא ירד למסך ההגדרות, כפאנל הראשון
-   ("שנת עבודה"), לצד "שנים" ו"מעבר שנה" — ראה yearPanel().
+   הוא נראה כמו מסנן תצוגה שגרתי. הוא ירד למסך ההגדרות, לכרטיס הראשון
+   ("שנים ומעבר שנה"), שם הוא שורת השבבים — ראה yearsCard().
    =========================================================================== */
 function topBar(){
   var inner = document.querySelector("header.top .top-inner");
@@ -3047,127 +3047,375 @@ function exportScreen(host){
 }
 
 /* -------------------------------------------------------------- הגדרות */
-/* הלוח מוסיף רשימת ניווט קבועה בצד ימין עם כותרות קבוצה. הקבוצות נגזרות
-   מכותרות הפאנלים הקיימות — שום פאנל לא זז ולא נעלם. */
-var SET_GROUPS = [
-  ["שנים ותכנים", ["שנים", "מעבר שנה", "נתונים היסטוריים", "רף שיבוץ", "מינימום לפתיחת צהרון"]],
-  ["רשימות המערכת", ["גילי הילדים", "תפקידי צוות", "קמפוסים"]],
-  ["מערכת והרשאות", ["מי מחובר", "יומן פעילות", "מנהלי מערכת", "ניהול משתמשים", "חשבון והתחברות"]],
-  ["מראה והתקנה", ["מיתוג", "התקנה כאפליקציה", "פניות והצעות"]]
+/* מסך ההגדרות נבנה מחדש: כל ההגדרות במקום אחד, מקובצות לחמש קבוצות,
+   ופאנלים שמדברים על אותו נושא מאוחדים לכרטיס אחד — "שנים ומעבר שנה",
+   "מי מחובר ויומן פעילות", "ניהול משתמשים ומנהלי מערכת", "מיתוג והתקנה
+   כאפליקציה". שני פאנלי הנתונים ההיסטוריים יורדים לרשימות שנפתחות, כדי
+   שלא יתפסו את המסך בטבלאות שנפתחות פעם בשנה.
+
+   ⚠️ שום פאנל אינו נבנה מחדש. התוכן שלו **מוזז** לתוך הכרטיס החדש, ולכן
+   כל מה שהתוכנה חיווטה — כפתורים, שדות, טבלאות ומאזינים — ממשיך לעבוד
+   בדיוק כפי שהוא. מה שכן נבנה כאן (שבבי השנים, שבבי הרשימות ושורות
+   התפקידים) כותב דרך window.__uiLab, כלומר דרך אותן פונקציות שהמסך
+   הקיים כבר קורא להן. */
+
+/* איתור פאנל לפי אלמנט שיושב בתוכו, ולא לפי טקסט הכותרת — "שנים" מוכל
+   גם ב"נתונים היסטוריים (שנים קודמות)", והתאמת טקסט הייתה מצליבה. */
+var SET_FIND = [
+  ["presence","#presenceBox"], ["activity","#activityBox"],
+  ["brand","#br-title"],       ["install","#install-box"],
+  ["caps","#ac-reg"],          ["years","#years-box"],
+  ["promote","#pr-from"],      ["hist","#hist-box"],
+  ["histGan","#hist-gans-box"],["tzmin","#tzmin"],
+  ["ages","#ages-box"],        ["roles","#roles-box"],
+  ["campus","#campus-box"],    ["admins","#admins-box"],
+  ["feedback","#feedback-box"],["auth","#auth-box"],
+  ["users","#users-box"]
 ];
-/* בורר שנת העבודה — הפאנל הראשון בהגדרות.
-   ---------------------------------------------------------------------------
-   ה-<select> המקורי (#yearSelect) *נשאר במגירה*, מוסתר. זה מכוון: הוא יושב
-   מחוץ ל-#view, ולכן שורד את בנייתו מחדש של המסך בכל מעבר לשונית, ומחזיק
-   את מאזין ה-change שכותב את ההעדפה ומרענן את המסלול. אילו היינו מעבירים
-   אותו פיזית לתוך המסך, היציאה מההגדרות הייתה מוחקת אותו — ובחירת השנה
-   הייתה נעלמת עד רענון הדף.
 
-   לכן כאן נבנה בורר מקביל, שקורא ממנו וכותב אליו: אותה רשימת שנים, ובכל
-   שינוי — השמה + dispatch של change על המקורי. המנגנון המקורי לא נגע. */
-function yearPanel(){
-  var real = document.getElementById("yearSelect");
-  if(!real || !real.options.length) return null;
-
-  var p   = labPanel("year", "שנת עבודה",
-                     "כל המסכים — תלמידות, גנים, צוות ודוחות — מציגים את הנתונים של השנה שנבחרה כאן.");
-  var box = el("div", "lab-yearbox");
-  box.appendChild(el("span", "lab-ycal", "▤"));
-
-  var sel = el("select", "lab-yearsel");
-  Array.prototype.forEach.call(real.options, function(o){
-    var n = document.createElement("option");
-    n.value = o.value; n.textContent = o.textContent;
-    sel.appendChild(n);
+/* העברת גוף הפאנל — בלי הכותרת ובלי שורת ההסבר, שמוחלפות בכותרת הכרטיס */
+function moveBody(src, dst, keepSub){
+  if(!src || !dst) return;
+  Array.prototype.slice.call(src.childNodes).forEach(function(n){
+    if(n.nodeType === 1){
+      if(n.tagName === "H2") return;
+      if(!keepSub && n.classList && n.classList.contains("sub")) return;
+    }
+    dst.appendChild(n);
   });
-  sel.value = real.value;
-  sel.addEventListener("change", function(){
-    if(sel.value === real.value) return;
-    real.value = sel.value;
-    real.dispatchEvent(new Event("change", {bubbles:true}));
+}
+
+/* גרירה לסידור מחדש. הידית היא הנקודה היחידה שמתחילה גרירה, כדי
+   שעריכת הטקסט בתוך השבב תמשיך לעבוד כרגיל. */
+function dragSort(box, sel, axis, done){
+  var dragged = null;
+  box.addEventListener("dragstart", function(e){
+    var n = e.target && e.target.closest ? e.target.closest(sel) : null;
+    if(!n) return;
+    dragged = n;
+    n.classList.add("lab-dragging");
+    try{ e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", ""); }catch(_){}
   });
-  box.appendChild(sel);
+  box.addEventListener("dragover", function(e){
+    if(!dragged) return;
+    e.preventDefault();
+    var over = e.target && e.target.closest ? e.target.closest(sel) : null;
+    if(!over || over === dragged || over.parentNode !== box) return;
+    var r = over.getBoundingClientRect();
+    /* במאונך: מעל האמצע = לפני. באופקי ב-RTL: הצד השמאלי = אחרי. */
+    var after = axis === "y" ? (e.clientY > r.top + r.height/2)
+                             : (e.clientX < r.left + r.width/2);
+    box.insertBefore(dragged, after ? over.nextSibling : over);
+  });
+  box.addEventListener("drop", function(e){ e.preventDefault(); });
+  box.addEventListener("dragend", function(){
+    if(!dragged) return;
+    dragged.classList.remove("lab-dragging");
+    dragged.draggable = false;
+    dragged = null;
+    done(Array.prototype.slice.call(box.querySelectorAll(sel)));
+  });
+}
+/* ידית גרירה — מפעילה draggable רק בזמן הלחיצה עליה */
+function grip(node){
+  var g = el("span", "lab-grip", "⠿");
+  g.title = "גרירה לשינוי הסדר";
+  g.addEventListener("mousedown", function(){ node.draggable = true; });
+  g.addEventListener("touchstart", function(){ node.draggable = true; }, {passive:true});
+  node.addEventListener("dragend", function(){ node.draggable = false; });
+  return g;
+}
+
+/* ---- רשימת שבבים הניתנת לעריכה, מחיקה, הוספה וגרירה (גילים · קמפוסים) */
+function chipsCard(key, title, sub, items, commit, admin, addPh){
+  var p   = labPanel(key, title, sub);
+  var box = el("div", "lab-chips");
+
+  items.forEach(function(v, i){
+    var c = el("div", "lab-chip");
+    c.dataset.v = v;
+    var t = el("span", "lab-chiptxt", v);
+    if(admin){
+      t.contentEditable = "true";
+      t.spellcheck = false;
+      t.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){ e.preventDefault(); t.blur(); }
+        if(e.key === "Escape"){ t.textContent = v; t.blur(); }
+      });
+      t.addEventListener("blur", function(){
+        var nv = String(t.textContent || "").trim();
+        if(nv === v) return;
+        var next = items.slice();
+        if(nv) next[i] = nv; else next.splice(i, 1);
+        commit(next);
+      });
+    }
+    c.appendChild(t);
+    if(admin){
+      var x = el("button", "lab-chipx", "✕");
+      x.type = "button"; x.title = "מחיקה";
+      x.addEventListener("click", function(){
+        var next = items.slice(); next.splice(i, 1); commit(next);
+      });
+      c.appendChild(x);
+      c.appendChild(grip(c));            /* בקצה השמאלי, כמו בלוח */
+    }
+    box.appendChild(c);
+  });
+
+  if(admin){
+    var add = el("button", "lab-chip lab-chipadd", "+");
+    add.type = "button"; add.title = addPh || "הוספה";
+    add.addEventListener("click", function(){
+      if(box.querySelector(".lab-chipnew")) return;
+      var n = el("div", "lab-chip lab-chipnew");
+      var inp = document.createElement("input");
+      inp.className = "lab-chipinput";
+      inp.placeholder = addPh || "";
+      n.appendChild(inp);
+      box.insertBefore(n, add);
+      inp.focus();
+      /* Enter מסיים, ואז יציאת המיקוד משגרת blur — הדגל מונע סגירה כפולה
+         (הסגירה הראשונה כבר בנתה את המסך מחדש, והצומת אינו במקומו). */
+      var closed = false;
+      var close = function(save){
+        if(closed) return;
+        closed = true;
+        var v = String(inp.value || "").trim();
+        if(n.parentNode) n.parentNode.removeChild(n);
+        if(save && v && items.indexOf(v) < 0) commit(items.concat(v));
+      };
+      inp.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){ e.preventDefault(); close(true); }
+        if(e.key === "Escape"){ close(false); }
+      });
+      inp.addEventListener("blur", function(){ close(true); });
+    });
+    box.appendChild(add);
+    dragSort(box, ".lab-chip[data-v]", "x", function(order){
+      commit(order.map(function(n){ return n.dataset.v; }));
+    });
+  }
   p.appendChild(box);
-  p.appendChild(el("div", "lab-yearnote",
-                   "הבחירה נזכרת במכשיר הזה בלבד. הוספת שנה ומחיקתה — בפאנל \"שנים\"; " +
-                   "העתקת תלמידות לשנה חדשה — ב\"מעבר שנה\"."));
+  return p;
+}
+
+/* ---- שורות התפקידים: שם, שיוך חינוך, הכלל שהתפקיד נושא, צבע ומחיקה --- */
+function rolesCard(rows, admin){
+  var p = labPanel("roles", "תפקידי צוות",
+        "לכל תפקיד: שיוך חינוך, וסדר התפקידים קובע את סדר התקנים בלוח שיבוץ הצוות. גרירה משנה סדר.");
+  var box = el("div", "lab-rows");
+  var EDU = [["both","רגיל + ח\"מ"], ["רגיל","רגיל בלבד"], ['ח"מ','ח"מ בלבד']];
+
+  function read(){
+    return Array.prototype.slice.call(box.querySelectorAll(".lab-rolerow")).map(function(n){
+      return { name:  String(n.querySelector(".lab-rolename").textContent || "").trim(),
+               edu:   n.querySelector(".lab-roleedu").value,
+               color: n.querySelector(".lab-rolecolor").value };
+    });
+  }
+  function commit(next){
+    if(window.__uiLab && window.__uiLab.saveRoles) window.__uiLab.saveRoles(next);
+  }
+
+  rows.forEach(function(r){
+    var row = el("div", "lab-rolerow");
+    row.dataset.v = r.name;
+
+    var nm = el("span", "lab-rolename", r.name);
+    if(admin){
+      nm.contentEditable = "true";
+      nm.spellcheck = false;
+      nm.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){ e.preventDefault(); nm.blur(); }
+        if(e.key === "Escape"){ nm.textContent = r.name; nm.blur(); }
+      });
+      nm.addEventListener("blur", function(){
+        if(String(nm.textContent || "").trim() === r.name) return;
+        commit(read());
+      });
+    }
+    row.appendChild(nm);
+
+    var edu = document.createElement("select");
+    edu.className = "lab-roleedu lab-rolebadge " + (r.edu === "both" ? "good" : r.edu === "רגיל" ? "info" : "warn");
+    EDU.forEach(function(o){
+      var op = document.createElement("option");
+      op.value = o[0]; op.textContent = o[1];
+      if(o[0] === r.edu) op.selected = true;
+      edu.appendChild(op);
+    });
+    edu.disabled = !admin;
+    edu.addEventListener("change", function(){ commit(read()); });
+    row.appendChild(edu);
+
+    if(r.note) row.appendChild(el("span", "lab-rolebadge warn", r.note));
+
+    row.appendChild(el("span", "lab-rolegap"));
+
+    var col = document.createElement("input");
+    col.type = "color"; col.className = "lab-rolecolor";
+    col.value = r.color || "#8a8f98";
+    col.title = "צבע התפקיד";
+    col.disabled = !admin;
+    col.addEventListener("change", function(){ commit(read()); });
+    row.appendChild(col);
+
+    if(admin){
+      var del = el("button", "lab-rowx", "🗑️");
+      del.type = "button"; del.title = "מחיקת התפקיד";
+      del.addEventListener("click", function(){
+        if(!confirm('למחוק את התפקיד "' + r.name + '"?')) return;
+        commit(read().filter(function(x){ return x.name !== r.name; }));
+      });
+      row.appendChild(del);
+      row.appendChild(grip(row));
+    }
+    box.appendChild(row);
+  });
+
+  if(admin) dragSort(box, ".lab-rolerow", "y", function(){ commit(read()); });
+  p.appendChild(box);
+  return p;
+}
+
+/* ---- שורת התחתית של כרטיס רשימה: מה שנשאר משורת ההוספה של התוכנה ----
+   שדה ההוספה וכפתור "הוסף" מיותרים — השבב "+" מחליף אותם. מה שכן נשאר
+   שימושי (איפוס לברירת מחדל · עדכון הקמפוס אצל התלמידות) יורד לשורה
+   דקה בתחתית הכרטיס. */
+function listFoot(src, dropIds){
+  if(!src) return null;
+  var row = src.querySelector(":scope > .row");
+  if(!row) return null;
+  dropIds.forEach(function(id){
+    var n = row.querySelector("#" + id);
+    if(!n) return;
+    var f = n.closest(".field");
+    (f && f.parentNode === row ? f : n).classList.add("lab-hidden");
+  });
+  var left = Array.prototype.slice.call(row.children)
+    .filter(function(n){ return !n.classList.contains("lab-hidden"); });
+  if(!left.length) return null;
+  row.classList.add("lab-listfoot");
+  return row;
+}
+
+/* כרטיס שכל תוכנו מוזז מפאנל קיים — הכותרת וההסבר מוחלפים בלבד */
+function plainCard(key, title, sub, src){
+  if(!src) return null;
+  var p = labPanel(key, title, sub);
+  moveBody(src, p);
+  src.remove();
   return p;
 }
 
 function settingsScreen(){
   if(curTab() !== "settings" || view.querySelector(".lab-toc")) return;
   var panels = Array.prototype.slice.call(view.querySelectorAll(":scope > .panel"));
-  if(panels.length < 4) return;
+  if(!panels.length) return;
 
-  var items = [];
-  panels.forEach(function(p, i){
-    var h = p.querySelector("h2");
-    if(!h) return;
-    /* רק צמתי הטקסט של ה-h2 — בלי תגיות מונה כמו "3 מחוברים" שבתוכו */
-    var t = "";
-    Array.prototype.slice.call(h.childNodes).forEach(function(n){
-      if(n.nodeType === 3) t += n.nodeValue;
-    });
-    t = t.replace(/[…\s]+$/, "").trim() || String(h.textContent || "").trim();
-    if(!t) return;
-    if(!p.id) p.id = "labsec" + i;
-    items.push({ id:p.id, title:t, el:p });
+  /* מפת הפאנלים שהתוכנה בנתה */
+  var P = {};
+  SET_FIND.forEach(function(f){
+    for(var i = 0; i < panels.length; i++){
+      if(panels[i].querySelector(f[1])){ P[f[0]] = panels[i]; return; }
+    }
   });
-  if(!items.length) return;
+  if(!P.years && !P.ages && !P.auth) return;      /* לא מסך ההגדרות */
 
-  var toc = el("nav", "lab-toc");
-  var used = {};
-  SET_GROUPS.forEach(function(grp){
-    var picked = items.filter(function(it){
-      if(used[it.id]) return false;
-      return grp[1].some(function(k){ return it.title.indexOf(k) >= 0; });
-    });
-    if(!picked.length) return;
-    toc.appendChild(el("div", "lab-tocg", grp[0]));
-    picked.forEach(function(it){
-      used[it.id] = 1;
-      var a = el("a", "lab-toci", it.title);
-      a.href = "#" + it.id;
-      toc.appendChild(a);
-    });
-  });
-  var rest = items.filter(function(it){ return !used[it.id]; });
-  if(rest.length){
-    toc.appendChild(el("div", "lab-tocg", "נוספים"));
-    rest.forEach(function(it){
-      var a = el("a", "lab-toci", it.title);
-      a.href = "#" + it.id;
-      toc.appendChild(a);
-    });
-  }
+  var D = (window.__uiLab && window.__uiLab.settingsLists) ? window.__uiLab.settingsLists() : null;
+  var admin = !!(D && D.admin);
 
-  /* עוטפים: רשימת הניווט מימין, הפאנלים משמאל */
   var wrap = el("div", "lab-setwrap");
   var col  = el("div", "lab-setcol");
+  var toc  = el("nav", "lab-toc");
   view.insertBefore(wrap, panels[0]);
   wrap.appendChild(col); wrap.appendChild(toc);
-  /* סדר הפאנלים עוקב אחרי סדר הרשימה, כך שגלילה ורשימה מספרות אותו סיפור */
-  var order = [];
-  toc.querySelectorAll(".lab-toci").forEach(function(a){
-    var t = view.querySelector(a.getAttribute("href"));
-    if(t) order.push(t);
-  });
-  order.forEach(function(p){ col.appendChild(p); });
-  panels.forEach(function(p){ if(p.parentNode !== col) col.appendChild(p); });
 
-  /* שנת העבודה פותחת את המסך — הפאנל הראשון בעמודה והפריט הראשון ברשימה,
-     בראש הקבוצה שכבר מרכזת את "שנים" ו"מעבר שנה". */
-  var yp = yearPanel();
-  if(yp){
-    yp.id = "labYearSec";
-    col.insertBefore(yp, col.firstChild);
-    var ya = el("a", "lab-toci", "שנת עבודה");
-    ya.href = "#labYearSec";
-    var firstG = toc.querySelector(".lab-tocg");
-    if(firstG) toc.insertBefore(ya, firstG.nextSibling);
-    else       toc.insertBefore(ya, toc.firstChild);
-    items.unshift({ id:yp.id, title:"שנת עבודה", el:yp });
+  var marks = [], n = 0;
+  function mark(k){ if(P[k]) P[k].dataset.labUsed = "1"; }
+  function addCard(p, title){
+    if(!p) return;
+    p.id = "labset" + (++n);
+    col.appendChild(p);
+    var a = el("a", "lab-toci", title);
+    a.href = "#" + p.id;
+    toc.appendChild(a);
+    marks.push(p);
   }
+  function group(name){ toc.appendChild(el("div", "lab-tocg", name)); }
+
+  /* ═══ 1. שנה ונתונים ═══════════════════════════════════════════════ */
+  group("שנה ונתונים");
+  addCard(yearsCard(P, admin), "שנים ומעבר שנה");
+  addCard(histCard(P), "נתונים היסטוריים");
+
+  /* ═══ 2. רשימות המערכת ════════════════════════════════════════════ */
+  /* שלוש הרשימות נבנות כשבבים/שורות מתוך D. בלי הוו (למשל app-artifact.html,
+     שאין בו __uiLab) אין נתיב כתיבה, ואז הכרטיס נבנה מהעורך הקיים כמו שהוא —
+     המסך נשאר מקובץ, רק בלי הגרירה. */
+  group("רשימות המערכת");
+  if(P.ages){
+    mark("ages");
+    var agesC = D
+      ? chipsCard("ages", "גילי הילדים",
+          "הגילים שמופיעים לבחירה בתיק תלמידה ובסינון הרשימה.",
+          D.ages, function(next){ window.__uiLab.saveAges(next); }, admin, "למשל 7")
+      : plainCard("ages", "גילי הילדים",
+          "הגילים שמופיעים לבחירה בתיק תלמידה ובסינון הרשימה.", P.ages);
+    if(D){ var af = listFoot(P.ages, ["new-age", "addAge"]); if(af) agesC.appendChild(af); }
+    addCard(agesC, "גילי הילדים");
+    if(D) P.ages.remove();
+  }
+  if(P.roles){
+    mark("roles");
+    var rolesC = D ? rolesCard(D.roles, admin)
+      : plainCard("roles", "תפקידי צוות",
+          "לכל תפקיד: שיוך חינוך, וסדר התפקידים קובע את סדר התקנים בלוח שיבוץ הצוות.", P.roles);
+    if(D){ var rf = listFoot(P.roles, ["new-role", "addRole"]); if(rf) rolesC.appendChild(rf); }
+    addCard(rolesC, "תפקידי צוות");
+    if(D) P.roles.remove();
+  }
+  if(P.campus){
+    mark("campus");
+    var campC = D
+      ? chipsCard("campus", "קמפוסים",
+          "הקמפוס של כל תלמידה נקבע אוטומטית לפי הגן שלה.",
+          D.campuses, function(next){ window.__uiLab.saveCampuses(next); }, admin, "למשל קמפוס מרכז")
+      : plainCard("campus", "קמפוסים",
+          "הקמפוס של כל תלמידה נקבע אוטומטית לפי הגן שלה.", P.campus);
+    if(D){ var cf = listFoot(P.campus, ["new-campus", "addCampus"]); if(cf) campC.appendChild(cf); }
+    addCard(campC, "קמפוסים");
+    if(D) P.campus.remove();
+  }
+  addCard(capsCard(P), "רף שיבוץ");
+  addCard(tzminCard(P), "מינימום לפתיחת צהרון");
+
+  /* ═══ 3. מערכת ומשתמשים ═══════════════════════════════════════════ */
+  group("מערכת ומשתמשים");
+  addCard(presenceCard(P), "מי מחובר ויומן פעילות");
+  addCard(usersCard(P), P.users ? "ניהול משתמשים ומנהלי מערכת" : "מנהלי מערכת");
+  addCard(authCard(P), "חשבון והתחברות");
+
+  /* ═══ 4. מראה והתקנה ══════════════════════════════════════════════ */
+  group("מראה והתקנה");
+  addCard(brandCard(P), "מיתוג והתקנה כאפליקציה");
+
+  /* ═══ 5. פניות ותמיכה ═════════════════════════════════════════════ */
+  if(P.feedback){
+    group("פניות ותמיכה");
+    mark("feedback");
+    var fb = labPanel("feedback", "💡 פניות והצעות שיפור",
+      "הודעות שנשלחו דרך \"יצירת קשר / הצעה\" שבתפריט, והכתובת שאליה הן נפתחות.");
+    moveBody(P.feedback, fb);
+    P.feedback.remove();
+    addCard(fb, "💡 פניות והצעות שיפור");
+  }
+
+  /* פאנל שהתוכנה מציגה ולא נכלל בתוכנית (למשל הודעת "רק למנהל") — נשאר
+     במקומו, בראש העמודה, כדי ששום דבר לא ייעלם בשקט. */
+  var rest = panels.filter(function(p){ return p.parentNode !== col && !p.dataset.labUsed && document.contains(p); });
+  rest.forEach(function(p){ col.insertBefore(p, col.firstChild); });
 
   /* סימון הפריט הפעיל בגלילה */
   var links = toc.querySelectorAll(".lab-toci");
@@ -3179,7 +3427,308 @@ function settingsScreen(){
       });
     });
   }, {rootMargin:"-10% 0px -80% 0px"});
-  items.forEach(function(it){ spy.observe(it.el); });
+  marks.forEach(function(p){ spy.observe(p); });
+}
+
+/* ---- שנים ומעבר שנה ------------------------------------------------
+   שלושה פאנלים היו כאן: "שנת עבודה" (הבורר), "שנים" (הוספה/מחיקה)
+   ו"מעבר שנה". שלושתם מדברים על אותה החלטה, ולכן הם כרטיס אחד: שורת
+   שבבים שהיא גם הבורר וגם הרשימה, ותהליך המעבר מתחתיה.
+
+   ⚠️ ה-<select> המקורי (#yearSelect) נשאר במגירה, מוסתר. הוא יושב מחוץ
+   ל-#view, ולכן שורד את בנייתו מחדש של המסך ומחזיק את מאזין ה-change
+   שכותב את ההעדפה ומרענן את המסלול. השבבים קוראים ממנו וכותבים אליו. */
+function yearsCard(P, admin){
+  if(!P.years && !P.promote) return null;
+  var p = labPanel("year", "שנים ומעבר שנה",
+        "כל שנה מנוהלת בנפרד. הבחירה כאן קובעת על איזו שנה כל המסכים עובדים.");
+
+  var real  = document.getElementById("yearSelect");
+  var chips = el("div", "lab-chips lab-yearchips");
+
+  /* כפתורי המחיקה של התוכנה, לפי השנה שהם מוחקים */
+  var dels = {};
+  if(P.years){
+    Array.prototype.slice.call(P.years.querySelectorAll("[data-dely]")).forEach(function(b){
+      dels[b.dataset.dely] = b;
+    });
+  }
+
+  var cur = real ? real.value : "";
+  if(real) Array.prototype.forEach.call(real.options, function(o){
+    var on = o.value === cur;
+    var c  = el("div", "lab-chip lab-yearchip" + (on ? " on" : ""));
+    c.dataset.v = o.value;
+    var t = el("button", "lab-chiptxt", o.textContent);
+    t.type = "button";
+    t.addEventListener("click", function(){
+      if(!real || real.value === o.value) return;
+      real.value = o.value;
+      real.dispatchEvent(new Event("change", {bubbles:true}));
+    });
+    c.appendChild(t);
+    if(on) c.appendChild(el("span", "lab-chipnote", "פעילה"));
+    var d = dels[o.value];
+    if(d){ d.className = "lab-chipx"; d.textContent = "✕"; d.title = "מחיקת השנה"; c.appendChild(d); }
+    chips.appendChild(c);
+  });
+
+  /* "+ הוספת שנה" — פותח את שדה ההוספה של התוכנה, עם המאזין שלו */
+  var addRow = P.years ? P.years.querySelector(":scope > .row") : null;
+  if(addRow) addRow.classList.add("lab-hidden", "lab-yearadd");
+  if(admin && addRow){
+    var add = el("button", "lab-chip lab-chipadd lab-chipadd-w", "+ הוספת שנה");
+    add.type = "button";
+    add.addEventListener("click", function(){
+      addRow.classList.toggle("lab-hidden");
+      var f = addRow.querySelector("#new-year");
+      if(f && !addRow.classList.contains("lab-hidden")) f.focus();
+    });
+    chips.appendChild(add);
+  }
+  p.appendChild(chips);
+  if(addRow) p.appendChild(addRow);
+  if(P.years){ P.years.dataset.labUsed = "1"; P.years.remove(); }
+
+  /* --- מעבר שנה, ככרטיס פנימי --- */
+  if(P.promote){
+    P.promote.dataset.labUsed = "1";
+    var sc = el("div", "lab-setsub");
+    var hd = el("div", "lab-setsubh");
+    var tx = el("div", "lab-setsubt");
+    tx.appendChild(el("div", "lab-setsubttl", "מעבר שנה — קידום לגן המתקדם"));
+    tx.appendChild(el("div", "lab-setsubx",
+      "מעתיק את התלמידות משנה קודמת. עוברים רק הפרטים האישיים והכתובת; כל ילדה מקודמת לגן המתקדם באותו קמפוס, והמסמכים והסימונים מתאפסים."));
+    hd.appendChild(tx);
+    var start = el("button", "btn lab-startbtn", "התחלת תהליך");
+    start.type = "button";
+    hd.appendChild(start);
+    sc.appendChild(hd);
+
+    var body = el("div", "lab-setsubbody lab-hidden");
+    var row  = P.promote.querySelector(":scope > .row");
+    var stat = P.promote.querySelector("#pr-status");
+    var note = P.promote.querySelector(":scope > .note");
+    if(row)  body.appendChild(row);
+    if(stat) body.appendChild(stat);
+    if(note) body.appendChild(note);
+    sc.appendChild(body);
+
+    var chk = P.promote.querySelector("#pr-skipgrad-wrap");
+    if(chk) sc.appendChild(chk);
+
+    start.addEventListener("click", function(){
+      var closed = body.classList.toggle("lab-hidden");
+      start.textContent = closed ? "התחלת תהליך" : "סגירה";
+    });
+    p.appendChild(sc);
+    P.promote.remove();
+  }
+  return p;
+}
+
+/* ---- נתונים היסטוריים — שתי רשימות שנפתחות -------------------------- */
+function histCard(P){
+  if(!P.hist && !P.histGan) return null;
+  var p = labPanel("hist", "נתונים היסטוריים",
+        "סיכומי שנים קודמות למחשבון האחוזים. נפתחים בלחיצה — משנת ההפעלה ואילך הכול מסונכרן אוטומטית.");
+  [[P.hist, "נתונים היסטוריים (שנים קודמות)"],
+   [P.histGan, "נתונים היסטוריים לפי גן (שנים קודמות)"]].forEach(function(x){
+    if(!x[0]) return;
+    x[0].dataset.labUsed = "1";
+    var d = el("details", "lab-fold");
+    d.appendChild(el("summary", "lab-foldh", x[1]));
+    var b = el("div", "lab-foldb");
+    moveBody(x[0], b, true);
+    d.appendChild(b);
+    p.appendChild(d);
+    x[0].remove();
+  });
+  return p;
+}
+
+/* ---- רף שיבוץ ------------------------------------------------------- */
+function capsCard(P){
+  if(!P.caps) return null;
+  P.caps.dataset.labUsed = "1";
+  var p = labPanel("caps", "רף שיבוץ — מקסימום משובצות בגן");
+  var sub = el("div", "lab-psub");
+  sub.appendChild(document.createTextNode("מגבלה קשיחה על השיבוץ הסופי בלבד. "));
+  sub.appendChild(el("b", null, "הרישום אינו מוגבל."));
+  sub.appendChild(document.createTextNode(" רף בכרטיס גן גובר על ברירת המחדל. עד שמזינים מספר — אין הגבלה כלל."));
+  var head = p.querySelector(".lab-phead");
+  if(head) head.appendChild(sub);
+  moveBody(P.caps, p);
+  P.caps.remove();
+
+  /* הלוח מציג שורה אחת: שני השדות, הסימון והשמירה. בתוכנה זה grid בן שלוש
+     משבצות, והסימון נדחס לעמודה צרה ונשבר לשתי שורות. */
+  var g = p.querySelector(".grid.g3");
+  if(g){
+    g.classList.remove("g3");
+    g.classList.add("lab-capsrow");
+    var hint = g.querySelector(".hint");
+    if(hint) hint.classList.add("lab-hidden");   /* ההסבר כבר בכותרת הכרטיס */
+    var save = p.querySelector("#saveAC");
+    if(save){
+      var srow = save.closest(".row");
+      g.appendChild(save);
+      save.classList.add("lab-atend");
+      save.textContent = "שמירה";
+      if(srow && !srow.children.length) srow.remove();
+    }
+  }
+  return p;
+}
+
+/* ---- מינימום לפתיחת צהרון ------------------------------------------- */
+function tzminCard(P){
+  if(!P.tzmin) return null;
+  P.tzmin.dataset.labUsed = "1";
+  var p = labPanel("tzmin", "מינימום לפתיחת צהרון",
+        "בלשונית שיבוץ → צהרונים, גן שמתחת למספר הזה יסומן באדום.");
+  moveBody(P.tzmin, p);
+  P.tzmin.remove();
+  return p;
+}
+
+/* ---- מי מחובר ויומן פעילות ------------------------------------------
+   שני פאנלים על אותו נושא — מי נמצא במערכת ומה נעשה בה. מאוחדים לכרטיס
+   אחד בשני טורים, כדי שהתמונה תהיה במבט אחד. */
+function presenceCard(P){
+  if(!P.presence && !P.activity) return null;
+  var p = labPanel("presence", "מי מחובר ויומן פעילות",
+        "מי פעיל במערכת ברגע זה, ומה נערך לאחרונה — שימושי לדעת מתי בטוח לבצע שינויים.");
+  var two = el("div", "lab-two");
+  [[P.presence, "מחוברים עכשיו"], [P.activity, "העריכה האחרונה של כל משתמש"]].forEach(function(x){
+    if(!x[0]) return;
+    x[0].dataset.labUsed = "1";
+    var half = el("div", "lab-half");
+    var h2   = x[0].querySelector(":scope > h2");
+    var cnt  = h2 ? h2.querySelector(".pill") : null;
+    var hd   = el("div", "lab-halfh", x[1]);
+    if(cnt) hd.appendChild(cnt);            /* מונה "3 מחוברים" — מועבר */
+    half.appendChild(hd);
+    moveBody(x[0], half);
+    two.appendChild(half);
+    x[0].remove();
+  });
+  p.appendChild(two);
+  return p;
+}
+
+/* ---- ניהול משתמשים ומנהלי מערכת --------------------------------------
+   טבלת המשתמשים נבנית מחדש על ידי renderUsers() בכל שינוי, ולכן ההתאמה
+   שלה חוזרת דרך MutationObserver ולא פעם אחת. האלמנטים מוזזים ולא
+   משוכפלים — הכפתורים והבוררים שומרים את המאזינים שלהם. */
+function usersCard(P){
+  if(!P.users && !P.admins) return null;
+  var p = labPanel("users", P.users ? "ניהול משתמשים ומנהלי מערכת" : "מנהלי מערכת",
+        "הכניסה למערכת היא עם חשבון Google מורשה בלבד. רק כתובות שברשימת המנהלים יכולות לשנות את הגדרות המערכת.");
+  if(P.users){
+    P.users.dataset.labUsed = "1";
+    moveBody(P.users, p);
+    P.users.remove();
+    var box = p.querySelector("#users-box");
+    if(box){
+      usersTable(box);
+      new MutationObserver(function(){ usersTable(box); })
+        .observe(box, {childList:true});
+    }
+  }
+  if(P.admins){
+    P.admins.dataset.labUsed = "1";
+    var strip = el("div", "lab-adminstrip");
+    strip.appendChild(el("div", "lab-halfh", "מנהלי מערכת"));
+    moveBody(P.admins, strip);
+    p.appendChild(strip);
+    P.admins.remove();
+  }
+  return p;
+}
+/* התאמת טבלת המשתמשים ללוח: עמודת "משתמש" אחת — עיגול ראשי תיבות, שם
+   ומייל — במקום שני טורים נפרדים. */
+function usersTable(box){
+  var tbl = box.querySelector("table");
+  if(!tbl || tbl.dataset.lab) return;
+  tbl.dataset.lab = "1";
+  tbl.classList.add("lab-users");
+
+  var HEAD = ["משתמש", "", "הרשאה", "היקף", "כניסה אחרונה", ""];
+  var ths = tbl.querySelectorAll("thead th");
+  ths.forEach(function(th, i){
+    if(HEAD[i] == null) return;
+    th.textContent = HEAD[i];
+    if(HEAD[i] === "") th.classList.add("lab-hidden");
+  });
+  tbl.querySelectorAll("tbody tr").forEach(function(tr){
+    var td = tr.children;
+    if(td.length < 2) return;
+    var mail = String(td[0].textContent || "").replace(/זה אני/, "").trim();
+    var me   = td[0].querySelector(".pill");
+    var inp  = td[1].querySelector("input");
+    var cell = el("div", "lab-ucell");
+    cell.appendChild(el("span", "lab-uini", mail.slice(0, 2).toUpperCase()));
+    var txt = el("div", "lab-utxt");
+    if(inp) txt.appendChild(inp);                 /* שדה השם — מועבר */
+    var m = el("div", "lab-umail", mail);
+    m.dir = "ltr";
+    txt.appendChild(m);
+    if(me) txt.appendChild(me);
+    cell.appendChild(txt);
+    td[0].textContent = "";
+    td[0].appendChild(cell);
+    td[1].classList.add("lab-hidden");
+  });
+}
+
+/* ---- חשבון והתחברות ------------------------------------------------- */
+function authCard(P){
+  if(!P.auth) return null;
+  P.auth.dataset.labUsed = "1";
+  var p = labPanel("auth", "חשבון והתחברות",
+        "הכניסה מאובטחת בחשבון Google מורשה בלבד. הנתונים בענן ומסונכרנים בין כל המכשירים.");
+  moveBody(P.auth, p);
+  P.auth.remove();
+  return p;
+}
+
+/* ---- מיתוג והתקנה כאפליקציה ------------------------------------------
+   הכותרת, כותרת המשנה, הלוגו וההתקנה הם החלטה אחת — איך המערכת נראית
+   ואיפה היא יושבת — ולכן כרטיס אחד. הוראות ההתקנה הארוכות יורדות
+   לרשימה שנפתחת; הכפתור עצמו נשאר בשורה. */
+function brandCard(P){
+  if(!P.brand && !P.install) return null;
+  var p = labPanel("brand", "מיתוג והתקנה כאפליקציה",
+        "הכותרת והלוגו מופיעים בראש כל מסך, בכותרת הדפדפן, ובאייקון האפליקציה.");
+  if(P.brand){
+    P.brand.dataset.labUsed = "1";
+    moveBody(P.brand, p);
+    P.brand.remove();
+  }
+  if(P.install){
+    P.install.dataset.labUsed = "1";
+    var box = P.install.querySelector("#install-box");
+    var btn = el("button", "btn lab-installbtn", "🧩 התקנה כאפליקציה");
+    btn.type = "button";
+    var fold = el("details", "lab-fold lab-installfold");
+    fold.appendChild(el("summary", "lab-foldh", "הוראות התקנה ידנית"));
+    var fb = el("div", "lab-foldb");
+    if(box) fb.appendChild(box);
+    fold.appendChild(fb);
+    btn.addEventListener("click", function(){
+      var real = box ? box.querySelector("#do-install") : null;
+      if(real){ real.click(); return; }
+      fold.open = !fold.open;
+    });
+    /* הכפתור נכנס לשורת הלוגו שכבר קיימת, בקצה השני */
+    var row = p.querySelector(".row");
+    if(row){ btn.classList.add("lab-atend"); row.appendChild(btn); }
+    else p.appendChild(btn);
+    p.appendChild(fold);
+    P.install.remove();
+  }
+  return p;
 }
 
 /* --------------------------------------------------------- כלים ושירותים */
@@ -3267,6 +3816,7 @@ function presenceSkin(){
   /* שורות יומן הפעילות — עיגול ראשי תיבות בעמודה הראשונה */
   view.querySelectorAll("table tbody tr").forEach(function(tr){
     var tb = tr.closest("table");
+    if(tb && tb.classList.contains("lab-users")) return;   /* לזו כבר יש עיגול משלה */
     var head = tb && tb.querySelector("thead th");
     if(!head || String(head.textContent).trim() !== "משתמש") return;
     var td = tr.firstElementChild;

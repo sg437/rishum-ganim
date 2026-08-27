@@ -57,7 +57,7 @@ function buildApp() {
   html = html.replace('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', '/__stub/noop.js');
   /* הקוד רץ כמודול (scope נפרד) — חושפים רק את מה שהבדיקה צריכה */
   const expose = `
-window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; };
+window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; else if(k==='currentUser')currentUser=v; };
 Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
 Object.assign(window,{ route, closeModal });
 window.__ready=true;
@@ -461,53 +461,245 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
   else ok('"עדכון לפי ת"ז" החליף נייד ועיר בתיק קיים, ופתח תיק חדש לת"ז שאינה במאגר');
   await p.evaluate(() => closeModal()); await p.waitForTimeout(400);
 
-  /* --- 8. בורר השנה: לא ברצועה העליונה, אלא ראשון בהגדרות --------------- */
-  await p.evaluate(() => { DB.years = ['תשפ"ז', 'תשפ"ח']; route(); });
-  await goTab(p, 'settings'); await p.waitForTimeout(900);
-  const yr = await p.evaluate(() => {
+  /* --- 8. מסך ההגדרות: הכול במקום אחד, מקובץ ומאוחד ---------------------- */
+  await p.evaluate(() => {
+    DB.years = ['תשפ"ו', 'תשפ"ז', 'תשפ"ח']; DB.activeYear = 'תשפ"ז';
+    DB.settings.admins = ['admin@ganim.org'];
+    DB.settings.campuses = ['קמפוס מרכז', 'קמפוס צפון'];
+    __set('currentUser', { email: 'sg@taharat.org' });   /* בעלים — מנהל תמיד */
+    route();
+  });
+  await goTab(p, 'settings'); await p.waitForTimeout(1100);
+  const sg = await p.evaluate(() => {
     const col   = document.querySelector('.lab-setcol');
-    const first = col && col.firstElementChild;
-    const toc   = [...document.querySelectorAll('.lab-toc .lab-toci')].map(a => a.textContent.trim());
+    const cards = col ? [...col.querySelectorAll(':scope > .panel.lab-made')].map(n => n.dataset.lab) : [];
+    const toc   = [...document.querySelectorAll('.lab-toc .lab-tocg')].map(a => a.textContent.trim());
+    const yearC = col && col.querySelector('[data-lab="year"]');
     return {
-      inTop:   !!document.querySelector('header.top .lab-yearpick, header.top #yearSelect'),
+      inTop:      !!document.querySelector('header.top .lab-yearpick, header.top #yearSelect'),
       inTopChips: !!document.querySelector('.top-chips #yearSelect'),
-      realHome: (document.getElementById('yearSelect') || {}).parentElement
-                  ? document.getElementById('yearSelect').parentElement.className : null,
-      firstPanel: first ? (first.dataset.lab || (first.querySelector('h2,h3') || {}).textContent) : null,
-      firstToc: toc[0] || null,
-      opts: [...document.querySelectorAll('.lab-yearsel option')].map(o => o.textContent),
-      value: (document.querySelector('.lab-yearsel') || {}).value
+      realHome:   (document.getElementById('yearSelect') || {}).parentElement
+                    ? document.getElementById('yearSelect').parentElement.className : null,
+      cards, groups: toc,
+      firstCard:  cards[0] || null,
+      /* שנים ומעבר שנה — שבבים, השנה הפעילה מסומנת, ומעבר השנה בפנים */
+      chips:      yearC ? [...yearC.querySelectorAll('.lab-yearchip')].map(c => ({
+                    y: (c.querySelector('.lab-chiptxt') || {}).textContent,
+                    on: c.classList.contains('on') })) : [],
+      hasAdd:     !!(yearC && yearC.querySelector('.lab-chipadd')),
+      promoteIn:  !!(yearC && yearC.querySelector('#pr-from')),
+      promoteHid: !!(yearC && yearC.querySelector('.lab-setsubbody.lab-hidden')),
+      skipGrad:   !!(yearC && yearC.querySelector('#pr-skipgrad')),
+      /* נתונים היסטוריים — שתי רשימות סגורות */
+      folds:      [...document.querySelectorAll('[data-lab="hist"] details.lab-fold')].map(d => d.open),
+      histIn:     !!document.querySelector('[data-lab="hist"] #hist-box'),
+      histGanIn:  !!document.querySelector('[data-lab="hist"] #hist-gans-box'),
+      /* רשימות המערכת — שבבים ושורות */
+      ages:       [...document.querySelectorAll('[data-lab="ages"] .lab-chip[data-v]')].map(c => c.dataset.v),
+      camps:      [...document.querySelectorAll('[data-lab="campus"] .lab-chip[data-v]')].map(c => c.dataset.v),
+      roles:      [...document.querySelectorAll('[data-lab="roles"] .lab-rolerow')].map(r => r.dataset.v),
+      roleGrip:   !!document.querySelector('[data-lab="roles"] .lab-rolerow .lab-grip'),
+      roleColor:  !!document.querySelector('[data-lab="roles"] .lab-rolerow .lab-rolecolor'),
+      roleDel:    !!document.querySelector('[data-lab="roles"] .lab-rolerow .lab-rowx'),
+      /* איחודים */
+      halves:     [...document.querySelectorAll('[data-lab="presence"] .lab-half')].length,
+      presIn:     !!document.querySelector('[data-lab="presence"] #presenceBox'),
+      actIn:      !!document.querySelector('[data-lab="presence"] #activityBox'),
+      usersIn:    !!document.querySelector('[data-lab="users"] #users-box'),
+      adminsIn:   !!document.querySelector('[data-lab="users"] #admins-box'),
+      brandIn:    !!document.querySelector('[data-lab="brand"] #br-title'),
+      subIn:      !!document.querySelector('[data-lab="brand"] #br-sub'),
+      installIn:  !!document.querySelector('[data-lab="brand"] #install-box'),
+      capsIn:     !!document.querySelector('[data-lab="caps"] #ac-reg'),
+      tzIn:       !!document.querySelector('[data-lab="tzmin"] #tzmin'),
+      fbIn:       !!document.querySelector('[data-lab="feedback"] #feedback-box'),
+      /* עמודת המשתמש בטבלה — עיגול ראשי תיבות, שם ומייל בתא אחד */
+      uCell:      !!document.querySelector('table.lab-users .lab-ucell .lab-uini')
     };
   });
-  if (yr.inTop || yr.inTopChips)
+  const GROUPS = ['שנה ונתונים', 'רשימות המערכת', 'מערכת ומשתמשים', 'מראה והתקנה', 'פניות ותמיכה'];
+  const CARDS  = ['year','hist','ages','roles','campus','caps','tzmin','presence','users','auth','brand','feedback'];
+  if (sg.inTop || sg.inTopChips)
     bad('בורר השנה עדיין יושב ברצועה העליונה');
-  else if (yr.realHome !== 'drawer-year')
-    bad('ה-<select> המקורי אינו במגירה — הוא לא ישרוד בניית מסך מחדש', ['הורה: ' + yr.realHome]);
-  else if (yr.firstPanel !== 'year')
-    bad('פאנל "שנת עבודה" אינו הראשון בהגדרות', ['ראשון: ' + yr.firstPanel]);
-  else if (yr.firstToc !== 'שנת עבודה')
-    bad('"שנת עבודה" אינו הפריט הראשון ברשימת ההגדרות', ['ראשון: ' + yr.firstToc]);
-  else if (yr.opts.join(',') !== 'תשפ"ז,תשפ"ח' || yr.value !== 'תשפ"ז')
-    bad('הבורר שבהגדרות אינו משקף את רשימת השנים', ['אפשרויות: ' + yr.opts.join(' · ') + ' · נבחר: ' + yr.value]);
-  else ok('בורר השנה ירד מהרצועה העליונה ופותח את מסך ההגדרות (' + yr.opts.join(' · ') + ')');
+  else if (sg.realHome !== 'drawer-year')
+    bad('ה-<select> המקורי אינו במגירה — הוא לא ישרוד בניית מסך מחדש', ['הורה: ' + sg.realHome]);
+  else if (sg.groups.join(' · ') !== GROUPS.join(' · '))
+    bad('קבוצות ההגדרות אינן לפי הסדר', ['התקבל: ' + sg.groups.join(' · ')]);
+  else if (sg.cards.join(',') !== CARDS.join(','))
+    bad('כרטיסי ההגדרות אינם לפי הסדר', ['התקבל: ' + sg.cards.join(' · ')]);
+  else ok('הגדרות: ' + sg.groups.length + ' קבוצות · ' + sg.cards.length + ' כרטיסים, בסדר הנכון');
 
-  /* הבחירה עצמה — חייבת להזיז את DB.activeYear דרך המאזין המקורי */
+  if (sg.firstCard !== 'year')
+    bad('"שנים ומעבר שנה" אינו הכרטיס הראשון בהגדרות', ['ראשון: ' + sg.firstCard]);
+  else if (sg.chips.map(c => c.y).join(',') !== 'תשפ"ו,תשפ"ז,תשפ"ח')
+    bad('שבבי השנים אינם משקפים את רשימת השנים', ['שבבים: ' + sg.chips.map(c => c.y).join(' · ')]);
+  else if (sg.chips.filter(c => c.on).map(c => c.y).join(',') !== 'תשפ"ז')
+    bad('השנה הפעילה אינה מסומנת בשבבים', ['מסומן: ' + sg.chips.filter(c => c.on).map(c => c.y).join(' · ')]);
+  else if (!sg.hasAdd)
+    bad('אין שבב "+ הוספת שנה"');
+  else if (!sg.promoteIn || !sg.skipGrad)
+    bad('"מעבר שנה" אינו בתוך כרטיס השנים', ['מעבר=' + sg.promoteIn + ' סימון מסיימות=' + sg.skipGrad]);
+  else if (!sg.promoteHid)
+    bad('תהליך מעבר השנה אינו מקופל מאחורי "התחלת תהליך"');
+  else ok('שנים ומעבר שנה: 3 שבבים (תשפ"ז פעילה) · הוספת שנה · מעבר שנה מקופל בפנים');
+
+  if (!sg.histIn || !sg.histGanIn)
+    bad('שני פאנלי הנתונים ההיסטוריים לא נכנסו לכרטיס אחד');
+  else if (sg.folds.length !== 2 || sg.folds.some(Boolean))
+    bad('הנתונים ההיסטוריים אינם שתי רשימות סגורות', ['פתוחות: ' + JSON.stringify(sg.folds)]);
+  else ok('נתונים היסטוריים: שתי רשימות שנפתחות, סגורות כברירת מחדל');
+
+  if (!sg.ages.length || !sg.camps.length)
+    bad('גילי הילדים / הקמפוסים אינם מוצגים כשבבים', ['גילים=' + sg.ages.length + ' קמפוסים=' + sg.camps.length]);
+  else if (!sg.roles.length || !sg.roleGrip || !sg.roleColor || !sg.roleDel)
+    bad('שורות התפקידים חסרות ידית גרירה / צבע / מחיקה',
+        ['שורות=' + sg.roles.length + ' ידית=' + sg.roleGrip + ' צבע=' + sg.roleColor + ' מחיקה=' + sg.roleDel]);
+  else if (!sg.capsIn || !sg.tzIn)
+    bad('רף השיבוץ / מינימום הצהרון אינם בכרטיסים שלהם');
+  else ok('רשימות המערכת: ' + sg.ages.length + ' גילים · ' + sg.camps.length + ' קמפוסים · '
+          + sg.roles.length + ' תפקידים (גרירה · צבע · מחיקה)');
+
+  if (sg.halves !== 2 || !sg.presIn || !sg.actIn)
+    bad('"מי מחובר" ו"יומן פעילות" לא אוחדו לכרטיס אחד בשני טורים', ['טורים: ' + sg.halves]);
+  else if (!sg.usersIn || !sg.adminsIn)
+    bad('"ניהול משתמשים" ו"מנהלי מערכת" לא אוחדו', ['משתמשים=' + sg.usersIn + ' מנהלים=' + sg.adminsIn]);
+  else if (!sg.uCell)
+    bad('טבלת המשתמשים לא קיבלה עמודת "משתמש" עם עיגול ראשי תיבות');
+  else if (!sg.brandIn || !sg.subIn || !sg.installIn)
+    bad('"מיתוג" ו"התקנה כאפליקציה" לא אוחדו, או שחסרה כותרת המשנה',
+        ['מיתוג=' + sg.brandIn + ' כותרת משנה=' + sg.subIn + ' התקנה=' + sg.installIn]);
+  else if (!sg.fbIn)
+    bad('"פניות והצעות שיפור" אינו בכרטיס משלו');
+  else ok('איחודים: מי מחובר + יומן · משתמשים + מנהלים · מיתוג + התקנה (עם כותרת משנה)');
+
+  /* לחיצה על שבב שנה — חייבת להזיז את DB.activeYear דרך המאזין המקורי */
   const sw = await p.evaluate(async () => {
-    const sel = document.querySelector('.lab-yearsel');
-    if (!sel) return null;
-    sel.value = 'תשפ"ח';
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 500));
+    const chip = [...document.querySelectorAll('.lab-yearchip')]
+      .find(c => (c.querySelector('.lab-chiptxt') || {}).textContent === 'תשפ"ח');
+    if (!chip) return null;
+    chip.querySelector('.lab-chiptxt').click();
+    await new Promise(r => setTimeout(r, 700));
     return { active: DB.activeYear,
              real: (document.getElementById('yearSelect') || {}).value,
-             again: (document.querySelector('.lab-yearsel') || {}).value };
+             on: [...document.querySelectorAll('.lab-yearchip.on .lab-chiptxt')].map(t => t.textContent).join(',') };
   });
-  if (!sw)                       bad('הבורר שבהגדרות לא נמצא');
-  else if (sw.active !== 'תשפ"ח') bad('בחירת שנה בהגדרות לא שינתה את שנת העבודה', ['DB.activeYear=' + sw.active]);
+  if (!sw)                        bad('שבב השנה לא נמצא');
+  else if (sw.active !== 'תשפ"ח') bad('לחיצה על שבב שנה לא שינתה את שנת העבודה', ['DB.activeYear=' + sw.active]);
   else if (sw.real !== 'תשפ"ח')   bad('ה-<select> המקורי לא סונכרן', ['ערך=' + sw.real]);
-  else if (sw.again !== 'תשפ"ח')  bad('הבורר לא נבנה מחדש עם השנה החדשה', ['ערך=' + sw.again]);
-  else ok('בחירת שנה בהגדרות מחליפה את שנת העבודה (תשפ"ז ← תשפ"ח) והמסך נבנה מחדש');
+  else if (sw.on !== 'תשפ"ח')     bad('הסימון "פעילה" לא עבר לשנה החדשה', ['מסומן=' + sw.on]);
+  else ok('לחיצה על שבב שנה מחליפה את שנת העבודה (תשפ"ז ← תשפ"ח) והסימון עובר איתה');
   await p.evaluate(() => { DB.activeYear = 'תשפ"ז'; DB.years = ['תשפ"ז']; route(); });
+  await p.waitForTimeout(400);
+
+  /* --- 8ב. מרכז ההודעות: הודעה קולית מטקסט ------------------------------ */
+  await goTab(p, 'messages'); await p.waitForTimeout(700);
+  const vc = await p.evaluate(async () => {
+    const btn = [...document.querySelectorAll('.msg-ch')].find(b => b.dataset.v === 'voice');
+    if (!btn) return null;
+    btn.click();
+    await new Promise(r => setTimeout(r, 600));
+    const spoken = [];
+    /* מנוע דיבור מדומה — speechSynthesis הוא accessor על window ולכן חייב defineProperty */
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+      speak: u => spoken.push(u.text), cancel(){}, getVoices: () => [
+        { name: 'Daniel', lang: 'en-GB' }, { name: 'Carmit', lang: 'he-IL' } ] } });
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true,
+      value: function (t) { this.text = t; } });
+    const box = document.querySelector('#msg-voice-wrap');
+    if (!box) return { wrap: false };
+    /* בניית המסך מחדש כדי שרשימת הקולות תיקרא מהמנוע המדומה */
+    route(); await new Promise(r => setTimeout(r, 600));
+    const sel = document.querySelector('#msg-voice');
+    const opts = sel ? [...sel.options].map(o => o.value) : [];
+    document.querySelector('#msg-voice-rate').value = '1.2';
+    document.querySelector('#msg-voice-rate').dispatchEvent(new Event('change', { bubbles: true }));
+    document.querySelector('#msg-voice-play').click();
+    return { wrap: true, opts, spoken, inMain: !!document.querySelector('.lab-wmain #msg-voice-wrap'),
+             saved: (DB.settings.msgVoice || {}) };
+  });
+  if (!vc)              bad('אין כפתור ערוץ "הודעה קולית" במרכז ההודעות');
+  else if (!vc.wrap)    bad('בחירת הערוץ הקולי לא פתחה את כרטיס "הקול של ההודעה"');
+  else if (vc.opts.join(',') !== 'Carmit,Daniel')
+    bad('רשימת הקולות אינה נטענת מהמכשיר (עברית קודם)', ['התקבל: ' + vc.opts.join(' · ')]);
+  else if (!vc.spoken.length)
+    bad('"השמעה" לא העבירה טקסט למנוע ההקראה');
+  else if (!/ילדה/.test(vc.spoken[0]))
+    bad('הטקסט שהוקרא אינו ההודעה הממוזגת של הנמענת הראשונה', ['הוקרא: ' + vc.spoken[0].slice(0, 60)]);
+  else if (vc.saved.rate !== 1.2)
+    bad('בחירת הקול והמהירות אינה נשמרת', ['נשמר: ' + JSON.stringify(vc.saved)]);
+  else if (!vc.inMain)
+    bad('כרטיס הקול אינו יושב בטור הראשי של מסך ההודעות המעוצב');
+  else ok('הודעה קולית: 2 קולות (עברית קודם) · הטקסט הממוזג הוקרא · הקול והמהירות נשמרו');
+
+
+  /* --- 8ג. שבבי הרשימות: עריכה, הוספה, מחיקה וגרירה --------------------
+     ⚠️ ב-Firebase המדומה cloudDocs ריק, ולכן rebuildDB() שאחרי כל שמירה
+     (‎250ms) מחזיר את DB לברירות המחדל. לכן כל פעולה נבדקת מיד אחריה,
+     ומצב הפתיחה של הפעולה הבאה הוא ברירת המחדל — 2,3,4,5,6. */
+  await p.evaluate(() => { __set('active', 'settings'); route(); });
+  await p.waitForTimeout(900);
+  const listNow = () => p.evaluate(() =>
+    [...document.querySelectorAll('[data-lab="ages"] .lab-chip[data-v]')].map(c => c.dataset.v).join(','));
+  const saved = () => p.evaluate(() => (DB.settings.childAges || []).join(','));
+
+  const chipsBefore = await listNow();
+
+  /* עריכה — כתיבה בשבב ויציאה ממנו */
+  await p.evaluate(() => {
+    const t = document.querySelector('[data-lab="ages"] .lab-chip[data-v] .lab-chiptxt');
+    t.focus(); t.textContent = '2.5'; t.blur();   /* בלי focus, blur() אינו משגר אירוע */
+  });
+  await p.waitForTimeout(150);
+  const afterEdit = await saved();
+  await p.waitForTimeout(600);
+
+  /* הוספה — שבב ה-"+" הופך לשדה */
+  await p.evaluate(async () => {
+    document.querySelector('[data-lab="ages"] .lab-chipadd').click();
+    await new Promise(r => setTimeout(r, 120));
+    const inp = document.querySelector('[data-lab="ages"] .lab-chipinput');
+    inp.value = '7';
+    inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  });
+  await p.waitForTimeout(150);
+  const afterAdd = await saved();
+  await p.waitForTimeout(600);
+
+  /* גרירה — הידית מפעילה draggable, והשחרור כותב את הסדר החדש */
+  await p.evaluate(() => {
+    const box  = document.querySelector('[data-lab="ages"] .lab-chips');
+    const list = [...box.querySelectorAll('.lab-chip[data-v]')];
+    const from = list[0], to = list[2];              /* הראשון אל מעבר לשלישי */
+    from.querySelector('.lab-grip').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    const dt = new DataTransfer();
+    from.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    const r = to.getBoundingClientRect();
+    to.dispatchEvent(new DragEvent('dragover', { bubbles: true, dataTransfer: dt,
+      clientX: r.left + 2, clientY: r.top + r.height / 2 }));
+    from.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+  });
+  await p.waitForTimeout(150);
+  const afterDrag = await saved();
+  await p.waitForTimeout(600);
+
+  /* מחיקה */
+  await p.evaluate(() => { document.querySelector('[data-lab="ages"] .lab-chip[data-v] .lab-chipx').click(); });
+  await p.waitForTimeout(150);
+  const afterDel = await saved();
+  await p.waitForTimeout(600);
+
+  if (chipsBefore !== '2,3,4,5,6')
+    bad('שבבי גילי הילדים אינם מציגים את הרשימה', ['התקבל: ' + chipsBefore]);
+  else if (afterEdit !== '2.5,3,4,5,6')
+    bad('עריכת שבב לא נשמרה', ['אחרי: ' + afterEdit]);
+  else if (afterAdd !== '2,3,4,5,6,7')
+    bad('הוספת שבב לא נשמרה', ['אחרי: ' + afterAdd]);
+  else if (afterDrag !== '3,4,2,5,6')
+    bad('גרירת שבב לא שינתה את הסדר', ['אחרי: ' + afterDrag]);
+  else if (afterDel !== '3,4,5,6')
+    bad('מחיקת שבב לא נשמרה', ['אחרי: ' + afterDel]);
+  else ok('שבבי הרשימות: עריכה (2.5) · הוספה (7) · גרירה (' + afterDrag + ') · מחיקה (' + afterDel + ')');
+  await p.evaluate(() => { __set('currentUser', null); route(); });
   await p.waitForTimeout(400);
 
   /* --- 9. פס הגלילה של הסרגל — צר, בלי חיצים, בגוון הסרגל --------------- */

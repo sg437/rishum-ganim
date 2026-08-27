@@ -29,6 +29,8 @@ var WOMAN = ["שרה","מלכה","רויזי","פייגי","נחמה","אסתי"
 var CITY = [["ירושלים",52],["בית שמש",21],["מודיעין עילית",16],["ביתר עילית",8],["אחר",3]];
 var STREET = ["הרב סורוצקין","נחל לכיש","רשב״ם","חזון איש","אבני נזר","ר׳ עקיבא","הרב שך"];
 var CAMPUS = ["קמפוס צפון","קמפוס מרכז","קמפוס דרום"];
+var DEMO_AGES = ["2","3","4","5","6"];               /* גילי הילדים שבהגדרות */
+var demoMsgChannel = "email";                        /* ערוץ ההודעות שנבחר — תצוגה בלבד */
 var GANNAME = ["רימון","תפוח","דובדבן","שקד","זית","גפן","אגוז","אלון","תמר","הדס",
   "ערבה","אתרוג","דקל","ברוש","אורן","לוטם","כלנית","רקפת","נרקיס","סחלב",
   "יסמין","דפנה","מרווה","זעתר","אזוב","לבנדר","ורד","חבצלת","סביון"];
@@ -772,17 +774,22 @@ VIEW.messages = function(v){
     h("div", { "class": "note", id: "msg-count",
       text: "61 נמענות תואמות · 58 עם נייד תקין · 3 ללא פרטי קשר" })
   ]);
-  var CH = [["✉️ מייל", 1], ["💬 וואטסאפ", 0], ["📱 SMS", 0], ["📞 הודעה קולית", 0]];
+  var CH = [["✉️ מייל", "email"], ["💬 וואטסאפ", "whatsapp"], ["📱 SMS", "sms"], ["📞 הודעה קולית", "voice"]];
   var fs2 = h("fieldset", null, [
     txt("legend", null, "2 · באיזה ערוץ"),
     h("div", { "class": "row", style: "gap:6px;flex-wrap:wrap" },
-      CH.map(function(c, i){
-        var b = h("button", { "class": "btn sm msg-ch" + (c[1] ? "" : " ghost"), type: "button", text: c[0] });
-        b.dataset.v = ["email", "whatsapp", "sms", "voice"][i];
-        b.onclick = demoAction("בחירת ערוץ");
+      CH.map(function(c){
+        var on = demoMsgChannel === c[1];
+        var b = h("button", { "class": "btn sm msg-ch" + (on ? "" : " ghost"), type: "button", text: c[0] });
+        b.dataset.v = c[1];
+        /* בחירת ערוץ היא מצב תצוגה בלבד — אין כאן שום כתיבה */
+        b.onclick = function(){ demoMsgChannel = c[1]; route(); };
         return b;
       })),
-    h("div", { "class": "hint", id: "msg-ch-note", style: "margin-top:8px" })
+    h("div", { "class": "hint", id: "msg-ch-note", style: "margin-top:8px",
+      text: demoMsgChannel === "voice"
+        ? "הטקסט שנכתב למטה מעובד להודעה קולית לפי הקול שנבחר — אפשר לשמוע אותו לפני השליחה."
+        : "המיילים נשלחים דרך גשר הדרייב, ללא עלות. וואטסאפ · SMS · קולי — דרך ספק חיצוני, ובלעדיו במצב ידני." })
   ]);
   var fs3 = h("fieldset", null, [
     txt("legend", null, "3 · מה שולחים"),
@@ -802,6 +809,22 @@ VIEW.messages = function(v){
         text: "להורי {{שם הילדה}} שיחיו,\n\nילדתכם שובצה ל{{גן}}, אצל הגננת {{גננת}}.\nפתיחת השנה: {{תאריך}}.\n\nבברכה,\nרשת הגנים" })
     ])
   ]);
+  /* הודעה קולית — הטקסט שלמעלה מוקרא בקול שנבחר */
+  if(demoMsgChannel === "voice") fs3.appendChild(
+    h("div", { id: "msg-voice-wrap", style: "margin-top:12px;border:1px solid var(--border);border-radius:12px;padding:12px" }, [
+      h("div", { style: "font-weight:700", text: "🔊 הקול של ההודעה" }),
+      txt("div", "sub", "הטקסט שנכתב למעלה מעובד להודעה קולית — בקול, במהירות ובגובה שנבחרים כאן. שדות המיזוג ממולאים לכל נמענת בנפרד."),
+      h("div", { "class": "row", style: "gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:10px" }, [
+        h("div", { "class": "field grow", style: "min-width:220px" }, [ txt("label", null, "קול"),
+          h("select", { id: "msg-voice", html: "<option>עברית · Carmit</option><option>עברית · Gadi</option><option>en-GB · Daniel</option>" }) ]),
+        h("div", { "class": "field", style: "min-width:150px" }, [ txt("label", null, "מהירות · 1.0"),
+          h("input", { type: "range", id: "msg-voice-rate", min: "0.6", max: "1.4", step: "0.05", value: "1" }) ]),
+        h("div", { "class": "field", style: "min-width:150px" }, [ txt("label", null, "גובה · 1.0"),
+          h("input", { type: "range", id: "msg-voice-pitch", min: "0.6", max: "1.4", step: "0.05", value: "1" }) ]),
+        btn("▶︎ השמעה"), btn("■ עצירה", "ghost")
+      ]),
+      txt("div", "hint", "בדמו אין הקראה. בתוכנה — ההשמעה משמיעה את ההודעה של הנמענת הראשונה, בדיוק כפי שתישמע בשיחה.")
+    ]));
   var fs4 = h("fieldset", null, [
     txt("legend", null, "4 · תצוגה מקדימה ושליחה"),
     h("div", { "class": "row", style: "gap:8px;flex-wrap:wrap" }, [
@@ -905,55 +928,178 @@ VIEW.tools = function(v){
     ["🔑 הגדרת מפתח מפה"]));
 };
 
+/* מסך ההגדרות — אותם עוגנים בדיוק שיש בתוכנה (#ages-box, #br-title, …),
+   כדי שמעבדת העיצוב תזהה את הפאנלים ותבנה מהם את אותם כרטיסים מאוחדים.
+   הנתונים מזויפים; המבנה זהה. */
 VIEW.settings = function(v){
   var sec = function(title, sub, body){
-    var p = h("div", { "class": "panel" }, [ txt("h2", null, title), txt("div", "sub", sub) ]);
+    var p = h("div", { "class": "panel" }, [ txt("h2", null, title) ]);
+    if(sub) p.appendChild(txt("div", "sub", sub));
     if(body) p.appendChild(body);
     return p;
   };
+  var box = function(id, kids){ return h("div", { id: id }, kids || []); };
+  var field = function(label, attrs){
+    return h("div", { "class": "field" }, [ txt("label", null, label), h("input", attrs || {}) ]);
+  };
+
   v.appendChild(sec("מי מחובר עכשיו", "משתמשים פעילים ב-5 הדקות האחרונות.",
-    h("div", { "class": "row", style: "gap:8px;flex-wrap:wrap;margin-top:8px", html:
+    box("presenceBox", [ h("div", { "class": "row", style: "gap:8px;flex-wrap:wrap;margin-top:8px", html:
       '<span class="pill ok">● שרה ברקוביץ׳ · לפני 0 שנ׳</span>' +
       '<span class="pill neutral">● אהובה רקובסקי · לפני 4 דק׳</span>' +
-      '<span class="pill neutral">● מזכירות · לפני 7 דק׳</span>' })));
+      '<span class="pill neutral">● מזכירות · לפני 7 דק׳</span>' }) ])));
+
   v.appendChild(sec("יומן פעילות — מי ערך מה ומתי", "העריכה האחרונה של כל משתמש.",
-    table(["משתמש", "מתי", "מה עשה/תה"], [
+    box("activityBox", [ table(["משתמש", "מתי", "מה עשה/תה"], [
       ["שרה ברקוביץ׳", "היום 16:23", "שיבצה 12 תלמידות לגן רימון"],
       ["אהובה רקובסקי", "היום 14:50", "עדכנה תיק: לבין יסכה"],
       ["מזכירות", "אתמול 08:20", "ייבוא 34 רשומות ממועד ב׳"],
       ["ישראל וינברג", "אתמול 11:40", "עדכן גן אגוז לחינוך מיוחד"]
+    ]) ])));
+
+  v.appendChild(sec("מיתוג — כותרת ולוגו", "שינוי הכותרת, כותרת המשנה והלוגו של המערכת.",
+    h("div", null, [
+      h("div", { "class": "grid g2" }, [
+        field("כותרת ראשית", { id: "br-title", value: "מערכת ניהול" }),
+        field("כותרת משנה",  { id: "br-sub",   value: "רשת הגנים · דמו" }),
+        field("לוגו — אימוג׳י או קישור לתמונה", { id: "br-logo", value: "🎒" })
+      ]),
+      h("div", { "class": "row", style: "margin-top:10px;align-items:center;gap:10px" }, [
+        h("div", { id: "br-logo-prev", style: "width:52px;height:52px;border-radius:12px;border:1px solid var(--border);display:grid;place-items:center;font-size:1.6rem", text: "🎒" }),
+        btn("📤 העלאת קובץ לוגו", "ghost"),
+        txt("span", "hint", "התמונה תוקטן ותוטמע בתוך המערכת, בלי תלות בקישור חיצוני.")
+      ]),
+      h("div", { "class": "row", style: "margin-top:10px" }, [ btn("💾 שמור מיתוג"), btn("איפוס לברירת מחדל", "ghost") ])
     ])));
-  v.appendChild(sec("מיתוג — כותרת ולוגו", "שינוי הכותרת הראשית והלוגו של המערכת."));
-  v.appendChild(sec("התקנה כאפליקציה — טלפון או מחשב", "הוספת המערכת למסך הבית."));
-  v.appendChild(sec("רף שיבוץ — מקסימום משובצות בגן", "מגבלה קשיחה על השיבוץ הסופי בלבד.",
-    h("div", { "class": "row", style: "margin-top:8px" }, [
-      h("div", { "class": "field" }, [txt("label", null, "ברירת מחדל — רגיל"), h("input", { value: "32" })]),
-      h("div", { "class": "field" }, [txt("label", null, "ברירת מחדל — ח״מ"), h("input", { value: "12" })]),
-      btn("שמירה")
+
+  v.appendChild(sec("התקנה כאפליקציה — טלפון או מחשב", "הוספת המערכת למסך הבית או לשולחן העבודה.",
+    box("install-box", [ txt("div", "hint", "במחשב (Chrome/Edge): אייקון ההתקנה ⊕ בשורת הכתובת. באנדרואיד: תפריט ⋮ ← \"התקנת אפליקציה\". באייפון: שיתוף ⬆️ ← \"הוספה למסך הבית\".") ])));
+
+  v.appendChild(sec("רף שיבוץ — מקסימום משובצות בגן", "מגבלה קשיחה על השיבוץ הסופי בלבד. הרישום אינו מוגבל.",
+    h("div", null, [
+      h("div", { "class": "grid g3", style: "margin-top:10px" }, [
+        field("ברירת מחדל — חינוך רגיל",  { id: "ac-reg",  value: "36" }),
+        field("ברירת מחדל — חינוך מיוחד", { id: "ac-spec", value: "12" }),
+        h("div", { style: "align-self:end" }, [
+          h("label", { "class": "check", html: '<input type="checkbox" id="ac-usecap"> אם אין רף — להשתמש ב<b>קיבולת</b> של הגן כרף' }),
+          txt("div", "hint", "כבוי כברירת מחדל.")
+        ])
+      ]),
+      h("div", { "class": "row", style: "margin-top:10px" }, [ btn("💾 שמירת רף השיבוץ") ]),
+      h("div", { style: "margin-top:12px" }, [
+        txt("div", "hint", "מצב הגנים הפעילים כרגע (משובצות / רף):"),
+        h("div", { id: "ac-pills", style: "display:flex;flex-wrap:wrap;gap:6px;margin-top:6px", html:
+          GANS.slice(0, 6).map(function(g){
+            return '<span style="display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px">' +
+                   g.name + ' <span class="pill ok">' + g.used + '/' + g.cap + '</span></span>';
+          }).join("") })
+      ])
     ])));
-  v.appendChild(sec("שנים", "כל שנה מנוהלת בנפרד.",
-    h("div", { "class": "row", style: "gap:6px;margin-top:8px" }, [
-      btn(YEAR + " · פעילה"), btn(PREV, "ghost"), btn("+ הוספת שנה", "ghost")
+
+  v.appendChild(sec("שנים", "כל שנה מנוהלת בנפרד. הבחירה קובעת על איזו שנה עובדים.",
+    h("div", null, [
+      box("years-box", [ h("div", { "class": "row", style: "gap:8px", html:
+        '<span class="pill ok" style="padding:6px 12px">' + YEAR + '</span>' +
+        '<span class="pill neutral" style="padding:6px 12px">' + PREV +
+        ' <button class="btn ghost sm" data-dely="' + PREV + '" style="padding:0 6px;margin-inline-start:6px">✕</button></span>' }) ]),
+      h("div", { "class": "row", style: "margin-top:10px" }, [
+        field("הוספת שנה", { id: "new-year", placeholder: 'לדוגמה: תשפ"ט' }),
+        btn("הוסף שנה")
+      ])
     ])));
-  v.appendChild(sec("מעבר שנה — קידום לגן המתקדם", "מעתיק את התלמידות משנה קודמת ומקדם אותן לגיל הבא."));
-  v.appendChild(sec("נתונים היסטוריים (שנים קודמות)", "מספרי רישום משנים שאין להן נתונים מלאים."));
-  v.appendChild(sec("מינימום לפתיחת צהרון", "בלשונית שיבוץ — צהרון, כמותנה לפתיחה.",
-    h("div", { "class": "row", style: "margin-top:8px" }, [
-      h("div", { "class": "field" }, [txt("label", null, "תלמידות"), h("input", { value: "15" })]), btn("שמירה")
+
+  v.appendChild(sec("מעבר שנה — קידום לגן המתקדם",
+    "מעתיק את התלמידות משנה קודמת ומקדם כל אחת לגן המתקדם באותו קמפוס.",
+    h("div", null, [
+      h("div", { "class": "row" }, [
+        h("div", { "class": "field", style: "min-width:150px" }, [ txt("label", null, "משנה"),
+          h("select", { id: "pr-from", html: "<option>" + PREV + "</option>" }) ]),
+        h("div", { "class": "field", style: "min-width:150px" }, [ txt("label", null, "לשנה"),
+          h("select", { id: "pr-to", html: "<option>" + YEAR + "</option>" }) ]),
+        btn("בצע מעבר שנה")
+      ]),
+      h("div", { id: "pr-status", "class": "hint", style: "margin-top:6px" }),
+      h("div", { "class": "note", style: "margin-top:8px", html:
+        "<b>מה עובר:</b> פרטים אישיים, הורים וכתובת. <b>מתאפס:</b> מסמכים, תוכניות, קליטה בעירייה ושיבוץ סופי." }),
+      h("label", { id: "pr-skipgrad-wrap", "class": "check", style: "margin-top:8px",
+        html: '<input type="checkbox" id="pr-skipgrad" checked> לא להעביר את גיל 5 המסיימות (פרט לילדות השארות)' })
     ])));
-  v.appendChild(sec("גילי הילדים (רשימת תלמידים)", "הגילים לבחירה בתיק.",
-    h("div", { "class": "row", style: "gap:6px;margin-top:8px", html:
-      ["2", "3", "4", "5", "6"].map(function(a){ return '<span class="fchip">' + a + '</span>'; }).join("") })));
-  v.appendChild(sec("תפקידי צוות", "לכל תפקיד: שיוך חינוך וסדר בשיבוץ.",
-    h("div", { "class": "row", style: "gap:6px;margin-top:8px", html:
-      ROLES.map(function(r){ return '<span class="fchip">' + r + '</span>'; }).join("") })));
-  v.appendChild(sec("קמפוסים", "הקמפוס של כל תלמידה נגזר אוטומטית לפי הגן.",
-    h("div", { "class": "row", style: "gap:6px;margin-top:8px", html:
-      CAMPUS.map(function(c){ return '<span class="fchip">' + c + '</span>'; }).join("") })));
-  v.appendChild(sec("מנהלי מערכת", "הרשאות עריכה מלאות."));
-  v.appendChild(sec("חשבון והתחברות", "כתובת המייל והסיסמה."));
-  v.appendChild(sec("ניהול משתמשים", "הוספה, הרשאות והסרה."));
-  v.appendChild(sec("💡 פניות והצעות שיפור", "כל הצעה נשמרת ונשלחת לפיתוח."));
+  v.appendChild(sec("נתונים היסטוריים (שנים קודמות)", "סיכומי רישום משנים שקדמו למערכת.",
+    box("hist-box", [ table(["שנה", "מועד א׳", "מועד ב׳", "מועד ג׳", "סופי"], [
+      [PREV, "148", "162", "102", "412"], ["תשפ״ה", "139", "155", "96", "390"]
+    ]) ])));
+  v.appendChild(sec("נתונים היסטוריים לפי גן (שנים קודמות)", "מספרי התלמידות בכל גן, לפי מועדים.",
+    box("hist-gans-box", [ table(["גן", "מועד א׳", "מועד ב׳", "סופי"], [
+      ["גן רימון", "12", "14", "32"], ["גן דובדבן", "11", "13", "29"]
+    ]) ])));
+
+  v.appendChild(sec("מינימום לפתיחת צהרון", "בלשונית שיבוץ → צהרונים, גן שמתחת למספר הזה יסומן באדום.",
+    h("div", { "class": "row" }, [ field("תלמידות", { id: "tzmin", value: "15" }), btn("שמירה") ])));
+
+  v.appendChild(sec("גילי הילדים (רשימת תלמידים)", "הגילים שמופיעים לבחירה בתיק ובסינון.",
+    h("div", null, [
+      box("ages-box", [ h("div", { "class": "row", style: "gap:6px", html:
+        DEMO_AGES.map(function(a){ return '<span class="fchip">' + a + '</span>'; }).join("") }) ]),
+      h("div", { "class": "row", style: "margin-top:10px" }, [
+        field("הוספת גיל", { id: "new-age", placeholder: "למשל 7" }),
+        btn("הוסף"), btn("איפוס לברירת מחדל", "ghost")
+      ])
+    ])));
+
+  v.appendChild(sec("תפקידי צוות", "לכל תפקיד: שיוך חינוך, וסדר התפקידים קובע את סדר התקנים בשיבוץ.",
+    h("div", null, [
+      box("roles-box", [ h("div", { "class": "row", style: "gap:6px", html:
+        ROLES.map(function(r){ return '<span class="fchip">' + r + '</span>'; }).join("") }) ]),
+      h("div", { "class": "row", style: "margin-top:10px" }, [
+        field("הוספת תפקיד", { id: "new-role", placeholder: "למשל: מטפלת" }),
+        btn("הוסף"), btn("איפוס לברירת מחדל", "ghost")
+      ])
+    ])));
+
+  v.appendChild(sec("קמפוסים", "הקמפוס של כל תלמידה נקבע אוטומטית לפי הגן שלה.",
+    h("div", null, [
+      box("campus-box", [ h("div", { "class": "row", style: "gap:6px", html:
+        CAMPUS.map(function(c){ return '<span class="fchip">' + c + '</span>'; }).join("") }) ]),
+      h("div", { "class": "row", style: "margin-top:10px" }, [
+        field("הוספת קמפוס", { id: "new-campus", placeholder: "למשל: קמפוס מרכז" }),
+        btn("הוסף"), btn("🔄 עדכן אצל התלמידות לפי הגן", "ghost")
+      ])
+    ])));
+
+  v.appendChild(sec("מנהלי מערכת", "רק כתובות שברשימה יכולות לשנות את הגדרות המערכת.",
+    h("div", null, [
+      box("admins-box", [ h("div", { "class": "row", style: "gap:8px", html:
+        '<span class="pill ok" style="padding:6px 12px">rishum@ganim.org</span>' }) ]),
+      h("div", { "class": "row", style: "margin-top:10px" }, [
+        field("הוספת מנהל (אימייל)", { id: "new-admin", placeholder: "name@example.com" }), btn("הוסף מנהל")
+      ])
+    ])));
+
+  v.appendChild(sec("חשבון והתחברות", "הכניסה מאובטחת בחשבון Google מורשה בלבד.",
+    box("auth-box", [ h("div", { "class": "note", html: "👤 מחובר/ת כ: <b>demo@ganim.org</b>" }) ])));
+
+  v.appendChild(sec("ניהול משתמשים", "אישור כתובות Google והרשאת העריכה של כל אחת.",
+    h("div", null, [
+      h("div", { "class": "row" }, [
+        field("שם (לא חובה)", { id: "nu-name", placeholder: "שם מלא" }),
+        field("אימייל Google של המשתמש", { id: "nu-email", placeholder: "name@gmail.com" }),
+        btn("➕ אשר משתמש")
+      ]),
+      box("users-box", [ table(["אימייל", "שם", "סטטוס", "הרשאת עריכה", "עריכה אחרונה", ""], [
+        ["rishum@ganim.org", "רכזת רישום", h("span", { "class": "pill ok", text: "מנהל" }), "עריכה מלאה", "היום 08:12", ""],
+        ["office@ganim.org", "מזכירות",   h("span", { "class": "pill neutral", text: "מורשה" }), "רק חינוך רגיל", "אתמול 16:40", ""],
+        ["shb@ganim.org",    "שרה ברקוביץ׳", h("span", { "class": "pill neutral", text: "מורשה" }), "צופה בלבד", "לפני 3 ימים", ""]
+      ]) ])
+    ])));
+
+  v.appendChild(sec("💡 פניות והצעות שיפור", "הודעות שנשלחו דרך \"יצירת קשר / הצעה\" שבתפריט.",
+    h("div", null, [
+      h("div", { "class": "row", style: "max-width:460px" }, [
+        field("כתובת מייל לפניות", { id: "contact-email", placeholder: "ברירת מחדל: המנהל הראשון" }),
+        btn("שמירה", "ghost")
+      ]),
+      box("feedback-box", [ txt("div", "hint", "אין פניות עדיין.") ])
+    ])));
 };
 
 VIEW.guide = function(v){
@@ -1073,7 +1219,7 @@ window.__uiLab = Object.freeze({
       case "messages":     return "שליחה מרוכזת · " + YEAR;
       case "export":       return "בחר/י מה לייצא, לאיזה פורמט ולמי";
       case "templates":    return "מסמכים ותבניות · " + YEAR;
-      case "settings":     return "כל ההגדרות במקום אחד · מקובצות";
+      case "settings":     return "כל ההגדרות במקום אחד, מקובצות — חלקן למנהלי מערכת בלבד";
       default:             return YEAR;
     }
   },
@@ -1307,6 +1453,25 @@ window.__uiLab = Object.freeze({
   addStudent:  function(){ toast("דמו — הוספת ילדה אינה פעילה כאן."); },
   openMenu:    function(){ openDrawer(); },
   activeTab:   function(){ return active; },
+
+  /* מסך ההגדרות — אותו חוזה שבתוכנה. בדמו אין כתיבה: כל שמירה מציגה
+     הודעת "דמו" ואינה משנה דבר. */
+  settingsLists: function(){
+    var EXTRA = { "גננת משלימה":"עם בחירת ימים", "סייעת משלימה":"עם בחירת ימים",
+                  "גננת ממלאת מקום":"עם תקופה", "סייעת ממלאת מקום":"עם תקופה" };
+    return {
+      admin: true,
+      ages: DEMO_AGES.slice(),
+      campuses: CAMPUS.slice(),
+      roles: ROLES.map(function(r){
+        return { name:r, edu:"both", color:"#8a8f98",
+                 note: r === "סייעת ב׳" ? "נפתחת מ-30 · לא בגן חובה" : (EXTRA[r] || "") };
+      })
+    };
+  },
+  saveAges:      function(){ toast('דמו — שמירת רשימה אינה פעילה כאן. שום נתון לא נשמר.'); },
+  saveCampuses:  function(){ toast('דמו — שמירת רשימה אינה פעילה כאן. שום נתון לא נשמר.'); },
+  saveRoles:     function(){ toast('דמו — שמירת רשימה אינה פעילה כאן. שום נתון לא נשמר.'); },
   go:          function(tab){ route(tab); }
 });
 
