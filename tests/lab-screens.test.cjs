@@ -483,7 +483,9 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     /* רשימת המקטעים עברה לסרגל הניווט, מתחת ל"הגדרות" */
     const toc   = [...document.querySelectorAll('#setSubnav .subnav-g')].map(a => a.textContent.trim());
     const jumps = [...document.querySelectorAll('#setSubnav .subnav-i')].map(b => b.dataset.setjump);
-    const dead  = jumps.filter(k => !document.querySelector('#view [data-set~="' + k + '"]'));
+    /* פריט אחד ברשימה עשוי לכסות כמה פאנלים — די באחד מהם */
+    const dead  = jumps.filter(k => !document.querySelector(
+      k.trim().split(/\s+/).map(x => '#view [data-set~="' + x + '"]').join(',')));
     const yearC = col && col.querySelector('[data-lab="year"]');
     return {
       inTop:      !!document.querySelector('header.top .lab-yearpick, header.top #yearSelect'),
@@ -530,7 +532,7 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     };
   });
   const GROUPS = ['שנה ונתונים', 'רשימות המערכת', 'מערכת ומשתמשים', 'מראה והתקנה'];
-  const CARDS  = ['year','hist','ages','roles','campus','caps','tzmin','presence','users','auth','brand','feedback'];
+  const CARDS  = ['year','hist','ages','roles','campus','caps','tzmin','presence','users','auth','feedback','brand'];
   if (sg.inTop || sg.inTopChips)
     bad('בורר השנה עדיין יושב ברצועה העליונה');
   else if (sg.realHome !== 'drawer-year')

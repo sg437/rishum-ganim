@@ -2343,26 +2343,21 @@ let active = "home";
    admin:true — מקטע שקיים רק למנהל מערכת, ולכן אינו מוצג לשאר. */
 const SETTINGS_SECTIONS = [
   { g:"שנה ונתונים" },
-  { k:"years",    label:"שנים" },
-  { k:"promote",  label:"מעבר שנה" },
-  { k:"hist",     label:"נתונים היסטוריים" },
-  { k:"histgans", label:"נתונים היסטוריים לפי גן" },
+  { k:"years",         label:"שנה ומעבר שנה" },
+  { k:"hist",          label:"נתונים היסטוריים" },
   { g:"רשימות המערכת" },
-  { k:"ages",     label:"גילי הילדים" },
-  { k:"roles",    label:"תפקידי צוות" },
-  { k:"campus",   label:"קמפוסים" },
-  { k:"caps",     label:"רף שיבוץ" },
-  { k:"tzmin",    label:"מינימום לצהרון" },
+  { k:"ages",          label:"גילי התלמידות" },
+  { k:"roles",         label:"תפקידי צוות" },
+  { k:"campus",        label:"קמפוסים" },
+  { k:"caps",          label:"רף שיבוץ" },
+  { k:"tzmin",         label:"מינימום לצהרון" },
   { g:"מערכת ומשתמשים" },
-  { k:"presence", label:"מי מחובר עכשיו" },
-  { k:"activity", label:"יומן פעילות" },
-  { k:"admins",   label:"מנהלי מערכת" },
-  { k:"users",    label:"ניהול משתמשים", admin:true },
-  { k:"auth",     label:"חשבון והתחברות" },
-  { k:"feedback", label:"פניות והצעות שיפור", admin:true },
+  { k:"presence",      label:"מי מחובר ויומן פעילות" },
+  { k:"admins users",  label:"ניהול משתמשים" },
+  { k:"auth",          label:"חשבון והתחברות" },
+  { k:"feedback",      label:"פניות והצעות שיפור", admin:true },
   { g:"מראה והתקנה" },
-  { k:"branding", label:"מיתוג — כותרת ולוגו" },
-  { k:"install",  label:"התקנה כאפליקציה" }
+  { k:"branding",      label:"מיתוג והתקנה" }
 ];
 let setNavOpen=false;          // האם רשימת המקטעים פרושה בסרגל
 
@@ -2381,8 +2376,11 @@ function settingsNavHtml(){
 
 /* מעבר למקטע בהגדרות: פותחים את המסך אם צריך, ומגלגלים אל הפאנל */
 function gotoSettingsSection(key){
+  /* פריט אחד ברשימה עשוי לכסות כמה פאנלים (למשל מנהלי מערכת + ניהול
+     משתמשים) — קופצים לראשון מביניהם שקיים במסך. */
+  const sel=String(key).trim().split(/\s+/).map(k=>'[data-set~="'+k+'"]').join(",");
   const jump=()=>{
-    const el=$("#view").querySelector('[data-set~="'+key+'"]');
+    const el=$("#view").querySelector(sel);
     if(el) el.scrollIntoView({ block:"start", behavior:"smooth" });
   };
   if(active!=="settings"){ navToTab("settings"); setTimeout(jump,80); }
@@ -2721,6 +2719,7 @@ if(document.documentElement.classList.contains("ui-lab")){
           case "export":   return "בחר/י מה לייצא, לאיזה פורמט ולמי";
           case "templates":return "מסמכים ותבניות · " + y;
           case "settings": return "כל ההגדרות במקום אחד, מקובצות — חלקן למנהלי מערכת בלבד";
+          case "tools":    return 'חיבורים חיצוניים, רישום דיגיטלי וגיבוי — הופרדו מ"הגדרות"';
           default:         return y;
         }
       }catch(e){ return ""; }
@@ -12308,62 +12307,6 @@ function viewSettings(root){
   root.innerHTML=`
   ${admin?"":`<div class="panel"><div class="note">🔒 חלק מההגדרות (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, ניהול מנהלים) פתוחות לעריכה רק למנהל מערכת. אפשר לצפות אך לא לשנות. פנה/י למנהל להוספתך.</div></div>`}
 
-  <div class="panel" data-set="presence">
-    <h2>מי מחובר עכשיו <span class="pill neutral" id="presenceCount" style="font-size:.85rem">…</span></h2>
-    <div class="sub">משתמשים שפעילים במערכת ב-5 הדקות האחרונות (מתעדכן אונליין). שימושי לדעת מתי בטוח לבצע שינויים/עדכונים כשאין אף אחד באמצע עבודה.</div>
-    <div id="presenceBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
-  </div>
-
-  <div class="panel" data-set="activity">
-    <h2>יומן פעילות — מי ערך מה ומתי</h2>
-    <div class="sub">העריכה האחרונה של כל משתמש: מתי, ומה הוא עשה (עדכון תיק / הוספת גן וכו').</div>
-    <div id="activityBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
-  </div>
-
-  <div class="panel" data-set="branding">
-    <h2>מיתוג — כותרת ולוגו</h2>
-    <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר <b>להעלות קובץ תמונה</b> (מומלץ), או להזין אימוג'י (למשל 🎒).</div>
-    <div class="grid g2">
-      <div><label>כותרת ראשית</label><input id="br-title" value="${esc(appTitle())}" ${dis}></div>
-      <div><label>כותרת משנה</label><input id="br-sub" value="${esc(appSubtitle())}" ${dis}></div>
-      <div><label>לוגו — אימוג'י או קישור לתמונה</label><input id="br-logo" value="${esc(appLogo())}" ${dis}></div>
-    </div>
-    <div class="row" style="margin-top:10px;align-items:center;gap:10px">
-      <div style="width:52px;height:52px;border-radius:12px;border:1px solid var(--border);display:grid;place-items:center;overflow:hidden;background:var(--surface-2);font-size:1.6rem" id="br-logo-prev">${logoHtml()}</div>
-      <label class="btn ghost" style="${dis?'opacity:.5;pointer-events:none;':''}display:inline-flex;align-items:center;gap:6px">📤 העלאת קובץ לוגו<input type="file" id="br-logo-file" accept="image/*" hidden ${dis}></label>
-      <span class="hint" style="flex:1;min-width:180px">בחר/י תמונה מהמחשב/טלפון — היא תוקטן ותוטמע בתוך המערכת (בלי תלות בקישור חיצוני / Drive). לאחר הבחירה לחצ/י "שמור מיתוג".</span>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button class="btn" id="saveBrand" ${dis}>💾 שמור מיתוג</button>
-      <button class="btn ghost" id="resetBrand" ${dis}>איפוס לברירת מחדל</button>
-    </div>
-  </div>
-
-  <div class="panel" data-set="install">
-    <h2>התקנה כאפליקציה — טלפון או מחשב</h2>
-    <div class="sub">אפשר להתקין את המערכת כאפליקציה עצמאית — על המחשב (חלון נפרד עם אייקון בשולחן העבודה) או במסך הבית של הטלפון — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג". כניסה ישירה לתוכנה בלי לפתוח דפדפן.</div>
-    <div id="install-box"></div>
-  </div>
-
-  <div class="panel" data-set="caps">
-    <h2>רף שיבוץ — מקסימום משובצות בגן</h2>
-    <div class="sub"><b>כל עוד לא הוזן כאן מספר ולא הוגדר רף בכרטיס גן — אין שום הגבלה, והמערכת מתנהגת בדיוק כמו קודם.</b><br>
-      מגבלה <b>קשיחה</b> על השיבוץ הסופי: כשגן מגיע לרף, המערכת לא תאפשר לשבץ אליו עוד תלמידה ותציג הודעה.
-      <b>הרישום אינו מוגבל</b> — אפשר לרשום לגן יותר ממה שהוגדר; המגבלה חלה רק על סימון "משובצת (שיבוץ סופי)".
-      לגן מסוים אפשר לקבוע רף אחר בכרטיס הגן (לשונית גנים → "רף שיבוץ") — והוא גובר על ברירת המחדל כאן.</div>
-    <div class="grid g3" style="margin-top:10px">
-      <div><label>ברירת מחדל — חינוך רגיל</label><input id="ac-reg" inputmode="numeric" value="${esc(assignCapDefaults()['רגיל'])}" placeholder="למשל 36" ${dis}></div>
-      <div><label>ברירת מחדל — חינוך מיוחד</label><input id="ac-spec" inputmode="numeric" value="${esc(assignCapDefaults()['ח"מ'])}" placeholder="למשל 12" ${dis}></div>
-      <div style="align-self:end"><label class="check"><input type="checkbox" id="ac-usecap" ${assignCapDefaults().useCapacity?'checked':''} ${dis}> אם אין רף — להשתמש ב<b>קיבולת</b> של הגן כרף</label>
-        <div class="hint">כבוי כברירת מחדל. הפעלה תהפוך את הקיבולת הקיימת של כל גן למגבלה חוסמת.</div></div>
-    </div>
-    <div class="row" style="margin-top:10px"><button class="btn" id="saveAC" ${dis}>💾 שמירת רף השיבוץ</button></div>
-    <div style="margin-top:12px">
-      <div class="hint" style="margin-bottom:6px">מצב הגנים הפעילים כרגע (משובצות / רף):</div>
-      <div id="ac-pills" style="display:flex;flex-wrap:wrap;gap:6px">${assignCapPillsHtml()}</div>
-    </div>
-  </div>
-
   <div class="panel" data-set="years">
     <h2>שנים</h2>
     <div class="sub">כל שנה מנוהלת בנפרד (תשפ"ז, תשפ"ח, וכו'). הבחירה בראש המסך קובעת על איזו שנה עובדים.</div>
@@ -12404,15 +12347,6 @@ function viewSettings(root){
     <div id="hist-gans-box"></div>
   </div>
 
-  <div class="panel" data-set="tzmin">
-    <h2>מינימום לפתיחת צהרון</h2>
-    <div class="sub">מספר התלמידות המינימלי בקבוצה כדי לפתוח צהרון. בלשונית "שיבוץ" → "צהרונים" כל גן שמתחת למספר הזה יסומן באדום, ומעליו בירוק.</div>
-    <div class="row">
-      <div class="field" style="min-width:150px"><label>מינימום לצהרון</label><input id="tzmin" inputmode="numeric" value="${esc(DB.settings.tzaharonMin||"")}" placeholder="למשל 15" ${dis}></div>
-      <button class="btn" id="saveTzMin" style="align-self:end" ${dis}>שמור</button>
-    </div>
-  </div>
-
   <div class="panel" data-set="ages">
     <h2>גילי הילדים (רשימת תלמידים)</h2>
     <div class="sub">הגילים שמופיעים לבחירה בתיק תלמידה ובסינון רשימת התלמידים. אפשר להוסיף, לערוך (שינוי הטקסט בשדה ויציאה) או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
@@ -12446,6 +12380,46 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
+  <div class="panel" data-set="caps">
+    <h2>רף שיבוץ — מקסימום משובצות בגן</h2>
+    <div class="sub"><b>כל עוד לא הוזן כאן מספר ולא הוגדר רף בכרטיס גן — אין שום הגבלה, והמערכת מתנהגת בדיוק כמו קודם.</b><br>
+      מגבלה <b>קשיחה</b> על השיבוץ הסופי: כשגן מגיע לרף, המערכת לא תאפשר לשבץ אליו עוד תלמידה ותציג הודעה.
+      <b>הרישום אינו מוגבל</b> — אפשר לרשום לגן יותר ממה שהוגדר; המגבלה חלה רק על סימון "משובצת (שיבוץ סופי)".
+      לגן מסוים אפשר לקבוע רף אחר בכרטיס הגן (לשונית גנים → "רף שיבוץ") — והוא גובר על ברירת המחדל כאן.</div>
+    <div class="grid g3" style="margin-top:10px">
+      <div><label>ברירת מחדל — חינוך רגיל</label><input id="ac-reg" inputmode="numeric" value="${esc(assignCapDefaults()['רגיל'])}" placeholder="למשל 36" ${dis}></div>
+      <div><label>ברירת מחדל — חינוך מיוחד</label><input id="ac-spec" inputmode="numeric" value="${esc(assignCapDefaults()['ח"מ'])}" placeholder="למשל 12" ${dis}></div>
+      <div style="align-self:end"><label class="check"><input type="checkbox" id="ac-usecap" ${assignCapDefaults().useCapacity?'checked':''} ${dis}> אם אין רף — להשתמש ב<b>קיבולת</b> של הגן כרף</label>
+        <div class="hint">כבוי כברירת מחדל. הפעלה תהפוך את הקיבולת הקיימת של כל גן למגבלה חוסמת.</div></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="saveAC" ${dis}>💾 שמירת רף השיבוץ</button></div>
+    <div style="margin-top:12px">
+      <div class="hint" style="margin-bottom:6px">מצב הגנים הפעילים כרגע (משובצות / רף):</div>
+      <div id="ac-pills" style="display:flex;flex-wrap:wrap;gap:6px">${assignCapPillsHtml()}</div>
+    </div>
+  </div>
+
+  <div class="panel" data-set="tzmin">
+    <h2>מינימום לפתיחת צהרון</h2>
+    <div class="sub">מספר התלמידות המינימלי בקבוצה כדי לפתוח צהרון. בלשונית "שיבוץ" → "צהרונים" כל גן שמתחת למספר הזה יסומן באדום, ומעליו בירוק.</div>
+    <div class="row">
+      <div class="field" style="min-width:150px"><label>מינימום לצהרון</label><input id="tzmin" inputmode="numeric" value="${esc(DB.settings.tzaharonMin||"")}" placeholder="למשל 15" ${dis}></div>
+      <button class="btn" id="saveTzMin" style="align-self:end" ${dis}>שמור</button>
+    </div>
+  </div>
+
+  <div class="panel" data-set="presence">
+    <h2>מי מחובר עכשיו <span class="pill neutral" id="presenceCount" style="font-size:.85rem">…</span></h2>
+    <div class="sub">משתמשים שפעילים במערכת ב-5 הדקות האחרונות (מתעדכן אונליין). שימושי לדעת מתי בטוח לבצע שינויים/עדכונים כשאין אף אחד באמצע עבודה.</div>
+    <div id="presenceBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
+  </div>
+
+  <div class="panel" data-set="activity">
+    <h2>יומן פעילות — מי ערך מה ומתי</h2>
+    <div class="sub">העריכה האחרונה של כל משתמש: מתי, ומה הוא עשה (עדכון תיק / הוספת גן וכו').</div>
+    <div id="activityBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
+  </div>
+
   <div class="panel" data-set="admins">
     <h2>מנהלי מערכת</h2>
     <div class="sub">רק כתובות אימייל שברשימה זו יכולות לשנות את הגדרות המערכת (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, גילי ילדים ותפקידי צוות). אם הרשימה ריקה — כל משתמש מחובר יכול (עד שמוסיפים מנהל ראשון).</div>
@@ -12454,22 +12428,6 @@ function viewSettings(root){
       <div class="field grow"><label>הוספת מנהל (אימייל)</label><input id="new-admin" type="email" inputmode="email" placeholder="name@example.com"></div>
       <button class="btn" id="addAdmin" style="align-self:end">הוסף מנהל</button>
     </div>`:""}
-  </div>
-
-  ${admin?`<div class="panel" data-set="feedback">
-    <h2>💡 פניות והצעות שיפור</h2>
-    <div class="sub">הודעות שנשלחו דרך "יצירת קשר / הצעה" בתפריט. אפשר להגדיר כתובת מייל שאליה ייפתחו הפניות.</div>
-    <div class="row" style="margin-top:8px;max-width:460px">
-      <div class="field grow"><label>כתובת מייל לפניות</label><input id="contact-email" type="email" inputmode="email" value="${esc((DB.settings&&DB.settings.contactEmail)||"")}" placeholder="ברירת מחדל: המנהל הראשון"></div>
-      <button class="btn ghost" id="contact-email-save" style="align-self:end">שמירה</button>
-    </div>
-    <div id="feedback-box" style="margin-top:12px"></div>
-  </div>`:""}
-
-  <div class="panel" data-set="auth">
-    <h2>חשבון והתחברות</h2>
-    <div class="sub">המערכת מאובטחת בכניסה עם חשבון Google מורשה בלבד (Firebase). הנתונים נשמרים בענן ומסונכרנים בין כל המכשירים.</div>
-    <div id="auth-box"></div>
   </div>
 
   ${admin?`<div class="panel" data-set="users">
@@ -12483,7 +12441,49 @@ function viewSettings(root){
     <div id="nu-msg" class="note" style="display:none;margin-top:10px"></div>
     <div id="users-box" style="margin-top:14px"></div>
   </div>`:""}
+
+  <div class="panel" data-set="auth">
+    <h2>חשבון והתחברות</h2>
+    <div class="sub">המערכת מאובטחת בכניסה עם חשבון Google מורשה בלבד (Firebase). הנתונים נשמרים בענן ומסונכרנים בין כל המכשירים.</div>
+    <div id="auth-box"></div>
+  </div>
+
+  ${admin?`<div class="panel" data-set="feedback">
+    <h2>💡 פניות והצעות שיפור</h2>
+    <div class="sub">הודעות שנשלחו דרך "יצירת קשר / הצעה" בתפריט. אפשר להגדיר כתובת מייל שאליה ייפתחו הפניות.</div>
+    <div class="row" style="margin-top:8px;max-width:460px">
+      <div class="field grow"><label>כתובת מייל לפניות</label><input id="contact-email" type="email" inputmode="email" value="${esc((DB.settings&&DB.settings.contactEmail)||"")}" placeholder="ברירת מחדל: המנהל הראשון"></div>
+      <button class="btn ghost" id="contact-email-save" style="align-self:end">שמירה</button>
+    </div>
+    <div id="feedback-box" style="margin-top:12px"></div>
+  </div>`:""}
+
+  <div class="panel" data-set="branding">
+    <h2>מיתוג — כותרת ולוגו</h2>
+    <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר <b>להעלות קובץ תמונה</b> (מומלץ), או להזין אימוג'י (למשל 🎒).</div>
+    <div class="grid g2">
+      <div><label>כותרת ראשית</label><input id="br-title" value="${esc(appTitle())}" ${dis}></div>
+      <div><label>כותרת משנה</label><input id="br-sub" value="${esc(appSubtitle())}" ${dis}></div>
+      <div><label>לוגו — אימוג'י או קישור לתמונה</label><input id="br-logo" value="${esc(appLogo())}" ${dis}></div>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:center;gap:10px">
+      <div style="width:52px;height:52px;border-radius:12px;border:1px solid var(--border);display:grid;place-items:center;overflow:hidden;background:var(--surface-2);font-size:1.6rem" id="br-logo-prev">${logoHtml()}</div>
+      <label class="btn ghost" style="${dis?'opacity:.5;pointer-events:none;':''}display:inline-flex;align-items:center;gap:6px">📤 העלאת קובץ לוגו<input type="file" id="br-logo-file" accept="image/*" hidden ${dis}></label>
+      <span class="hint" style="flex:1;min-width:180px">בחר/י תמונה מהמחשב/טלפון — היא תוקטן ותוטמע בתוך המערכת (בלי תלות בקישור חיצוני / Drive). לאחר הבחירה לחצ/י "שמור מיתוג".</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="saveBrand" ${dis}>💾 שמור מיתוג</button>
+      <button class="btn ghost" id="resetBrand" ${dis}>איפוס לברירת מחדל</button>
+    </div>
+  </div>
+
+  <div class="panel" data-set="install">
+    <h2>התקנה כאפליקציה — טלפון או מחשב</h2>
+    <div class="sub">אפשר להתקין את המערכת כאפליקציה עצמאית — על המחשב (חלון נפרד עם אייקון בשולחן העבודה) או במסך הבית של הטלפון — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג". כניסה ישירה לתוכנה בלי לפתוח דפדפן.</div>
+    <div id="install-box"></div>
+  </div>
   `;
+
 
   renderAuthBox();
   renderInstallBox();

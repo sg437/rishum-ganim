@@ -3388,11 +3388,6 @@ function settingsScreen(){
   addCard(presenceCard(P));
   addCard(usersCard(P));
   addCard(authCard(P));
-
-  /* ═══ 4. מראה והתקנה ══════════════════════════════════════════════ */
-  addCard(brandCard(P));
-
-  /* ═══ 5. פניות ותמיכה ═════════════════════════════════════════════ */
   if(P.feedback){
     mark("feedback");
     var fb = labPanel("feedback", "💡 פניות והצעות שיפור",
@@ -3401,6 +3396,9 @@ function settingsScreen(){
     P.feedback.remove();
     addCard(fb);
   }
+
+  /* ═══ 4. מראה והתקנה ══════════════════════════════════════════════ */
+  addCard(brandCard(P));
 
   /* פאנל שהתוכנה מציגה ולא נכלל בתוכנית (למשל הודעת "רק למנהל") — נשאר
      במקומו, בראש העמודה, כדי ששום דבר לא ייעלם בשקט. */
