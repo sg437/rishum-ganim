@@ -3296,8 +3296,16 @@ function plainCard(key, title, sub, src){
   return p;
 }
 
+/* מכרטיס המעבדה בחזרה למקטעי ההגדרות של התוכנה (data-set), כדי שרשימת
+   המקטעים שבסרגל הניווט תדע לגלול גם לכרטיסים המאוחדים של המעבדה. */
+var LAB_SET = {
+  year:"years promote", hist:"hist histgans", ages:"ages", roles:"roles",
+  campus:"campus", caps:"caps", tzmin:"tzmin", presence:"presence activity",
+  users:"users admins", auth:"auth", brand:"branding install", feedback:"feedback"
+};
+
 function settingsScreen(){
-  if(curTab() !== "settings" || view.querySelector(".lab-toc")) return;
+  if(curTab() !== "settings" || view.querySelector(".lab-setwrap")) return;
   var panels = Array.prototype.slice.call(view.querySelectorAll(":scope > .panel"));
   if(!panels.length) return;
 
@@ -3313,35 +3321,33 @@ function settingsScreen(){
   var D = (window.__uiLab && window.__uiLab.settingsLists) ? window.__uiLab.settingsLists() : null;
   var admin = !!(D && D.admin);
 
+  /* אין כאן עוד רשימת ניווט צדדית — מקטעי ההגדרות יושבים בסרגל הניווט
+     הראשי, מתחת ללשונית "הגדרות". */
   var wrap = el("div", "lab-setwrap");
   var col  = el("div", "lab-setcol");
-  var toc  = el("nav", "lab-toc");
   view.insertBefore(wrap, panels[0]);
-  wrap.appendChild(col); wrap.appendChild(toc);
+  wrap.appendChild(col);
 
-  var marks = [], n = 0;
+  var n = 0;
   function mark(k){ if(P[k]) P[k].dataset.labUsed = "1"; }
-  function addCard(p, title){
+  function addCard(p){
     if(!p) return;
     p.id = "labset" + (++n);
+    /* כרטיס שהמעבדה בנתה מאחד כמה מקטעים — יעד הגלילה של כולם */
+    var set = p.dataset.lab && LAB_SET[p.dataset.lab];
+    if(set) p.dataset.set = set;
     col.appendChild(p);
-    var a = el("a", "lab-toci", title);
-    a.href = "#" + p.id;
-    toc.appendChild(a);
-    marks.push(p);
   }
-  function group(name){ toc.appendChild(el("div", "lab-tocg", name)); }
+
 
   /* ═══ 1. שנה ונתונים ═══════════════════════════════════════════════ */
-  group("שנה ונתונים");
-  addCard(yearsCard(P, admin), "שנים ומעבר שנה");
-  addCard(histCard(P), "נתונים היסטוריים");
+  addCard(yearsCard(P, admin));
+  addCard(histCard(P));
 
   /* ═══ 2. רשימות המערכת ════════════════════════════════════════════ */
   /* שלוש הרשימות נבנות כשבבים/שורות מתוך D. בלי הוו (למשל app-artifact.html,
      שאין בו __uiLab) אין נתיב כתיבה, ואז הכרטיס נבנה מהעורך הקיים כמו שהוא —
      המסך נשאר מקובץ, רק בלי הגרירה. */
-  group("רשימות המערכת");
   if(P.ages){
     mark("ages");
     var agesC = D
@@ -3351,7 +3357,7 @@ function settingsScreen(){
       : plainCard("ages", "גילי הילדים",
           "הגילים שמופיעים לבחירה בתיק תלמידה ובסינון הרשימה.", P.ages);
     if(D){ var af = listFoot(P.ages, ["new-age", "addAge"]); if(af) agesC.appendChild(af); }
-    addCard(agesC, "גילי הילדים");
+    addCard(agesC);
     if(D) P.ages.remove();
   }
   if(P.roles){
@@ -3360,7 +3366,7 @@ function settingsScreen(){
       : plainCard("roles", "תפקידי צוות",
           "לכל תפקיד: שיוך חינוך, וסדר התפקידים קובע את סדר התקנים בלוח שיבוץ הצוות.", P.roles);
     if(D){ var rf = listFoot(P.roles, ["new-role", "addRole"]); if(rf) rolesC.appendChild(rf); }
-    addCard(rolesC, "תפקידי צוות");
+    addCard(rolesC);
     if(D) P.roles.remove();
   }
   if(P.campus){
@@ -3372,31 +3378,28 @@ function settingsScreen(){
       : plainCard("campus", "קמפוסים",
           "הקמפוס של כל תלמידה נקבע אוטומטית לפי הגן שלה.", P.campus);
     if(D){ var cf = listFoot(P.campus, ["new-campus", "addCampus"]); if(cf) campC.appendChild(cf); }
-    addCard(campC, "קמפוסים");
+    addCard(campC);
     if(D) P.campus.remove();
   }
-  addCard(capsCard(P), "רף שיבוץ");
-  addCard(tzminCard(P), "מינימום לפתיחת צהרון");
+  addCard(capsCard(P));
+  addCard(tzminCard(P));
 
   /* ═══ 3. מערכת ומשתמשים ═══════════════════════════════════════════ */
-  group("מערכת ומשתמשים");
-  addCard(presenceCard(P), "מי מחובר ויומן פעילות");
-  addCard(usersCard(P), P.users ? "ניהול משתמשים ומנהלי מערכת" : "מנהלי מערכת");
-  addCard(authCard(P), "חשבון והתחברות");
+  addCard(presenceCard(P));
+  addCard(usersCard(P));
+  addCard(authCard(P));
 
   /* ═══ 4. מראה והתקנה ══════════════════════════════════════════════ */
-  group("מראה והתקנה");
-  addCard(brandCard(P), "מיתוג והתקנה כאפליקציה");
+  addCard(brandCard(P));
 
   /* ═══ 5. פניות ותמיכה ═════════════════════════════════════════════ */
   if(P.feedback){
-    group("פניות ותמיכה");
     mark("feedback");
     var fb = labPanel("feedback", "💡 פניות והצעות שיפור",
       "הודעות שנשלחו דרך \"יצירת קשר / הצעה\" שבתפריט, והכתובת שאליה הן נפתחות.");
     moveBody(P.feedback, fb);
     P.feedback.remove();
-    addCard(fb, "💡 פניות והצעות שיפור");
+    addCard(fb);
   }
 
   /* פאנל שהתוכנה מציגה ולא נכלל בתוכנית (למשל הודעת "רק למנהל") — נשאר
@@ -3404,17 +3407,6 @@ function settingsScreen(){
   var rest = panels.filter(function(p){ return p.parentNode !== col && !p.dataset.labUsed && document.contains(p); });
   rest.forEach(function(p){ col.insertBefore(p, col.firstChild); });
 
-  /* סימון הפריט הפעיל בגלילה */
-  var links = toc.querySelectorAll(".lab-toci");
-  var spy = new IntersectionObserver(function(es){
-    es.forEach(function(e){
-      if(!e.isIntersecting) return;
-      links.forEach(function(a){
-        a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id);
-      });
-    });
-  }, {rootMargin:"-10% 0px -80% 0px"});
-  marks.forEach(function(p){ spy.observe(p); });
 }
 
 /* ---- שנים ומעבר שנה ------------------------------------------------

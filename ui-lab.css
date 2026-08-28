@@ -1630,8 +1630,9 @@ html.ui-lab .lab-bottom{ display:none }
 /* ⚠️ באג שתוקן: inset-inline-start ב-RTL הוא *ימין*, כלומר התג ישב בדיוק
    מעל תחתית סרגל הצד וחסם את כרטיס היעד ואת שורת המשתמש. הוא עובר לצד
    הנגדי. בנייד הסרגל הוא מגירה סגורה, ולכן שם אין התנגשות. */
+/* הפינה השמאלית התחתונה שייכת לכפתור המרחף של התוכנה — התג עבר לצד השני */
 html.ui-lab .ui-lab-badge{
-  position:fixed; inset-block-end:12px; inset-inline-end:12px; z-index:9999;
+  position:fixed; inset-block-end:12px; inset-inline-start:12px; z-index:9999;
   display:inline-flex; align-items:center; gap:6px;
   padding:6px 12px; border-radius:999px;
   background:#7a2e2e; color:#fff;
@@ -1822,34 +1823,11 @@ html.ui-lab .lab-wmain .check:has(input:checked){
 }
 html.ui-lab .checks{ display:flex !important; flex-wrap:wrap; gap:8px }
 
-/* -- הגדרות: רשימת ניווט צדדית -------------------------------------------- */
-html.ui-lab .lab-setwrap{ display:grid; gap:18px; grid-template-columns:1fr 230px; align-items:start }
+/* -- הגדרות: עמודת הכרטיסים ------------------------------------------------
+   רשימת המקטעים אינה יושבת כאן: היא בסרגל הניווט, מתחת ללשונית "הגדרות". */
+html.ui-lab .lab-setwrap{ display:flex; flex-direction:column; gap:18px }
 html.ui-lab .lab-setcol{ display:flex; flex-direction:column; gap:14px; min-width:0 }
 html.ui-lab .lab-setcol > .panel{ margin:0 }
-html.ui-lab .lab-toc{
-  position:sticky; top:14px; background:var(--surface-2);
-  border:1px solid var(--border); border-radius:var(--radius); padding:12px 10px;
-  max-height:calc(100vh - 40px); overflow:auto;
-}
-html.ui-lab .lab-tocg{
-  font-size:.68rem; color:var(--muted); font-weight:700; letter-spacing:.02em;
-  padding:10px 10px 5px;
-}
-html.ui-lab .lab-tocg:first-child{ padding-top:2px }
-html.ui-lab .lab-toci{
-  display:block; padding:7px 10px; border-radius:9px; text-decoration:none;
-  color:var(--ink-soft); font-size:.82rem; font-weight:600;
-  border-inline-start:3px solid transparent;
-}
-html.ui-lab .lab-toci:hover{ background:var(--surface) }
-html.ui-lab .lab-toci.on{
-  background:var(--surface); color:var(--ink);
-  border-inline-start-color:var(--accent);
-}
-@media (max-width:1000px){
-  html.ui-lab .lab-setwrap{ grid-template-columns:1fr }
-  html.ui-lab .lab-toc{ display:none }
-}
 
 /* -- כלים ושירותים: רשת כרטיסים ------------------------------------------- */
 html.ui-lab .lab-grid{

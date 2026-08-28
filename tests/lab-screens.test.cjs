@@ -480,14 +480,19 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
   const sg = await p.evaluate(() => {
     const col   = document.querySelector('.lab-setcol');
     const cards = col ? [...col.querySelectorAll(':scope > .panel.lab-made')].map(n => n.dataset.lab) : [];
-    const toc   = [...document.querySelectorAll('.lab-toc .lab-tocg')].map(a => a.textContent.trim());
+    /* רשימת המקטעים עברה לסרגל הניווט, מתחת ל"הגדרות" */
+    const toc   = [...document.querySelectorAll('#setSubnav .subnav-g')].map(a => a.textContent.trim());
+    const jumps = [...document.querySelectorAll('#setSubnav .subnav-i')].map(b => b.dataset.setjump);
+    const dead  = jumps.filter(k => !document.querySelector('#view [data-set~="' + k + '"]'));
     const yearC = col && col.querySelector('[data-lab="year"]');
     return {
       inTop:      !!document.querySelector('header.top .lab-yearpick, header.top #yearSelect'),
       inTopChips: !!document.querySelector('.top-chips #yearSelect'),
       realHome:   (document.getElementById('yearSelect') || {}).parentElement
                     ? document.getElementById('yearSelect').parentElement.className : null,
-      cards, groups: toc,
+      cards, groups: toc, jumps, dead,
+      sideToc:    !!document.querySelector('.lab-toc'),
+      caret:      !!document.querySelector('.drawer-nav .nav-caret'),
       firstCard:  cards[0] || null,
       /* שנים ומעבר שנה — שבבים, השנה הפעילה מסומנת, ומעבר השנה בפנים */
       chips:      yearC ? [...yearC.querySelectorAll('.lab-yearchip')].map(c => ({
@@ -524,17 +529,24 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
       uCell:      !!document.querySelector('table.lab-users .lab-ucell .lab-uini')
     };
   });
-  const GROUPS = ['שנה ונתונים', 'רשימות המערכת', 'מערכת ומשתמשים', 'מראה והתקנה', 'פניות ותמיכה'];
+  const GROUPS = ['שנה ונתונים', 'רשימות המערכת', 'מערכת ומשתמשים', 'מראה והתקנה'];
   const CARDS  = ['year','hist','ages','roles','campus','caps','tzmin','presence','users','auth','brand','feedback'];
   if (sg.inTop || sg.inTopChips)
     bad('בורר השנה עדיין יושב ברצועה העליונה');
   else if (sg.realHome !== 'drawer-year')
     bad('ה-<select> המקורי אינו במגירה — הוא לא ישרוד בניית מסך מחדש', ['הורה: ' + sg.realHome]);
+  else if (sg.sideToc)
+    bad('רשימת הניווט הצדדית עדיין במסך ההגדרות');
+  else if (!sg.caret)
+    bad('אין חץ פתיחה ללשונית ההגדרות בסרגל הניווט');
   else if (sg.groups.join(' · ') !== GROUPS.join(' · '))
-    bad('קבוצות ההגדרות אינן לפי הסדר', ['התקבל: ' + sg.groups.join(' · ')]);
+    bad('קבוצות ההגדרות בסרגל אינן לפי הסדר', ['התקבל: ' + sg.groups.join(' · ')]);
+  else if (sg.dead.length)
+    bad('מקטעים בסרגל שאין להם יעד במסך', [sg.dead.join(' · ')]);
   else if (sg.cards.join(',') !== CARDS.join(','))
     bad('כרטיסי ההגדרות אינם לפי הסדר', ['התקבל: ' + sg.cards.join(' · ')]);
-  else ok('הגדרות: ' + sg.groups.length + ' קבוצות · ' + sg.cards.length + ' כרטיסים, בסדר הנכון');
+  else ok('הגדרות: ' + sg.groups.length + ' קבוצות ו-' + sg.jumps.length +
+          ' מקטעים בסרגל הניווט · ' + sg.cards.length + ' כרטיסים, בסדר הנכון');
 
   if (sg.firstCard !== 'year')
     bad('"שנים ומעבר שנה" אינו הכרטיס הראשון בהגדרות', ['ראשון: ' + sg.firstCard]);

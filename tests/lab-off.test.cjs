@@ -125,6 +125,41 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
   else if(im.modes||im.tzPane) bad('מצב "עדכון לפי ת"ז" דלף לעיצוב הקיים',[JSON.stringify(im)]);
   else ok('חלון ייבוא הצוות בעיצוב הקיים: אותה כותרת, בלי מצבים ובלי מקטע ת"ז');
 
+  /* --- מקטעי ההגדרות בסרגל הניווט ------------------------------------- */
+  await p.evaluate(()=>{ DB.settings.admins=['x@y.z']; __set('active','settings'); route(); });
+  await p.waitForTimeout(700);
+  const nv=await p.evaluate(()=>{
+    const car=document.querySelector('.drawer-nav [data-setnav]');
+    const sub=document.querySelector('#setSubnav');
+    const items=[...document.querySelectorAll('#setSubnav .subnav-i')].map(b=>b.dataset.setjump);
+    return { car:!!car, closed: sub? sub.hidden : null, items,
+             groups:[...document.querySelectorAll('#setSubnav .subnav-g')].length,
+             dead: items.filter(k=>!document.querySelector('#view [data-set~="'+k+'"]')),
+             /* מקטעי מנהל בלבד אינם מוצגים למי שאינו מנהל */
+             admOnly: items.filter(k=>k==='users'||k==='feedback') };
+  });
+  if(!nv.car)            bad('אין חץ פתיחה ללשונית ההגדרות');
+  else if(nv.closed!==true) bad('רשימת המקטעים פרושה בלי שנלחץ החץ');
+  else if(!nv.items.length) bad('רשימת המקטעים ריקה');
+  else if(nv.dead.length)   bad('מקטעים בסרגל שאין להם יעד במסך',[nv.dead.join(' · ')]);
+  else if(nv.admOnly.length) bad('מקטעי מנהל־בלבד הוצגו למי שאינו מנהל',[nv.admOnly.join(' · ')]);
+  else ok('סרגל הניווט: '+nv.groups+' קבוצות ו-'+nv.items.length+' מקטעי הגדרות, כולם מובילים לפאנל');
+
+  const jump=await p.evaluate(async()=>{
+    document.querySelector('.drawer-nav [data-setnav]').click();
+    const open=!document.querySelector('#setSubnav').hidden;
+    const b=document.querySelector('#setSubnav [data-setjump="tzmin"]');
+    if(b) b.click();
+    await new Promise(r=>setTimeout(r,700));
+    const el=document.querySelector('#view [data-set~="tzmin"]');
+    return { open, top: el? Math.round(el.getBoundingClientRect().top) : null,
+             drawer: document.querySelector('#drawer').classList.contains('open') };
+  });
+  if(!jump.open)                       bad('החץ לא פרש את רשימת המקטעים');
+  else if(jump.drawer)                 bad('המגירה נשארה פתוחה אחרי בחירת מקטע');
+  else if(!(jump.top>0 && jump.top<220)) bad('הבחירה לא גיללה אל המקטע',['top='+jump.top]);
+  else ok('בחירת מקטע גוללת אליו מתחת לכותרת הדביקה, וסוגרת את המגירה');
+
   const real=errs.filter(e=>!/Failed to load resource|net::ERR_/.test(e));
   if(real.length) bad('נזרקו שגיאות JS',real.slice(0,5)); else ok('אף שגיאת JS לא נזרקה');
   console.log('============================================');

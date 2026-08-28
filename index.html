@@ -151,6 +151,22 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .drawer-nav button:hover{background:var(--surface-2)}
 .drawer-nav button.active{background:var(--accent);color:#fff;box-shadow:var(--shadow)}
 .drawer-nav button.active .count{background:rgba(255,255,255,.24);color:#fff}
+/* לשונית עם רשימת מקטעים (הגדרות): החץ פותח אותה למטה, בתוך הסרגל */
+.drawer-nav .nav-row{display:flex;align-items:center;gap:2px}
+.drawer-nav .nav-row>button[data-tab]{flex:1;min-width:0}
+.drawer-nav .nav-caret{flex:0 0 auto;width:34px;height:34px;padding:0;display:grid;place-items:center;
+  color:var(--muted);font-size:.9rem;line-height:1;border-radius:10px;
+  transition:transform .2s cubic-bezier(.4,0,.2,1),background .2s,color .2s}
+.drawer-nav .nav-caret:hover{transform:none;background:var(--surface-2);color:var(--accent-strong)}
+.drawer-nav .nav-caret.open,.drawer-nav .nav-caret.open:hover{transform:rotate(180deg);color:var(--accent-strong)}
+.drawer-nav .subnav{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px;
+  padding-inline-start:14px;border-inline-start:2px solid var(--border)}
+.drawer-nav .subnav[hidden]{display:none}
+.drawer-nav .subnav-g{font-size:.68rem;font-weight:800;color:var(--muted);letter-spacing:.02em;padding:8px 10px 3px}
+.drawer-nav .subnav-i{padding:7px 10px;border-radius:9px;font-size:.84rem;font-weight:600;color:var(--ink-soft)}
+.drawer-nav .subnav-i:hover{background:var(--surface-2);color:var(--accent-strong)}
+/* גלילה למקטע לא נחתכת מתחת לכותרת הדביקה */
+#view [data-set]{scroll-margin-top:calc(var(--top-h,61px) + 12px)}
 .drawer-foot{border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px}
 .drawer-foot .df-row{display:flex;gap:8px}
 .drawer-foot button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);padding:10px 10px;border-radius:11px;font-weight:800;font-size:.86rem}
@@ -480,8 +496,10 @@ tbody td{padding-block:8px}
 /* ---- כפתור פעולה מרחף (+) ----
    פינה שמאלית תחתונה, בכל המסכים שיש בהם פעולת הוספה. פעולה אחת —
    לחיצה מפעילה מיד; כמה פעולות — נפתח תפריט קטן מעל הכפתור. */
+/* direction:ltr על העטיפה בלבד — כדי ש-flex-start יהיה הצד השמאלי הפיזי,
+   זה שהכפתור נעוץ בו. תוכן הפריטים חוזר ל-rtl. */
 .fab-wrap{position:fixed;left:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:45;
-  display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+  direction:ltr;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
 .fab-wrap[hidden]{display:none}
 .fab{width:56px;height:56px;border-radius:18px;background:var(--accent);color:#fff;font-size:2rem;line-height:1;
   display:grid;place-items:center;padding:0 0 4px;box-shadow:0 10px 24px -8px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.16);
@@ -491,13 +509,15 @@ tbody td{padding-block:8px}
 .fab.open{transform:rotate(45deg)}
 .fab-menu{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
 .fab-menu[hidden]{display:none}
-.fab-item{display:flex;align-items:center;gap:9px;white-space:nowrap;
+.fab-item{direction:rtl;display:flex;align-items:center;gap:9px;white-space:nowrap;
   background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:999px;
   padding:9px 15px;font-size:.9rem;box-shadow:var(--shadow);animation:fab-in .18s cubic-bezier(.4,0,.2,1) both;animation-delay:var(--d,0ms)}
 .fab-item:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-strong)}
 .fab-item .fi{font-size:1.05rem;line-height:1}
 @keyframes fab-in{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.fab,.fab-item{transition:none;animation:none}}
+/* פאנל העוזר החכם נעוץ בצד שמאל — הכפתור זז ימינה כדי לא להסתתר מאחוריו */
+body.ai-docked .fab-wrap{left:calc(var(--ai-w,380px) + 18px)}
 @media(max-width:560px){.fab{width:52px;height:52px;border-radius:17px;font-size:1.8rem}.fab-wrap{left:14px}
   .selbar{padding-left:76px}}
 
@@ -2318,13 +2338,69 @@ const TABS = [
 ];
 let active = "home";
 
+/* מקטעי מסך ההגדרות — הרשימה שנפתחת מתחת ל"הגדרות" בסרגל הניווט.
+   { g } = כותרת קבוצה · { k } = מקטע, לפי data-set שעל הפאנל במסך.
+   admin:true — מקטע שקיים רק למנהל מערכת, ולכן אינו מוצג לשאר. */
+const SETTINGS_SECTIONS = [
+  { g:"שנה ונתונים" },
+  { k:"years",    label:"שנים" },
+  { k:"promote",  label:"מעבר שנה" },
+  { k:"hist",     label:"נתונים היסטוריים" },
+  { k:"histgans", label:"נתונים היסטוריים לפי גן" },
+  { g:"רשימות המערכת" },
+  { k:"ages",     label:"גילי הילדים" },
+  { k:"roles",    label:"תפקידי צוות" },
+  { k:"campus",   label:"קמפוסים" },
+  { k:"caps",     label:"רף שיבוץ" },
+  { k:"tzmin",    label:"מינימום לצהרון" },
+  { g:"מערכת ומשתמשים" },
+  { k:"presence", label:"מי מחובר עכשיו" },
+  { k:"activity", label:"יומן פעילות" },
+  { k:"admins",   label:"מנהלי מערכת" },
+  { k:"users",    label:"ניהול משתמשים", admin:true },
+  { k:"auth",     label:"חשבון והתחברות" },
+  { k:"feedback", label:"פניות והצעות שיפור", admin:true },
+  { g:"מראה והתקנה" },
+  { k:"branding", label:"מיתוג — כותרת ולוגו" },
+  { k:"install",  label:"התקנה כאפליקציה" }
+];
+let setNavOpen=false;          // האם רשימת המקטעים פרושה בסרגל
+
+function settingsNavHtml(){
+  const admin=isAdmin();
+  const items=SETTINGS_SECTIONS.filter(x=>x.g||!x.admin||admin);
+  return items.map((x,i)=>{
+    if(x.g){
+      /* כותרת קבוצה שכל מקטעיה מוסתרים — לא מציגים אותה לבדה */
+      const next=items[i+1];
+      return (!next||next.g) ? "" : `<div class="subnav-g">${esc(x.g)}</div>`;
+    }
+    return `<button type="button" class="subnav-i" data-setjump="${x.k}">${esc(x.label)}</button>`;
+  }).join("");
+}
+
+/* מעבר למקטע בהגדרות: פותחים את המסך אם צריך, ומגלגלים אל הפאנל */
+function gotoSettingsSection(key){
+  const jump=()=>{
+    const el=$("#view").querySelector('[data-set~="'+key+'"]');
+    if(el) el.scrollIntoView({ block:"start", behavior:"smooth" });
+  };
+  if(active!=="settings"){ navToTab("settings"); setTimeout(jump,80); }
+  else { closeDrawer(); setTimeout(jump,0); }
+}
+
 function renderTabs(){
   // המונים מכבדים את בורר החינוך (הכל / רגיל / מיוחד)
   const counts = { students: eduScope(studentsOfYear().filter(s=>!s.finished)).length, gans: eduScope(DB.gans.filter(g=>g.active)).length };
   const nav=$("#tabs"); if(!nav) return;
   nav.innerHTML = TABS.map(t=>{
     const c = counts[t.id]!=null ? `<span class="count">${counts[t.id]}</span>` : "";
-    return `<button data-tab="${t.id}" class="${t.id===active?'active':''}"><span class="ic">${t.icon}</span><span class="tl">${esc(t.label)}</span>${c}</button>`;
+    const btn=`<button data-tab="${t.id}" class="${t.id===active?'active':''}"><span class="ic">${t.icon}</span><span class="tl">${esc(t.label)}</span>${c}</button>`;
+    if(t.id!=="settings") return btn;
+    /* ההגדרות נפתחות לרשימת המקטעים שלהן — חץ למטה לצד הלשונית */
+    return `<div class="nav-row">${btn}<button type="button" class="nav-caret${setNavOpen?' open':''}" data-setnav
+        aria-expanded="${setNavOpen}" aria-controls="setSubnav" title="מקטעי ההגדרות" aria-label="מקטעי ההגדרות">▾</button></div>`
+      + `<div class="subnav" id="setSubnav" ${setNavOpen?'':'hidden'}>${settingsNavHtml()}</div>`;
   }).join("");
 }
 /* ============================================================
@@ -3851,6 +3927,7 @@ function guideContent(){
 
     { icon:"⚙️", title:"הגדרות ומיתוג", html:
       `<div class="gd-tip">💡 חיבורי הדרייב, הטופס הדיגיטלי, עוזר ה-AI, דיוק המפה והגיבוי עברו ללשונית <b>"כלים ושירותים"</b>.</div>
+      <div class="gd-tip">🧭 <b>קפיצה למקטע:</b> בתפריט הצד, לצד <b>הגדרות</b>, יש חץ <b>▾</b>. לחיצה עליו פורשת את כל מקטעי ההגדרות (שנים · רשימות · רף שיבוץ · משתמשים · מיתוג…), ובחירה במקטע מגלגלת ישר אליו.</div>
       <ul>
         <li><b>מיתוג</b> — כותרת, ו<b>העלאת קובץ לוגו</b> (מומלץ): התמונה מוטמעת במערכת ומופיעה בכותרת, בפאביקון וגם כ<b>אייקון האפליקציה</b> המותקנת.</li>
         <li><b>שנים</b> — הוספה/מחיקה, ו<b>מעבר שנה</b>.</li>
@@ -12231,19 +12308,19 @@ function viewSettings(root){
   root.innerHTML=`
   ${admin?"":`<div class="panel"><div class="note">🔒 חלק מההגדרות (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, ניהול מנהלים) פתוחות לעריכה רק למנהל מערכת. אפשר לצפות אך לא לשנות. פנה/י למנהל להוספתך.</div></div>`}
 
-  <div class="panel">
+  <div class="panel" data-set="presence">
     <h2>מי מחובר עכשיו <span class="pill neutral" id="presenceCount" style="font-size:.85rem">…</span></h2>
     <div class="sub">משתמשים שפעילים במערכת ב-5 הדקות האחרונות (מתעדכן אונליין). שימושי לדעת מתי בטוח לבצע שינויים/עדכונים כשאין אף אחד באמצע עבודה.</div>
     <div id="presenceBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="activity">
     <h2>יומן פעילות — מי ערך מה ומתי</h2>
     <div class="sub">העריכה האחרונה של כל משתמש: מתי, ומה הוא עשה (עדכון תיק / הוספת גן וכו').</div>
     <div id="activityBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="branding">
     <h2>מיתוג — כותרת ולוגו</h2>
     <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר <b>להעלות קובץ תמונה</b> (מומלץ), או להזין אימוג'י (למשל 🎒).</div>
     <div class="grid g2">
@@ -12262,13 +12339,13 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="install">
     <h2>התקנה כאפליקציה — טלפון או מחשב</h2>
     <div class="sub">אפשר להתקין את המערכת כאפליקציה עצמאית — על המחשב (חלון נפרד עם אייקון בשולחן העבודה) או במסך הבית של הטלפון — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג". כניסה ישירה לתוכנה בלי לפתוח דפדפן.</div>
     <div id="install-box"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="caps">
     <h2>רף שיבוץ — מקסימום משובצות בגן</h2>
     <div class="sub"><b>כל עוד לא הוזן כאן מספר ולא הוגדר רף בכרטיס גן — אין שום הגבלה, והמערכת מתנהגת בדיוק כמו קודם.</b><br>
       מגבלה <b>קשיחה</b> על השיבוץ הסופי: כשגן מגיע לרף, המערכת לא תאפשר לשבץ אליו עוד תלמידה ותציג הודעה.
@@ -12287,7 +12364,7 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="years">
     <h2>שנים</h2>
     <div class="sub">כל שנה מנוהלת בנפרד (תשפ"ז, תשפ"ח, וכו'). הבחירה בראש המסך קובעת על איזו שנה עובדים.</div>
     <div id="years-box"></div>
@@ -12297,7 +12374,7 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="promote">
     <h2>מעבר שנה — קידום לגן המתקדם</h2>
     <div class="sub">בתחילת שנה חדשה: מעתיקים את התלמידות משנה קודמת. עוברים <b>רק</b> הפרטים האישיים והכתובת, וכל ילדה מקודמת ל<b>גן המתקדם באותו קמפוס</b> (גיל+1). נתוני השנה הקודמת נשמרים במלואם.</div>
     <div class="row">
@@ -12315,19 +12392,19 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="hist">
     <h2>נתונים היסטוריים (שנים קודמות)</h2>
     <div class="sub">הזנת הסיכומים הסופיים של שנים קודמות — לפני שהתוכנה עבדה. משמשים למחשבון האחוזים. משנת ההפעלה ואילך הכל מסונכרן אוטומטית.</div>
     <div id="hist-box"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="histgans">
     <h2>נתונים היסטוריים לפי גן (שנים קודמות)</h2>
     <div class="sub">הזנת מספרי התלמידות בכל גן לשנים קודמות — לפי מועדים (א׳/ב׳/ג׳/סופי). כאן מזינים <b>מספרים בלבד</b> (לא רשימת ילדות). הנתונים מוזרמים ל"מחשבון אחוזים חופשי" ולהתפלגות בלשונית "דוחות ואחוזים" — כך אפשר להשוות שנים חיות מול שנים היסטוריות.</div>
     <div id="hist-gans-box"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="tzmin">
     <h2>מינימום לפתיחת צהרון</h2>
     <div class="sub">מספר התלמידות המינימלי בקבוצה כדי לפתוח צהרון. בלשונית "שיבוץ" → "צהרונים" כל גן שמתחת למספר הזה יסומן באדום, ומעליו בירוק.</div>
     <div class="row">
@@ -12336,7 +12413,7 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="ages">
     <h2>גילי הילדים (רשימת תלמידים)</h2>
     <div class="sub">הגילים שמופיעים לבחירה בתיק תלמידה ובסינון רשימת התלמידים. אפשר להוסיף, לערוך (שינוי הטקסט בשדה ויציאה) או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
     <div id="ages-box"></div>
@@ -12347,7 +12424,7 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="roles">
     <h2>תפקידי צוות</h2>
     <div class="sub">התפקידים שמופיעים לבחירה בכרטיס איש/אשת צוות, בסינון הצוות ובייבוא. לכל תפקיד אפשר לקבוע <b>שיוך חינוך</b> (רגיל / מיוחד / שניהם) — ובשיבוץ יוצגו רק תפקידים המתאימים לחינוך הגן — וכן <b>צבע</b> ייחודי. אפשר להוסיף, לערוך או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
     <div id="roles-box"></div>
@@ -12358,7 +12435,7 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="campus">
     <h2>קמפוסים</h2>
     <div class="sub">רשימת הקמפוסים לבחירה בכרטיס הגן. הקמפוס של כל תלמידה נקבע <b>אוטומטית לפי הגן שלה</b> — כך שלא יופיעו ערכים שלא הוגדרו. כאן מגדירים, עורכים או מוחקים קמפוסים.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
     <div id="campus-box"></div>
@@ -12369,7 +12446,7 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="admins">
     <h2>מנהלי מערכת</h2>
     <div class="sub">רק כתובות אימייל שברשימה זו יכולות לשנות את הגדרות המערכת (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, גילי ילדים ותפקידי צוות). אם הרשימה ריקה — כל משתמש מחובר יכול (עד שמוסיפים מנהל ראשון).</div>
     <div id="admins-box"></div>
@@ -12379,7 +12456,7 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
-  ${admin?`<div class="panel">
+  ${admin?`<div class="panel" data-set="feedback">
     <h2>💡 פניות והצעות שיפור</h2>
     <div class="sub">הודעות שנשלחו דרך "יצירת קשר / הצעה" בתפריט. אפשר להגדיר כתובת מייל שאליה ייפתחו הפניות.</div>
     <div class="row" style="margin-top:8px;max-width:460px">
@@ -12389,13 +12466,13 @@ function viewSettings(root){
     <div id="feedback-box" style="margin-top:12px"></div>
   </div>`:""}
 
-  <div class="panel">
+  <div class="panel" data-set="auth">
     <h2>חשבון והתחברות</h2>
     <div class="sub">המערכת מאובטחת בכניסה עם חשבון Google מורשה בלבד (Firebase). הנתונים נשמרים בענן ומסונכרנים בין כל המכשירים.</div>
     <div id="auth-box"></div>
   </div>
 
-  ${admin?`<div class="panel">
+  ${admin?`<div class="panel" data-set="users">
     <h2>ניהול משתמשים</h2>
     <div class="sub">הכניסה למערכת היא עם חשבון <b>Google בלבד</b>. כאן מאשרים כתובות Google שיוכלו להיכנס, קובעים <b>שם</b> לכל משתמש, ומגדירים <b>מה מותר לו/ה לערוך</b>: חינוך רגיל, חינוך מיוחד, או צפייה בלבד. רק כתובת שמופיעה ברשימה כאן (או מנהל מערכת) תוכל להיכנס.</div>
     <div class="row" style="margin-top:10px">
@@ -12744,7 +12821,14 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"){
   if(open.length){ open.forEach(d=>d.open=false); return; }
   if($("#drawer").classList.contains("open")) closeDrawer(); else closeModal(); } });
 
-$("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ navToTab(b.dataset.tab); } });
+$("#tabs").addEventListener("click",e=>{
+  const car=e.target.closest("[data-setnav]");
+  if(car){ setNavOpen=!setNavOpen; renderTabs(); return; }
+  const jmp=e.target.closest("[data-setjump]");
+  if(jmp){ gotoSettingsSection(jmp.dataset.setjump); return; }
+  const b=e.target.closest("[data-tab]");
+  if(b){ if(b.dataset.tab==="settings") setNavOpen=true; navToTab(b.dataset.tab); }
+});
 $("#backBtn").addEventListener("click", goBack);
 $("#menuBtn").addEventListener("click",toggleDrawer);
 $("#drawerClose").addEventListener("click",closeDrawer);
