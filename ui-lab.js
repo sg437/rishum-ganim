@@ -112,10 +112,11 @@ function navCounts(s){
    האייקונים הם הגליפים של שאר התוכנה ולא אימוג׳י — בלוח הם צבעוניים, ואצלנו
    כל הניווט מונוכרומי. "עוד" קיבל ⋯ ולא ☰, כי ☰ כבר שייך לתלמידות.
    =========================================================================== */
+/* אין כאן "+": התוכנה עצמה מציגה כפתור מרחף בפינה השמאלית התחתונה, והוא
+   כבר יודע להציע את פעולות ההוספה של המסך הפתוח. */
 var BOTTOM = [
   { tab:"home",     icon:"◫", label:"בית" },
   { tab:"students", icon:"☰", label:"תלמידות" },
-  { fab:true },
   { tab:"map",      icon:"⌖", label:"שיבוץ" },
   { menu:true,      icon:"⋯", label:"עוד" }
 ];
@@ -127,14 +128,6 @@ function bottomBar(){
     bar.id = "labBottom";
     bar.className = "lab-bottom";
     BOTTOM.forEach(function(it){
-      if(it.fab){
-        var f = el("button", "lb-fab", "+");
-        f.title = "הוספת ילדה";
-        f.setAttribute("aria-label", "הוספת ילדה");
-        f.onclick = function(){ if(window.__uiLab && window.__uiLab.addStudent) window.__uiLab.addStudent(); };
-        bar.appendChild(f);
-        return;
-      }
       var b = el("button", "lb-item");
       b.appendChild(el("span", "lb-ic", it.icon));
       b.appendChild(el("span", "lb-tx", it.label));
@@ -1351,10 +1344,7 @@ function addGanCard(campus){
   var to = campus ? (campus.indexOf("קמפוס") === 0 ? " ל" + campus : " לקמפוס " + campus) : "";
   c.appendChild(el("span", "lg-add-t", "הוספת גן" + to));
   c.appendChild(el("span", "lg-add-s", "שם, גיל, תקן ותפוסה"));
-  c.onclick = function(){
-    var b = view.querySelector("#addGan");
-    if(b) b.click();
-  };
+  c.onclick = function(){ if(window.__uiLab && window.__uiLab.addGan) window.__uiLab.addGan(); };
   return c;
 }
 
@@ -1410,8 +1400,9 @@ function gansToggle(host){
    בלוח: הכותרת "גנים" בלבד, ובצד שמאל "+ גן חדש · ייבוא · ייצוא" ולצידם
    בורר "כרטיסים | טבלה". שורת הסינון היא שבבים — בלי המילה "סינון".
    =========================================================================== */
-var GAN_TOP = ["addGan", "impGan", "exportGans"];
-var GAN_REN = { addGan:"+ גן חדש", impGan:"ייבוא", exportGans:"ייצוא" };
+/* "הוספת גן" אינו כאן — הוא בכפתור המרחף של התוכנה */
+var GAN_TOP = ["impGan", "exportGans"];
+var GAN_REN = { impGan:"ייבוא", exportGans:"ייצוא" };
 
 function gansTop(){
   var head = view.querySelector(".lab-shead");
@@ -1422,8 +1413,6 @@ function gansTop(){
   var acts = head.querySelector(".lab-sacts");
   if(!acts){ acts = el("div", "lab-sacts"); head.appendChild(acts); }
   orderInto(acts, GAN_TOP, GAN_REN);
-  var add = acts.querySelector("#addGan");
-  if(add) add.classList.remove("ghost");
 
   /* הבורר "כרטיסים | טבלה" עולה לכותרת, ליד הכפתורים */
   var bar = view.querySelector(".lab-gtoggle");
@@ -1894,7 +1883,8 @@ function staffKpis(){
 /* הסדר בלוח, מימין לשמאל: שליחת הודעות · ייבוא · ייצוא · הוספה.
    ל"ייצוא" לא היה כפתור בלשונית הזאת — הוא נבנה כאן ופותח את חלון ייצוא
    הצוות (‎labStaffExport‎), שמייצא בדיוק את הרשימה שעל המסך. */
-var STAFF_TOP = ["staffMsg", "impStaff", "labStaffExp", "addStaff"];
+/* "הוספת איש צוות" עבר לכפתור המרחף, ו"שליחת הודעות" ללשונית ההודעות */
+var STAFF_TOP = ["impStaff", "labStaffExp"];
 
 function staffTop(){
   var head = view.querySelector(".lab-shead");
@@ -1927,11 +1917,8 @@ function staffTop(){
     };
     acts.appendChild(xp);
   }
-  orderInto(acts, STAFF_TOP, { staffMsg:"✉ שליחת הודעות", impStaff:"↥ ייבוא",
-                               labStaffExp:"↧ ייצוא", addStaff:"+ הוספת איש צוות" });
-  var add = acts.querySelector("#addStaff");
-  if(add) add.classList.remove("ghost");
-  [ "#staffMsg", "#impStaff", "#labStaffExp" ].forEach(function(sel){
+  orderInto(acts, STAFF_TOP, { impStaff:"↥ ייבוא", labStaffExp:"↧ ייצוא" });
+  [ "#impStaff", "#labStaffExp" ].forEach(function(sel){
     var b = acts.querySelector(sel);
     if(b && !b.classList.contains("ghost")) b.classList.add("ghost");
   });
@@ -3309,8 +3296,16 @@ function plainCard(key, title, sub, src){
   return p;
 }
 
+/* מכרטיס המעבדה בחזרה למקטעי ההגדרות של התוכנה (data-set), כדי שרשימת
+   המקטעים שבסרגל הניווט תדע לגלול גם לכרטיסים המאוחדים של המעבדה. */
+var LAB_SET = {
+  year:"years promote", hist:"hist histgans", ages:"ages", roles:"roles",
+  campus:"campus", caps:"caps", tzmin:"tzmin", presence:"presence activity",
+  users:"users admins", auth:"auth", brand:"branding install", feedback:"feedback"
+};
+
 function settingsScreen(){
-  if(curTab() !== "settings" || view.querySelector(".lab-toc")) return;
+  if(curTab() !== "settings" || view.querySelector(".lab-setwrap")) return;
   var panels = Array.prototype.slice.call(view.querySelectorAll(":scope > .panel"));
   if(!panels.length) return;
 
@@ -3326,35 +3321,33 @@ function settingsScreen(){
   var D = (window.__uiLab && window.__uiLab.settingsLists) ? window.__uiLab.settingsLists() : null;
   var admin = !!(D && D.admin);
 
+  /* אין כאן עוד רשימת ניווט צדדית — מקטעי ההגדרות יושבים בסרגל הניווט
+     הראשי, מתחת ללשונית "הגדרות". */
   var wrap = el("div", "lab-setwrap");
   var col  = el("div", "lab-setcol");
-  var toc  = el("nav", "lab-toc");
   view.insertBefore(wrap, panels[0]);
-  wrap.appendChild(col); wrap.appendChild(toc);
+  wrap.appendChild(col);
 
-  var marks = [], n = 0;
+  var n = 0;
   function mark(k){ if(P[k]) P[k].dataset.labUsed = "1"; }
-  function addCard(p, title){
+  function addCard(p){
     if(!p) return;
     p.id = "labset" + (++n);
+    /* כרטיס שהמעבדה בנתה מאחד כמה מקטעים — יעד הגלילה של כולם */
+    var set = p.dataset.lab && LAB_SET[p.dataset.lab];
+    if(set) p.dataset.set = set;
     col.appendChild(p);
-    var a = el("a", "lab-toci", title);
-    a.href = "#" + p.id;
-    toc.appendChild(a);
-    marks.push(p);
   }
-  function group(name){ toc.appendChild(el("div", "lab-tocg", name)); }
+
 
   /* ═══ 1. שנה ונתונים ═══════════════════════════════════════════════ */
-  group("שנה ונתונים");
-  addCard(yearsCard(P, admin), "שנים ומעבר שנה");
-  addCard(histCard(P), "נתונים היסטוריים");
+  addCard(yearsCard(P, admin));
+  addCard(histCard(P));
 
   /* ═══ 2. רשימות המערכת ════════════════════════════════════════════ */
   /* שלוש הרשימות נבנות כשבבים/שורות מתוך D. בלי הוו (למשל app-artifact.html,
      שאין בו __uiLab) אין נתיב כתיבה, ואז הכרטיס נבנה מהעורך הקיים כמו שהוא —
      המסך נשאר מקובץ, רק בלי הגרירה. */
-  group("רשימות המערכת");
   if(P.ages){
     mark("ages");
     var agesC = D
@@ -3364,7 +3357,7 @@ function settingsScreen(){
       : plainCard("ages", "גילי הילדים",
           "הגילים שמופיעים לבחירה בתיק תלמידה ובסינון הרשימה.", P.ages);
     if(D){ var af = listFoot(P.ages, ["new-age", "addAge"]); if(af) agesC.appendChild(af); }
-    addCard(agesC, "גילי הילדים");
+    addCard(agesC);
     if(D) P.ages.remove();
   }
   if(P.roles){
@@ -3373,7 +3366,7 @@ function settingsScreen(){
       : plainCard("roles", "תפקידי צוות",
           "לכל תפקיד: שיוך חינוך, וסדר התפקידים קובע את סדר התקנים בלוח שיבוץ הצוות.", P.roles);
     if(D){ var rf = listFoot(P.roles, ["new-role", "addRole"]); if(rf) rolesC.appendChild(rf); }
-    addCard(rolesC, "תפקידי צוות");
+    addCard(rolesC);
     if(D) P.roles.remove();
   }
   if(P.campus){
@@ -3385,31 +3378,28 @@ function settingsScreen(){
       : plainCard("campus", "קמפוסים",
           "הקמפוס של כל תלמידה נקבע אוטומטית לפי הגן שלה.", P.campus);
     if(D){ var cf = listFoot(P.campus, ["new-campus", "addCampus"]); if(cf) campC.appendChild(cf); }
-    addCard(campC, "קמפוסים");
+    addCard(campC);
     if(D) P.campus.remove();
   }
-  addCard(capsCard(P), "רף שיבוץ");
-  addCard(tzminCard(P), "מינימום לפתיחת צהרון");
+  addCard(capsCard(P));
+  addCard(tzminCard(P));
 
   /* ═══ 3. מערכת ומשתמשים ═══════════════════════════════════════════ */
-  group("מערכת ומשתמשים");
-  addCard(presenceCard(P), "מי מחובר ויומן פעילות");
-  addCard(usersCard(P), P.users ? "ניהול משתמשים ומנהלי מערכת" : "מנהלי מערכת");
-  addCard(authCard(P), "חשבון והתחברות");
+  addCard(presenceCard(P));
+  addCard(usersCard(P));
+  addCard(authCard(P));
 
   /* ═══ 4. מראה והתקנה ══════════════════════════════════════════════ */
-  group("מראה והתקנה");
-  addCard(brandCard(P), "מיתוג והתקנה כאפליקציה");
+  addCard(brandCard(P));
 
   /* ═══ 5. פניות ותמיכה ═════════════════════════════════════════════ */
   if(P.feedback){
-    group("פניות ותמיכה");
     mark("feedback");
     var fb = labPanel("feedback", "💡 פניות והצעות שיפור",
       "הודעות שנשלחו דרך \"יצירת קשר / הצעה\" שבתפריט, והכתובת שאליה הן נפתחות.");
     moveBody(P.feedback, fb);
     P.feedback.remove();
-    addCard(fb, "💡 פניות והצעות שיפור");
+    addCard(fb);
   }
 
   /* פאנל שהתוכנה מציגה ולא נכלל בתוכנית (למשל הודעת "רק למנהל") — נשאר
@@ -3417,17 +3407,6 @@ function settingsScreen(){
   var rest = panels.filter(function(p){ return p.parentNode !== col && !p.dataset.labUsed && document.contains(p); });
   rest.forEach(function(p){ col.insertBefore(p, col.firstChild); });
 
-  /* סימון הפריט הפעיל בגלילה */
-  var links = toc.querySelectorAll(".lab-toci");
-  var spy = new IntersectionObserver(function(es){
-    es.forEach(function(e){
-      if(!e.isIntersecting) return;
-      links.forEach(function(a){
-        a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id);
-      });
-    });
-  }, {rootMargin:"-10% 0px -80% 0px"});
-  marks.forEach(function(p){ spy.observe(p); });
 }
 
 /* ---- שנים ומעבר שנה ------------------------------------------------
@@ -3951,7 +3930,8 @@ function applyStuMode(){
    תאריך עברי ושעת עדכון. "עדכון קבוצתי" יורד לפס הבחירה התחתון, ו"שליחת
    הודעות" יורדת לגמרי — יש לה מסך משלה.
    =========================================================================== */
-var STU_TOP  = ["addStu", "exportStu", "importStu", "importUpdate"];   /* הסדר בלוח */
+/* "הוספת תלמידה" ו"עדכון לפי מ.ז." עברו לכפתור המרחף */
+var STU_TOP  = ["exportStu", "importStu"];   /* הסדר בלוח */
 var STU_DROP = ["stuMsg"];                             /* למסך ההודעות יש לשונית */
 
 function studentsTop(){
@@ -3984,15 +3964,12 @@ function studentsTop(){
 
   /* שלושת כפתורי הלוח, בסדר שלו ובשמות שלו. הסדר נאכף בכל מעבר, כי
      screenHeader מסדר אותם לפי סדר ה-DOM המקורי. */
-  orderInto(acts, STU_TOP, { addStu:"+ הוספת ילדה", exportStu:"ייצוא",
-                            importStu:"ייבוא", importUpdate:'עדכון לפי ת״ז' });
+  orderInto(acts, STU_TOP, { exportStu:"ייצוא", importStu:"ייבוא" });
   /* התווית "ייבוא / יצוא:" והמפריד נשארו יתומים אחרי שהכפתורים עלו */
   var row = view.querySelector(".panel > .row");
   if(row) Array.prototype.slice.call(row.children).forEach(function(c){
     if(!c.classList.contains("btn")) c.classList.add("lab-hidden");
   });
-  var add = acts.querySelector("#addStu");
-  if(add) add.classList.remove("ghost");
 }
 
 /* שורת הסינון (לוח 01): שדה חיפוש · שלושה שבבי סינון קבועים — גן, גיל,
@@ -4127,13 +4104,12 @@ function studentsCard(){
   }
 }
 
-/* הפס התחתון (הצילום שצורף): "עדכון קבוצתי" יושב בפס הכהה שבתחתית
-   המסך, יחד עם פעולות הבחירה, והפס נשאר גלוי בגלילה.
+/* הפס התחתון (הצילום שצורף): פעולות הבחירה יושבות בפס הכהה שבתחתית
+   המסך, והפס נשאר גלוי בגלילה. הכניסה למצב "עדכון קבוצתי" והיציאה ממנו
+   הן בכפתור המרחף של התוכנה.
 
-   ⚠️ renderSelBar עושה innerHTML="" ל-#stuSelBar בכל רינדור. אילו
-   #bulkToggle היה יושב בתוכו הוא היה נמחק — ואז אי אפשר בכלל להיכנס
-   למצב הבחירה. לכן נבנית עטיפה: פס התוכנה נשאר שלם בתוכה, והכפתור
-   יושב לצידו כאח, מחוץ להישג ידו של ה-innerHTML. */
+   ⚠️ renderSelBar עושה innerHTML="" ל-#stuSelBar בכל רינדור, ולכן #bulkBar
+   מועבר לעטיפה כאח שלו ולא לתוכו — מחוץ להישג ידו של ה-innerHTML. */
 function studentsBottom(){
   var host = view.querySelector("#stuSelBar");
   var bulkBar = view.querySelector("#bulkBar");
@@ -4148,16 +4124,8 @@ function studentsBottom(){
        ממשיך לעבוד בדיוק כמו קודם, רק במקום אחר. */
     var line = el("div", "lab-botline");
     if(bulkBar) line.appendChild(bulkBar);
-    line.appendChild(el("div", "lab-botbar"));   /* מתג המצב — באותה שורה */
     wrap.appendChild(line);
     wrap.appendChild(host);
-  }
-  var bb = wrap.querySelector(".lab-botbar");
-  var bulk = view.querySelector("#bulkToggle");
-  if(bulk && bulk.parentNode !== bb){
-    bulk.classList.add("lab-bulkbtn");
-    bulk.classList.remove("ghost");
-    bb.appendChild(bulk);                   /* העברה — המאזין נשמר */
   }
 
   /* כשהתיק פתוח הכרטיס צר, והשורה נשברה לשתיים. תוויות קצרות יותר
@@ -4170,10 +4138,6 @@ function studentsBottom(){
     var t = SHORT[id] + (n ? " " + n : "");
     if(b.textContent !== t) b.textContent = t;      /* בלי זה — לולאת צופה */
   });
-  if(bulk){
-    var t = bulk.textContent.indexOf("סיום") >= 0 ? "✕ סיום" : "✔ עדכון קבוצתי";
-    if(bulk.textContent !== t) bulk.textContent = t;
-  }
   /* "שדה לעדכון" — הבורר מדבר בעד עצמו, והתווית גזלה שליש מהשורה */
   var fl = view.querySelector("#bulkBar label");
   if(fl) fl.classList.add("lab-hidden");

@@ -151,6 +151,22 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .drawer-nav button:hover{background:var(--surface-2)}
 .drawer-nav button.active{background:var(--accent);color:#fff;box-shadow:var(--shadow)}
 .drawer-nav button.active .count{background:rgba(255,255,255,.24);color:#fff}
+/* לשונית עם רשימת מקטעים (הגדרות): החץ פותח אותה למטה, בתוך הסרגל */
+.drawer-nav .nav-row{display:flex;align-items:center;gap:2px}
+.drawer-nav .nav-row>button[data-tab]{flex:1;min-width:0}
+.drawer-nav .nav-caret{flex:0 0 auto;width:34px;height:34px;padding:0;display:grid;place-items:center;
+  color:var(--muted);font-size:.9rem;line-height:1;border-radius:10px;
+  transition:transform .2s cubic-bezier(.4,0,.2,1),background .2s,color .2s}
+.drawer-nav .nav-caret:hover{transform:none;background:var(--surface-2);color:var(--accent-strong)}
+.drawer-nav .nav-caret.open,.drawer-nav .nav-caret.open:hover{transform:rotate(180deg);color:var(--accent-strong)}
+.drawer-nav .subnav{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px;
+  padding-inline-start:14px;border-inline-start:2px solid var(--border)}
+.drawer-nav .subnav[hidden]{display:none}
+.drawer-nav .subnav-g{font-size:.68rem;font-weight:800;color:var(--muted);letter-spacing:.02em;padding:8px 10px 3px}
+.drawer-nav .subnav-i{padding:7px 10px;border-radius:9px;font-size:.84rem;font-weight:600;color:var(--ink-soft)}
+.drawer-nav .subnav-i:hover{background:var(--surface-2);color:var(--accent-strong)}
+/* גלילה למקטע לא נחתכת מתחת לכותרת הדביקה */
+#view [data-set]{scroll-margin-top:calc(var(--top-h,61px) + 12px)}
 .drawer-foot{border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px}
 .drawer-foot .df-row{display:flex;gap:8px}
 .drawer-foot button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);padding:10px 10px;border-radius:11px;font-weight:800;font-size:.86rem}
@@ -471,11 +487,39 @@ tbody td{padding-block:8px}
 
 /* פס בחירה תחתון */
 .selbar{position:sticky;bottom:10px;z-index:5;margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-  background:var(--accent-strong);color:#fff;border-radius:12px;padding:10px 14px;box-shadow:var(--shadow)}
+  background:var(--accent-strong);color:#fff;border-radius:12px;padding:10px 14px 10px 84px;box-shadow:var(--shadow)}
 .selbar b{margin-inline-end:auto}
 .selbar .btn{background:rgba(255,255,255,.14);color:#fff}
 .selbar .btn:hover{background:rgba(255,255,255,.24)}
 .selbar .btn.light{background:#fff;color:var(--accent-strong)}
+
+/* ---- כפתור פעולה מרחף (+) ----
+   פינה שמאלית תחתונה, בכל המסכים שיש בהם פעולת הוספה. פעולה אחת —
+   לחיצה מפעילה מיד; כמה פעולות — נפתח תפריט קטן מעל הכפתור. */
+/* direction:ltr על העטיפה בלבד — כדי ש-flex-start יהיה הצד השמאלי הפיזי,
+   זה שהכפתור נעוץ בו. תוכן הפריטים חוזר ל-rtl. */
+.fab-wrap{position:fixed;left:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:45;
+  direction:ltr;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.fab-wrap[hidden]{display:none}
+.fab{width:56px;height:56px;border-radius:18px;background:var(--accent);color:#fff;font-size:2rem;line-height:1;
+  display:grid;place-items:center;padding:0 0 4px;box-shadow:0 10px 24px -8px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.16);
+  transition:transform .22s cubic-bezier(.4,0,.2,1),background .18s}
+.fab:hover{background:var(--accent-strong)}
+.fab:focus-visible{outline:3px solid var(--brass);outline-offset:3px}
+.fab.open{transform:rotate(45deg)}
+.fab-menu{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.fab-menu[hidden]{display:none}
+.fab-item{direction:rtl;display:flex;align-items:center;gap:9px;white-space:nowrap;
+  background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:999px;
+  padding:9px 15px;font-size:.9rem;box-shadow:var(--shadow);animation:fab-in .18s cubic-bezier(.4,0,.2,1) both;animation-delay:var(--d,0ms)}
+.fab-item:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-strong)}
+.fab-item .fi{font-size:1.05rem;line-height:1}
+@keyframes fab-in{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.fab,.fab-item{transition:none;animation:none}}
+/* פאנל העוזר החכם נעוץ בצד שמאל — הכפתור זז ימינה כדי לא להסתתר מאחוריו */
+body.ai-docked .fab-wrap{left:calc(var(--ai-w,380px) + 18px)}
+@media(max-width:560px){.fab{width:52px;height:52px;border-radius:17px;font-size:1.8rem}.fab-wrap{left:14px}
+  .selbar{padding-left:76px}}
 
 /* ---- תיק מקוצר בצד (Quick view) ---- */
 .stu-quick{flex:0 0 296px;width:296px;position:sticky;
@@ -614,6 +658,12 @@ body.ai-docked{padding-inline-end:var(--ai-w,380px)}
 
 <div id="offlineBanner" style="display:none"></div>
 <main id="view"></main>
+
+<!-- כפתור פעולה מרחף (+) — פעולות ההוספה של המסך הפעיל -->
+<div class="fab-wrap" id="fabWrap" hidden>
+  <div class="fab-menu" id="fabMenu" role="menu" hidden></div>
+  <button class="fab" id="fabBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="הוספה">+</button>
+</div>
 
 <!-- עוזר חכם — פאנל צד נעוץ (סעיף 4) -->
 <aside class="aipanel" id="aiPanel" aria-label="עוזר חכם">
@@ -2288,15 +2338,135 @@ const TABS = [
 ];
 let active = "home";
 
+/* מקטעי מסך ההגדרות — הרשימה שנפתחת מתחת ל"הגדרות" בסרגל הניווט.
+   { g } = כותרת קבוצה · { k } = מקטע, לפי data-set שעל הפאנל במסך.
+   admin:true — מקטע שקיים רק למנהל מערכת, ולכן אינו מוצג לשאר. */
+const SETTINGS_SECTIONS = [
+  { g:"שנה ונתונים" },
+  { k:"years",    label:"שנים" },
+  { k:"promote",  label:"מעבר שנה" },
+  { k:"hist",     label:"נתונים היסטוריים" },
+  { k:"histgans", label:"נתונים היסטוריים לפי גן" },
+  { g:"רשימות המערכת" },
+  { k:"ages",     label:"גילי הילדים" },
+  { k:"roles",    label:"תפקידי צוות" },
+  { k:"campus",   label:"קמפוסים" },
+  { k:"caps",     label:"רף שיבוץ" },
+  { k:"tzmin",    label:"מינימום לצהרון" },
+  { g:"מערכת ומשתמשים" },
+  { k:"presence", label:"מי מחובר עכשיו" },
+  { k:"activity", label:"יומן פעילות" },
+  { k:"admins",   label:"מנהלי מערכת" },
+  { k:"users",    label:"ניהול משתמשים", admin:true },
+  { k:"auth",     label:"חשבון והתחברות" },
+  { k:"feedback", label:"פניות והצעות שיפור", admin:true },
+  { g:"מראה והתקנה" },
+  { k:"branding", label:"מיתוג — כותרת ולוגו" },
+  { k:"install",  label:"התקנה כאפליקציה" }
+];
+let setNavOpen=false;          // האם רשימת המקטעים פרושה בסרגל
+
+function settingsNavHtml(){
+  const admin=isAdmin();
+  const items=SETTINGS_SECTIONS.filter(x=>x.g||!x.admin||admin);
+  return items.map((x,i)=>{
+    if(x.g){
+      /* כותרת קבוצה שכל מקטעיה מוסתרים — לא מציגים אותה לבדה */
+      const next=items[i+1];
+      return (!next||next.g) ? "" : `<div class="subnav-g">${esc(x.g)}</div>`;
+    }
+    return `<button type="button" class="subnav-i" data-setjump="${x.k}">${esc(x.label)}</button>`;
+  }).join("");
+}
+
+/* מעבר למקטע בהגדרות: פותחים את המסך אם צריך, ומגלגלים אל הפאנל */
+function gotoSettingsSection(key){
+  const jump=()=>{
+    const el=$("#view").querySelector('[data-set~="'+key+'"]');
+    if(el) el.scrollIntoView({ block:"start", behavior:"smooth" });
+  };
+  if(active!=="settings"){ navToTab("settings"); setTimeout(jump,80); }
+  else { closeDrawer(); setTimeout(jump,0); }
+}
+
 function renderTabs(){
   // המונים מכבדים את בורר החינוך (הכל / רגיל / מיוחד)
   const counts = { students: eduScope(studentsOfYear().filter(s=>!s.finished)).length, gans: eduScope(DB.gans.filter(g=>g.active)).length };
   const nav=$("#tabs"); if(!nav) return;
   nav.innerHTML = TABS.map(t=>{
     const c = counts[t.id]!=null ? `<span class="count">${counts[t.id]}</span>` : "";
-    return `<button data-tab="${t.id}" class="${t.id===active?'active':''}"><span class="ic">${t.icon}</span><span class="tl">${esc(t.label)}</span>${c}</button>`;
+    const btn=`<button data-tab="${t.id}" class="${t.id===active?'active':''}"><span class="ic">${t.icon}</span><span class="tl">${esc(t.label)}</span>${c}</button>`;
+    if(t.id!=="settings") return btn;
+    /* ההגדרות נפתחות לרשימת המקטעים שלהן — חץ למטה לצד הלשונית */
+    return `<div class="nav-row">${btn}<button type="button" class="nav-caret${setNavOpen?' open':''}" data-setnav
+        aria-expanded="${setNavOpen}" aria-controls="setSubnav" title="מקטעי ההגדרות" aria-label="מקטעי ההגדרות">▾</button></div>`
+      + `<div class="subnav" id="setSubnav" ${setNavOpen?'':'hidden'}>${settingsNavHtml()}</div>`;
   }).join("");
 }
+/* ============================================================
+   כפתור פעולה מרחף (+)
+   ------------------------------------------------------------
+   מחליף את כפתורי ההוספה שהיו בראש כל מסך. הפעולות נגזרות מהלשונית
+   הפעילה: פעולה אחת — לחיצה מפעילה מיד; כמה פעולות — נפתח תפריט
+   קטן מעל הכפתור. מסך בלי פעולת הוספה — הכפתור מוסתר.
+   ============================================================ */
+function fabActions(){
+  switch(active){
+    case "students": return [
+      { icon:"➕", label:"הוספת תלמידה חדשה",
+        run(){ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); } },
+      { icon:"✏️", label:"עדכון לפי מ.ז.", run(){ openBulkImport(); } },
+      { icon: bulkMode?"✖️":"✔️", label: bulkMode?"סיום עדכון קבוצתי":"עדכון קבוצתי",
+        run(){ bulkMode=!bulkMode; bulkSel.clear(); route(); } }
+    ];
+    case "gans": return [
+      { icon:"➕", label:"הוספת גן",
+        run(){ const g=makeGan(); if(activeEdu) g.education=activeEdu; openGan(g); } }
+    ];
+    case "staff": return [
+      { icon:"➕", label:"הוספת איש/אשת צוות", run(){ openStaff(makeStaff()); } }
+    ];
+    case "management": return [
+      { icon:"➕", label:"הוספת איש קשר",
+        run(){ openMgmt({id:uid(),dept:"",name:"",role:"",phone:"",mobile:"",email:""}); } }
+    ];
+    default: return [];
+  }
+}
+let _fabOpen=false;
+function fabToggle(on){
+  const btn=$("#fabBtn"), menu=$("#fabMenu");
+  if(!btn||!menu) return;
+  _fabOpen = (on==null) ? !_fabOpen : !!on;
+  menu.hidden = !_fabOpen;
+  btn.classList.toggle("open", _fabOpen);
+  btn.setAttribute("aria-expanded", _fabOpen?"true":"false");
+}
+function renderFab(){
+  const wrap=$("#fabWrap"), btn=$("#fabBtn"), menu=$("#fabMenu");
+  if(!wrap||!btn||!menu) return;
+  fabToggle(false);
+  const acts=fabActions();
+  wrap.hidden=!acts.length;
+  menu.innerHTML="";
+  if(!acts.length) return;
+  if(acts.length===1){
+    btn.title=acts[0].label; btn.setAttribute("aria-label",acts[0].label);
+    btn.removeAttribute("aria-haspopup");
+    btn.onclick=()=>acts[0].run();
+    return;
+  }
+  btn.title="פעולות"; btn.setAttribute("aria-label","פעולות"); btn.setAttribute("aria-haspopup","true");
+  /* ההשהיה עולה מלמטה למעלה — הפריט הקרוב לכפתור נפתח ראשון */
+  menu.innerHTML=acts.map((a,i)=>`<button class="fab-item" type="button" role="menuitem" data-fab="${i}" style="--d:${(acts.length-1-i)*45}ms"><span class="fi">${a.icon}</span>${esc(a.label)}</button>`).join("");
+  menu.querySelectorAll("[data-fab]").forEach(b=>{
+    b.onclick=()=>{ fabToggle(false); acts[Number(b.dataset.fab)].run(); };
+  });
+  btn.onclick=()=>fabToggle();
+}
+document.addEventListener("click", e=>{ if(_fabOpen && !e.target.closest("#fabWrap")) fabToggle(false); });
+document.addEventListener("keydown", e=>{ if(_fabOpen && e.key==="Escape"){ fabToggle(false); const b=$("#fabBtn"); if(b) b.focus(); } });
+
 /* מעבדת עיצוב — חשיפת קריאה בלבד של מה שסרגל הצד צריך (יעד, מונים, משתמש).
    פעיל רק כשהמעבדה דלוקה; בתוכנה הרגילה השורה הזו לא עושה דבר. ראה docs/UI_LAB.md.
    קריאה בלבד: אין כאן שום נתיב כתיבה למסד. */
@@ -3095,6 +3265,12 @@ if(document.documentElement.classList.contains("ui-lab")){
       try{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); }catch(e){}
     },
 
+    /* לוח הגנים במעבדה — כרטיס "הוספת גן". אותה פעולה של הכפתור המרחף,
+       כולל ירושת בורר החינוך. */
+    addGan(){
+      try{ const g=makeGan(); if(activeEdu) g.education=activeEdu; openGan(g); }catch(e){}
+    },
+
     /* פתיחת המגירה — "עוד" בסרגל התחתון */
     openMenu(){ try{ openDrawer(); }catch(e){} },
 
@@ -3444,7 +3620,7 @@ function guideContent(){
     <ol style="margin:6px 0 0;padding-inline-start:20px">
       <li>נכנסים למערכת עם חשבון <b>Google</b> מורשה.</li>
       <li>פותחים את <b>☰ התפריט</b> (צד שמאל) ובוחרים <b>שנה</b> ו<b>חינוך</b> — עמוד הבית יתמלא בנתונים.</li>
-      <li>בלשונית <b>תיקי התלמידות</b> לוחצים <b>➕ הוספת ילדה</b>; מוסיפים <b>גנים</b> ומשבצים כל ילדה.</li>
+      <li>בלשונית <b>תיקי התלמידות</b> לוחצים על כפתור ה-<b>➕</b> המרחף (פינה שמאלית תחתונה) → <b>הוספת תלמידה חדשה</b>; מוסיפים <b>גנים</b> ומשבצים כל ילדה.</li>
       <li>הכול נשמר <b>אוטומטית בענן</b> ומסתנכרן בין המכשירים — החיווי בתפריט מראה "✓ נשמר בענן".</li>
     </ol>`;
 
@@ -3485,7 +3661,7 @@ function guideContent(){
 
     { icon:"🧒", title:"תלמידות — הוספת תיק וכל השדות", html:
       `<ol class="gd-steps">
-        <li><b>➕ הוספת ילדה</b> → נפתח תיק; ממלאים פרטים אישיים, הורים וכתובת.</li>
+        <li>כפתור ה-<b>➕</b> המרחף (פינה שמאלית תחתונה) → <b>הוספת תלמידה חדשה</b> → נפתח תיק; ממלאים פרטים אישיים, הורים וכתובת.</li>
         <li><b>חיוג · וואטסאפ · SMS · מייל בלחיצה</b> — ליד <b>כל מספר טלפון בתוכנה</b> (בתיק, בטבלאות, בכרטיס הגן, אצל הצוות, בספר הטלפונים ובמפה) יש כפתורים: <b>📞 חיוג</b>, ולמספר <b>נייד</b> גם <b>💬 וואטסאפ</b> ו-<b>✉️ SMS</b> — בלי להעתיק את המספר. ליד הדוא"ל יש <b>✉️ שליחת מייל</b>. בשדות הטופס הכפתור פועל לפי הערך <b>המעודכן בשדה</b> באותו רגע. המערכת ממירה לבד מספר ישראלי לפורמט הבינלאומי שוואטסאפ צריך (05X → 9725X).</li>
         <li><b>מספר זהות (ת"ז)</b> — אם הילדה כבר רשומה באותה שנה (גם בחינוך אחר!), תופיע <b style="color:var(--g-bad)">התראה מיד</b> והשמירה תיחסם — כדי למנוע רישום כפול. בהתראה יש כפתור <b>↩ פתיחת התיק</b> שמעביר ישירות לתיק הקיים.
           <div class="gd-line"><span class="gd-pill bad">⚠️ כבר רשומה בשנה זו: מיכל אבו · חינוך מיוחד · גן רבקה</span></div></li>
@@ -3548,7 +3724,7 @@ function guideContent(){
       `<p>לעדכן הרבה ילדות בבת אחת בלי לפתוח כל תיק:</p>`+
       illBulk+
       `<ol class="gd-steps">
-        <li>לוחצים <b>✔️ עדכון קבוצתי</b> → צ'קבוקס בכל שורה.</li>
+        <li>לוחצים על כפתור ה-<b>➕</b> המרחף (פינה שמאלית תחתונה) → <b>✔️ עדכון קבוצתי</b> → צ'קבוקס בכל שורה.</li>
         <li>מסמנים ילדות (או <b>"בחר הכל"</b> לפי הסינון).</li>
         <li>בוחרים <b>שדה</b> ו<b>ערך</b>, ולוחצים <b>סמן כן/לא</b>.</li>
       </ol>
@@ -3559,7 +3735,7 @@ function guideContent(){
     { icon:"🏫", title:"גנים", html:
       illGan+
       `<ul>
-        <li>לשונית <b>גנים</b> → <b>➕ הוספת גן</b>: שם, סמל, גיל, חינוך, גננת, כתובת, טלפונים, <b>קיבולת</b>, קמפוס, הפעלה/כיבוי.</li>
+        <li>לשונית <b>גנים</b> → כפתור ה-<b>➕</b> המרחף (פינה שמאלית תחתונה) → <b>הוספת גן</b>: שם, סמל, גיל, חינוך, גננת, כתובת, טלפונים, <b>קיבולת</b>, קמפוס, הפעלה/כיבוי.</li>
         <li><b>ניווט וחיוג מהירים</b> — בטבלת הגנים (וגם בטופס עריכת הגן) מופיעים ליד הכתובת כפתורי <b>🚗 Waze</b> ו-<b>🗺️ מפות Google</b> לניווט בלחיצה, וליד הטלפון כפתור <b>📞 חיוג</b>.</li>
         <li>גנים דו-גילאיים נתמכים (למשל 3/4, 4/5).</li>
         <li>הקמפוס של הגן קובע את הקמפוס של התלמידות שבו.</li>
@@ -3724,7 +3900,7 @@ function guideContent(){
     { icon:"📣", title:"מרכז ההודעות — מיילים · וואטסאפ · SMS · הודעות קוליות", html:
       `<p>לשונית <b>📣 הודעות</b> שולחת הודעה מרוכזת להורים, לצוות או להנהלה. כותבים את התוכן <b>פעם אחת</b> עם שדות מיזוג, והמערכת ממלאת לכל נמענת את הפרטים שלה — כולל <b>הגן שאליו שובצה</b>.</p>
       <ol class="gd-steps">
-        <li><b>למי שולחים</b> — 👪 הורי תלמידות (סינון לפי גנים, חינוך, קמפוס, גיל, מועד וסטטוס שיבוץ) · 👩‍🏫 צוות (לפי תפקיד וחינוך) · 📞 הנהלה (לפי אגף) · ✍️ רשימה ידנית (הדבקת שמות וכתובות/מספרים). המערכת מציגה מיד כמה נמענים יש וכמה מהם חסרי מייל/טלפון. <b>קיצור דרך:</b> כפתור <b>📣 שליחת הודעות</b> קיים גם בלשוניות <b>תלמידות</b> (מעביר אוטומטית את הסינון הנוכחי), <b>צוות</b> ו<b>הנהלה</b> — פותח את מרכז ההודעות עם הקהל הנכון כבר נבחר.</li>
+        <li><b>למי שולחים</b> — 👪 הורי תלמידות (סינון לפי גנים, חינוך, קמפוס, גיל, מועד וסטטוס שיבוץ) · 👩‍🏫 צוות (לפי תפקיד וחינוך) · 📞 הנהלה (לפי אגף) · ✍️ רשימה ידנית (הדבקת שמות וכתובות/מספרים). המערכת מציגה מיד כמה נמענים יש וכמה מהם חסרי מייל/טלפון. <b>קיצור דרך:</b> כפתור <b>📣 שליחת הודעות</b> קיים גם בלשוניות <b>תלמידות</b> (מעביר אוטומטית את הסינון הנוכחי) ו<b>הנהלה</b> — פותח את מרכז ההודעות עם הקהל הנכון כבר נבחר.</li>
         <li><b>באיזה ערוץ</b> — ✉️ מייל · 💬 וואטסאפ · 📱 SMS · 📞 הודעה קולית.</li>
         <li><b>מה שולחים</b> — בוחרים <b>תבנית</b> מוכנה (הודעת שיבוץ סופי · אישור רישום · תזכורת מסמכים · הודעה כללית · הודעה לצוות), עורכים, ואפשר <b>לשמור תבנית משלכם</b>. לחיצה על שדה מיזוג מוסיפה אותו לטקסט: <code>{{שם הילדה}}</code> · <code>{{גן}}</code> · <code>{{גננת}}</code> · <code>{{כתובת הגן}}</code> · <code>{{טלפון הגן}}</code> ועוד.</li>
         <li><b>תצוגה מקדימה ושליחה</b> — <b>👁️ תצוגה מקדימה</b> מציגה שלוש הודעות אמיתיות כפי שיישלחו · <b>✉️ שליחת בדיקה</b> שולחת אליכם דוגמה · <b>📤 שליחה</b> מבצע.</li>
@@ -3751,6 +3927,7 @@ function guideContent(){
 
     { icon:"⚙️", title:"הגדרות ומיתוג", html:
       `<div class="gd-tip">💡 חיבורי הדרייב, הטופס הדיגיטלי, עוזר ה-AI, דיוק המפה והגיבוי עברו ללשונית <b>"כלים ושירותים"</b>.</div>
+      <div class="gd-tip">🧭 <b>קפיצה למקטע:</b> בתפריט הצד, לצד <b>הגדרות</b>, יש חץ <b>▾</b>. לחיצה עליו פורשת את כל מקטעי ההגדרות (שנים · רשימות · רף שיבוץ · משתמשים · מיתוג…), ובחירה במקטע מגלגלת ישר אליו.</div>
       <ul>
         <li><b>מיתוג</b> — כותרת, ו<b>העלאת קובץ לוגו</b> (מומלץ): התמונה מוטמעת במערכת ומופיעה בכותרת, בפאביקון וגם כ<b>אייקון האפליקציה</b> המותקנת.</li>
         <li><b>שנים</b> — הוספה/מחיקה, ו<b>מעבר שנה</b>.</li>
@@ -3821,6 +3998,7 @@ function route(){
   const v = $("#view");
   ({home:viewHome, students:viewStudents, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
     municipality:viewMunicipality, export:viewExport, management:viewManagement, messages:viewMessages, tools:viewTools, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
+  renderFab();
 }
 
 /* ============================================================
@@ -4625,14 +4803,11 @@ function viewStudents(root){
     <div class="section-title" style="margin-bottom:10px"><h2>תיקי התלמידות</h2></div>
     <div id="stuSummary" class="sticky"></div>
     <div class="row" style="gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
-      <button class="btn" id="addStu">➕ הוספת ילדה</button>
-      <button class="btn ghost" id="bulkToggle">${bulkMode?'✖️ סיום עדכון קבוצתי':'✔️ עדכון קבוצתי'}</button>
       <button class="btn ghost" id="stuMsg" title="שליחת מיילים / וואטסאפ / SMS להורים לפי הסינון">📣 שליחת הודעות</button>
       <span style="flex:1;min-width:8px"></span>
       <span class="hint" style="align-self:center">ייבוא / יצוא:</span>
       <button class="btn ghost sm" id="exportStu">📤 יצוא</button>
       <button class="btn ghost sm" id="importStu">⬆️ ייבוא מקובץ</button>
-      <button class="btn ghost sm" id="importUpdate">✏️ עדכון לפי ת"ז</button>
     </div>
     <div id="bulkBar"></div>
     <div class="searchbar">
@@ -4685,11 +4860,9 @@ function viewStudents(root){
       parentFilter:{ gans:(stuFilter.gans||[]).filter(x=>x&&x!=="__none__"), edu:stuFilter.edu||"", campus:stuFilter.campus||"",
                      period:stuFilter.period||"", ages:(stuFilter.age||[]).map(String),
                      placed: stuFilter.placed==='no' ? 'no' : 'yes' } }); }
-  $("#addStu").onclick = ()=>{ const st=makeStudent(); if(activeEdu) st.education=activeEdu; openStudent(st); };
+  /* ➕ הוספת תלמידה · ✏️ עדכון לפי מ.ז. · ✔️ עדכון קבוצתי — בכפתור המרחף */
   $("#exportStu").onclick = ()=> openExportModal();
   $("#importStu").onclick = ()=> openImport();
-  $("#bulkToggle").onclick = ()=>{ bulkMode=!bulkMode; bulkSel.clear(); viewStudents(root); };
-  $("#importUpdate").onclick = ()=> openBulkImport();
   $("#stuFilterToggle").onclick = ()=>{ stuFiltersOpen = $("#stuFilterPanel").hasAttribute("hidden"); viewStudents(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
   bind("#f-q","q");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
@@ -7618,7 +7791,6 @@ function viewGans(root){
       </div>
     </div>
     <div class="row" style="gap:8px;margin-bottom:12px">
-      <button class="btn" id="addGan">➕ הוספת גן</button>
       <button class="btn ghost" id="impGan">⬆️ ייבוא מקובץ</button>
       <button class="btn ghost" id="exportGans">📤 ייצוא / הדפסה</button>
     </div>
@@ -7630,7 +7802,7 @@ function viewGans(root){
       </div>`; })()}
     <div id="ganTable"></div>
   </div>`;
-  $("#addGan").onclick=()=>{ const g=makeGan(); if(activeEdu) g.education=activeEdu; openGan(g); };
+  /* ➕ הוספת גן — בכפתור המרחף */
   { const b=$("#ganFillCity"); if(b) b.onclick=()=>{
       const c=mainCityName(); const miss=DB.gans.filter(g=>!String(g.city||"").trim());
       if(!c || !miss.length) return;
@@ -8973,14 +9145,11 @@ function viewStaff(root){
       </div>
     </div>
     <div class="row" style="gap:8px;margin-bottom:12px">
-      <button class="btn" id="addStaff">➕ הוספת איש/אשת צוות</button>
-      <button class="btn ghost" id="staffMsg" title="שליחת הודעה לצוות">📣 שליחת הודעות</button>
       <button class="btn ghost" id="impStaff">⬆️ ייבוא מקובץ</button>
     </div>
     <div id="staffTable"></div>
   </div>`;
-  $("#addStaff").onclick=()=>openStaff(makeStaff());
-  { const b=$("#staffMsg"); if(b) b.onclick=()=>openMessages({ audience:"staff", tplId:"staff-general" }); }
+  /* ➕ הוספת איש/אשת צוות — בכפתור המרחף */
   $("#impStaff").onclick=openStaffImport;
   $("#staffFilterToggle").onclick=()=>{ staffFiltersOpen=$("#staffFilterPanel").hasAttribute("hidden"); viewStaff(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ staffFilter[key]=e.value; renderStaffTable(); }; };
@@ -10461,12 +10630,11 @@ function viewManagement(root){
   <div class="panel">
     <div class="section-title">
       <div><h2>טלפוני ההנהלה הראשית</h2><div class="sub">אנשי קשר לפי אגפים. ניתן לעדכן בהמשך.</div></div>
-      <button class="btn" id="addM">➕ הוספת איש קשר</button>
       <button class="btn ghost" id="mgmtMsg" title="שליחת הודעה לאנשי ההנהלה">📣 שליחת הודעות</button>
     </div>
     <div id="mTable"></div>
   </div>`;
-  $("#addM").onclick=()=>openMgmt({id:uid(),dept:"",name:"",role:"",phone:"",mobile:"",email:""});
+  /* ➕ הוספת איש קשר — בכפתור המרחף */
   { const b=$("#mgmtMsg"); if(b) b.onclick=()=>openMessages({ audience:"management", tplId:"general" }); }
   renderMgmt();
 }
@@ -12140,19 +12308,19 @@ function viewSettings(root){
   root.innerHTML=`
   ${admin?"":`<div class="panel"><div class="note">🔒 חלק מההגדרות (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, ניהול מנהלים) פתוחות לעריכה רק למנהל מערכת. אפשר לצפות אך לא לשנות. פנה/י למנהל להוספתך.</div></div>`}
 
-  <div class="panel">
+  <div class="panel" data-set="presence">
     <h2>מי מחובר עכשיו <span class="pill neutral" id="presenceCount" style="font-size:.85rem">…</span></h2>
     <div class="sub">משתמשים שפעילים במערכת ב-5 הדקות האחרונות (מתעדכן אונליין). שימושי לדעת מתי בטוח לבצע שינויים/עדכונים כשאין אף אחד באמצע עבודה.</div>
     <div id="presenceBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="activity">
     <h2>יומן פעילות — מי ערך מה ומתי</h2>
     <div class="sub">העריכה האחרונה של כל משתמש: מתי, ומה הוא עשה (עדכון תיק / הוספת גן וכו').</div>
     <div id="activityBox" style="margin-top:8px"><div class="hint">טוען…</div></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="branding">
     <h2>מיתוג — כותרת ולוגו</h2>
     <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר <b>להעלות קובץ תמונה</b> (מומלץ), או להזין אימוג'י (למשל 🎒).</div>
     <div class="grid g2">
@@ -12171,13 +12339,13 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="install">
     <h2>התקנה כאפליקציה — טלפון או מחשב</h2>
     <div class="sub">אפשר להתקין את המערכת כאפליקציה עצמאית — על המחשב (חלון נפרד עם אייקון בשולחן העבודה) או במסך הבית של הטלפון — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג". כניסה ישירה לתוכנה בלי לפתוח דפדפן.</div>
     <div id="install-box"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="caps">
     <h2>רף שיבוץ — מקסימום משובצות בגן</h2>
     <div class="sub"><b>כל עוד לא הוזן כאן מספר ולא הוגדר רף בכרטיס גן — אין שום הגבלה, והמערכת מתנהגת בדיוק כמו קודם.</b><br>
       מגבלה <b>קשיחה</b> על השיבוץ הסופי: כשגן מגיע לרף, המערכת לא תאפשר לשבץ אליו עוד תלמידה ותציג הודעה.
@@ -12196,7 +12364,7 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="years">
     <h2>שנים</h2>
     <div class="sub">כל שנה מנוהלת בנפרד (תשפ"ז, תשפ"ח, וכו'). הבחירה בראש המסך קובעת על איזו שנה עובדים.</div>
     <div id="years-box"></div>
@@ -12206,7 +12374,7 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="promote">
     <h2>מעבר שנה — קידום לגן המתקדם</h2>
     <div class="sub">בתחילת שנה חדשה: מעתיקים את התלמידות משנה קודמת. עוברים <b>רק</b> הפרטים האישיים והכתובת, וכל ילדה מקודמת ל<b>גן המתקדם באותו קמפוס</b> (גיל+1). נתוני השנה הקודמת נשמרים במלואם.</div>
     <div class="row">
@@ -12224,19 +12392,19 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="hist">
     <h2>נתונים היסטוריים (שנים קודמות)</h2>
     <div class="sub">הזנת הסיכומים הסופיים של שנים קודמות — לפני שהתוכנה עבדה. משמשים למחשבון האחוזים. משנת ההפעלה ואילך הכל מסונכרן אוטומטית.</div>
     <div id="hist-box"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="histgans">
     <h2>נתונים היסטוריים לפי גן (שנים קודמות)</h2>
     <div class="sub">הזנת מספרי התלמידות בכל גן לשנים קודמות — לפי מועדים (א׳/ב׳/ג׳/סופי). כאן מזינים <b>מספרים בלבד</b> (לא רשימת ילדות). הנתונים מוזרמים ל"מחשבון אחוזים חופשי" ולהתפלגות בלשונית "דוחות ואחוזים" — כך אפשר להשוות שנים חיות מול שנים היסטוריות.</div>
     <div id="hist-gans-box"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="tzmin">
     <h2>מינימום לפתיחת צהרון</h2>
     <div class="sub">מספר התלמידות המינימלי בקבוצה כדי לפתוח צהרון. בלשונית "שיבוץ" → "צהרונים" כל גן שמתחת למספר הזה יסומן באדום, ומעליו בירוק.</div>
     <div class="row">
@@ -12245,7 +12413,7 @@ function viewSettings(root){
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="ages">
     <h2>גילי הילדים (רשימת תלמידים)</h2>
     <div class="sub">הגילים שמופיעים לבחירה בתיק תלמידה ובסינון רשימת התלמידים. אפשר להוסיף, לערוך (שינוי הטקסט בשדה ויציאה) או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
     <div id="ages-box"></div>
@@ -12256,7 +12424,7 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="roles">
     <h2>תפקידי צוות</h2>
     <div class="sub">התפקידים שמופיעים לבחירה בכרטיס איש/אשת צוות, בסינון הצוות ובייבוא. לכל תפקיד אפשר לקבוע <b>שיוך חינוך</b> (רגיל / מיוחד / שניהם) — ובשיבוץ יוצגו רק תפקידים המתאימים לחינוך הגן — וכן <b>צבע</b> ייחודי. אפשר להוסיף, לערוך או למחוק.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
     <div id="roles-box"></div>
@@ -12267,7 +12435,7 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="campus">
     <h2>קמפוסים</h2>
     <div class="sub">רשימת הקמפוסים לבחירה בכרטיס הגן. הקמפוס של כל תלמידה נקבע <b>אוטומטית לפי הגן שלה</b> — כך שלא יופיעו ערכים שלא הוגדרו. כאן מגדירים, עורכים או מוחקים קמפוסים.${admin?'':' עריכה למנהלי מערכת בלבד.'}</div>
     <div id="campus-box"></div>
@@ -12278,7 +12446,7 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
-  <div class="panel">
+  <div class="panel" data-set="admins">
     <h2>מנהלי מערכת</h2>
     <div class="sub">רק כתובות אימייל שברשימה זו יכולות לשנות את הגדרות המערכת (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, גילי ילדים ותפקידי צוות). אם הרשימה ריקה — כל משתמש מחובר יכול (עד שמוסיפים מנהל ראשון).</div>
     <div id="admins-box"></div>
@@ -12288,7 +12456,7 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
-  ${admin?`<div class="panel">
+  ${admin?`<div class="panel" data-set="feedback">
     <h2>💡 פניות והצעות שיפור</h2>
     <div class="sub">הודעות שנשלחו דרך "יצירת קשר / הצעה" בתפריט. אפשר להגדיר כתובת מייל שאליה ייפתחו הפניות.</div>
     <div class="row" style="margin-top:8px;max-width:460px">
@@ -12298,13 +12466,13 @@ function viewSettings(root){
     <div id="feedback-box" style="margin-top:12px"></div>
   </div>`:""}
 
-  <div class="panel">
+  <div class="panel" data-set="auth">
     <h2>חשבון והתחברות</h2>
     <div class="sub">המערכת מאובטחת בכניסה עם חשבון Google מורשה בלבד (Firebase). הנתונים נשמרים בענן ומסונכרנים בין כל המכשירים.</div>
     <div id="auth-box"></div>
   </div>
 
-  ${admin?`<div class="panel">
+  ${admin?`<div class="panel" data-set="users">
     <h2>ניהול משתמשים</h2>
     <div class="sub">הכניסה למערכת היא עם חשבון <b>Google בלבד</b>. כאן מאשרים כתובות Google שיוכלו להיכנס, קובעים <b>שם</b> לכל משתמש, ומגדירים <b>מה מותר לו/ה לערוך</b>: חינוך רגיל, חינוך מיוחד, או צפייה בלבד. רק כתובת שמופיעה ברשימה כאן (או מנהל מערכת) תוכל להיכנס.</div>
     <div class="row" style="margin-top:10px">
@@ -12653,7 +12821,14 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"){
   if(open.length){ open.forEach(d=>d.open=false); return; }
   if($("#drawer").classList.contains("open")) closeDrawer(); else closeModal(); } });
 
-$("#tabs").addEventListener("click",e=>{ const b=e.target.closest("[data-tab]"); if(b){ navToTab(b.dataset.tab); } });
+$("#tabs").addEventListener("click",e=>{
+  const car=e.target.closest("[data-setnav]");
+  if(car){ setNavOpen=!setNavOpen; renderTabs(); return; }
+  const jmp=e.target.closest("[data-setjump]");
+  if(jmp){ gotoSettingsSection(jmp.dataset.setjump); return; }
+  const b=e.target.closest("[data-tab]");
+  if(b){ if(b.dataset.tab==="settings") setNavOpen=true; navToTab(b.dataset.tab); }
+});
 $("#backBtn").addEventListener("click", goBack);
 $("#menuBtn").addEventListener("click",toggleDrawer);
 $("#drawerClose").addEventListener("click",closeDrawer);

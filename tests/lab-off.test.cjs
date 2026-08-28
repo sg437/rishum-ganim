@@ -97,6 +97,9 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
     cols: [...document.querySelectorAll('#staffTable th')].map(t=>t.textContent.replace(/[▲▼]/g,'').trim()),
     rows: document.querySelectorAll('#staffTable tbody tr').length,
     btns: [...document.querySelectorAll('#view .row .btn')].map(x=>x.id),
+    fab:  [...document.querySelectorAll('#fabMenu .fab-item, #fabBtn')].length,
+    fabLbl: (document.querySelector('#fabBtn')||{}).title,
+    fabOn: !(document.querySelector('#fabWrap')||{hidden:true}).hidden,
     lab:  document.querySelectorAll('[class*="lab-"]').length,
     stage:!!document.querySelector('.lab-ststage'),
     hidden: !!(document.querySelector('#staffTable')||{}).classList.contains('lab-hidden')
@@ -104,10 +107,12 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
   if(st.h2!=='רשימת צוות הגנים') bad('הכותרת בעיצוב הקיים השתנתה',['התקבל: '+st.h2]);
   else if(st.cols.join('|')!=='שם משפחה|שם פרטי|ת"ז|תפקיד|חינוך|טלפון|נייד|מייל|עיר')
     bad('עמודות הטבלה בעיצוב הקיים השתנו',[st.cols.join(' · ')]);
-  else if(st.btns.join(',')!=='addStaff,staffMsg,impStaff') bad('כפתורי המסך השתנו',[st.btns.join(' · ')]);
+  else if(st.btns.join(',')!=='impStaff') bad('כפתורי המסך השתנו',[st.btns.join(' · ')])
+  else if(!st.fabOn || st.fabLbl!=='הוספת איש/אשת צוות')
+    bad('הכפתור המרחף אינו מציע "הוספת איש/אשת צוות"',[JSON.stringify(st)]);
   else if(st.lab||st.stage||st.hidden) bad('אלמנטים של המעבדה נכנסו לעיצוב הקיים',[JSON.stringify(st)]);
   else if(st.rows!==1) bad('הרשימה אינה מציגה את הרשומה',['שורות: '+st.rows]);
-  else ok('מסך הצוות בעיצוב הקיים: כותרת, 9 עמודות ו-3 כפתורים — בדיוק כמו קודם');
+  else ok('מסך הצוות בעיצוב הקיים: כותרת, 9 עמודות, "ייבוא" בסרגל וההוספה בכפתור המרחף');
 
   await p.evaluate(()=>{ document.querySelector('#impStaff').click(); }); await p.waitForTimeout(600);
   const im=await p.evaluate(()=>({
@@ -119,6 +124,41 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
   if(im.h3!=='ייבוא אנשי צוות מקובץ') bad('כותרת חלון הייבוא השתנתה',['התקבל: '+im.h3]);
   else if(im.modes||im.tzPane) bad('מצב "עדכון לפי ת"ז" דלף לעיצוב הקיים',[JSON.stringify(im)]);
   else ok('חלון ייבוא הצוות בעיצוב הקיים: אותה כותרת, בלי מצבים ובלי מקטע ת"ז');
+
+  /* --- מקטעי ההגדרות בסרגל הניווט ------------------------------------- */
+  await p.evaluate(()=>{ DB.settings.admins=['x@y.z']; __set('active','settings'); route(); });
+  await p.waitForTimeout(700);
+  const nv=await p.evaluate(()=>{
+    const car=document.querySelector('.drawer-nav [data-setnav]');
+    const sub=document.querySelector('#setSubnav');
+    const items=[...document.querySelectorAll('#setSubnav .subnav-i')].map(b=>b.dataset.setjump);
+    return { car:!!car, closed: sub? sub.hidden : null, items,
+             groups:[...document.querySelectorAll('#setSubnav .subnav-g')].length,
+             dead: items.filter(k=>!document.querySelector('#view [data-set~="'+k+'"]')),
+             /* מקטעי מנהל בלבד אינם מוצגים למי שאינו מנהל */
+             admOnly: items.filter(k=>k==='users'||k==='feedback') };
+  });
+  if(!nv.car)            bad('אין חץ פתיחה ללשונית ההגדרות');
+  else if(nv.closed!==true) bad('רשימת המקטעים פרושה בלי שנלחץ החץ');
+  else if(!nv.items.length) bad('רשימת המקטעים ריקה');
+  else if(nv.dead.length)   bad('מקטעים בסרגל שאין להם יעד במסך',[nv.dead.join(' · ')]);
+  else if(nv.admOnly.length) bad('מקטעי מנהל־בלבד הוצגו למי שאינו מנהל',[nv.admOnly.join(' · ')]);
+  else ok('סרגל הניווט: '+nv.groups+' קבוצות ו-'+nv.items.length+' מקטעי הגדרות, כולם מובילים לפאנל');
+
+  const jump=await p.evaluate(async()=>{
+    document.querySelector('.drawer-nav [data-setnav]').click();
+    const open=!document.querySelector('#setSubnav').hidden;
+    const b=document.querySelector('#setSubnav [data-setjump="tzmin"]');
+    if(b) b.click();
+    await new Promise(r=>setTimeout(r,700));
+    const el=document.querySelector('#view [data-set~="tzmin"]');
+    return { open, top: el? Math.round(el.getBoundingClientRect().top) : null,
+             drawer: document.querySelector('#drawer').classList.contains('open') };
+  });
+  if(!jump.open)                       bad('החץ לא פרש את רשימת המקטעים');
+  else if(jump.drawer)                 bad('המגירה נשארה פתוחה אחרי בחירת מקטע');
+  else if(!(jump.top>0 && jump.top<220)) bad('הבחירה לא גיללה אל המקטע',['top='+jump.top]);
+  else ok('בחירת מקטע גוללת אליו מתחת לכותרת הדביקה, וסוגרת את המגירה');
 
   const real=errs.filter(e=>!/Failed to load resource|net::ERR_/.test(e));
   if(real.length) bad('נזרקו שגיאות JS',real.slice(0,5)); else ok('אף שגיאת JS לא נזרקה');

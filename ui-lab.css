@@ -720,7 +720,7 @@ html.ui-lab .lab-docfull + .lab-docn{ color:var(--good) }
 
 /* סרגל הפעולות התחתון — כהה, כמו בלוח */
 html.ui-lab .selbar{
-  background:var(--lab-deep); border-radius:14px; padding:12px 16px;
+  background:var(--lab-deep); border-radius:14px; padding:12px 16px 12px 84px;
   box-shadow:var(--shadow-lg);
 }
 html.ui-lab .selbar .btn{ background:rgba(255,255,255,.12); border-radius:10px; font-weight:600 }
@@ -1562,6 +1562,8 @@ html.ui-lab .lab-bottom{ display:none }
   html.ui-lab .ui-lab-badge{ inset-block-end:calc(86px + env(safe-area-inset-bottom, 0px)) }
   /* סרגל הבחירה של התלמידות נעוץ מעל סרגל הניווט */
   html.ui-lab .selbar{ bottom:86px }
+  /* הכפתור המרחף של התוכנה — מעל הסרגל, שלא ייחתך */
+  html.ui-lab .fab-wrap{ bottom:calc(90px + env(safe-area-inset-bottom, 0px)) }
 
   /* ---- רשימת התלמידות ככרטיסים במקום טבלה ----
      סדר העמודות בתוכנה משתנה לפי "עמודות נוספות", ולכן אי אפשר למקם תא
@@ -1628,8 +1630,9 @@ html.ui-lab .lab-bottom{ display:none }
 /* ⚠️ באג שתוקן: inset-inline-start ב-RTL הוא *ימין*, כלומר התג ישב בדיוק
    מעל תחתית סרגל הצד וחסם את כרטיס היעד ואת שורת המשתמש. הוא עובר לצד
    הנגדי. בנייד הסרגל הוא מגירה סגורה, ולכן שם אין התנגשות. */
+/* הפינה השמאלית התחתונה שייכת לכפתור המרחף של התוכנה — התג עבר לצד השני */
 html.ui-lab .ui-lab-badge{
-  position:fixed; inset-block-end:12px; inset-inline-end:12px; z-index:9999;
+  position:fixed; inset-block-end:12px; inset-inline-start:12px; z-index:9999;
   display:inline-flex; align-items:center; gap:6px;
   padding:6px 12px; border-radius:999px;
   background:#7a2e2e; color:#fff;
@@ -1820,34 +1823,11 @@ html.ui-lab .lab-wmain .check:has(input:checked){
 }
 html.ui-lab .checks{ display:flex !important; flex-wrap:wrap; gap:8px }
 
-/* -- הגדרות: רשימת ניווט צדדית -------------------------------------------- */
-html.ui-lab .lab-setwrap{ display:grid; gap:18px; grid-template-columns:1fr 230px; align-items:start }
+/* -- הגדרות: עמודת הכרטיסים ------------------------------------------------
+   רשימת המקטעים אינה יושבת כאן: היא בסרגל הניווט, מתחת ללשונית "הגדרות". */
+html.ui-lab .lab-setwrap{ display:flex; flex-direction:column; gap:18px }
 html.ui-lab .lab-setcol{ display:flex; flex-direction:column; gap:14px; min-width:0 }
 html.ui-lab .lab-setcol > .panel{ margin:0 }
-html.ui-lab .lab-toc{
-  position:sticky; top:14px; background:var(--surface-2);
-  border:1px solid var(--border); border-radius:var(--radius); padding:12px 10px;
-  max-height:calc(100vh - 40px); overflow:auto;
-}
-html.ui-lab .lab-tocg{
-  font-size:.68rem; color:var(--muted); font-weight:700; letter-spacing:.02em;
-  padding:10px 10px 5px;
-}
-html.ui-lab .lab-tocg:first-child{ padding-top:2px }
-html.ui-lab .lab-toci{
-  display:block; padding:7px 10px; border-radius:9px; text-decoration:none;
-  color:var(--ink-soft); font-size:.82rem; font-weight:600;
-  border-inline-start:3px solid transparent;
-}
-html.ui-lab .lab-toci:hover{ background:var(--surface) }
-html.ui-lab .lab-toci.on{
-  background:var(--surface); color:var(--ink);
-  border-inline-start-color:var(--accent);
-}
-@media (max-width:1000px){
-  html.ui-lab .lab-setwrap{ grid-template-columns:1fr }
-  html.ui-lab .lab-toc{ display:none }
-}
 
 /* -- כלים ושירותים: רשת כרטיסים ------------------------------------------- */
 html.ui-lab .lab-grid{
@@ -2288,7 +2268,6 @@ html.ui-lab .lab-botwrap > *{ pointer-events:auto }
 html.ui-lab .lab-botline{ display:flex; align-items:center; gap:7px; flex-wrap:wrap }
 html.ui-lab .lab-botline > #bulkBar{ flex:1 1 auto; min-width:0 }
 html.ui-lab .lab-botline > #bulkBar:empty{ display:none }
-html.ui-lab .lab-botbar{ flex:0 0 auto; margin-inline-start:auto }
 
 /* ---- מצב פעיל: גוש כהה אחד, נמוך ---- */
 html.ui-lab .lab-botwrap.on{
@@ -2343,13 +2322,6 @@ html.ui-lab .lab-botwrap.on .btn#bulk-yes{ background:#fff; color:var(--lab-deep
 html.ui-lab .lab-botwrap.on .btn#bulk-yes:hover{ background:#e9f1ea }
 html.ui-lab .lab-botwrap.on .selbar > b{ font-size:.85rem; font-weight:700; color:#f3f6f1 }
 
-/* ---- מצב רגוע: רק המתג, בפינה השמאלית התחתונה ---- */
-html.ui-lab .lab-bulkbtn{
-  border-radius:99px; padding:7px 15px; font-size:.8rem; font-weight:600;
-  background:var(--lab-deep); border:0; color:#f3f6f1;
-  box-shadow:0 6px 18px rgba(21,52,42,.20);
-}
-html.ui-lab .lab-bulkbtn:hover{ background:var(--accent-strong); color:#fff }
 html.ui-lab .selbar{ position:static }
 
 /* הפס נעצר בקצה הטבלה כשתיק הילדה פתוח — לא נכנס מתחתיו */
