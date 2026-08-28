@@ -134,7 +134,9 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
     const items=[...document.querySelectorAll('#setSubnav .subnav-i')].map(b=>b.dataset.setjump);
     return { car:!!car, closed: sub? sub.hidden : null, items,
              groups:[...document.querySelectorAll('#setSubnav .subnav-g')].length,
-             dead: items.filter(k=>!document.querySelector('#view [data-set~="'+k+'"]')),
+             /* פריט אחד ברשימה עשוי לכסות כמה פאנלים — די באחד מהם */
+             dead: items.filter(k=>!document.querySelector(
+               k.trim().split(/\s+/).map(x=>'#view [data-set~="'+x+'"]').join(','))),
              /* מקטעי מנהל בלבד אינם מוצגים למי שאינו מנהל */
              admOnly: items.filter(k=>k==='users'||k==='feedback') };
   });
