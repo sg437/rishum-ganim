@@ -284,7 +284,14 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
 
   /* --- 5. "עדכון לפי ת"ז" מכיל את רשימת העירייה, והיא עובדת ------------ */
   await goTab(p, 'students'); await p.waitForTimeout(900);
-  await p.evaluate(() => { const b = document.querySelector('#importUpdate'); if (b) b.click(); });
+  /* "עדכון לפי מ.ז." יושב בכפתור המרחף */
+  await p.evaluate(() => { document.querySelector('#fabBtn').click(); });
+  await p.waitForTimeout(200);
+  await p.evaluate(() => {
+    const it = [...document.querySelectorAll('#fabMenu .fab-item')]
+                 .find(b => b.textContent.indexOf('מ.ז.') >= 0);
+    if (it) it.click();
+  });
   await p.waitForTimeout(700);
   const bi = await p.evaluate(() => {
     const m = document.querySelector('#modal');
@@ -356,8 +363,8 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
   }));
   if (st.title !== 'צוות הגנים')
     bad('כותרת מסך הצוות אינה "צוות הגנים"', ['התקבל: ' + st.title]);
-  else if (st.acts.join(',') !== 'staffMsg,impStaff,labStaffExp,addStaff')
-    bad('סדר כפתורי הפעולה אינו: שליחת הודעות · ייבוא · ייצוא · הוספה', [st.acts.join(' · ')]);
+  else if (st.acts.join(',') !== 'impStaff,labStaffExp')
+    bad('סדר כפתורי הפעולה אינו: ייבוא · ייצוא', [st.acts.join(' · ')]);
   else if (st.kpis[3] !== 'שאר הצוות')
     bad('המשבצת הרביעית אינה "שאר הצוות"', ['התקבל: ' + st.kpis[3]]);
   else if (st.cols.join('|') !== 'שם משפחה ופרטי|טלפון|תפקיד|משובצת ב־|סטטוס')

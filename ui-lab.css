@@ -720,7 +720,7 @@ html.ui-lab .lab-docfull + .lab-docn{ color:var(--good) }
 
 /* סרגל הפעולות התחתון — כהה, כמו בלוח */
 html.ui-lab .selbar{
-  background:var(--lab-deep); border-radius:14px; padding:12px 16px;
+  background:var(--lab-deep); border-radius:14px; padding:12px 16px 12px 84px;
   box-shadow:var(--shadow-lg);
 }
 html.ui-lab .selbar .btn{ background:rgba(255,255,255,.12); border-radius:10px; font-weight:600 }
@@ -1562,6 +1562,8 @@ html.ui-lab .lab-bottom{ display:none }
   html.ui-lab .ui-lab-badge{ inset-block-end:calc(86px + env(safe-area-inset-bottom, 0px)) }
   /* סרגל הבחירה של התלמידות נעוץ מעל סרגל הניווט */
   html.ui-lab .selbar{ bottom:86px }
+  /* הכפתור המרחף של התוכנה — מעל הסרגל, שלא ייחתך */
+  html.ui-lab .fab-wrap{ bottom:calc(90px + env(safe-area-inset-bottom, 0px)) }
 
   /* ---- רשימת התלמידות ככרטיסים במקום טבלה ----
      סדר העמודות בתוכנה משתנה לפי "עמודות נוספות", ולכן אי אפשר למקם תא
@@ -2288,7 +2290,6 @@ html.ui-lab .lab-botwrap > *{ pointer-events:auto }
 html.ui-lab .lab-botline{ display:flex; align-items:center; gap:7px; flex-wrap:wrap }
 html.ui-lab .lab-botline > #bulkBar{ flex:1 1 auto; min-width:0 }
 html.ui-lab .lab-botline > #bulkBar:empty{ display:none }
-html.ui-lab .lab-botbar{ flex:0 0 auto; margin-inline-start:auto }
 
 /* ---- מצב פעיל: גוש כהה אחד, נמוך ---- */
 html.ui-lab .lab-botwrap.on{
@@ -2343,13 +2344,6 @@ html.ui-lab .lab-botwrap.on .btn#bulk-yes{ background:#fff; color:var(--lab-deep
 html.ui-lab .lab-botwrap.on .btn#bulk-yes:hover{ background:#e9f1ea }
 html.ui-lab .lab-botwrap.on .selbar > b{ font-size:.85rem; font-weight:700; color:#f3f6f1 }
 
-/* ---- מצב רגוע: רק המתג, בפינה השמאלית התחתונה ---- */
-html.ui-lab .lab-bulkbtn{
-  border-radius:99px; padding:7px 15px; font-size:.8rem; font-weight:600;
-  background:var(--lab-deep); border:0; color:#f3f6f1;
-  box-shadow:0 6px 18px rgba(21,52,42,.20);
-}
-html.ui-lab .lab-bulkbtn:hover{ background:var(--accent-strong); color:#fff }
 html.ui-lab .selbar{ position:static }
 
 /* הפס נעצר בקצה הטבלה כשתיק הילדה פתוח — לא נכנס מתחתיו */

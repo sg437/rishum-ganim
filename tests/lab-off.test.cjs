@@ -97,6 +97,9 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
     cols: [...document.querySelectorAll('#staffTable th')].map(t=>t.textContent.replace(/[▲▼]/g,'').trim()),
     rows: document.querySelectorAll('#staffTable tbody tr').length,
     btns: [...document.querySelectorAll('#view .row .btn')].map(x=>x.id),
+    fab:  [...document.querySelectorAll('#fabMenu .fab-item, #fabBtn')].length,
+    fabLbl: (document.querySelector('#fabBtn')||{}).title,
+    fabOn: !(document.querySelector('#fabWrap')||{hidden:true}).hidden,
     lab:  document.querySelectorAll('[class*="lab-"]').length,
     stage:!!document.querySelector('.lab-ststage'),
     hidden: !!(document.querySelector('#staffTable')||{}).classList.contains('lab-hidden')
@@ -104,10 +107,12 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
   if(st.h2!=='רשימת צוות הגנים') bad('הכותרת בעיצוב הקיים השתנתה',['התקבל: '+st.h2]);
   else if(st.cols.join('|')!=='שם משפחה|שם פרטי|ת"ז|תפקיד|חינוך|טלפון|נייד|מייל|עיר')
     bad('עמודות הטבלה בעיצוב הקיים השתנו',[st.cols.join(' · ')]);
-  else if(st.btns.join(',')!=='addStaff,staffMsg,impStaff') bad('כפתורי המסך השתנו',[st.btns.join(' · ')]);
+  else if(st.btns.join(',')!=='impStaff') bad('כפתורי המסך השתנו',[st.btns.join(' · ')])
+  else if(!st.fabOn || st.fabLbl!=='הוספת איש/אשת צוות')
+    bad('הכפתור המרחף אינו מציע "הוספת איש/אשת צוות"',[JSON.stringify(st)]);
   else if(st.lab||st.stage||st.hidden) bad('אלמנטים של המעבדה נכנסו לעיצוב הקיים',[JSON.stringify(st)]);
   else if(st.rows!==1) bad('הרשימה אינה מציגה את הרשומה',['שורות: '+st.rows]);
-  else ok('מסך הצוות בעיצוב הקיים: כותרת, 9 עמודות ו-3 כפתורים — בדיוק כמו קודם');
+  else ok('מסך הצוות בעיצוב הקיים: כותרת, 9 עמודות, "ייבוא" בסרגל וההוספה בכפתור המרחף');
 
   await p.evaluate(()=>{ document.querySelector('#impStaff').click(); }); await p.waitForTimeout(600);
   const im=await p.evaluate(()=>({
