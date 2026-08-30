@@ -165,6 +165,7 @@ const bad=(m,d)=>{ fail++; console.log('❌ '+m); (d||[]).forEach(x=>console.log
      מסמכים ש-window.open נפתחים בהם אינם יורשים גיליונות סגנון, ולכן כל אחד
      מהם חייב לקרוא ל-labFontTags(). נבדק על המקור עצמו: הבדיקה שלמעלה רצה
      על demo.html שאין בו הדפסה, ומסך הדפסה אמיתי דורש התחברות. */
+  const labCss=fs.readFileSync(path.join(ROOT,'ui-lab.css'),'utf8');
   for(const file of ['index.html','app-artifact.html']){
     const app=fs.readFileSync(path.join(ROOT,file),'utf8');
     const writes=[...app.matchAll(/<!doctype html><html dir="rtl"[^`]*?<\/head>/g)].map(m=>m[0]);
@@ -172,8 +173,12 @@ const bad=(m,d)=>{ fail++; console.log('❌ '+m); (d||[]).forEach(x=>console.log
     if(!writes.length)        bad(file+' — לא נמצאו חלונות הדפסה. המבנה השתנה?');
     else if(uncovered.length) bad(file+' — '+uncovered.length+' חלונות הדפסה בלי גופני העיצוב',
                                   uncovered.map(w=>w.replace(/\s+/g,' ').slice(0,80)+'…'));
-    else if(!/html body,html body \*\{font-family:"Assistant"/.test(app))
+    else if(!/html body,html body \*\{font-family:var\(--lab-font\)\}/.test(app))
                               bad(file+' — גיליון הכפייה חסר. Arial/system-ui יגברו על הגופן');
+    else if(!/^\s*--lab-font:"Assistant","Heebo"/m.test(labCss))
+                              bad(file+' — --lab-font אינו מתחיל ב-Assistant/Heebo, וגיליון הכפייה מפנה אליו');
+    else if(!/^:root\{/m.test(labCss))
+                              bad(file+' — האסימונים אינם על :root. חלון ההדפסה לא יקבל אותם (אין בו מחלקת ui-lab)');
     else                      ok(file+' — '+writes.length+' חלונות הדפסה/PDF מקבלים את גופני העיצוב וסדר המשפחות הנכון');
   }
 

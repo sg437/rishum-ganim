@@ -39,7 +39,12 @@
      העיצוב עצמו יושב כולו ב-ui-lab.css, תחום ל-html.ui-lab. -->
 <script>(function(){try{
   var p=new URLSearchParams(location.search).get('ui');
-  if(p!==null){ if(p==='off'||p==='0'||p===''){ localStorage.removeItem('uiLab'); } else { localStorage.setItem('uiLab',p); } }
+  /* רשימה לבנה, לא רשימה שחורה: רק ?ui=new מדליק. כל ערך אחר מכבה.
+     קודם כל ערך שאינו off/0/ריק הדליק ונשמר — כך ש-?ui=1 או שגיאת הקלדה
+     בלינק היו מעבירים משתמש אמיתי לעיצוב שטרם שוחרר, על נתונים חיים. */
+  if(p!==null){ if(p==='new'){ localStorage.setItem('uiLab','new'); } else { localStorage.removeItem('uiLab'); } }
+  /* גם ערך ישן שנשמר במכשיר לפני השינוי מנוקה כאן. */
+  if(localStorage.getItem('uiLab') && localStorage.getItem('uiLab')!=='new'){ localStorage.removeItem('uiLab'); }
   if(!localStorage.getItem('uiLab')) return;
   document.documentElement.classList.add('ui-lab');
   /* גופני העיצוב מוקדמים לקובץ ה-CSS — ראה את ההערה המקבילה ב-index.html. */
@@ -48,16 +53,24 @@
     pl.rel='preload'; pl.as='font'; pl.type='font/woff2'; pl.crossOrigin='anonymous'; pl.href=f;
     document.head.appendChild(pl);
   });
-  var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css'; document.head.appendChild(l);
-  var j=document.createElement('script'); j.src='ui-lab.js'; j.async=false; document.head.appendChild(j);
-  document.addEventListener('DOMContentLoaded',function(){
+  /* התג נוסף רק אחרי ש-ui-lab.css באמת נטען. app-artifact.html משמש גם
+     כארטיפקט עצמאי, ושם הקובץ אינו לצידו והבקשה נכשלת בשקט — ואז התג היה
+     נשאר קישור בלי עיצוב בתחתית עמוד שכולו בעיצוב הרגיל. */
+  var cssOk=false, domOk=false, badged=false;
+  function badge(){
+    if(!cssOk||!domOk||badged) return; badged=true;
     var u=new URL(location.href); u.searchParams.set('ui','off');
     var a=document.createElement('a');
     a.className='ui-lab-badge'; a.href=u.pathname+u.search+u.hash;
     a.textContent='\u{1F9EA} מעבדת עיצוב — יציאה';
     a.title='חזרה לעיצוב הרגיל';
     document.body.appendChild(a);
-  });
+  }
+  var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css';
+  l.onload=function(){ cssOk=true; badge(); };
+  document.head.appendChild(l);
+  var j=document.createElement('script'); j.src='ui-lab.js'; j.async=false; document.head.appendChild(j);
+  document.addEventListener('DOMContentLoaded',function(){ domOk=true; badge(); });
 }catch(e){}})();</script>
 <style>
 :root{
@@ -2675,8 +2688,8 @@ function labFontTags(){
     const href=new URL("ui-lab.css", location.href).href;
     return '<link rel="stylesheet" href="'+href+'">'
       + '<style>'
-      + 'html body,html body *{font-family:"Assistant","Heebo","Segoe UI",system-ui,sans-serif}'
-      + 'html body h1,html body h2,html body h3,html body .doc-hd .t1{font-family:"Heebo","Assistant",system-ui,sans-serif}'
+      + 'html body,html body *{font-family:var(--lab-font)}'
+      + 'html body h1,html body h2,html body h3,html body .doc-hd .t1{font-family:var(--lab-font-head)}'
       + '</style>';
   }catch(_){ return ""; }
 }

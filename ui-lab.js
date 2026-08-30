@@ -15,26 +15,35 @@
    ========================================================================== */
 
 /* ===========================================================================
-   ui-lab.js — מעבדת עיצוב, שלב 2: סרגל צד קבוע
+   ui-lab.js — מעבדת עיצוב: כל מה שה-CSS לבדו אינו יכול
    ---------------------------------------------------------------------------
    נטען *רק* כשהמעבדה דלוקה (‎?ui=new‎). בתוכנה הרגילה הקובץ אינו נטען כלל,
    ולכן אינו יכול להשפיע על אף משתמש.
 
-   מה הקובץ עושה — שלושה דברים שה-CSS לבדו לא יכול:
-     1. קיבוץ הניווט לשתי קבוצות עם כותרות (יומיום · ניתוח והפקה)
-     2. כרטיס יעד בתחתית הסרגל
-     3. שורת המשתמש המחובר
+   הקובץ נולד בשלב 2 עם שלושה דברים (קיבוץ הניווט, כרטיס היעד ושורת
+   המשתמש) וגדל מאז הרבה מעבר לזה: הוא בונה מחדש את מסך הבית, את המפה,
+   את לוח השיבוץ, את מסך הגנים, את מסך הצוות, את הצהרון ואת בורר העמודות
+   שבטבלת התלמידות. הרשימה המלאה והמעודכנת נמצאת ב-docs/UI_LAB.md; אין
+   טעם לשכפל אותה כאן, כי היא זו שמתיישנת.
 
    למה MutationObserver: renderTabs() בונה מחדש את #tabs בכל מעבר מסך ומוחק
    כל מה שהוספנו. הפונקציה יושבת בתוך <script type="module"> ולכן אינה
    נגישה מבחוץ לעטיפה. הצפייה בשינויי הצומת היא הדרך הנקייה להיצמד אליה
    בלי לגעת בקוד הקיים.
 
-   הנתונים מגיעים מ-window.__uiLab.stats() — וו קריאה-בלבד ב-index.html,
-   שגם הוא תחום לאותו דגל. אין כאן שום נתיב כתיבה למסד.
+   הנתונים מגיעים מ-window.__uiLab ב-index.html, שגם הוא תחום לאותו דגל.
+   הקובץ הזה עצמו אינו נוגע ב-DB כלל: הכתיבה היחידה שלו היא localStorage
+   (בחירת העמודות הנוספות). הוו עצמו כן מחזיק שלוש פונקציות כתיבה להגדרות
+   (saveAges · saveCampuses · saveRoles) — ראה ההערה שם.
    =========================================================================== */
 (function(){
 "use strict";
+
+/* שער שני. ההגנה הראשונה היא שהקובץ פשוט אינו נטען בלי הדגל — אבל היא
+   ההגנה היחידה, והקובץ מתקין 7 MutationObserver, עשרות מאזינים וטיימר.
+   טעינה אחת בטעות (מטמון, שגיאת עריכה, ייבוא ידני) הייתה מריצה את כל אלה
+   על הממשק שכל המשתמשים רואים. השורה הזו עולה אפס. */
+if(!document.documentElement.classList.contains("ui-lab")) return;
 
 /* קיבוץ הניווט לפי HANDOFF.md.
    הערה: המפרט מונה בקבוצה השנייה גם "ייצוא", שאינו לשונית בפני עצמה בתוכנה
@@ -1402,7 +1411,6 @@ function gansToggle(host){
    =========================================================================== */
 /* "הוספת גן" אינו כאן — הוא בכפתור המרחף של התוכנה */
 var GAN_TOP = ["impGan", "exportGans"];
-var GAN_REN = { impGan:"ייבוא", exportGans:"ייצוא" };
 
 function gansTop(){
   var head = view.querySelector(".lab-shead");
@@ -1412,7 +1420,7 @@ function gansTop(){
 
   var acts = head.querySelector(".lab-sacts");
   if(!acts){ acts = el("div", "lab-sacts"); head.appendChild(acts); }
-  orderInto(acts, GAN_TOP, GAN_REN);
+  orderInto(acts, GAN_TOP, LAB_IO);
 
   /* הבורר "כרטיסים | טבלה" עולה לכותרת, ליד הכפתורים */
   var bar = view.querySelector(".lab-gtoggle");
@@ -1917,12 +1925,35 @@ function staffTop(){
     };
     acts.appendChild(xp);
   }
-  orderInto(acts, STAFF_TOP, { impStaff:"↥ ייבוא", labStaffExp:"↧ ייצוא" });
+  orderInto(acts, STAFF_TOP, LAB_IO);
   [ "#impStaff", "#labStaffExp" ].forEach(function(sel){
     var b = acts.querySelector(sel);
     if(b && !b.classList.contains("ghost")) b.classList.add("ghost");
   });
 }
+
+/* ===========================================================================
+   ייבוא וייצוא — קו אחיד לכל המסכים
+   ---------------------------------------------------------------------------
+   ביקורת בדפדפן על כל 14 הלשוניות מצאה שכפתורי הייבוא והייצוא לא נראו אותו
+   דבר בשום שני מסכים: בתלמידות הסדר היה הפוך מהלוח, בצוות היו חצים ↥/↧
+   שאין להם מקור בקנבס, בדוחות ובהנהלה הייצוא היה כפתור כהה במקום ghost,
+   ובצהרון הוא נשאר בגוף המסך עם "יצוא" בלי יו״ד.
+
+   הקו: תווית "ייבוא" / "ייצוא" בלי חץ ובלי אימוג'י · btn ghost · בכותרת
+   המסך · ייבוא ראשון (הימני) ואז ייצוא, כמו בלוח 01.
+
+   ⚠️ לא כל כפתור שכתוב בו "ייצוא" שייך לכאן. במסך הייצוא "⬇️ ייצוא לאקסל"
+   ו-"🖨️ ייצוא ל-PDF" הם *תוכן* המסך — בחירת הפורמט — ולא פעולת כותרת;
+   ובכלים "📁 ייבוא מסמכים" ו-"⬇️ ייצוא גיבוי" הם פעולות של הדרייב והגיבוי.
+   שלושת אלה נשארו כפי שהם במכוון.
+   =========================================================================== */
+var LAB_IO = {
+  importStu:"ייבוא",  exportStu:"ייצוא",
+  impGan:"ייבוא",     exportGans:"ייצוא",
+  impStaff:"ייבוא",   labStaffExp:"ייצוא",
+  tzImport:"ייבוא",   tzExport:"ייצוא"
+};
 
 /* --- הבמה: עמודת הרשימה + התיק בצד ------------------------------------- */
 /* אותם רכיבים של מסך התלמידות (‎.stu-stage‎ ו-‎.stu-quick‎), ולכן כל שכבת
@@ -2581,7 +2612,7 @@ function screenHeader(){
   if(tabId === "reports" || tabId === "management"){
     var pr = el("button", "btn ghost", "🖨️ הדפסה");
     pr.onclick = function(){ window.print(); };
-    var xp = el("button", "btn", "↧ ייצוא");
+    var xp = el("button", "btn ghost", "ייצוא");
     xp.onclick = function(){ if(window.__uiLab && window.__uiLab.openExport) window.__uiLab.openExport(); };
     acts.appendChild(xp); acts.appendChild(pr);
   }
@@ -3957,7 +3988,9 @@ function applyStuMode(){
    הודעות" יורדת לגמרי — יש לה מסך משלה.
    =========================================================================== */
 /* "הוספת תלמידה" ו"עדכון לפי מ.ז." עברו לכפתור המרחף */
-var STU_TOP  = ["exportStu", "importStu"];   /* הסדר בלוח */
+/* הסדר בלוח 01: ייבוא ואז ייצוא — כלומר ייבוא הוא הימני. ניסוח קודם כאן
+   טען את ההפך בשם "הסדר בלוח", וזה היה הפוך גם מהקנבס וגם משאר המסכים. */
+var STU_TOP  = ["importStu", "exportStu"];
 var STU_DROP = ["stuMsg"];                             /* למסך ההודעות יש לשונית */
 
 function studentsTop(){
@@ -3990,7 +4023,7 @@ function studentsTop(){
 
   /* שלושת כפתורי הלוח, בסדר שלו ובשמות שלו. הסדר נאכף בכל מעבר, כי
      screenHeader מסדר אותם לפי סדר ה-DOM המקורי. */
-  orderInto(acts, STU_TOP, { exportStu:"ייצוא", importStu:"ייבוא" });
+  orderInto(acts, STU_TOP, LAB_IO);
   /* התווית "ייבוא / יצוא:" והמפריד נשארו יתומים אחרי שהכפתורים עלו */
   var row = view.querySelector(".panel > .row");
   if(row) Array.prototype.slice.call(row.children).forEach(function(c){
@@ -4437,6 +4470,31 @@ function tzScreen(){
     if(!box) return;
     var h = box.querySelector("h3");
     if(h) h.classList.add("lab-tzh");
+  });
+
+  tzTop();
+}
+
+/* הייבוא והייצוא של הצהרון היו היחידים שנשארו בגוף המסך: השורה שמחזיקה
+   אותם פותחת ב-span מרווח וב-span "ייבוא / יצוא:", ולכן screenHeader —
+   שמעלה רק שורות שכולן כפתורים — דילג עליה. כאן הם עולים לכותרת כמו
+   בכל שאר המסכים, והתווית היתומה מוסתרת (כמו בתלמידות). */
+function tzTop(){
+  var xp = view.querySelector("#tzExport"), im = view.querySelector("#tzImport");
+  if(!xp && !im) return;
+  var head = view.querySelector(".lab-shead");
+  if(!head) return;
+  var acts = head.querySelector(".lab-sacts");
+  if(!acts){ acts = el("div", "lab-sacts"); head.appendChild(acts); }
+
+  var row = (im || xp).parentNode;
+  orderInto(acts, ["tzImport", "tzExport"], LAB_IO);   /* העברה — המאזינים נשמרים */
+  [im, xp].forEach(function(b){
+    if(b && !b.classList.contains("ghost")) b.classList.add("ghost");
+  });
+  /* מה שנשאר בשורה המקורית אחרי שהכפתורים עלו */
+  if(row) Array.prototype.slice.call(row.children).forEach(function(c){
+    if(!c.classList.contains("btn")) c.classList.add("lab-hidden");
   });
 }
 function numOf(tile){

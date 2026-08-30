@@ -44,7 +44,12 @@
      העיצוב עצמו יושב כולו ב-ui-lab.css, תחום ל-html.ui-lab. -->
 <script>(function(){try{
   var p=new URLSearchParams(location.search).get('ui');
-  if(p!==null){ if(p==='off'||p==='0'||p===''){ localStorage.removeItem('uiLab'); } else { localStorage.setItem('uiLab',p); } }
+  /* רשימה לבנה, לא רשימה שחורה: רק ?ui=new מדליק. כל ערך אחר מכבה.
+     קודם כל ערך שאינו off/0/ריק הדליק ונשמר — כך ש-?ui=1 או שגיאת הקלדה
+     בלינק היו מעבירים משתמש אמיתי לעיצוב שטרם שוחרר, על נתונים חיים. */
+  if(p!==null){ if(p==='new'){ localStorage.setItem('uiLab','new'); } else { localStorage.removeItem('uiLab'); } }
+  /* גם ערך ישן שנשמר במכשיר לפני השינוי מנוקה כאן. */
+  if(localStorage.getItem('uiLab') && localStorage.getItem('uiLab')!=='new'){ localStorage.removeItem('uiLab'); }
   if(!localStorage.getItem('uiLab')) return;
   document.documentElement.classList.add('ui-lab');
   /* גופני העיצוב מוקדמים לקובץ ה-CSS: בלי זה הדפדפן מגלה אותם רק אחרי
@@ -56,16 +61,24 @@
     pl.rel='preload'; pl.as='font'; pl.type='font/woff2'; pl.crossOrigin='anonymous'; pl.href=f;
     document.head.appendChild(pl);
   });
-  var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css'; document.head.appendChild(l);
-  var j=document.createElement('script'); j.src='ui-lab.js'; j.async=false; document.head.appendChild(j);
-  document.addEventListener('DOMContentLoaded',function(){
+  /* התג נוסף רק אחרי ש-ui-lab.css באמת נטען. app-artifact.html משמש גם
+     כארטיפקט עצמאי, ושם הקובץ אינו לצידו והבקשה נכשלת בשקט — ואז התג היה
+     נשאר קישור בלי עיצוב בתחתית עמוד שכולו בעיצוב הרגיל. */
+  var cssOk=false, domOk=false, badged=false;
+  function badge(){
+    if(!cssOk||!domOk||badged) return; badged=true;
     var u=new URL(location.href); u.searchParams.set('ui','off');
     var a=document.createElement('a');
     a.className='ui-lab-badge'; a.href=u.pathname+u.search+u.hash;
     a.textContent='\u{1F9EA} מעבדת עיצוב — יציאה';
     a.title='חזרה לעיצוב הרגיל';
     document.body.appendChild(a);
-  });
+  }
+  var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css';
+  l.onload=function(){ cssOk=true; badge(); };
+  document.head.appendChild(l);
+  var j=document.createElement('script'); j.src='ui-lab.js'; j.async=false; document.head.appendChild(j);
+  document.addEventListener('DOMContentLoaded',function(){ domOk=true; badge(); });
 }catch(e){}})();</script>
 <style>
 :root{--rg-build:"rg-b05ea2eb";
@@ -1995,7 +2008,7 @@ function capPill(reg, capacity){
   const st=capState(reg, capacity), cls=st==='over'?'no':'ok';
   const style=st==='over1'?' style="background:var(--over1-soft);color:var(--over1)"':'';
   const title=st==='over1'?'חריגה של ילדה אחת מהקיבולת':st==='over'?'חריגה מהקיבולת':'בתוך הקיבולת';
-  return `<span class="pill ${cls}"${style} title="${title}">${reg}${capacity?(' / '+esc(capacity)):''}</span>`;
+  return `<span class="pill ${cls}"${style} title="${title}">${reg}${capacity?(`<span class="lh-ratio"> / ${esc(capacity)}</span>`):''}</span>`;
 }
 /* מיפוי חריגת קיבולת ברמת התלמידה: לכל גן עם קיבולת ממיינים את הילדות הפעילות
    בשנה הפעילה לפי סדר ההוספה (createdAt), ומסמנים את החורגות —
@@ -2082,11 +2095,11 @@ function assignCapPillsHtml(){
 }
 function assignCapPill(g){
   const cap=ganAssignCap(g); const cnt=ganAssignedCount(g.id);
-  if(!cap) return `<span class="pill neutral" title="לא הוגדר רף שיבוץ">${cnt} / ∞</span>`;
+  if(!cap) return `<span class="pill neutral" title="לא הוגדר רף שיבוץ"><span class="lh-ratio">${cnt} / ∞</span></span>`;
   const cls = cnt>cap ? 'no' : 'ok';
   const style = cnt===cap ? ' style="background:var(--over1-soft);color:var(--over1)"' : '';
   const title = cnt>cap ? 'חריגה מרף השיבוץ' : cnt===cap ? 'הגן מלא — לא ניתן לשבץ עוד' : 'יש מקום לשיבוץ';
-  return `<span class="pill ${cls}"${style} title="${esc(title)}">${cnt} / ${cap}</span>`;
+  return `<span class="pill ${cls}"${style} title="${esc(title)}"><span class="lh-ratio">${cnt} / ${cap}</span></span>`;
 }
 function digits(s){ return String(s||"").replace(/\D/g,""); }
 /* בדיקת תקינות ת"ז ישראלי (ספרת ביקורת). מחזיר: true תקין · false שגוי · null ריק/קצר מכדי לבדוק */
@@ -2671,9 +2684,14 @@ function renderFab(){
 document.addEventListener("click", e=>{ if(_fabOpen && !e.target.closest("#fabWrap")) fabToggle(false); });
 document.addEventListener("keydown", e=>{ if(_fabOpen && e.key==="Escape"){ fabToggle(false); const b=$("#fabBtn"); if(b) b.focus(); } });
 
-/* מעבדת עיצוב — חשיפת קריאה בלבד של מה שסרגל הצד צריך (יעד, מונים, משתמש).
+/* מעבדת עיצוב — הוו שסרגל הצד והמסכים צריכים (יעד, מונים, משתמש, ניווט).
    פעיל רק כשהמעבדה דלוקה; בתוכנה הרגילה השורה הזו לא עושה דבר. ראה docs/UI_LAB.md.
-   קריאה בלבד: אין כאן שום נתיב כתיבה למסד. */
+
+   ⚠️ הוו אינו קריאה־בלבד עוד. stats() ו-go() אכן קוראים בלבד, אבל שלוש
+   פונקציות כותבות למסד: saveAges · saveCampuses · saveRoles — כולן חסומות
+   ב-isAdmin(), כולן מוגבלות ל-DB.settings, וכולן קיימות כדי שכרטיסי הגילים,
+   הקמפוסים והתפקידים שבמסך ההגדרות של המעבדה יוכלו לערוך. אין כאן נתיב
+   כתיבה לתיקי תלמידות, לגנים או לשיבוץ. */
 if(document.documentElement.classList.contains("ui-lab")){
   window.__uiLab = Object.freeze({
     stats(){
@@ -7330,7 +7348,7 @@ function mapPlotGans(){
     m.bindPopup(`<div style="font-weight:700;margin-bottom:2px">🏫 ${esc(ganName(g.id))}</div>`
       +(g.teacherName?`<div>גננת: ${esc(g.teacherName)}</div>`:"")
       +(g.campus?`<div>קמפוס: ${esc(g.campus)}</div>`:"")
-      +`<div>רשומות/משובצות: ${cnt}${g.capacity?(" / "+esc(g.capacity)):""}</div>`);
+      +`<div>רשומות/משובצות: <span class="lh-ratio">${cnt}${g.capacity?(" / "+esc(g.capacity)):""}</span></div>`);
     m.addTo(_ganLayer);
   });
 }
@@ -7783,28 +7801,46 @@ function autoAssignPlan(students, gans, opts){
   return { plan, skipped, caps };
 }
 /* מאגר התלמידות לשיבוץ אוטומטי — לפי הגנים שנבחרו בחלון ולפי ההיקף.
-   בתמונה נכנסות הרשומות לאותם גנים *וגם* מי שאין לה גן כלל: בתחילת השנה
-   רוב הרשומות עדיין בלי שיבוץ, ובלעדיהן החלון היה מחזיר רשימה ריקה.
-   סימון "כל התלמידות" שבמפה מרחיב, כמקודם, לכלל התלמידות המוצגות. */
+   במעבדה נכנסות לתמונה הרשומות לאותם גנים *וגם* מי שאין לה גן כלל: בתחילת
+   השנה רוב הרשומות עדיין בלי שיבוץ, ובלעדיהן החלון היה מחזיר רשימה ריקה.
+   סימון "כל התלמידות" שבמפה מרחיב, כמקודם, לכלל התלמידות המוצגות.
+
+   ⚠️ בלי דגל המעבדה המאגר נשאר בדיוק כפי שהיה — mapShownStudents(), כלומר
+   רק תלמידות שכבר משובצות לגנים המסומנים. זהו נתיב כתיבה: שינוי המאגר
+   משנה את מי שהשיבוץ האוטומטי נוגע בה, ולכן אינו מגיע למשתמש בלי הדגל. */
 function autoAssignPool(scope, gans){
-  const ids=new Set((gans&&gans.length?gans:mapSelectedGans()).map(g=>g.id));
-  let list=studentsOfYear().filter(s=>!s.finished);
-  if(_mapState.edu)  list=list.filter(s=>eduLabel(s)===_mapState.edu);
-  if(_mapState.city) list=list.filter(s=>(s.city||"").trim()===_mapState.city);
-  if(!_mapState.allStudents) list=list.filter(s=>!s.ganId || ids.has(s.ganId));
+  let list;
+  if(document.documentElement.classList.contains("ui-lab")){
+    const ids=new Set((gans&&gans.length?gans:mapSelectedGans()).map(g=>g.id));
+    list=studentsOfYear().filter(s=>!s.finished);
+    if(_mapState.edu)  list=list.filter(s=>eduLabel(s)===_mapState.edu);
+    if(_mapState.city) list=list.filter(s=>(s.city||"").trim()===_mapState.city);
+    if(!_mapState.allStudents) list=list.filter(s=>!s.ganId || ids.has(s.ganId));
+  } else {
+    list=mapShownStudents();
+  }
   if(scope==="unassigned") list=list.filter(s=>!s.ganId);
   else if(scope==="waiting") list=list.filter(s=>!s.ganId || s.placed===false);
   return list.filter(s=>canEditRec(s));
 }
 /* חלון השיבוץ האוטומטי */
 function openAutoAssign(){
-  /* הגנים שאפשר לשבץ אליהם הם אלה שמוצגים על המפה — והבחירה ביניהם נעשית
-     *כאן*, בחלון עצמו, ולא רק בסימון שבמפה: בתחילת השנה משבצים כמה גנים
-     יחד בלי לשנות את תצוגת המפה. ברירת המחדל היא מה שמסומן במפה. */
-  const all=mapGansForEdu().filter(mapGanShown);
-  if(all.length<2){ toast("צריך שני גנים לפחות עם מיקום תקין על המפה — הצג/י גנים ואז נסה/י שוב"); return; }
-  const pick=new Set(mapSelectedGans().filter(mapGanShown).map(g=>g.id));
-  if(pick.size<2) all.forEach(g=>pick.add(g.id));
+  /* במעבדה: הגנים שאפשר לשבץ אליהם הם אלה שמוצגים על המפה — והבחירה ביניהם
+     נעשית *כאן*, בחלון עצמו, ולא רק בסימון שבמפה: בתחילת השנה משבצים כמה
+     גנים יחד בלי לשנות את תצוגת המפה. ברירת המחדל היא מה שמסומן במפה.
+
+     ⚠️ בלי הדגל החלון נשאר כפי שהיה: הגנים הם בדיוק מה שסומן על המפה, אין
+     בורר גנים ואין ברירת מחדל של "כל הגנים". בורר שמסמן הכול כברירת מחדל
+     מרחיב את היקף השיבוץ, ולכן אינו מגיע למשתמש בלי הדגל. */
+  const LAB=document.documentElement.classList.contains("ui-lab");
+  const all=LAB ? mapGansForEdu().filter(mapGanShown) : mapSelectedGans().filter(mapGanShown);
+  if(all.length<2){
+    toast(LAB ? "צריך שני גנים לפחות עם מיקום תקין על המפה — הצג/י גנים ואז נסה/י שוב"
+              : "בחר/י לפחות שני גנים על המפה (עם מיקום תקין) לשיבוץ אוטומטי");
+    return;
+  }
+  const pick=new Set(LAB ? mapSelectedGans().filter(mapGanShown).map(g=>g.id) : all.map(g=>g.id));
+  if(LAB && pick.size<2) all.forEach(g=>pick.add(g.id));
   const groups={}; all.forEach(g=>{ const c=(g.campus&&g.campus.trim())||"— ללא קמפוס —"; (groups[c]=groups[c]||[]).push(g); });
   const camps=Object.keys(groups).sort((a,b)=>a.localeCompare(b,"he"));
   const ganListHtml=()=>camps.map(c=>{
@@ -7817,8 +7853,11 @@ function openAutoAssign(){
   }).join("");
   const st={ scope:"unassigned", siblings:true, respectCap:true, markPlaced:true, matchAge:true, result:null };
   const opt=(v,l,cur)=>`<option value="${v}" ${cur===v?'selected':''}>${esc(l)}</option>`;
-  modal(`<h3>⚡ שיבוץ אוטומטי לפי קרבה</h3>
-    <div class="sub">כל תלמידה תשובץ ל<b>גן הקרוב אליה</b> מבין הגנים שנבחרו כאן — אפשר לבחור כמה גנים יחד.</div>
+  const subHtml = LAB
+    ? `<div class="sub">כל תלמידה תשובץ ל<b>גן הקרוב אליה</b> מבין הגנים שנבחרו כאן — אפשר לבחור כמה גנים יחד.</div>`
+    : `<div class="sub">כל תלמידה תשובץ ל<b>גן הקרוב אליה</b> מבין <b>${all.length}</b> הגנים שנבחרו על המפה:
+      ${all.map(g=>esc(ganName(g.id))).join(" · ")}</div>`;
+  const ganBoxHtml = !LAB ? "" : `
     <div id="aa-ganbox" class="aa-ganbox" style="margin-top:10px;border:1px solid var(--border);border-radius:10px;padding:8px">
       <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
         <b>גנים לשיבוץ</b><span class="hint" id="aa-gancnt"></span>
@@ -7828,7 +7867,10 @@ function openAutoAssign(){
         </span>
       </div>
       <div id="aa-ganlist" style="max-height:170px;overflow:auto">${ganListHtml()}</div>
-    </div>
+    </div>`;
+  modal(`<h3>⚡ שיבוץ אוטומטי לפי קרבה</h3>
+    ${subHtml}
+    ${ganBoxHtml}
     <div class="grid g2" style="margin-top:10px">
       <div><label>אילו תלמידות לשבץ</label>
         <select id="aa-scope">
@@ -7870,9 +7912,11 @@ function openAutoAssign(){
     if(cnt) cnt.textContent = pick.size ? (pick.size+" נבחרו מתוך "+all.length) : "לא נבחרו גנים";
   }
   function ganPaint(){ const box=$("#aa-ganlist"); if(box) box.innerHTML=ganListHtml(); ganWire(); }
-  ganWire();
-  $("#aa-gan-all").onclick=()=>{ all.forEach(g=>pick.add(g.id)); ganPaint(); reset(); };
-  $("#aa-gan-none").onclick=()=>{ pick.clear(); ganPaint(); reset(); };
+  if(LAB){
+    ganWire();
+    $("#aa-gan-all").onclick=()=>{ all.forEach(g=>pick.add(g.id)); ganPaint(); reset(); };
+    $("#aa-gan-none").onclick=()=>{ pick.clear(); ganPaint(); reset(); };
+  }
   function calc(){
     const gans=all.filter(g=>pick.has(g.id));
     if(gans.length<2){
@@ -7894,7 +7938,7 @@ function openAutoAssign(){
         const arr=byGan.get(g.id)||[]; if(!arr.length) return;
         const c=res.caps.get(g.id)||{cap:0,used:0};
         html+=`<tr><td><b>${esc(ganName(g.id))}</b></td><td>${arr.length}</td>
-          <td>${c.used}${c.cap?(" / "+c.cap):" / ∞"}</td>
+          <td><span class="lh-ratio">${c.used}${c.cap?(" / "+c.cap):" / ∞"}</span></td>
           <td style="font-size:12px">${arr.map(x=>esc([x.s.lastName,x.s.firstName].filter(Boolean).join(" "))+` <span style="color:var(--muted)">(${x.km.toFixed(1)} ק"מ)</span>`).join(" · ")}</td></tr>`;
       });
       html+=`</tbody></table></div>`;
@@ -9066,10 +9110,14 @@ function labFontTags(){
   try{
     if(!document.documentElement.classList.contains("ui-lab")) return "";
     const href=new URL("ui-lab.css", location.href).href;
+    /* אין כאן רשימת גופנים. ui-lab.css נטען לחלון ומגדיר את שני האסימונים
+       על :root, ולכן var() לבדו מספיק — והחלפת גופן נשארת שינוי בשתי
+       שורות, בקובץ אחד. קודם הרשימה הועתקה לכאן ביד, וכל החלפה הייתה
+       צריכה להיעשות בארבעה מקומות. */
     return '<link rel="stylesheet" href="'+href+'">'
       + '<style>'
-      + 'html body,html body *{font-family:"Assistant","Heebo","Segoe UI",system-ui,sans-serif}'
-      + 'html body h1,html body h2,html body h3,html body .doc-hd .t1{font-family:"Heebo","Assistant",system-ui,sans-serif}'
+      + 'html body,html body *{font-family:var(--lab-font)}'
+      + 'html body h1,html body h2,html body h3,html body .doc-hd .t1{font-family:var(--lab-font-head)}'
       + '</style>';
   }catch(_){ return ""; }
 }
@@ -12891,7 +12939,7 @@ async function msgSend(root){
     if(!confirm(`לשלוח ${items.length} מיילים?\n\nנושא: ${st.subject}`)) return;
     const btn=$("#msg-send"); btn.disabled=true;
     let sent=0, failed=0, stopped=false; const errs=[];
-    out.innerHTML=`<div class="note" id="msg-prog">שולח… 0 / ${items.length}</div>`;
+    out.innerHTML=`<div class="note">שולח… <span id="msg-prog" class="lh-ratio">0 / ${items.length}</span></div>`;
     const CH=35;
     for(let i=0;i<items.length;i+=CH){
       const chunk=items.slice(i,i+CH).map(x=>({ to:x.to, subject:x.subject, body:x.text }));
@@ -12900,7 +12948,7 @@ async function msgSend(root){
         sent+=r.sent||0; failed+=r.failed||0; (r.errors||[]).forEach(e=>errs.push(e));
         if(r.stopped){ stopped=true; break; }
       }catch(e){ failed+=chunk.length; errs.push({ to:"(מנה)", error:(e&&e.message)||String(e) }); break; }
-      $("#msg-prog").textContent=`שולח… ${sent} / ${items.length}`;
+      $("#msg-prog").textContent=`${sent} / ${items.length}`;
     }
     btn.disabled=false;
     out.innerHTML=`<div class="note" style="background:var(--good-soft,#e8f5ec)">
@@ -13294,6 +13342,11 @@ function viewTools(root){
 function viewSettings(root){
   const admin=isAdmin();
   const dis = admin? "" : "disabled";
+  /* שני פקדים שנולדו במעבדה ואינם קיימים בעיצוב הקיים: סימון "לא להעביר את
+     גיל 5 המסיימות" שבמעבר שנה, ושדה "כותרת משנה" שבמיתוג. הראשון משנה מה
+     קורה במעבר שנה, ולכן אינו מגיע למשתמש בלי הדגל; הקוד שקורא אותם כבר
+     בודק קיום, ולכן ההתנהגות בלעדיהם היא בדיוק זו שהייתה לפני המעבדה. */
+  const LAB=document.documentElement.classList.contains("ui-lab");
   root.innerHTML=`
   ${admin?"":`<div class="panel"><div class="note">🔒 חלק מההגדרות (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, ניהול מנהלים) פתוחות לעריכה רק למנהל מערכת. אפשר לצפות אך לא לשנות. פנה/י למנהל להוספתך.</div></div>`}
 
@@ -13316,7 +13369,7 @@ function viewSettings(root){
       ${DRIVE_READY?`<label class="check" style="align-self:end"><input type="checkbox" id="pr-copyId" checked ${dis}> העתק פיזית את קובץ ת"ז לתיקיית השנה החדשה (איטי יותר)</label>`:""}
       <button class="btn" id="doPromote" style="align-self:end" ${dis}>בצע מעבר שנה</button>
     </div>
-    <label class="check" id="pr-skipgrad-wrap" style="margin-top:8px"><input type="checkbox" id="pr-skipgrad" checked ${dis}> לא להעביר את גיל 5 המסיימות (פרט לילדות השארות)</label>
+    ${LAB?`<label class="check" id="pr-skipgrad-wrap" style="margin-top:8px"><input type="checkbox" id="pr-skipgrad" checked ${dis}> לא להעביר את גיל 5 המסיימות (פרט לילדות השארות)</label>`:""}
     <div id="pr-status" class="hint" style="margin-top:6px"></div>
     <div class="note" style="margin-top:8px">
       <b>מה עובר:</b> פרטים אישיים (כולל ת"ז), הורים וכתובת · <b>צילום ת"ז</b> (סימון + קובץ פיזי לדרייב החדש). <b>מתאפס:</b> נספח/תקנון, תוכניות/מועדונים, סיוע והעשרה, קלוט בעירייה, ביטוח, שיבוץ סופי (לא משובצת) והערות.<br>
@@ -13465,7 +13518,7 @@ function viewSettings(root){
     <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר <b>להעלות קובץ תמונה</b> (מומלץ), או להזין אימוג'י (למשל 🎒).</div>
     <div class="grid g2">
       <div><label>כותרת ראשית</label><input id="br-title" value="${esc(appTitle())}" ${dis}></div>
-      <div><label>כותרת משנה</label><input id="br-sub" value="${esc(appSubtitle())}" ${dis}></div>
+      ${LAB?`<div><label>כותרת משנה</label><input id="br-sub" value="${esc(appSubtitle())}" ${dis}></div>`:""}
       <div><label>לוגו — אימוג'י או קישור לתמונה</label><input id="br-logo" value="${esc(appLogo())}" ${dis}></div>
     </div>
     <div class="row" style="margin-top:10px;align-items:center;gap:10px">
