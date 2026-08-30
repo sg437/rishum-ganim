@@ -33,11 +33,15 @@
      ✅ 2. סרגל צד קבוע + breakpoint למגירה (עם ui-lab.js)
      ✅ 3. viewHome — כרטיסי KPI ופאנל "דורש טיפול"
      ✅ 4. viewStudents — מד מסמכים, ראשי תיבות, KPI, סרגל כהה
-     ✅ 5. viewMap — דגלים עם שם ותפוסה
+     ✅ 5. viewMap — המסך נבנה לפי לוח 04
      ✅ 6. viewAssign — לוח התקנים, בלי תקרת שלושה ובלי גרירה
-     ◐ 7. השאר — פסי תפוסה צבועים בכל המסכים; שאר המסכים מקבלים
-           את שכבת הטוקנים, אך טרם נבנו מחדש לפי הלוחות
+     ✅ 7. viewGans — תצוגת כרטיסים מלאה
+     ✅    דוחות · הודעות · מסמכים ותבניות · ייצוא · הגדרות · כלים · הנהלה
+     ✅    צהרון — מסך שאינו בקנבס, לשונית משנה תחת התלמידות
+     ◐ 16. נייד — סרגל תחתון, כרטיסי תלמידות, כותרת כהה
    שלבים 3 ומעלה דורשים בנייה מחדש של תוכן המסכים, ולא רק של המסגרת.
+   המקור המלא והמעודכן למצב המימוש הוא docs/UI_LAB.md — הרשימה כאן היא
+   תקציר, ובמקרה של סתירה הקובץ שם קובע.
    =========================================================================== */
 
 
@@ -264,6 +268,22 @@ html.ui-lab td { border-bottom:1px solid var(--lab-rule-row) }
   html.ui-lab .btn,
   html.ui-lab .hamburger,
   html.ui-lab .backbtn{ min-height:44px }
+  /* הכלל שלמעלה כיסה כפתורים בלבד, ורק בגובה. אלה מטרות נגיעה לכל דבר
+     שנשארו קטנות מ-44px: ידית הגרירה (span, לא כפתור) ופריטי בורר העמודות
+     (label). ל-✕ שעל השבבים ולמחיקת השורה — הם כן כפתורים, ולכן כבר קיבלו
+     גובה — חסר היה רוחב: padding:0 2px השאיר אותם ברוחב של תו אחד. */
+  html.ui-lab .lab-grip,
+  html.ui-lab .lab-colmenu .msel-opt{
+    min-height:44px;
+    display:inline-flex; align-items:center;
+  }
+  html.ui-lab .lab-grip{ min-width:44px; justify-content:center }
+  html.ui-lab .lab-colmenu .msel-opt{ width:100%; gap:8px }
+  html.ui-lab .lab-chipx,
+  html.ui-lab .lab-rowx{
+    min-width:44px;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
 }
 
 
@@ -3023,3 +3043,13 @@ html.ui-lab #msg-voice-wrap{
   border-inline-start:3px solid var(--lab-gold) !important;
 }
 html.ui-lab #msg-voice-wrap input[type=range]{ accent-color:var(--accent); width:100% }
+
+/* שלושת שבבי ה-bad נכתבו בערכים בהירים קשיחים, ולכן נשארו ורודים־בהירים על
+   משטח כהה. הפלטה כבר מחזיקה --bad-soft / --bad לשני המצבים; כאן רק מפנים
+   אליהם. הכלל נשען על הפלטה של index.html, ולכן תקף בשני המצבים כאחד. */
+html.ui-lab .lab-tag.bad,
+html.ui-lab .ls-badge.bad,
+html.ui-lab .lab-stpill.bad{
+  background:var(--bad-soft); color:var(--bad);
+  border-color:color-mix(in srgb, var(--bad) 32%, transparent);
+}
