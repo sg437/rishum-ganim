@@ -188,15 +188,21 @@ function btn(label, cls){
   b.onclick = demoAction(label.replace(/^[^֐-׿\w]+/, "").trim());
   return b;
 }
+/* cols: מחרוזת, או [טקסט, מחלקה]. המחלקה יורדת גם לתאי הגוף — כך אפשר
+   להראות ולהסתיר עמודה שלמה, וזה מה שבורר העמודות של המעבדה עושה. */
 function table(cols, rows, cls){
   var wrap = h("div", { "class": "table-wrap" });
   var t = h("table", cls ? { "class": cls } : null), th = h("thead"), tr = h("tr");
-  cols.forEach(function(c){ tr.appendChild(txt("th", null, c)); });
+  var cc = cols.map(function(c){ return Array.isArray(c) ? (c[1] || "") : ""; });
+  cols.forEach(function(c, i){ tr.appendChild(txt("th", cc[i] || null, Array.isArray(c) ? c[0] : c)); });
   th.appendChild(tr); t.appendChild(th);
   var tb = h("tbody");
   rows.forEach(function(r){
     var x = h("tr");
-    r.forEach(function(c){ x.appendChild(c instanceof Node ? h("td", null, [c]) : txt("td", null, String(c))); });
+    r.forEach(function(c, i){
+      var a = cc[i] ? { "class": cc[i] } : null;
+      x.appendChild(c instanceof Node ? h("td", a, [c]) : txt("td", cc[i] || null, String(c)));
+    });
     tb.appendChild(x);
   });
   t.appendChild(tb); wrap.appendChild(t);
@@ -260,12 +266,18 @@ VIEW.students = function(v){
       chips.appendChild(h("span", { "class": "docchip" + (s.docs[x[0]] ? " on" : ""), text: x[1].slice(0, 2) }));
     });
     return [
-      h("div", { "class": "nm", text: fullName(s) }),
       h("span", { "class": "tzcell", text: s.tz }),
-      g ? g.name + " · " + g.age : "—",
+      h("div", { "class": "nm", text: fullName(s) }),
+      s.street + ", " + s.city,
+      h("span", { style: "direction:ltr;unicode-bidi:isolate", text: s.mobile }),
       h("span", { "class": "chip edu " + (s.placed ? "reg" : "spec"), text: s.placed ? "✔ משובצת" : "⏳ ממתינה" }),
-      s.age, s.city, chips,
-      h("span", { "class": "pill " + (s.muni ? "ok" : "no"), text: s.muni ? "קלוט" : "לא קלוט" })
+      /* שבע הנוספות — כל אחת נבחרת בנפרד מה-"+" שבכותרת */
+      s.age,
+      s.period,
+      (g && g.edu) || "רגיל",
+      chips,
+      h("span", { "class": "pill " + (s.muni ? "ok" : "no"), text: s.muni ? "קלוט" : "לא קלוט" }),
+      h("span", { "class": "pill ok", text: "פעילה" })
     ];
   });
 
@@ -281,7 +293,13 @@ VIEW.students = function(v){
         h("b", { style: "margin-inline-end:auto", text: "📋 רשימת הגן: גן רימון" }),
         h("label", { "class": "check", style: "margin:0", html: '<input type="checkbox" id="stuGanOnepage"> התאם לעמוד אחד' })
       ]),
-      table(["שם מלא", "ת״ז", "גן", "שיבוץ", "גיל", "עיר", "מסמכים", "עירייה"], rows, "stu-table")
+      /* אותו מבנה של התוכנה: חמש עמודות קבועות, ואחריהן הנוספות עם המפתח
+         שלהן. "סימונים" אינו כאן — ובורר העמודות מוריד אותו מהרשימה מאליו,
+         בדיוק כפי שהוא עושה ל"חינוך" כשכבר נבחר חינוך אחד. */
+      table(['מספר זהות', "שם", "כתובת", "טלפון", "שיבוץ סופי",
+             ["גיל", "xcol xcol-age"], ["מועד", "xcol xcol-period"],
+             ["חינוך", "xcol xcol-edu"], ["מסמכים", "xcol xcol-docs"],
+             ["עירייה", "xcol xcol-muni"], ["סטטוס", "xcol xcol-status"]], rows, "stu-table")
     ]),
     h("aside", { id: "stuQuick", "class": "stu-quick empty-state" })
   ]);

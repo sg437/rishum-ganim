@@ -5475,7 +5475,10 @@ function renderStuTable(){
       const sb=$("#stuGanShare"); if(sb) sb.onclick=()=>makeGanRoster(selGan.id,{ onePage:op(), share:true }); }
     return; }
   const arr=k=> stuSort.key===k ? `<span class="arr">${stuSort.dir>0?'▲':'▼'}</span>` : "";
-  const th=(k,lbl,extra)=>`<th class="sortable${extra?' xcol':''}" data-sort="${k}">${lbl}${arr(k)}</th>`;
+  /* xcol-<key> — זהות לכל עמודה נוספת. אין לה עיצוב כאן: היא קיימת כדי
+     שאפשר יהיה להראות או להסתיר עמודה אחת בנפרד (מעבדת העיצוב עושה זאת
+     מה-"+" שבכותרת). בעיצוב הקיים ההסתרה נשארת גורפת, דרך .hide-xcol. */
+  const th=(k,lbl,extra)=>`<th class="sortable${extra?' xcol xcol-'+k:''}" data-sort="${k}">${lbl}${arr(k)}</th>`;
   // עמודת החינוך מיותרת כשכבר בחרנו חינוך אחד — מפנה מקום לשאר העמודות
   const showEdu = !(activeEdu || stuFilter.edu);
   /* כפתור הצגת/הסתרת העמודות הנוספות (מסמכים · עירייה · סימונים · סטטוס · מועד · חינוך · גיל) */
@@ -5486,7 +5489,7 @@ function renderStuTable(){
     ${bulkMode?`<th style="text-align:center"><input type="checkbox" id="bulk-all" ${list.length&&list.every(s=>bulkSel.has(s.id))?'checked':''} title="בחר/י הכל"></th>`:''}
     ${th("tz",'מספר זהות')}${th("name",'שם')}${th("dob",'תאריך לידה')}${th("street",'כתובת')}<th title="נייד אם / נייד אב / טלפון בית — כל הטלפונים בתיק המקוצר שבצד">טלפון</th>${th("gan",'שיבוץ סופי')}
     ${th("age",'גיל',1)}${th("period",'מועד',1)}${showEdu?th("edu",'חינוך',1):''}
-    <th class="xcol" title="לחיצה על תגית של מסמך מצורף פותחת אותו ישירות">מסמכים</th><th class="xcol">עירייה</th><th class="xcol" title="תוכניות · שונות · הערה">סימונים</th><th class="xcol">סטטוס</th></tr></thead><tbody>
+    <th class="xcol xcol-docs" title="לחיצה על תגית של מסמך מצורף פותחת אותו ישירות">מסמכים</th><th class="xcol xcol-muni">עירייה</th><th class="xcol xcol-tags" title="תוכניות · שונות · הערה">סימונים</th><th class="xcol xcol-status">סטטוס</th></tr></thead><tbody>
     ${list.map(s=>{
       const over=ovf[s.id];
       const placed=s.placed!==false;
@@ -5504,13 +5507,13 @@ function renderStuTable(){
         ${s.ganId?`<button type="button" class="st stu-place" data-id="${esc(s.id)}" style="cursor:pointer;border:none;background:none;padding:0;color:${placed?'var(--good)':'var(--warn)'}" title="לחצי כדי לשנות סטטוס שיבוץ">${placed?'✔ שיבוץ סופי':'⏳ ממתינה לשיבוץ'}</button>`
                  :'<div class="st" style="color:var(--muted)">ללא שיבוץ</div>'}
       </div></td>
-      <td class="xcol">${esc(s.age)||'—'}</td>
-      <td class="xcol">${esc(s.period)||'—'}</td>
-      ${showEdu?`<td class="xcol">${eduBadge(s)}</td>`:''}
-      <td class="xcol">${docDots(s)}</td>
-      <td class="xcol"><span style="font-weight:700;color:${s.absorbedMunicipality?'var(--good)':'var(--bad)'}">${s.absorbedMunicipality?'קלוט':'לא קלוט'}</span></td>
-      <td class="xcol">${stuTagCell(s)}</td>
-      <td class="xcol">${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
+      <td class="xcol xcol-age">${esc(s.age)||'—'}</td>
+      <td class="xcol xcol-period">${esc(s.period)||'—'}</td>
+      ${showEdu?`<td class="xcol xcol-edu">${eduBadge(s)}</td>`:''}
+      <td class="xcol xcol-docs">${docDots(s)}</td>
+      <td class="xcol xcol-muni"><span style="font-weight:700;color:${s.absorbedMunicipality?'var(--good)':'var(--bad)'}">${s.absorbedMunicipality?'קלוט':'לא קלוט'}</span></td>
+      <td class="xcol xcol-tags">${stuTagCell(s)}</td>
+      <td class="xcol xcol-status">${s.finished?'<span class="pill neutral">סיימה</span>':'<span class="pill ok">פעילה</span>'}</td>
       </tr>`; }).join("")}
   </tbody></table></div>
   <div class="hint">מוצגות ${list.length} תלמידות (${esc(statusLbl)}). לחיצה על שורה פותחת את התיק המקוצר בצד · לחיצה כפולה פותחת את התיק המלא.</div>`;

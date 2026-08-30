@@ -4178,22 +4178,183 @@ function studentsBottom(){
   if(wrap.classList.contains("lab-narrow") !== narrow) wrap.classList.toggle("lab-narrow", narrow);
 }
 
+/* ===========================================================================
+   העמודות הנוספות — בחירה לכל עמודה בנפרד
+   ---------------------------------------------------------------------------
+   בתוכנה יש דגל אחד, stuMoreCols, ששבע העמודות הנוספות תלויות בו יחד: הכל
+   או כלום. בעיצוב החדש ה-"+" שבכותרת הטבלה פותח רשימת סימון, ובוחרים בה
+   עמודה עמודה — וגם מורידים משם.
+
+   ⚠️ הבחירה נשמרת כמחלקות על <html>, לא על הטבלה. renderStuTable() בונה את
+   הטבלה מחדש בכל סינון, מיון ולחיצה על שורה; מחלקה שהייתה עליה נמחקת, וכל
+   העמודות היו מהבהבות עד הצביעה הבאה. על <html> היא שורדת, ולכן העמודות
+   שירדו אינן נראות לרגע.
+   =========================================================================== */
+var XCOLS = [
+  ["age",    "גיל"],
+  ["period", "מועד"],
+  ["edu",    "חינוך"],
+  ["docs",   "מסמכים"],
+  ["muni",   "עירייה"],
+  ["tags",   "סימונים"],
+  ["status", "סטטוס"]
+];
+var XKEY = "rg-lab-stucols";
+var xcolsOn = null;                    /* נקרא פעם אחת, ואז חי בזיכרון */
+
+function xcolsRead(){
+  var raw = null;
+  try{ raw = localStorage.getItem(XKEY); }catch(e){}
+  if(raw === null){
+    /* פעם ראשונה — ממשיכים מהעדפת התוכנה, שהיא הכל או כלום */
+    var all = false;
+    try{ all = localStorage.getItem("rg-stu-cols") === "1"; }catch(e){}
+    return all ? XCOLS.map(function(c){ return c[0]; }) : [];
+  }
+  return raw ? raw.split(",").filter(Boolean) : [];
+}
+function xcolsApply(){
+  if(!xcolsOn) xcolsOn = xcolsRead();
+  var root = document.documentElement;
+  XCOLS.forEach(function(c){
+    root.classList.toggle("lab-xoff-" + c[0], xcolsOn.indexOf(c[0]) < 0);
+  });
+}
+function xcolsCommit(){
+  try{ localStorage.setItem(XKEY, xcolsOn.join(",")); }catch(e){}
+  xcolsApply();
+  var head = view && view.querySelector(".stu-table thead tr");
+  var menu = head && head.querySelector(".lab-colmenu");
+  if(head && menu){ placeColPlus(head, menu); syncColMenu(menu); posColMenu(menu); }
+}
+function xcolsSet(key, on){
+  if(!xcolsOn) xcolsOn = xcolsRead();
+  var i = xcolsOn.indexOf(key);
+  if(on && i < 0) xcolsOn.push(key);
+  else if(!on && i >= 0) xcolsOn.splice(i, 1);
+  xcolsCommit();
+}
+function xcolsAll(on){
+  xcolsOn = on ? XCOLS.map(function(c){ return c[0]; }) : [];
+  xcolsCommit();
+}
+
+/* האם התא הזה שייך לעמודה נוספת שירדה */
+function xcolOff(th){
+  if(!th.classList || !th.classList.contains("xcol")) return false;
+  for(var i = 0; i < XCOLS.length; i++){
+    if(th.classList.contains("xcol-" + XCOLS[i][0]))
+      return xcolsOn.indexOf(XCOLS[i][0]) < 0;
+  }
+  return false;
+}
+
+/* ה-"+" יושב בכותרת האחרונה שגלויה *בפועל*. בלי זה הוא היה נעלם יחד עם
+   התא שמארח אותו ברגע שמורידים את העמודה האחרונה — ואז אי אפשר להחזיר
+   אותה, כי הכפתור שפותח את הרשימה נעלם בעצמו. */
+function placeColPlus(head, menu){
+  var cells = head.children, target = null;
+  for(var i = cells.length - 1; i >= 0; i--){
+    if(!xcolOff(cells[i])){ target = cells[i]; break; }
+  }
+  if(!target) return;
+  Array.prototype.forEach.call(head.querySelectorAll("th.lab-colplus-cell"), function(t){
+    if(t !== target) t.classList.remove("lab-colplus-cell");
+  });
+  target.classList.add("lab-colplus-cell");
+  if(menu.parentNode !== target) target.appendChild(menu);
+}
+
+function buildColMenu(){
+  var d   = el("details", "msel lab-colmenu");
+  var sum = el("summary", null, "+");
+  d.appendChild(sum);
+
+  var menu = el("div", "msel-menu");
+  menu.appendChild(el("div", "lab-colttl", "עמודות נוספות"));
+  XCOLS.forEach(function(c){
+    var lab = el("label", "msel-opt");
+    lab.dataset.col = c[0];
+    var cb = el("input");
+    cb.type = "checkbox"; cb.value = c[0];
+    cb.onchange = function(){ xcolsSet(c[0], cb.checked); };
+    lab.appendChild(cb);
+    lab.appendChild(el("span", null, c[1]));
+    menu.appendChild(lab);
+  });
+  var tools = el("div", "lab-coltools");
+  [["הצג הכל", true], ["נקה", false]].forEach(function(t){
+    var b = el("button", "btn ghost sm", t[0]);
+    b.type = "button";
+    b.onclick = function(){ xcolsAll(t[1]); };
+    tools.appendChild(b);
+  });
+  menu.appendChild(tools);
+  d.appendChild(menu);
+
+  /* הכותרת ממיינת בלחיצה (onclick על ה-th). הבורר שיושב בתוכה לא אמור
+     למיין, ולכן הלחיצה נעצרת כאן ואינה עולה אל התא. */
+  d.addEventListener("click", function(e){ e.stopPropagation(); });
+
+  /* ⚠️ .table-wrap הוא overflow-x:auto, ולכן overflow-y שלו מחושב ל-auto
+     והוא חותך כל תפריט מוחלט שנפתח בתוכו. position:fixed בורח מהחיתוך,
+     והמיקום נמדד בכל פתיחה. */
+  d.addEventListener("toggle", function(){ posColMenu(d); });
+  return d;
+}
+
+/* המיקום נמדד מחדש גם כשהתפריט פתוח וה-"+" זז לכותרת אחרת — כלומר בכל
+   סימון והסרה, כי הן משנות מי העמודה האחרונה שגלויה. */
+function posColMenu(d){
+  if(!d || !d.open) return;
+  var sum  = d.querySelector("summary");
+  var menu = d.querySelector(".msel-menu");
+  if(!sum || !menu) return;
+  var r = sum.getBoundingClientRect();
+  menu.style.top  = Math.round(r.bottom + 4) + "px";
+  menu.style.left = Math.round(r.left) + "px";   /* נפתח פנימה, אל תוך הטבלה */
+}
+
+function syncColMenu(menu){
+  var head = menu.closest("tr");
+  var n = 0;
+  Array.prototype.forEach.call(menu.querySelectorAll(".msel-opt"), function(lab){
+    var key = lab.dataset.col;
+    var cb  = lab.querySelector("input");
+    var on  = xcolsOn.indexOf(key) >= 0;
+    if(cb.checked !== on) cb.checked = on;
+    if(on) n++;
+    /* עמודת החינוך יורדת מהטבלה כשכבר נבחר חינוך אחד — אין טעם להציע אותה */
+    var exists = !head || !!head.querySelector(".xcol-" + key);
+    lab.classList.toggle("lab-hidden", !exists);
+  });
+  var sum = menu.querySelector("summary");
+  var lbl = n ? (XCOLS.filter(function(c){ return xcolsOn.indexOf(c[0]) >= 0; })
+                      .map(function(c){ return c[1]; }).join(" · "))
+              : "";
+  var ttl = n ? ("עמודות נוספות · מוצגות: " + lbl) : "הוספת עמודות · " +
+                XCOLS.map(function(c){ return c[1]; }).join(" · ");
+  if(sum.title !== ttl){ sum.title = ttl; sum.setAttribute("aria-label", ttl); }
+  menu.classList.toggle("on", n > 0);
+}
+
 /* "+" בכותרת הטבלה לעמודות הנוספות — במקום הכפתור עם הטקסט */
 function colPlus(){
   var b = view.querySelector("#stuColsBtn");
-  if(!b) return;
-  var open = String(b.textContent || "").indexOf("הסתרת") >= 0;
-  b.title = open ? "הסתרת העמודות הנוספות" : "עמודות נוספות · מסמכים, עירייה, סימונים, סטטוס, מועד, חינוך, גיל";
-  b.setAttribute("aria-label", b.title);
-  var glyph = open ? "−" : "+";
-  if(b.textContent !== glyph) b.textContent = glyph;
-  b.classList.add("lab-colplus");
-  /* הכפתור יושב בכותרת הטבלה, בקצה שמאל — לא בשורה נפרדת מעליה */
+  if(!b) return;                          /* לא מסך התלמידות */
+  xcolsApply();
+
+  /* הכפתור של התוכנה (הכל או כלום) והשורה שהוא יושב בה יורדים — כאן
+     הבחירה היא לכל עמודה בנפרד, מתוך הכותרת עצמה. */
+  b.classList.add("lab-hidden");
+  var bar = b.parentNode;
+  if(bar && bar.classList && bar.classList.contains("row")) bar.classList.add("lab-hidden");
+
   var head = view.querySelector(".stu-table thead tr");
-  if(head){
-    var th = head.lastElementChild;
-    if(th && b.parentNode !== th){ th.appendChild(b); th.classList.add("lab-colplus-cell"); }
-  }
+  if(!head) return;
+  var menu = head.querySelector(".lab-colmenu") || buildColMenu();
+  placeColPlus(head, menu);
+  syncColMenu(menu);
 }
 
 function maybeStudents(){

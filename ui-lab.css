@@ -2183,14 +2183,46 @@ html.ui-lab .filter-panel input{ font-size:.84rem; padding:7px 10px }
 html.ui-lab .filter-panel .toolbar{ gap:10px }
 
 /* -- "+" לעמודות הנוספות, בכותרת הטבלה ------------------------------------ */
-html.ui-lab th.lab-colplus-cell{ text-align:end; white-space:nowrap }
-html.ui-lab .btn.lab-colplus{
-  width:24px; height:24px; min-width:0; padding:0; border-radius:8px;
+/* ההסתרה הגורפת של התוכנה (.hide-xcol) מנוטרלת כאן — בעיצוב החדש כל עמודה
+   נוספת עולה ויורדת בנפרד, לפי מחלקה על <html> שנשמרת בין רינדורים. */
+html.ui-lab .stu-table.hide-xcol .xcol{ display:table-cell }
+html.ui-lab.lab-xoff-age    .stu-table .xcol-age,
+html.ui-lab.lab-xoff-period .stu-table .xcol-period,
+html.ui-lab.lab-xoff-edu    .stu-table .xcol-edu,
+html.ui-lab.lab-xoff-docs   .stu-table .xcol-docs,
+html.ui-lab.lab-xoff-muni   .stu-table .xcol-muni,
+html.ui-lab.lab-xoff-tags   .stu-table .xcol-tags,
+html.ui-lab.lab-xoff-status .stu-table .xcol-status{ display:none }
+
+html.ui-lab th.lab-colplus-cell{ white-space:nowrap }
+html.ui-lab .lab-colmenu{ display:inline-block; margin-inline-start:8px; vertical-align:middle }
+html.ui-lab .lab-colmenu > summary{
+  width:24px; height:24px; padding:0; border-radius:8px;
   display:inline-flex; align-items:center; justify-content:center;
   font-size:1rem; line-height:1; font-weight:400;
   background:var(--surface-2); border:1px solid var(--border); color:var(--ink-soft);
 }
-html.ui-lab .btn.lab-colplus:hover{ background:var(--accent-soft); border-color:var(--accent) }
+html.ui-lab .lab-colmenu > summary::after{ content:none }   /* ה-▾ של .msel */
+html.ui-lab .lab-colmenu > summary:hover{ background:var(--accent-soft); border-color:var(--accent) }
+html.ui-lab .lab-colmenu.on > summary{
+  background:var(--accent-soft); border-color:var(--accent); color:var(--accent-strong);
+}
+/* ⚠️ fixed ולא absolute: .table-wrap הוא overflow-x:auto, ולכן הוא חותך
+   כל תפריט מוחלט שנפתח בתוכו. המיקום נמדד ב-JS בכל פתיחה. */
+html.ui-lab .lab-colmenu .msel-menu{
+  position:fixed; top:0; left:0; inset-inline:auto;
+  min-width:186px; max-height:none; padding:7px; z-index:80;
+}
+html.ui-lab .lab-colttl{
+  font-size:.72rem; font-weight:800; color:var(--muted); letter-spacing:.01em;
+  padding:2px 8px 7px; border-bottom:1px solid var(--border); margin-bottom:5px;
+}
+html.ui-lab .lab-colmenu .msel-opt{ font-size:.84rem; font-weight:600 }
+html.ui-lab .lab-coltools{
+  display:flex; gap:6px; padding-top:7px; margin-top:5px;
+  border-top:1px solid var(--border);
+}
+html.ui-lab .lab-coltools .btn{ flex:1; justify-content:center; padding:5px 8px }
 
 /* -- "עדכון קבוצתי" בשורת ההתאמות ----------------------------------------- */
 html.ui-lab .lab-mline{ flex-wrap:wrap }
