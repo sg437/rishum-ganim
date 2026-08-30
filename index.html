@@ -9110,10 +9110,14 @@ function labFontTags(){
   try{
     if(!document.documentElement.classList.contains("ui-lab")) return "";
     const href=new URL("ui-lab.css", location.href).href;
+    /* אין כאן רשימת גופנים. ui-lab.css נטען לחלון ומגדיר את שני האסימונים
+       על :root, ולכן var() לבדו מספיק — והחלפת גופן נשארת שינוי בשתי
+       שורות, בקובץ אחד. קודם הרשימה הועתקה לכאן ביד, וכל החלפה הייתה
+       צריכה להיעשות בארבעה מקומות. */
     return '<link rel="stylesheet" href="'+href+'">'
       + '<style>'
-      + 'html body,html body *{font-family:"Assistant","Heebo","Segoe UI",system-ui,sans-serif}'
-      + 'html body h1,html body h2,html body h3,html body .doc-hd .t1{font-family:"Heebo","Assistant",system-ui,sans-serif}'
+      + 'html body,html body *{font-family:var(--lab-font)}'
+      + 'html body h1,html body h2,html body h3,html body .doc-hd .t1{font-family:var(--lab-font-head)}'
       + '</style>';
   }catch(_){ return ""; }
 }

@@ -169,12 +169,16 @@ html.ui-lab[data-theme="dark"]{
 
 /* שני אסימונים — מקור אמת אחד לכל הקובץ. משפחות האמוג'י נסגרות את
    הרשימה כדי שהאמוג'י שבממשק (הלשוניות, התגיות) לא ייפול לגופן אקראי. */
-html.ui-lab{
+:root{
   --lab-font:"Assistant","Heebo","Segoe UI","Arial Hebrew",system-ui,sans-serif,
              "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji";
   --lab-font-head:"Heebo","Assistant","Segoe UI",system-ui,sans-serif,
                   "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji";
 }
+/* ⚠️ על :root ולא על html.ui-lab — בכוונה. חלונות ההדפסה טוענים את הקובץ
+   הזה אבל אין מחלקה ב-<html> שלהם, ובלי זה labFontTags() היה חייב להעתיק
+   את רשימת הגופנים ביד, וההצהרה "החלפת גופן = שתי שורות" הייתה נשברת.
+   הקובץ נטען רק כשהמעבדה דלוקה, ולכן אין לאסימונים האלה למי לדלוף. */
 
 /* הגופן חל על הכל — בלי יוצא מן הכלל.
    להציב את הגופן על body ולסמוך על ירושה זה מה שהיה כאן קודם, וזה לא מספיק:
@@ -629,7 +633,7 @@ html.ui-lab .lh-awho{ font-size:.78rem; color:var(--muted); margin-top:1px }
 
 /* כרטיסי הגנים (HANDOFF.md §2 — הקנבס השמיט, המפרט גובר) */
 html.ui-lab .lh-gans{
-  display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:14px; margin-top:6px;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(min(215px,100%),1fr)); gap:14px; margin-top:6px;
 }
 html.ui-lab .lh-gan{
   text-align:start; background:var(--surface);
@@ -1117,7 +1121,7 @@ html.ui-lab .la-list > .la-row:last-child{ border-bottom:0 }
 
 /* --- מצב "כרטיסים": כרטיס לכל גן, במסגרת צבע הגיל ---------------------- */
 html.ui-lab .la-grid{
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(min(320px,100%), 1fr));
   gap:14px; padding:16px 18px;
 }
 html.ui-lab .la-card{
@@ -1310,7 +1314,7 @@ html.ui-lab .lg-camp b{ font-size:1rem; font-weight:700 }
 html.ui-lab .lg-camp-sub{ font-size:.78rem; color:var(--muted); font-weight:600 }
 
 html.ui-lab .lg-grid{
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(255px, 1fr));
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(min(255px,100%), 1fr));
   gap:14px; margin-bottom:6px;
 }
 /* מסגרת חזקה בצבע הגיל — --age-ink מ-AGE_HUE שכבר קיים בקוד */
@@ -1677,7 +1681,7 @@ html.ui-lab #view > .lab-shead{ margin:0 0 20px }
 /* -- שורת KPI ------------------------------------------------------------- */
 html.ui-lab .lab-kpis{
   display:grid; gap:14px; margin-bottom:18px;
-  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));
 }
 
 /* -- שני טורים ------------------------------------------------------------ */
@@ -1855,7 +1859,7 @@ html.ui-lab .lab-setcol > .panel{ margin:0 }
 
 /* -- כלים ושירותים: רשת כרטיסים ------------------------------------------- */
 html.ui-lab .lab-grid{
-  display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(420px,1fr));
+  display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));
   align-items:stretch;
 }
 html.ui-lab .lab-grid > .panel{ margin:0 }
@@ -1897,6 +1901,11 @@ html.ui-lab .lab-2col.aside{ grid-template-columns:1fr 320px }
 html.ui-lab .panel.lab-bare{
   background:none; border:0; box-shadow:none; padding:0; margin:0;
 }
+/* ‎#stuSummary.sticky‎ יושב עם ‎margin:0 -18px‎ כדי להישפך אל שולי הפאנל,
+   וזה נכון כל עוד לפאנל יש ‎padding:0 18px‎ — שני הערכים מתקזזים. ‎.lab-bare‎
+   מאפס את הריפוד, ומאותו רגע ה-18px בולטים החוצה משני הצדדים. בדסקטופ
+   השוליים בולעים את זה; בנייד (390px) העמוד קיבל גלילה אופקית של 2px. */
+html.ui-lab .panel.lab-bare > #stuSummary.sticky{ margin-inline:0; padding-inline:0 }
 
 /* כרטיסי הערוץ ברוחב אחיד */
 html.ui-lab .lab-chrow{
@@ -1966,7 +1975,7 @@ html.ui-lab fieldset.lab-doc > *:not(.lab-dochead){ margin:0; padding:0 18px }
 html.ui-lab fieldset.lab-doc > *:not(.lab-dochead):first-of-type{ padding-top:16px }
 html.ui-lab fieldset.lab-doc > *:last-child{ padding-bottom:16px }
 html.ui-lab .lab-docgrid{
-  display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));
   padding:16px 18px !important;
 }
 html.ui-lab .lab-subdoc{
@@ -1990,7 +1999,7 @@ html.ui-lab .lab-stoggle{ margin-bottom:12px }
 
 html.ui-lab .ls-cards{
   display:grid; gap:11px;
-  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr));
 }
 html.ui-lab .ls-card{
   position:relative; display:flex; flex-direction:column; gap:11px;
@@ -2652,7 +2661,7 @@ html.ui-lab .lab-stpill.bad { background:#fbe6e3; color:#8f342a; border-color:#f
 /* -- הרשימה בכרטיסים ------------------------------------------------------- */
 html.ui-lab .lab-strows.cards{ padding:14px 16px 16px }
 html.ui-lab .lab-stgrid{
-  display:grid; gap:11px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  display:grid; gap:11px; grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));
 }
 html.ui-lab .lab-stcard{
   position:relative; display:flex; flex-direction:column; gap:11px;
@@ -3057,3 +3066,124 @@ html.ui-lab .lab-stpill.bad{
   background:var(--bad-soft); color:var(--bad);
   border-color:color-mix(in srgb, var(--bad) 32%, transparent);
 }
+
+/* ===========================================================================
+   שכבת התנועה — שפה אחת בלבד
+   ---------------------------------------------------------------------------
+   ב-index.html יושבת שכבת "Evergreen polish" (שורות 381–418) שנבנתה לעיצוב
+   הקיים ואינה תחומה בשום דגל — כלומר היא ממשיכה לרוץ *בתוך* המעבדה. התוצאה
+   הייתה שתי שפות תנועה על אותו מסך: כרטיס שהמעבדה סימנה (.ls-card,
+   .stat.lab-clickable, .lab-stcard) קיבל הרמה של 1px ב-.15s, וכל כרטיס שלא
+   סומן — ה-KPI במסכים שעברו מעבר כללי, כרטיסי הגנים, כרטיסי העוגה בדוחות —
+   קיבל 3–4px ב-.26–.28s ועוד פס גרדיאנט accent→brass שאינו בפלטה החדשה.
+
+   המפרט (HANDOFF.md, מקטע Motion): "מעברים: 250ms על המגירה,
+   cubic-bezier(.4,0,.2,1). אין אנימציות נוספות."
+
+   לכן כאן מנוטרל *כל* מה שהשכבה ההיא מוסיפה, ובמקומו נקבעת תנועה אחת:
+   הרמה של 1px ב-.15s. הכול תחום ל-html.ui-lab — בעיצוב הקיים השכבה
+   ממשיכה לעבוד בדיוק כפי שהיא.
+   =========================================================================== */
+
+/* 1. הרמות ופס הגרדיאנט של הכרטיסים */
+html.ui-lab .hcard,
+html.ui-lab .stat,
+html.ui-lab .gan-card,
+html.ui-lab .pie-card{
+  transition:border-color .15s, box-shadow .15s, transform .1s;
+}
+html.ui-lab .hcard:hover,
+html.ui-lab .stat:hover,
+html.ui-lab .gan-card:hover,
+html.ui-lab .pie-card:hover{
+  transform:none; box-shadow:none; border-color:var(--border);
+}
+/* פס הגרדיאנט accent→brass שנשפך פנימה בכל ריחוף — אינו בפלטה החדשה */
+html.ui-lab .hcard::after,
+html.ui-lab .stat::after{ content:none }
+
+/* הכרטיסים שהמעבדה עשתה לחיצים — התנועה היחידה שנשארת */
+html.ui-lab .hcard.lab-clickable:hover,
+html.ui-lab .stat.lab-clickable:hover,
+html.ui-lab .gan-card.lab-clickable:hover,
+html.ui-lab .lg-card:hover{
+  transform:translateY(-1px);
+  box-shadow:0 6px 18px rgba(21,52,42,.10);
+  border-color:var(--border);
+}
+
+/* 2. overflow:hidden של .hcard/.stat חתך כל תג שהמעבדה מציבה על גבול
+      הכרטיס (טבעת הצהרון, שבב הפינה). הכרטיסים החדשים אינם זקוקים לו. */
+html.ui-lab .hcard,
+html.ui-lab .stat{ overflow:visible }
+
+/* 3. פריטי הניווט זזו הצידה בריחוף — בסרגל הכהה החדש זו תזוזה שאין לה מקום */
+html.ui-lab .drawer-nav button{ transition:background .15s, color .15s }
+html.ui-lab .drawer-nav button:hover{ transform:none }
+
+/* 4. כפתורים — הרמה של 1px בכל ריחוף */
+html.ui-lab .btn{ transition:background .15s, box-shadow .15s }
+html.ui-lab .btn:hover{ transform:none }
+html.ui-lab .icon-btn{ transition:background .15s, border-color .15s, color .15s }
+html.ui-lab .icon-btn:hover{ transform:none }
+
+/* 5. המודאל נכנס באנימציה של .26s ב-easing אחר */
+html.ui-lab .overlay.show .modal{ animation:none }
+
+/* 6. פסי התפוסה התמלאו ב-.8s — מד שזוחל אחרי שהמסך כבר עומד */
+html.ui-lab .bar>i,
+html.ui-lab .gan-card .gbar>i{ transition:width .15s cubic-bezier(.4,0,.2,1) }
+
+/* 7. טבעת הזוהר הירוקה בפוקוס — 3px מסביב לכל שדה */
+html.ui-lab input:focus,
+html.ui-lab select:focus,
+html.ui-lab textarea:focus{
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--lab-deep) 22%, transparent);
+}
+
+@media (prefers-reduced-motion:reduce){
+  html.ui-lab *,
+  html.ui-lab *::before,
+  html.ui-lab *::after{ transition:none !important; animation:none !important }
+}
+
+/* ===========================================================================
+   Heebo בכותרות שהכלל הכללי לא תופס
+   ---------------------------------------------------------------------------
+   html.ui-lab h1,h2,h3 (שורה 220) מכסה כל כותרת שהיא באמת אלמנט כותרת —
+   ולכן .panel h2 ו-.lab-phead h3 מקבלים Heebo בלי הצהרה נוספת. אבל שבע
+   "כותרות" במעבדה אינן h1-h3: הן <b> בתוך כרטיס, <legend>, או div עם משקל.
+   נמדד בדפדפן שהן רצות ב-Assistant, ליד כותרות ב-Heebo — משקל ומטריקה
+   שונים באותה שורה.
+   =========================================================================== */
+html.ui-lab .lg-ttl b,
+html.ui-lab .lg-camp b,
+html.ui-lab .lab-dname,
+html.ui-lab .lab-docname,
+html.ui-lab .la-add-plus,
+html.ui-lab .lab-wmain legend,
+html.ui-lab .lab-bignum{
+  font-family:var(--lab-font-head); letter-spacing:-.03em;
+}
+/* המספר הגדול נכתב 2.9rem/600 — המפרט קובע 2.6rem/500 למספר KPI ראשי */
+html.ui-lab .lab-bignum{ font-size:2.6rem; font-weight:500; letter-spacing:-.04em }
+
+/* ===========================================================================
+   מונוספייס — הכלל האוניברסלי גבר עליו
+   ---------------------------------------------------------------------------
+   html.ui-lab * הוא (0,1,1); .log שב-test.html הוא (0,1,0) — ולכן תיבת
+   הלוג איבדה מונוספייס במעבדה, בזמן שפאנל האבחון ב-index.html שרד רק
+   מפני שהוא כתוב inline. שתי תיבות שנועדו להיראות אותו דבר, ולא נראו.
+   =========================================================================== */
+html.ui-lab .log,
+html.ui-lab code,
+html.ui-lab pre,
+html.ui-lab kbd,
+html.ui-lab samp{ font-family:ui-monospace,Menlo,Consolas,"Courier New",monospace }
+
+/* ספרות בעלות רוחב אחיד בכל טבלה שמציגה מספרים — לא רק ב-td.lab-num.
+   בלי זה עמודות המספרים מתנדנדות בין שורה לשורה. */
+html.ui-lab td,
+html.ui-lab .stat .v,
+html.ui-lab .lab-bignum,
+html.ui-lab .lh-ratio{ font-variant-numeric:tabular-nums }
