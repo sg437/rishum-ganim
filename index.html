@@ -165,6 +165,11 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .drawer-nav .subnav-g{font-size:.68rem;font-weight:800;color:var(--muted);letter-spacing:.02em;padding:8px 10px 3px}
 .drawer-nav .subnav-i{padding:7px 10px;border-radius:9px;font-size:.84rem;font-weight:600;color:var(--ink-soft)}
 .drawer-nav .subnav-i:hover{background:var(--surface-2);color:var(--accent-strong)}
+.drawer-nav .subnav-i{display:flex;align-items:center;gap:8px}
+.drawer-nav .subnav-i.on{background:var(--accent-soft);color:var(--accent-strong)}
+.drawer-nav .subnav-i .count{margin-inline-start:auto;font-size:.72rem;font-weight:800;
+  background:var(--surface-2);color:var(--muted);border-radius:999px;padding:1px 7px}
+.drawer-nav .subnav-i.on .count{background:var(--surface);color:var(--accent-strong)}
 /* גלילה למקטע לא נחתכת מתחת לכותרת הדביקה */
 #view [data-set]{scroll-margin-top:calc(var(--top-h,61px) + 12px)}
 .drawer-foot{border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px}
@@ -2532,7 +2537,27 @@ const SETTINGS_SECTIONS = [
   { g:"מראה והתקנה" },
   { k:"branding",      label:"מיתוג והתקנה" }
 ];
-let setNavOpen=false;          // האם רשימת המקטעים פרושה בסרגל
+let setNavOpen=false;          // האם רשימת מקטעי ההגדרות פרושה בסרגל
+let stuNavOpen=false;          // האם רשימת המסכים שמתחת לתלמידות פרושה
+
+/* המסכים שיושבים מתחת ל"תיקי התלמידות" — נפתחים בחץ שלצד הלשונית.
+   אלה מסכים מלאים ולא מקטעים בתוך המסך, ולכן data-tab ולא data-setjump. */
+const STUDENT_SUBTABS = [
+  { id:"tzaharon", label:"צהרון", count:()=>tzRegisteredCount() }
+];
+/* מספר הנרשמות לצהרון בשנה הפעילה, בכיבוד בורר החינוך */
+function tzRegisteredCount(){
+  return eduScope(studentsOfYear().filter(s=>!s.finished && s.programs && s.programs.tzaharon)).length;
+}
+function studentsNavHtml(){
+  return STUDENT_SUBTABS.map(t=>{
+    const n=t.count ? t.count() : null;
+    return `<button type="button" class="subnav-i${active===t.id?' on':''}" data-tab="${t.id}">${esc(t.label)}`
+         + (n!=null?`<span class="count">${n}</span>`:"") + `</button>`;
+  }).join("");
+}
+/* לשונית משנה פעילה — הלשונית שמעליה נשארת מסומנת */
+function parentTabOf(id){ return STUDENT_SUBTABS.some(t=>t.id===id) ? "students" : id; }
 
 function settingsNavHtml(){
   const admin=isAdmin();
@@ -2564,14 +2589,18 @@ function renderTabs(){
   // המונים מכבדים את בורר החינוך (הכל / רגיל / מיוחד)
   const counts = { students: eduScope(studentsOfYear().filter(s=>!s.finished)).length, gans: eduScope(DB.gans.filter(g=>g.active)).length };
   const nav=$("#tabs"); if(!nav) return;
+  const parent = parentTabOf(active);   // לשונית משנה פעילה מסמנת את זו שמעליה
   nav.innerHTML = TABS.map(t=>{
     const c = counts[t.id]!=null ? `<span class="count">${counts[t.id]}</span>` : "";
-    const btn=`<button data-tab="${t.id}" class="${t.id===active?'active':''}"><span class="ic">${t.icon}</span><span class="tl">${esc(t.label)}</span>${c}</button>`;
-    if(t.id!=="settings") return btn;
-    /* ההגדרות נפתחות לרשימת המקטעים שלהן — חץ למטה לצד הלשונית */
-    return `<div class="nav-row">${btn}<button type="button" class="nav-caret${setNavOpen?' open':''}" data-setnav
-        aria-expanded="${setNavOpen}" aria-controls="setSubnav" title="מקטעי ההגדרות" aria-label="מקטעי ההגדרות">▾</button></div>`
-      + `<div class="subnav" id="setSubnav" ${setNavOpen?'':'hidden'}>${settingsNavHtml()}</div>`;
+    const btn=`<button data-tab="${t.id}" class="${t.id===parent?'active':''}"><span class="ic">${t.icon}</span><span class="tl">${esc(t.label)}</span>${c}</button>`;
+    /* לשונית עם חץ נפתחת לרשימה שמתחתיה — ההגדרות למקטעים, התלמידות למסכים */
+    const caret = (id, open, attr, sub, title) =>
+      `<div class="nav-row">${btn}<button type="button" class="nav-caret${open?' open':''}" ${attr}
+          aria-expanded="${open}" aria-controls="${id}" title="${esc(title)}" aria-label="${esc(title)}">▾</button></div>`
+      + `<div class="subnav" id="${id}" ${open?'':'hidden'}>${sub}</div>`;
+    if(t.id==="settings") return caret("setSubnav", setNavOpen, "data-setnav", settingsNavHtml(), "מקטעי ההגדרות");
+    if(t.id==="students") return caret("stuSubnav", stuNavOpen, "data-stunav", studentsNavHtml(), "מסכי התלמידות");
+    return btn;
   }).join("");
 }
 /* ============================================================
@@ -4168,7 +4197,7 @@ function route(){
   renderTabs(); renderYearSelect(); renderEduPick(); updateBackBtn();
   const so=$("#signOutBtn"); if(so) so.style.display=currentUser?"flex":"none";
   const v = $("#view");
-  ({home:viewHome, students:viewStudents, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
+  ({home:viewHome, students:viewStudents, tzaharon:viewTzaharon, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
     municipality:viewMunicipality, export:viewExport, management:viewManagement, messages:viewMessages, tools:viewTools, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
   renderFab();
 }
@@ -7938,6 +7967,379 @@ function mapFit(){
   mapShownStudents().forEach(s=>{ if(s.geo&&s.geo.lat!=null && mapInCity(s.geo)) pts.push([s.geo.lat,s.geo.lng]); });
   if(!pts.length) return;
   try{ _map.fitBounds(_mapL.latLngBounds(pts).pad(0.2), { maxZoom:16 }); }catch(e){}
+}
+
+/* ============================================================
+   מסך הצהרון — לשונית משנה תחת "תיקי התלמידות"
+   ------------------------------------------------------------
+   נפרד ממסך התלמידות בכוונה: נתוני הצהרון אינם על המסך הרגיל,
+   אלא רק כאן. כל המספרים מגיעים מ-tzPlan() — חישוב אחד, כדי
+   שלא יהיו שני מספרים שסותרים זה את זה על אותו מסך.
+   ============================================================ */
+
+/* סינון המסך. reg: "" הכל · "yes" נרשמה · "no" לא נרשמה
+   state: "" הכל · "openable" ניתן לפתוח · "below" מתחת למינימום · "grouped" בקבוצה */
+let tzFilter = { q:"", gans:[], campus:"", age:[], edu:"", reg:"", state:"", paid:"" };
+let tzOpenGan = "";              // הגן שרשימת התלמידות שלו פרושה
+function clearTzFilter(){ tzFilter={ q:"", gans:[], campus:"", age:[], edu:"", reg:"", state:"", paid:"" }; }
+function tzActiveFilterCount(){
+  let n=0;
+  if(tzFilter.q) n++;
+  if(tzFilter.gans.length) n++;
+  if(tzFilter.campus) n++;
+  if(tzFilter.age.length) n++;
+  if(tzFilter.edu) n++;
+  if(tzFilter.reg) n++;
+  if(tzFilter.state) n++;
+  if(tzFilter.paid) n++;
+  return n;
+}
+let tzFiltersOpen=false;
+
+/* יחס "נרשמות מתוך מינימום" — בלי רווחים סביב הלוכסן, אחרת המספרים
+   מתהפכים על המסך (כלל ה-bidi שב-HANDOFF.md). */
+function tzRatio(c, m){ return m ? `${c}/${m}` : String(c); }
+
+function viewTzaharon(root){
+  const P=tzPlan();
+  const lim=Object.fromEntries(EDU_TYPES.map(e=>[e,tzLimits(e)]));
+  const showPaid=tzShowPaid();
+  const campuses=[...new Set(P.gans.map(g=>String(g.campus||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  const fOpen = tzFiltersOpen || tzActiveFilterCount()>0;
+  const multiEdu = !activeEdu && EDU_TYPES.filter(e=>P.byEdu[e] && (P.byEdu[e].registered||P.byEdu[e].opened)).length>1;
+  /* שורת פירוט לפי חינוך — רק כשמוצגים שני סוגי החינוך יחד */
+  const eduSplit = k => multiEdu
+    ? EDU_TYPES.map(e=>`${esc(e)} ${P.byEdu[e][k]}`).join(" · ")
+    : "";
+
+  const tile=(k,v,sub,color,attr)=>`<div class="stat${attr&&attr.hero?' hero':''}"${attr&&attr.filter?` data-tzcard="${attr.filter}" style="cursor:pointer"`:''}>
+      <div class="k">${k}</div><div class="v"${color?` style="color:${color}"`:''}>${v}</div>
+      ${sub?`<div class="hint" style="margin-top:2px">${sub}</div>`:''}</div>`;
+
+  root.innerHTML=`
+  <div class="panel">
+    <div class="section-title" style="margin-bottom:4px"><h2>צהרון</h2></div>
+    <div class="sub" style="margin-bottom:10px">הנרשמות לצהרון, כמה קבוצות אפשר לפתוח מהן, וכמה כבר נפתחו — בשנת ${esc(DB.activeYear)}.</div>
+
+    <div class="stats" id="tzCards" style="margin-bottom:10px">
+      ${tile("נרשמות לצהרון", P.totalRegistered, eduSplit("registered"), "", {hero:true, filter:"reg"})}
+      ${tile("קבוצות שנפתחו", P.openedCount, eduSplit("opened"), P.openedCount?"var(--good)":"", {filter:"grouped"})}
+      ${tile("ניתן לפתוח עכשיו", P.openableTotal,
+             P.openableTotal?`${P.openableStandalone} עצמאיות · ${P.openableMerged} מצורפות`:"", "", {filter:"openable"})}
+      ${tile("גנים מתחת למינימום", P.belowMinGans.length, eduSplit("below"),
+             P.belowMinGans.length?"var(--bad)":"var(--good)", {filter:"below"})}
+      ${showPaid?tile("שילמו לצהרון", tzPaidCount(P), `מתוך ${P.totalRegistered}`, "", {filter:"paid"}):""}
+    </div>
+
+    <div class="hint" id="tzStatus" style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;margin-bottom:12px">
+      נפתחו <b>${P.openedCount}</b> · ניתן לפתוח עוד <b>${P.openableTotal}</b> · סה"כ אפשריות <b>${P.totalPossible}</b>
+    </div>
+    ${!tzHasLimits()?`<div class="hint" style="margin-bottom:12px">כדי שהמספרים יהיו מדויקים — הגדר/י מינימום ומקסימום לכל סוג חינוך ב<button type="button" class="btn ghost sm" id="tzToSettings">הגדרות → צהרון</button>.</div>`
+      :`<div class="hint" style="margin-bottom:12px">גודל קבוצה: ${EDU_TYPES.map(e=>`${esc(e)} <b>${lim[e].min||'—'}</b>${lim[e].max?` עד <b>${lim[e].max}</b>`:''}`).join(" · ")} · <button type="button" class="btn ghost sm" id="tzToSettings">שינוי</button></div>`}
+
+    <div class="row" style="gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+      <span style="flex:1;min-width:8px"></span>
+      <span class="hint" style="align-self:center">ייבוא / יצוא:</span>
+      <button class="btn ghost sm" id="tzExport">📤 יצוא</button>
+      <button class="btn ghost sm" id="tzImport">⬆️ ייבוא נרשמות</button>
+    </div>
+
+    <div class="searchbar">
+      <div class="search-field"><span class="mag">🔎</span><input id="tzq" value="${esc(tzFilter.q)}" placeholder="חיפוש גן / תלמידה / ת&quot;ז…"></div>
+      <button class="filter-toggle ${fOpen?'on':''}" id="tzFilterToggle" type="button" aria-expanded="${fOpen}">☰ סינון<span class="fcount" id="tzFilterCount"></span></button>
+    </div>
+    <div class="filter-panel" id="tzFilterPanel" ${fOpen?'':'hidden'}>
+      <div class="toolbar" style="margin-bottom:0">
+        <div class="field"><label>גן (אפשר לבחור כמה)</label>
+          <details class="msel" id="tzf-gan">
+            <summary>${tzFilter.gans.length?(tzFilter.gans.length===1?esc(ganName(tzFilter.gans[0])):tzFilter.gans.length+" גנים נבחרו"):"כל הגנים"}</summary>
+            <div class="msel-menu">
+              <div class="msel-tools">
+                <button type="button" class="btn ghost sm" data-tzgan-all>בחר/י הכל</button>
+                <button type="button" class="btn ghost sm" data-tzgan-clear>ניקוי</button>
+              </div>
+              ${P.gans.map(g=>`<label class="msel-opt"><input type="checkbox" data-tzgan="${g.id}" ${tzFilter.gans.includes(g.id)?'checked':''}> ${esc(ganName(g.id))}</label>`).join("")}
+            </div>
+          </details></div>
+        ${campuses.length?`<div class="field"><label>קמפוס</label><select id="tzf-campus"><option value="">הכל</option>${campuses.map(c=>`<option ${tzFilter.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>`:""}
+        <div class="field"><label>גיל (אפשר לבחור כמה)</label>
+          <div class="row" id="tzf-age" style="gap:4px;flex-wrap:wrap">
+            ${CHILD_AGES.map(a=>`<button type="button" class="btn sm ${tzFilter.age.includes(a)?'':'ghost'}" data-tzage="${esc(a)}">${esc(a)}</button>`).join("")}
+          </div></div>
+        ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="tzf-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${tzFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
+        <div class="field"><label>מצב רישום</label><select id="tzf-reg">
+          <option value="">הכל</option>
+          <option value="yes" ${tzFilter.reg==='yes'?'selected':''}>נרשמה לצהרון</option>
+          <option value="no" ${tzFilter.reg==='no'?'selected':''}>לא נרשמה</option>
+        </select></div>
+        <div class="field"><label>מצב הגן</label><select id="tzf-state">
+          <option value="">הכל</option>
+          <option value="openable" ${tzFilter.state==='openable'?'selected':''}>ניתן לפתוח</option>
+          <option value="mergeable" ${tzFilter.state==='mergeable'?'selected':''}>ניתן לפתוח בצירוף</option>
+          <option value="below" ${tzFilter.state==='below'?'selected':''}>מתחת למינימום</option>
+          <option value="grouped" ${tzFilter.state==='grouped'?'selected':''}>כבר בקבוצה</option>
+        </select></div>
+        ${showPaid?`<div class="field"><label>תשלום</label><select id="tzf-paid">
+          <option value="">הכל</option>
+          <option value="yes" ${tzFilter.paid==='yes'?'selected':''}>שילמו</option>
+          <option value="no" ${tzFilter.paid==='no'?'selected':''}>לא שילמו</option>
+        </select></div>`:""}
+        <div class="field"><label>&nbsp;</label><button class="btn ghost" id="tzf-clear" type="button" title="ניקוי כל הסינון">🧹 ניקוי</button></div>
+      </div>
+    </div>
+
+    <div id="tzGroupsBox" style="margin-top:14px"></div>
+    <div id="tzMergeBox" style="margin-top:14px"></div>
+    <div id="tzGansBox" style="margin-top:14px"></div>
+  </div>`;
+
+  /* --- חיווט --- */
+  const fc=$("#tzFilterCount"); if(fc){ const n=tzActiveFilterCount(); fc.textContent=n?String(n):""; fc.style.display=n?"":"none"; }
+  { const b=$("#tzToSettings"); if(b) b.onclick=()=>gotoSettingsSection("tzmin"); }
+  { const b=$("#tzExport");     if(b) b.onclick=()=>openTzExport(); }
+  { const b=$("#tzImport");     if(b) b.onclick=()=>toast("ייבוא הנרשמות ייכנס בשלב הבא"); }
+  $("#tzFilterToggle").onclick=()=>{ tzFiltersOpen=$("#tzFilterPanel").hasAttribute("hidden"); viewTzaharon(root); };
+  { const c=$("#tzf-clear"); if(c) c.onclick=()=>{ clearTzFilter(); tzFiltersOpen=true; viewTzaharon(root); }; }
+
+  const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ tzFilter[key]=e.value; tzRender(); }; };
+  bind("#tzq","q"); bind("#tzf-campus","campus"); bind("#tzf-edu","edu");
+  bind("#tzf-reg","reg"); bind("#tzf-state","state"); bind("#tzf-paid","paid");
+
+  const ganBox=$("#tzf-gan");
+  if(ganBox){
+    ganBox.querySelectorAll("[data-tzgan]").forEach(cb=>cb.onchange=()=>{
+      const id=cb.dataset.tzgan;
+      if(cb.checked){ if(!tzFilter.gans.includes(id)) tzFilter.gans.push(id); }
+      else tzFilter.gans=tzFilter.gans.filter(x=>x!==id);
+      ganBox.querySelector("summary").textContent=tzFilter.gans.length
+        ? (tzFilter.gans.length===1?ganName(tzFilter.gans[0]):tzFilter.gans.length+" גנים נבחרו") : "כל הגנים";
+      tzRender();
+    });
+    const all=ganBox.querySelector("[data-tzgan-all]"), clr=ganBox.querySelector("[data-tzgan-clear]");
+    if(all) all.onclick=()=>{ tzFilter.gans=P.gans.map(g=>g.id); viewTzaharon(root); };
+    if(clr) clr.onclick=()=>{ tzFilter.gans=[]; viewTzaharon(root); };
+  }
+  const ageBox=$("#tzf-age");
+  if(ageBox) ageBox.querySelectorAll("[data-tzage]").forEach(b=>b.onclick=()=>{
+    const a=b.dataset.tzage;
+    if(tzFilter.age.includes(a)) tzFilter.age=tzFilter.age.filter(x=>x!==a); else tzFilter.age.push(a);
+    viewTzaharon(root);
+  });
+  /* כרטיס לחיץ — מסנן למה שכתוב עליו */
+  $("#tzCards").querySelectorAll("[data-tzcard]").forEach(c=>c.onclick=()=>{
+    const k=c.dataset.tzcard;
+    if(k==="reg")      { tzFilter.reg = tzFilter.reg==="yes" ? "" : "yes"; }
+    else if(k==="paid"){ tzFilter.paid= tzFilter.paid==="yes" ? "" : "yes"; }
+    else               { tzFilter.state = tzFilter.state===k ? "" : k; }
+    viewTzaharon(root);
+  });
+
+  tzRender();
+}
+
+/* מספר ששילמו — מתוך הנרשמות בלבד */
+function tzPaidCount(P){
+  return eduScope(studentsOfYear().filter(s=>!s.finished && s.programs && s.programs.tzaharon
+    && s.programsPaid && s.programsPaid.tzaharon)).length;
+}
+
+/* ------------------------------------------------------------
+   הרשימות — נבנות מחדש בכל שינוי סינון, בלי לבנות את כל המסך
+   ------------------------------------------------------------ */
+function tzRender(){
+  const P=tzPlan();
+  const q=String(tzFilter.q||"").trim().toLowerCase();
+  const showPaid=tzShowPaid();
+
+  /* גן עובר את הסינון? (חיפוש חופשי נבדק גם מול התלמידות שבו) */
+  const ganPass=g=>{
+    const r=P.byGan[g.id]; if(!r) return false;
+    if(tzFilter.gans.length && !tzFilter.gans.includes(g.id)) return false;
+    if(tzFilter.campus && r.campus!==tzFilter.campus) return false;
+    if(tzFilter.edu && r.edu!==tzFilter.edu) return false;
+    if(tzFilter.age.length && !tzFilter.age.includes(String(g.age||""))) return false;
+    if(tzFilter.state && r.state!==tzFilter.state) return false;
+    if(tzFilter.reg==='yes' && !r.count) return false;
+    if(q){
+      const hay=(ganName(g.id)+" "+(g.ganSymbol||"")+" "+(g.internalSymbol||"")+" "+r.campus).toLowerCase();
+      if(!hay.includes(q) && !tzStudentsOf(g.id).some(s=>tzStuHay(s).includes(q))) return false;
+    }
+    return true;
+  };
+  const gans=P.gans.filter(ganPass);
+  const ids=new Set(gans.map(g=>g.id));
+
+  /* ---------- הקבוצות שנפתחו ---------- */
+  const groups=P.opened.concat(P.plannedGroups).filter(gr=>(gr.ganIds||[]).some(id=>ids.has(id)));
+  const gb=$("#tzGroupsBox");
+  if(gb) gb.innerHTML = !groups.length ? "" : `
+    <h3 style="color:var(--accent-strong);margin-bottom:8px">קבוצות הצהרון <span class="pill neutral">${groups.length}</span></h3>
+    <div class="table-wrap"><table><thead><tr>
+      <th>שם הקבוצה</th><th>קמפוס</th><th>חינוך</th><th>גנים</th><th>ילדות</th><th>צוות</th><th>מצב</th></tr></thead><tbody>
+      ${groups.map(gr=>{
+        const c=tzGroupCount(gr), L=tzLimits(gr.education||"רגיל");
+        const staff=Object.keys(ganAsg(gr.id,'tzaharon')).length;
+        const over=L.max && c>L.max;
+        return `<tr>
+          <td><b>${esc(gr.name||tzGroupAutoName(gr.ganIds))}</b></td>
+          <td>${esc(gr.campus)||'—'}</td>
+          <td>${esc(gr.education||'רגיל')}</td>
+          <td>${(gr.ganIds||[]).map(id=>esc(ganName(id))).join(" + ")||'—'}</td>
+          <td><span class="pill ${c<L.min?'no':(over?'warn':'ok')}" title="${over?`מעל המקסימום (${L.max})`:''}">${tzRatio(c,L.min)}</span></td>
+          <td>${staff?`<span class="pill ok">${staff} משובצים</span>`:'<span class="pill neutral">ממתינה לצוות</span>'}</td>
+          <td>${gr.status==='open'?'<span class="pill ok">נפתחה</span>':'<span class="pill neutral">מתוכננת</span>'}</td>
+        </tr>`;
+      }).join("")}
+    </tbody></table></div>`;
+
+  /* ---------- הצעות צירוף ---------- */
+  const sugg=P.mergeSuggestions.filter(m=>m.ganIds.some(id=>ids.has(id)));
+  const mb=$("#tzMergeBox");
+  if(mb) mb.innerHTML = !sugg.length ? "" : `
+    <h3 style="color:var(--accent-strong);margin-bottom:8px">הצעות צירוף בקמפוס <span class="pill neutral">${sugg.length}</span></h3>
+    <div class="hint" style="margin-bottom:8px">גנים שאינם מגיעים למינימום לבדם, אך יחד כן. הצירוף תמיד בתוך אותו קמפוס ואותו סוג חינוך; גילים שונים — מותר.</div>
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+      ${sugg.map(m=>`<div class="stat">
+        <div class="k">${esc(m.campus)} · ${esc(m.edu)}</div>
+        <div style="margin:6px 0 4px;font-weight:700">${m.parts.map(x=>`${esc(ganName(x.ganId))} <span class="pill neutral">${x.count}</span>`).join(" + ")}</div>
+        <div class="hint">סה"כ <b>${m.total}</b> · מינימום ${m.lim.min} <span class="pill ok">מעל המינימום</span></div>
+      </div>`).join("")}
+    </div>`;
+
+  /* ---------- הגנים ---------- */
+  const box=$("#tzGansBox");
+  if(!box) return;
+  if(!gans.length){ box.innerHTML=`<div class="empty">אין גנים בסינון זה.</div>`; return; }
+  const stateLabel={
+    openable:'<span class="pill ok">ניתן לפתוח</span>',
+    mergeable:'<span class="pill warn">ניתן בצירוף</span>',
+    below:'<span class="pill no">מתחת למינימום</span>',
+    grouped:'<span class="pill neutral">בקבוצה</span>',
+    empty:'<span class="pill neutral">אין נרשמות</span>'
+  };
+  box.innerHTML=`
+    <h3 style="color:var(--accent-strong);margin-bottom:8px">הגנים <span class="pill neutral">${gans.length}</span></h3>
+    <div class="hint" style="margin-bottom:8px">לחיצה על שורה פותחת את רשימת התלמידות של אותו גן — מי נרשמה ומי לא.</div>
+    <div class="table-wrap"><table><thead><tr>
+      <th>גן</th><th>קמפוס</th><th>גיל</th><th>חינוך</th><th>נרשמות</th><th>חסר</th><th>מצב</th></tr></thead><tbody>
+      ${gans.map(g=>{
+        const r=P.byGan[g.id];
+        const grp=r.groupId?tzGroupById(r.groupId):null;
+        const gapTxt = r.state==="below"
+          ? (r.campusGap>0 && r.campusGap<r.gap ? `${r.gap} <span class="hint">(בקמפוס ${r.campusGap})</span>` : String(r.gap))
+          : (r.overMax ? `<span class="pill warn">${r.overMax} מעל המקסימום</span>` : "—");
+        const open = tzOpenGan===g.id;
+        return `<tr class="tz-gan-row" data-tzgan-row="${g.id}" style="cursor:pointer">
+          <td><b>${esc(ganName(g.id))}</b> <span class="hint">${open?'▾':'▸'}</span></td>
+          <td>${esc(r.campus)||'—'}</td>
+          <td>${esc(g.age||'')||'—'}</td>
+          <td>${esc(r.edu)}</td>
+          <td><span class="pill ${r.count>=r.lim.min&&r.lim.min?'ok':(r.count?'no':'neutral')}">${tzRatio(r.count,r.lim.min)}</span></td>
+          <td>${gapTxt}</td>
+          <td>${stateLabel[r.state]||''}${grp?` <span class="hint">${esc(grp.name||'')}</span>`:''}</td>
+        </tr>
+        ${open?`<tr class="tz-stu-row"><td colspan="7" style="background:var(--surface-2)">${tzStudentListHtml(g.id, showPaid)}</td></tr>`:''}`;
+      }).join("")}
+    </tbody></table></div>`;
+
+  box.querySelectorAll("[data-tzgan-row]").forEach(tr=>tr.onclick=e=>{
+    if(e.target.closest("button,a,input")) return;
+    const id=tr.dataset.tzganRow;
+    tzOpenGan = tzOpenGan===id ? "" : id;
+    tzRender();
+  });
+  box.querySelectorAll("[data-tzstu]").forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const s=DB.students.find(x=>x.id===b.dataset.tzstu); if(!s) return;
+    openStudent(s);
+  });
+  box.querySelectorAll("[data-tztoggle]").forEach(cb=>cb.onchange=e=>{
+    e.stopPropagation();
+    const s=DB.students.find(x=>x.id===cb.dataset.tztoggle); if(!s) return;
+    if(!canEditRec(s)){ toast("אין הרשאת עריכה לחינוך זה"); cb.checked=!cb.checked; return; }
+    s.programs=s.programs||{}; s.programs.tzaharon=cb.checked;
+    save();
+    const root=$("#view"); if(root && active==="tzaharon") viewTzaharon(root);
+  });
+}
+
+/* התלמידות של גן, ממוינות: הנרשמות קודם */
+function tzStudentsOf(ganId){
+  return studentsOfYear().filter(s=>!s.finished && s.ganId===ganId)
+    .sort((a,b)=>{
+      const ra=!!(a.programs&&a.programs.tzaharon), rb=!!(b.programs&&b.programs.tzaharon);
+      if(ra!==rb) return ra?-1:1;
+      return fullName(a).localeCompare(fullName(b),"he");
+    });
+}
+function tzStuHay(s){ return (fullName(s)+" "+(s.tz||"")).toLowerCase(); }
+
+/* רשימת התלמידות של גן — מי נרשמה ומי לא, עם סימון ישיר */
+function tzStudentListHtml(ganId, showPaid){
+  const q=String(tzFilter.q||"").trim().toLowerCase();
+  let list=tzStudentsOf(ganId);
+  if(tzFilter.reg==='yes') list=list.filter(s=>s.programs&&s.programs.tzaharon);
+  if(tzFilter.reg==='no')  list=list.filter(s=>!(s.programs&&s.programs.tzaharon));
+  if(tzFilter.paid==='yes') list=list.filter(s=>s.programsPaid&&s.programsPaid.tzaharon);
+  if(tzFilter.paid==='no')  list=list.filter(s=>!(s.programsPaid&&s.programsPaid.tzaharon));
+  if(q) list=list.filter(s=>tzStuHay(s).includes(q));
+  const reg=list.filter(s=>s.programs&&s.programs.tzaharon).length;
+  if(!list.length) return `<div class="hint" style="padding:8px 2px">אין תלמידות בסינון זה.</div>`;
+  return `<div style="padding:6px 2px 2px">
+    <div class="hint" style="margin-bottom:6px">${list.length} תלמידות · <b>${reg}</b> נרשמו · ${list.length-reg} לא נרשמו</div>
+    <div class="table-wrap"><table><thead><tr>
+      <th style="width:70px">נרשמה</th><th>שם</th><th>ת"ז</th><th>גיל</th>${showPaid?'<th>תשלום</th>':''}<th></th></tr></thead><tbody>
+      ${list.map(s=>{
+        const on=!!(s.programs&&s.programs.tzaharon);
+        const paid=!!(s.programsPaid&&s.programsPaid.tzaharon);
+        return `<tr>
+          <td><label class="check" style="margin:0"><input type="checkbox" data-tztoggle="${s.id}" ${on?'checked':''}></label></td>
+          <td>${on?'✓ ':''}${esc(fullName(s))}</td>
+          <td>${esc(s.tz||'')||'—'}</td>
+          <td>${esc(s.age||'')||'—'}</td>
+          ${showPaid?`<td>${on?(paid?'<span class="pill ok">שולם</span>':'<span class="pill no">לא שולם</span>'):'—'}</td>`:''}
+          <td class="actions"><button class="btn sm ghost" data-tzstu="${s.id}">פתיחת התיק</button></td>
+        </tr>`;
+      }).join("")}
+    </tbody></table></div></div>`;
+}
+
+/* ייצוא / הדפסה של מסך הצהרון לפי הסינון הפעיל */
+function openTzExport(){
+  const P=tzPlan();
+  const rows=P.gans.map(g=>{
+    const r=P.byGan[g.id];
+    return [ganName(g.id), r.campus, g.age||"", r.edu, r.count, r.lim.min||"", r.lim.max||"",
+            r.state==="below"?r.gap:"", ({openable:"ניתן לפתוח",mergeable:"ניתן בצירוף",below:"מתחת למינימום",grouped:"בקבוצה",empty:"אין נרשמות"})[r.state]||""];
+  });
+  const head=["גן","קמפוס","גיל","חינוך","נרשמות","מינימום","מקסימום","חסר","מצב"];
+  const grpHead=["קבוצה","קמפוס","חינוך","גנים","ילדות","מצב"];
+  const grpRows=P.opened.concat(P.plannedGroups).map(gr=>[gr.name||tzGroupAutoName(gr.ganIds), gr.campus,
+      gr.education||"רגיל", (gr.ganIds||[]).map(id=>ganName(id)).join(" + "), tzGroupCount(gr),
+      gr.status==='open'?"נפתחה":"מתוכננת"]);
+  const tbl=(h,r)=>`<table><thead><tr>${h.map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${
+    r.map(row=>`<tr>${row.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  modal(`
+    <h3>ייצוא צהרון · שנת ${esc(DB.activeYear)}</h3>
+    <div class="stats" style="margin:10px 0">
+      <div class="stat"><div class="k">נרשמות</div><div class="v">${P.totalRegistered}</div></div>
+      <div class="stat"><div class="k">נפתחו</div><div class="v">${P.openedCount}</div></div>
+      <div class="stat"><div class="k">ניתן לפתוח</div><div class="v">${P.openableTotal}</div></div>
+      <div class="stat"><div class="k">מתחת למינימום</div><div class="v">${P.belowMinGans.length}</div></div>
+    </div>
+    ${grpRows.length?`<h4>קבוצות</h4><div class="table-wrap">${tbl(grpHead,grpRows)}</div>`:""}
+    <h4 style="margin-top:12px">גנים</h4><div class="table-wrap">${tbl(head,rows)}</div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="tzx-print" type="button">🖨️ הדפסה</button>
+      <button class="btn ghost" id="tzx-csv" type="button">⬇️ הורדת CSV</button>
+      <button class="btn ghost" id="tzx-close" type="button" style="margin-inline-start:auto">סגירה</button>
+    </div>`);
+  $("#tzx-close").onclick=closeModal;
+  $("#tzx-print").onclick=()=>window.print();
+  $("#tzx-csv").onclick=()=>{
+    const csv=[head].concat(rows).map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+    downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), `צהרון-${DB.activeYear}.csv`);
+  };
 }
 
 function viewGans(root){
@@ -13036,10 +13438,17 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"){
 $("#tabs").addEventListener("click",e=>{
   const car=e.target.closest("[data-setnav]");
   if(car){ setNavOpen=!setNavOpen; renderTabs(); return; }
+  const scar=e.target.closest("[data-stunav]");
+  if(scar){ stuNavOpen=!stuNavOpen; renderTabs(); return; }
   const jmp=e.target.closest("[data-setjump]");
   if(jmp){ gotoSettingsSection(jmp.dataset.setjump); return; }
   const b=e.target.closest("[data-tab]");
-  if(b){ if(b.dataset.tab==="settings") setNavOpen=true; navToTab(b.dataset.tab); }
+  if(b){
+    if(b.dataset.tab==="settings") setNavOpen=true;
+    /* כניסה למסך משנה — הרשימה נשארת פרושה כדי שיהיה ברור איפה אנחנו */
+    if(parentTabOf(b.dataset.tab)==="students" && b.dataset.tab!=="students") stuNavOpen=true;
+    navToTab(b.dataset.tab);
+  }
 });
 $("#backBtn").addEventListener("click", goBack);
 $("#menuBtn").addEventListener("click",toggleDrawer);
