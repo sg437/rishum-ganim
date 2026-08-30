@@ -15,6 +15,9 @@
         העמודות, עם הלוח הכהה שמונה את השורות.
      5. "עדכון לפי ת"ז" פותח חלון שבתחתיתו מקטע "רשימת העירייה" — ושהוא
         עובד: הדבקת ת"ז והתאמה מסמנת את התיקים כ"קלוט בעירייה".
+     6. ה-"+" שבכותרת הטבלה פותח בורר עמודות: בוחרים עמודה אחת והיא בלבד
+        עולה, מורידים אותה והיא בלבד יורדת, והבחירה נשמרת. ה-"+" עצמו נשאר
+        גלוי גם כשכל העמודות הנוספות ירדו.
      6. מסך הצוות: הכותרת, סדר כפתורי הפעולה, המשבצת "שאר הצוות", חמש
         עמודות הרשימה, שורת החיפוש שיושבת בתוך עמודת הרשימה (ולכן
         מתכווצת כשנפתח תיק בצד), שבבי התפקיד לבחירה מרובה, התיק שבצד
@@ -1125,6 +1128,79 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     else ok('תלמידות ברוחב ' + W + ': הכרטיס ' + m.cardH + 'px, ' + m.rows + ' שורות גלויות');
   }
   await p.setViewportSize({ width: 1440, height: 900 }); await p.waitForTimeout(400);
+
+  /* --- 6. בורר העמודות הנוספות ----------------------------------------- */
+  await goTab(p, 'students'); await p.waitForTimeout(900);
+  const colState = () => p.evaluate(() => {
+    const head = document.querySelector('.stu-table thead tr');
+    const row  = document.querySelector('.stu-table tbody tr');
+    const vis  = el => el.offsetParent !== null || getComputedStyle(el).display !== 'none';
+    return {
+      /* מה גלוי בפועל, כותרת וגוף — לא מה שכתוב ב-DOM */
+      cols: [...head.children].filter(vis).length,
+      cells: [...row.children].filter(vis).length,
+      plusVisible: (() => { const s = document.querySelector('.lab-colmenu > summary');
+                            return !!(s && vis(s) && vis(s.closest('th'))); })(),
+      /* ה-"+" חייב לשבת בכותרת שגלויה, אחרת אי אפשר להחזיר עמודה שירדה */
+      plusHost: (document.querySelector('.lab-colmenu') || {}).parentNode
+                  ? document.querySelector('.lab-colmenu').parentNode.className : null,
+      stored: localStorage.getItem('rg-lab-stucols'),
+      oldBtn: !!document.querySelector('#stuColsBtn.lab-hidden'),
+    };
+  });
+  const setCol = (k, on) => p.evaluate(([k, on]) => {
+    const cb = document.querySelector('.lab-colmenu [data-col="' + k + '"] input');
+    cb.checked = on; cb.onchange();
+  }, [k, on]);
+
+  const base = await colState();
+  if (!base.plusVisible)   bad('אין "+" בכותרת הטבלה');
+  else if (!base.oldBtn)   bad('כפתור "עמודות נוספות" של התוכנה נשאר גלוי לצד ה-"+"');
+  /* null = טרם נבחר דבר (אין כתיבה עד הבחירה הראשונה); '' = נבחר ורוקן */
+  else if (base.stored)    bad('ברירת המחדל אינה "אף עמודה נוספת"', ['נשמר: ' + base.stored]);
+  else if (base.cells !== base.cols)
+    bad('מספר התאים בשורה אינו כמספר הכותרות', [base.cells + ' מול ' + base.cols]);
+  else {
+    await setCol('muni', true); await p.waitForTimeout(350);
+    const one = await colState();
+    await setCol('docs', true); await p.waitForTimeout(350);
+    const two = await colState();
+    await setCol('muni', false); await p.waitForTimeout(350);
+    const back = await colState();
+    /* וגם: הרינדור מחדש של הטבלה (מיון) אינו מאבד את הבחירה */
+    await p.evaluate(() => document.querySelector('.stu-table th[data-sort="tz"]').click());
+    await p.waitForTimeout(500);
+    const after = await colState();
+
+    if (one.cols !== base.cols + 1 || one.cells !== base.cells + 1)
+      bad('סימון עמודה אחת לא הוסיף עמודה אחת בדיוק',
+          ['כותרות ' + base.cols + '→' + one.cols + ' · תאים ' + base.cells + '→' + one.cells]);
+    else if (two.cols !== base.cols + 2)
+      bad('סימון עמודה שנייה לא הוסיף עוד אחת', ['כותרות: ' + two.cols]);
+    else if (back.cols !== base.cols + 1 || back.stored !== 'docs')
+      bad('הסרת עמודה לא הורידה אותה בלבד', ['כותרות: ' + back.cols + ' · נשמר: ' + back.stored]);
+    else if (after.cols !== back.cols)
+      bad('מיון הטבלה איבד את בחירת העמודות', ['לפני ' + back.cols + ' אחרי ' + after.cols]);
+    else if (!after.plusVisible)
+      bad('ה-"+" נעלם אחרי רינדור מחדש');
+    else {
+      await p.evaluate(() => { const b = [...document.querySelectorAll('.lab-coltools .btn')]
+        .find(x => /הצג הכל/.test(x.textContent)); b.click(); });
+      await p.waitForTimeout(400);
+      const all = await colState();
+      await p.evaluate(() => { const b = [...document.querySelectorAll('.lab-coltools .btn')]
+        .find(x => /נקה/.test(x.textContent)); b.click(); });
+      await p.waitForTimeout(400);
+      const none = await colState();
+      if (all.cols !== base.cols + 7)
+        bad('"הצג הכל" לא העלה את כל שבע העמודות', ['כותרות: ' + all.cols]);
+      else if (none.cols !== base.cols || none.stored !== '')
+        bad('"נקה" לא הוריד את כולן', ['כותרות: ' + none.cols + ' · נשמר: ' + none.stored]);
+      else if (!none.plusVisible)
+        bad('ה-"+" ירד יחד עם העמודה האחרונה — אי אפשר להחזיר אותן');
+      else ok('בורר העמודות: אחת נוספת, אחת יורדת, הבחירה שורדת מיון, ו-7/0 עובדים');
+    }
+  }
 
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));

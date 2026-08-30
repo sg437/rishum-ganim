@@ -102,6 +102,27 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .drawer-nav button:hover{background:var(--surface-2)}
 .drawer-nav button.active{background:var(--accent);color:#fff;box-shadow:var(--shadow)}
 .drawer-nav button.active .count{background:rgba(255,255,255,.24);color:#fff}
+/* לשונית עם רשימת מקטעים (הגדרות): החץ פותח אותה למטה, בתוך הסרגל */
+.drawer-nav .nav-row{display:flex;align-items:center;gap:2px}
+.drawer-nav .nav-row>button[data-tab]{flex:1;min-width:0}
+.drawer-nav .nav-caret{flex:0 0 auto;width:34px;height:34px;padding:0;display:grid;place-items:center;
+  color:var(--muted);font-size:.9rem;line-height:1;border-radius:10px;
+  transition:transform .2s cubic-bezier(.4,0,.2,1),background .2s,color .2s}
+.drawer-nav .nav-caret:hover{transform:none;background:var(--surface-2);color:var(--accent-strong)}
+.drawer-nav .nav-caret.open,.drawer-nav .nav-caret.open:hover{transform:rotate(180deg);color:var(--accent-strong)}
+.drawer-nav .subnav{display:flex;flex-direction:column;gap:1px;margin:2px 0 6px;
+  padding-inline-start:14px;border-inline-start:2px solid var(--border)}
+.drawer-nav .subnav[hidden]{display:none}
+.drawer-nav .subnav-g{font-size:.68rem;font-weight:800;color:var(--muted);letter-spacing:.02em;padding:8px 10px 3px}
+.drawer-nav .subnav-i{padding:7px 10px;border-radius:9px;font-size:.84rem;font-weight:600;color:var(--ink-soft)}
+.drawer-nav .subnav-i:hover{background:var(--surface-2);color:var(--accent-strong)}
+.drawer-nav .subnav-i{display:flex;align-items:center;gap:8px}
+.drawer-nav .subnav-i.on{background:var(--accent-soft);color:var(--accent-strong)}
+.drawer-nav .subnav-i .count{margin-inline-start:auto;font-size:.72rem;font-weight:800;
+  background:var(--surface-2);color:var(--muted);border-radius:999px;padding:1px 7px}
+.drawer-nav .subnav-i.on .count{background:var(--surface);color:var(--accent-strong)}
+/* גלילה למקטע לא נחתכת מתחת לכותרת הדביקה */
+#view [data-set]{scroll-margin-top:calc(var(--top-h,61px) + 12px)}
 .drawer-foot{border-top:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px}
 .drawer-foot .df-row{display:flex;gap:8px}
 .drawer-foot button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);padding:10px 10px;border-radius:11px;font-weight:800;font-size:.86rem}
@@ -422,11 +443,39 @@ tbody td{padding-block:8px}
 
 /* פס בחירה תחתון */
 .selbar{position:sticky;bottom:10px;z-index:5;margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-  background:var(--accent-strong);color:#fff;border-radius:12px;padding:10px 14px;box-shadow:var(--shadow)}
+  background:var(--accent-strong);color:#fff;border-radius:12px;padding:10px 14px 10px 84px;box-shadow:var(--shadow)}
 .selbar b{margin-inline-end:auto}
 .selbar .btn{background:rgba(255,255,255,.14);color:#fff}
 .selbar .btn:hover{background:rgba(255,255,255,.24)}
 .selbar .btn.light{background:#fff;color:var(--accent-strong)}
+
+/* ---- כפתור פעולה מרחף (+) ----
+   פינה שמאלית תחתונה, בכל המסכים שיש בהם פעולת הוספה. פעולה אחת —
+   לחיצה מפעילה מיד; כמה פעולות — נפתח תפריט קטן מעל הכפתור. */
+/* direction:ltr על העטיפה בלבד — כדי ש-flex-start יהיה הצד השמאלי הפיזי,
+   זה שהכפתור נעוץ בו. תוכן הפריטים חוזר ל-rtl. */
+.fab-wrap{position:fixed;left:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:45;
+  direction:ltr;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.fab-wrap[hidden]{display:none}
+.fab{width:56px;height:56px;border-radius:18px;background:var(--accent);color:#fff;font-size:2rem;line-height:1;
+  display:grid;place-items:center;padding:0 0 4px;box-shadow:0 10px 24px -8px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.16);
+  transition:transform .22s cubic-bezier(.4,0,.2,1),background .18s}
+.fab:hover{background:var(--accent-strong)}
+.fab:focus-visible{outline:3px solid var(--brass);outline-offset:3px}
+.fab.open{transform:rotate(45deg)}
+.fab-menu{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.fab-menu[hidden]{display:none}
+.fab-item{direction:rtl;display:flex;align-items:center;gap:9px;white-space:nowrap;
+  background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:999px;
+  padding:9px 15px;font-size:.9rem;box-shadow:var(--shadow);animation:fab-in .18s cubic-bezier(.4,0,.2,1) both;animation-delay:var(--d,0ms)}
+.fab-item:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-strong)}
+.fab-item .fi{font-size:1.05rem;line-height:1}
+@keyframes fab-in{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.fab,.fab-item{transition:none;animation:none}}
+/* פאנל העוזר החכם נעוץ בצד שמאל — הכפתור זז ימינה כדי לא להסתתר מאחוריו */
+body.ai-docked .fab-wrap{left:calc(var(--ai-w,380px) + 18px)}
+@media(max-width:560px){.fab{width:52px;height:52px;border-radius:17px;font-size:1.8rem}.fab-wrap{left:14px}
+  .selbar{padding-left:76px}}
 
 /* ---- תיק מקוצר בצד (Quick view) ---- */
 .stu-quick{flex:0 0 296px;width:296px;position:sticky;
@@ -789,15 +838,21 @@ function btn(label, cls){
   b.onclick = demoAction(label.replace(/^[^֐-׿\w]+/, "").trim());
   return b;
 }
+/* cols: מחרוזת, או [טקסט, מחלקה]. המחלקה יורדת גם לתאי הגוף — כך אפשר
+   להראות ולהסתיר עמודה שלמה, וזה מה שבורר העמודות של המעבדה עושה. */
 function table(cols, rows, cls){
   var wrap = h("div", { "class": "table-wrap" });
   var t = h("table", cls ? { "class": cls } : null), th = h("thead"), tr = h("tr");
-  cols.forEach(function(c){ tr.appendChild(txt("th", null, c)); });
+  var cc = cols.map(function(c){ return Array.isArray(c) ? (c[1] || "") : ""; });
+  cols.forEach(function(c, i){ tr.appendChild(txt("th", cc[i] || null, Array.isArray(c) ? c[0] : c)); });
   th.appendChild(tr); t.appendChild(th);
   var tb = h("tbody");
   rows.forEach(function(r){
     var x = h("tr");
-    r.forEach(function(c){ x.appendChild(c instanceof Node ? h("td", null, [c]) : txt("td", null, String(c))); });
+    r.forEach(function(c, i){
+      var a = cc[i] ? { "class": cc[i] } : null;
+      x.appendChild(c instanceof Node ? h("td", a, [c]) : txt("td", cc[i] || null, String(c)));
+    });
     tb.appendChild(x);
   });
   t.appendChild(tb); wrap.appendChild(t);
@@ -861,12 +916,18 @@ VIEW.students = function(v){
       chips.appendChild(h("span", { "class": "docchip" + (s.docs[x[0]] ? " on" : ""), text: x[1].slice(0, 2) }));
     });
     return [
-      h("div", { "class": "nm", text: fullName(s) }),
       h("span", { "class": "tzcell", text: s.tz }),
-      g ? g.name + " · " + g.age : "—",
+      h("div", { "class": "nm", text: fullName(s) }),
+      s.street + ", " + s.city,
+      h("span", { style: "direction:ltr;unicode-bidi:isolate", text: s.mobile }),
       h("span", { "class": "chip edu " + (s.placed ? "reg" : "spec"), text: s.placed ? "✔ משובצת" : "⏳ ממתינה" }),
-      s.age, s.city, chips,
-      h("span", { "class": "pill " + (s.muni ? "ok" : "no"), text: s.muni ? "קלוט" : "לא קלוט" })
+      /* שבע הנוספות — כל אחת נבחרת בנפרד מה-"+" שבכותרת */
+      s.age,
+      s.period,
+      (g && g.edu) || "רגיל",
+      chips,
+      h("span", { "class": "pill " + (s.muni ? "ok" : "no"), text: s.muni ? "קלוט" : "לא קלוט" }),
+      h("span", { "class": "pill ok", text: "פעילה" })
     ];
   });
 
@@ -882,7 +943,13 @@ VIEW.students = function(v){
         h("b", { style: "margin-inline-end:auto", text: "📋 רשימת הגן: גן רימון" }),
         h("label", { "class": "check", style: "margin:0", html: '<input type="checkbox" id="stuGanOnepage"> התאם לעמוד אחד' })
       ]),
-      table(["שם מלא", "ת״ז", "גן", "שיבוץ", "גיל", "עיר", "מסמכים", "עירייה"], rows, "stu-table")
+      /* אותו מבנה של התוכנה: חמש עמודות קבועות, ואחריהן הנוספות עם המפתח
+         שלהן. "סימונים" אינו כאן — ובורר העמודות מוריד אותו מהרשימה מאליו,
+         בדיוק כפי שהוא עושה ל"חינוך" כשכבר נבחר חינוך אחד. */
+      table(['מספר זהות', "שם", "כתובת", "טלפון", "שיבוץ סופי",
+             ["גיל", "xcol xcol-age"], ["מועד", "xcol xcol-period"],
+             ["חינוך", "xcol xcol-edu"], ["מסמכים", "xcol xcol-docs"],
+             ["עירייה", "xcol xcol-muni"], ["סטטוס", "xcol xcol-status"]], rows, "stu-table")
     ]),
     h("aside", { id: "stuQuick", "class": "stu-quick empty-state" })
   ]);

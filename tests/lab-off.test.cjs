@@ -8,6 +8,8 @@
      2. מסך הצוות נשאר כפי שהיה — הכותרת "רשימת צוות הגנים", תשע עמודות
         בטבלה ושלושת הכפתורים המקוריים. אף אלמנט של המעבדה אינו נכנס.
      3. חלון ייבוא הצוות נשאר בלי מצב "עדכון לפי ת"ז" ובלי שינוי כותרת.
+     4. העמודות הנוספות בטבלת התלמידות נשארות "הכל או כלום", בכפתור אחד —
+        בורר העמודות שנבנה למעבדה אינו מופיע כאן.
 
    למה זו בדיקה נפרדת: כל שאר הבדיקות רצות עם המעבדה דלוקה, ולכן אף אחת
    מהן לא הייתה מגלה דליפה לעיצוב שכל המשתמשים רואים.
@@ -61,7 +63,10 @@ const server=require('http').createServer((req,res)=>{
 });
 const SEED=`(()=>{ DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
   DB.gans=[{id:'g1',ganName:'גן הדקל',active:true,education:'רגיל',age:'4',teacherName:'שרה לוי'}];
-  DB.students=[];
+  DB.students=[1,2].map(i=>({ id:'s'+i, year:'תשפ"ז', firstName:'ילדה'+i, lastName:'כהן',
+    tz:'12345678'+i, age:'4', education:'רגיל', ganId:'g1', placed:true, finished:false,
+    street:'הרב שך', building:String(i), city:'מודיעין עילית', period:'א',
+    docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{} }));
   DB.staff=[{id:'m1',lastName:'ברקוביץ',firstName:'שרה',tz:'039112881',role:'גננת',education:'רגיל',
              phone:'02-9990001',mobile:'052-8841190',city:'מודיעין עילית',email:'s@x.org',active:true,
              movements:[],notesList:[],absences:[],lateness:[],docFiles:{}}];
@@ -161,6 +166,31 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
   else if(jump.drawer)                 bad('המגירה נשארה פתוחה אחרי בחירת מקטע');
   else if(!(jump.top>0 && jump.top<220)) bad('הבחירה לא גיללה אל המקטע',['top='+jump.top]);
   else ok('בחירת מקטע גוללת אליו מתחת לכותרת הדביקה, וסוגרת את המגירה');
+
+  /* --- 4. העמודות הנוספות: כפתור אחד, הכל או כלום -------------------- */
+  await p.evaluate(t=>{ __set('active',t); route(); },'students'); await p.waitForTimeout(800);
+  const snap=()=>p.evaluate(()=>{
+    const head=document.querySelector('.stu-table thead tr'), row=document.querySelector('.stu-table tbody tr');
+    const vis=el=>getComputedStyle(el).display!=='none';
+    return { cols:[...head.children].filter(vis).length, cells:[...row.children].filter(vis).length,
+             btn:((document.querySelector('#stuColsBtn')||{}).textContent||'').trim(),
+             btnVisible:!!(document.querySelector('#stuColsBtn')&&vis(document.querySelector('#stuColsBtn'))),
+             menu:!!document.querySelector('.lab-colmenu'),
+             xoff:[...document.documentElement.classList].some(c=>c.indexOf('lab-xoff')===0) };
+  });
+  const c0=await snap();
+  await p.evaluate(()=>document.querySelector('#stuColsBtn').click()); await p.waitForTimeout(500);
+  const c1=await snap();
+  await p.evaluate(()=>document.querySelector('#stuColsBtn').click()); await p.waitForTimeout(500);
+  const c2=await snap();
+  if(c0.menu||c1.menu)      bad('בורר העמודות של המעבדה הופיע בעיצוב הקיים');
+  else if(c0.xoff||c1.xoff) bad('מחלקות lab-xoff נכתבו על <html> בלי המעבדה');
+  else if(!c0.btnVisible)   bad('כפתור "עמודות נוספות" נעלם');
+  else if(c0.cols!==6||c0.cells!==6) bad('ברירת המחדל אינה שש עמודות',[JSON.stringify(c0)]);
+  else if(c1.cols!==13||c1.cells!==13) bad('הכפתור לא פתח את כל שבע הנוספות',[JSON.stringify(c1)]);
+  else if(!/הסתרת/.test(c1.btn)) bad('הכפתור לא התחלף ל"הסתרה"',[c1.btn]);
+  else if(c2.cols!==6)      bad('הכפתור לא סגר אותן חזרה',[JSON.stringify(c2)]);
+  else ok('העמודות הנוספות כשהיו: 6 → 13 → 6, בכפתור אחד, בלי בורר ובלי lab-xoff');
 
   const real=errs.filter(e=>!/Failed to load resource|net::ERR_/.test(e));
   if(real.length) bad('נזרקו שגיאות JS',real.slice(0,5)); else ok('אף שגיאת JS לא נזרקה');
