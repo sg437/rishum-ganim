@@ -2620,7 +2620,8 @@ function fabActions(){
         run(){ bulkMode=!bulkMode; bulkSel.clear(); route(); } }
     ];
     case "tzaharon": return [
-      { icon:"➕", label:"פתיחת קבוצת צהרון", run(){ openTzGroupDialog({}); } }
+      { icon:"➕", label:"פתיחת קבוצת צהרון", run(){ openTzGroupDialog({}); } },
+      { icon:"⬆️", label:"ייבוא נרשמות", run(){ openTzImport(); } }
     ];
     case "gans": return [
       { icon:"➕", label:"הוספת גן",
@@ -7973,6 +7974,148 @@ function mapFit(){
 }
 
 /* ============================================================
+   ייבוא הנרשמות לצהרון מהמשרד הראשי
+   ------------------------------------------------------------
+   שלוש דרכי קלט באותו שדה, בזיהוי אוטומטי: רשימת ת"ז נטו (מספר
+   בשורה), הדבקה מאקסל, או קובץ CSV. ההתאמה לפי ת"ז נעשית ב-
+   parseMuniInput — אותו מנתח שמשרת את רשימת העירייה, בלי עותק שני.
+   ============================================================ */
+
+/* המצב שלפני הייבוא האחרון — לביטול בלחיצה. { id: {reg} } */
+let tzImportUndo = null;
+
+/* חישוב מה יקרה, בלי לגעת בנתונים */
+function tzImportPreview(text, fullSync){
+  const { nums } = parseMuniInput(text);
+  const set = new Set(nums);
+  const rows = eduScope(studentsOfYear().filter(s=>!s.finished));
+  const inSystem = new Map();
+  rows.forEach(s=>{ const tz=digits(s.tz); if(tz && !inSystem.has(tz)) inSystem.set(tz, s); });
+
+  const toAdd=[], already=[], toRemove=[];
+  rows.forEach(s=>{
+    const tz=digits(s.tz);
+    const on=!!(s.programs && s.programs.tzaharon);
+    const inList = tz && set.has(tz);
+    if(inList){ (on?already:toAdd).push(s); }
+    else if(on && fullSync){ toRemove.push(s); }
+  });
+  const notFound = nums.filter(n=>!inSystem.has(n));
+  return { nums, toAdd, already, toRemove, notFound };
+}
+
+function openTzImport(){
+  let fullSync=false;
+  modal(`
+    <h3>ייבוא נרשמות לצהרון · שנת ${esc(DB.activeYear)}</h3>
+    <div class="note">מדביקים את הרשימה שהתקבלה מהמשרד הראשי, או טוענים קובץ.
+      שלוש הצורות מזוהות אוטומטית: <b>רשימת ת"ז נטו</b> (מספר בשורה), <b>הדבקה מאקסל</b>,
+      או <b>קובץ CSV</b> עם עמודת ת"ז. ההתאמה לתיקים היא לפי ת"ז בלבד.</div>
+    <fieldset style="margin-top:12px"><legend>הרשימה</legend>
+      <div class="row" style="margin-bottom:8px">
+        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ<input type="file" id="tzi-file" accept=".csv,.txt" hidden></label>
+      </div>
+      <textarea id="tzi-text" rows="7" placeholder='123456789&#10;987654321&#10;…&#10;— או —&#10;ת"ז,שם&#10;123456789,כהן שרה'></textarea>
+    </fieldset>
+    <fieldset><legend>אופן הייבוא</legend>
+      <label class="check"><input type="checkbox" id="tzi-sync"> רשימה מלאה — בטל/י רישום למי שאינה ברשימה</label>
+      <div class="hint">כבוי כברירת מחדל: הייבוא רק <b>מוסיף</b> רישומים ואינו נוגע בקיימים.
+        הפעלה מתאימה רק כשהרשימה מהמשרד היא תמונת מצב מלאה — ואז מי שאינה בה תרד מהרישום.
+        התצוגה המקדימה תראה בדיוק את מי, ותידרש/י לאשר.</div>
+    </fieldset>
+    <div class="row">
+      <button class="btn ghost" id="tzi-preview" type="button">🔎 תצוגה מקדימה</button>
+      <button class="btn" id="tzi-do" type="button" disabled>⬆️ ייבוא</button>
+      <button class="btn ghost" id="tzi-undo" type="button" ${tzImportUndo?'':'disabled'}>↩️ ביטול הייבוא האחרון</button>
+      <button class="btn ghost" id="tzi-cancel" type="button" style="margin-inline-start:auto">סגירה</button>
+    </div>
+    <div id="tzi-out" style="margin-top:14px"></div>`);
+
+  const out=$("#tzi-out"), doBtn=$("#tzi-do");
+  let last=null;
+
+  const fold=(title, list, cls, render)=> !list.length ? "" : `
+    <details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:700">
+      <span class="pill ${cls}">${list.length}</span> ${esc(title)}</summary>
+      <div class="table-wrap" style="margin-top:6px"><table><tbody>
+        ${list.slice(0,400).map(render).join("")}
+      </tbody></table></div>
+      ${list.length>400?`<div class="hint">מוצגות 400 הראשונות מתוך ${list.length}.</div>`:''}
+    </details>`;
+  const stuRow=s=>`<tr><td>${esc(fullName(s))}</td><td>${esc(s.tz||'')}</td><td>${esc(ganName(s.ganId))}</td></tr>`;
+
+  const preview=()=>{
+    const txt=$("#tzi-text").value;
+    if(!txt.trim()){ out.innerHTML=`<div class="hint">אין מה לייבא — הרשימה ריקה.</div>`; doBtn.disabled=true; last=null; return; }
+    const r=tzImportPreview(txt, fullSync);
+    last=r;
+    const nothing = !r.toAdd.length && !r.toRemove.length;
+    out.innerHTML=`
+      <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:10px">
+        <div class="stat"><div class="k">ברשימה</div><div class="v">${r.nums.length}</div></div>
+        <div class="stat"><div class="k">חדשות לרישום</div><div class="v" style="color:var(--good)">${r.toAdd.length}</div></div>
+        <div class="stat"><div class="k">כבר רשומות</div><div class="v">${r.already.length}</div></div>
+        <div class="stat"><div class="k">לא נמצאו</div><div class="v" style="color:${r.notFound.length?'var(--warn)':''}">${r.notFound.length}</div></div>
+        ${fullSync?`<div class="stat"><div class="k">יורדות מהרישום</div><div class="v" style="color:${r.toRemove.length?'var(--bad)':''}">${r.toRemove.length}</div></div>`:''}
+      </div>
+      ${fold("חדשות לרישום", r.toAdd, "ok", stuRow)}
+      ${fold("כבר רשומות — לא ישתנה דבר", r.already, "neutral", stuRow)}
+      ${fullSync?fold("יורדות מהרישום", r.toRemove, "no", stuRow):""}
+      ${r.notFound.length?`<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:700">
+          <span class="pill warn">${r.notFound.length}</span> ת"ז שאין להן תיק בשנה זו</summary>
+          <div class="hint" style="margin:6px 0">אפשר להעתיק את הרשימה ולבדוק מול המשרד הראשי.</div>
+          <textarea rows="4" readonly>${esc(r.notFound.join("\n"))}</textarea></details>`:''}
+      ${nothing?`<div class="hint">אין שינוי לבצע — כל מי שברשימה כבר רשומה.</div>`:''}`;
+    doBtn.disabled = nothing;
+    doBtn.textContent = r.toRemove.length
+      ? `⬆️ ייבוא וסנכרון · מבטל ${r.toRemove.length} רישומים`
+      : `⬆️ ייבוא · מסמן ${r.toAdd.length}`;
+  };
+
+  $("#tzi-file").onchange=e=>{ const f=e.target.files[0]; if(!f) return;
+    readFileSmart(f, txt=>{ $("#tzi-text").value=txt; preview(); toast("הקובץ נטען"); }); };
+  $("#tzi-text").oninput=()=>{ doBtn.disabled=true; };
+  $("#tzi-sync").onchange=e=>{ fullSync=e.target.checked; if(last||$("#tzi-text").value.trim()) preview(); };
+  $("#tzi-preview").onclick=preview;
+  $("#tzi-cancel").onclick=closeModal;
+
+  doBtn.onclick=()=>{
+    if(!last) return;
+    if(last.toRemove.length &&
+       !confirm(`הרשימה תסמן ${last.toAdd.length} תלמידות כרשומות לצהרון,\nו${last.toRemove.length} תלמידות יירדו מהרישום.\n\nלבצע?`)) return;
+    const undo={};
+    let added=0, removed=0, blocked=0;
+    const apply=(s,val)=>{
+      if(!canEditRec(s)){ blocked++; return false; }
+      undo[s.id]={ reg: !!(s.programs && s.programs.tzaharon) };
+      s.programs=s.programs||{}; s.programs.tzaharon=val;
+      return true;
+    };
+    last.toAdd.forEach(s=>{ if(apply(s,true)) added++; });
+    last.toRemove.forEach(s=>{ if(apply(s,false)) removed++; });
+    tzImportUndo = Object.keys(undo).length ? undo : null;
+    save(); closeModal();
+    const r=$("#view"); if(r && active==="tzaharon") viewTzaharon(r); else route();
+    toast(`יובאו ${added} נרשמות${removed?` · ${removed} ירדו מהרישום`:''}${blocked?` · ${blocked} דולגו (אין הרשאת חינוך)`:''}`);
+  };
+
+  $("#tzi-undo").onclick=()=>{
+    if(!tzImportUndo){ toast("אין ייבוא לבטל"); return; }
+    const n=Object.keys(tzImportUndo).length;
+    if(!confirm(`לבטל את הייבוא האחרון ולהחזיר ${n} תיקים למצבם הקודם?`)) return;
+    let back=0;
+    Object.keys(tzImportUndo).forEach(id=>{
+      const s=DB.students.find(x=>x.id===id); if(!s) return;
+      s.programs=s.programs||{}; s.programs.tzaharon=tzImportUndo[id].reg; back++;
+    });
+    tzImportUndo=null;
+    save(); closeModal();
+    const r=$("#view"); if(r && active==="tzaharon") viewTzaharon(r); else route();
+    toast(`הייבוא בוטל — ${back} תיקים הוחזרו`);
+  };
+}
+
+/* ============================================================
    פתיחת קבוצת צהרון
    ------------------------------------------------------------
    קבוצה נפתחת מגן בודד שעומד במינימום, מהצעת צירוף, או ידנית.
@@ -8260,7 +8403,7 @@ function viewTzaharon(root){
   const fc=$("#tzFilterCount"); if(fc){ const n=tzActiveFilterCount(); fc.textContent=n?String(n):""; fc.style.display=n?"":"none"; }
   { const b=$("#tzToSettings"); if(b) b.onclick=()=>gotoSettingsSection("tzmin"); }
   { const b=$("#tzExport");     if(b) b.onclick=()=>openTzExport(); }
-  { const b=$("#tzImport");     if(b) b.onclick=()=>toast("ייבוא הנרשמות ייכנס בשלב הבא"); }
+  { const b=$("#tzImport");     if(b) b.onclick=()=>openTzImport(); }
   $("#tzFilterToggle").onclick=()=>{ tzFiltersOpen=$("#tzFilterPanel").hasAttribute("hidden"); viewTzaharon(root); };
   { const c=$("#tzf-clear"); if(c) c.onclick=()=>{ clearTzFilter(); tzFiltersOpen=true; viewTzaharon(root); }; }
 
