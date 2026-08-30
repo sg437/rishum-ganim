@@ -53,6 +53,8 @@
 | `support.js` | קובץ הרנדור של הקנבס בלבד. אין לממש ממנו דבר. |
 
 > **שאלות פתוחות שממתינות להחלטה:** [`docs/design/OPEN-QUESTIONS.md`](design/OPEN-QUESTIONS.md)
+>
+> **פרומפט לסבב סקירה על המעבדה:** [`docs/design/REVIEW-PROMPT.md`](design/REVIEW-PROMPT.md)
 
 ### שגיאות שנמצאו בחבילה
 
