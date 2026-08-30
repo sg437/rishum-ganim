@@ -1101,6 +1101,31 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
   else ok('שיבוץ אוטומטי: ' + aa.on + '/' + aa.gans + ' גנים נבחרים · ' + aa.cnt + ' · שתי הבלתי משובצות נכנסו למאגר');
   await p.evaluate(() => closeModal()); await p.waitForTimeout(300);
 
+  /* --- 13. מסך התלמידות בטלפון: הטבלה נראית ואינה נחתכת ----------------- */
+  /* ‎.stu-stage‎ הופך לעמודה מתחת ל-1100px (טלפון, וגם "מצב מחשב" בטלפון,
+     שרוחב הפריסה שלו כ-980). אז ‎flex:1 1 0‎ של ‎.lab-tablecard‎ נקרא כגובה
+     בסיס 0, ו-‎overflow:hidden‎ הסתיר את כל רשימת התלמידות — מסך ריק. */
+  for (const W of [390, 980]) {
+    await p.setViewportSize({ width: W, height: 850 });
+    await goTab(p, 'students'); await p.waitForTimeout(800);
+    const m = await p.evaluate(() => {
+      const card = document.querySelector('.stu-stage > .lab-tablecard');
+      const tbl  = document.querySelector('#stuTable .stu-table');
+      if (!card || !tbl) return { card: !!card, tbl: !!tbl };
+      const c = card.getBoundingClientRect(), t = tbl.getBoundingClientRect();
+      return { card:true, tbl:true, dir:getComputedStyle(document.querySelector('.stu-stage')).flexDirection,
+               cardH:Math.round(c.height), tblH:Math.round(t.height),
+               clipped: t.bottom > c.bottom + 1, rows: document.querySelectorAll('#stuTable tbody tr').length };
+    });
+    if (!m.card || !m.tbl)   bad('ברוחב ' + W + ' לא נמצאו כרטיס הטבלה או הטבלה');
+    else if (m.dir !== 'column') bad('ברוחב ' + W + ' הבמה אינה בפריסת עמודה', ['flex-direction=' + m.dir]);
+    else if (m.cardH < 200 || m.clipped)
+      bad('ברוחב ' + W + ' רשימת התלמידות נחתכת — המסך נראה ריק',
+          ['גובה הכרטיס ' + m.cardH + ' · גובה הטבלה ' + m.tblH]);
+    else ok('תלמידות ברוחב ' + W + ': הכרטיס ' + m.cardH + 'px, ' + m.rows + ' שורות גלויות');
+  }
+  await p.setViewportSize({ width: 1440, height: 900 }); await p.waitForTimeout(400);
+
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));
   else ok('אף שגיאת JS לא נזרקה');
