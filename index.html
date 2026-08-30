@@ -2619,6 +2619,9 @@ function fabActions(){
       { icon: bulkMode?"✖️":"✔️", label: bulkMode?"סיום עדכון קבוצתי":"עדכון קבוצתי",
         run(){ bulkMode=!bulkMode; bulkSel.clear(); route(); } }
     ];
+    case "tzaharon": return [
+      { icon:"➕", label:"פתיחת קבוצת צהרון", run(){ openTzGroupDialog({}); } }
+    ];
     case "gans": return [
       { icon:"➕", label:"הוספת גן",
         run(){ const g=makeGan(); if(activeEdu) g.education=activeEdu; openGan(g); } }
@@ -7970,6 +7973,166 @@ function mapFit(){
 }
 
 /* ============================================================
+   פתיחת קבוצת צהרון
+   ------------------------------------------------------------
+   קבוצה נפתחת מגן בודד שעומד במינימום, מהצעת צירוף, או ידנית.
+   הבורר מסנן לקמפוס ולסוג החינוך שנבחרו, ולכן צירוף אסור אינו
+   מוצע כלל — ולא נחסם בהודעת שגיאה אחרי שכבר נבחר.
+   ============================================================ */
+
+/* הגנים שאפשר לצרף לקבוצה: אותו קמפוס, אותו חינוך, ושאינם כבר בקבוצה אחרת */
+function tzPickableGans(campus, edu, exceptGroupId){
+  return eduScope(DB.gans.filter(g=>g.active!==false)).filter(g=>{
+    if(String(g.campus||"").trim()!==String(campus||"").trim()) return false;
+    if(eduLabel(g)!==edu) return false;
+    const grp=tzGroupOfGan(g.id);
+    return !grp || grp.id===exceptGroupId;
+  }).sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"));
+}
+
+/* חלון פתיחה/עריכה. grp = קבוצה קיימת לעריכה · preset = {ganIds} לפתיחה חדשה */
+function openTzGroupDialog(opts){
+  opts=opts||{};
+  const grp = opts.groupId ? tzGroupById(opts.groupId) : null;
+  const seed = grp ? (grp.ganIds||[]).slice() : (opts.ganIds||[]).slice();
+  const first = seed.length ? ganById(seed[0]) : null;
+  const st = {
+    id: grp?grp.id:"",
+    campus: grp?grp.campus : (first?String(first.campus||"").trim():""),
+    edu:    grp?(grp.education||"רגיל") : (first?eduLabel(first):(activeEdu||EDU_TYPES[0])),
+    ganIds: seed,
+    name:   grp?(grp.name||""):"",
+    nameTouched: !!(grp&&grp.name)
+  };
+  const campuses=[...new Set(eduScope(DB.gans.filter(g=>g.active!==false))
+    .map(g=>String(g.campus||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
+  /* גן בלי קמפוס יכול לפתוח קבוצה לעצמו, אך אין את מי לצרף אליו */
+  if(!st.campus && first) st.campus="";
+
+  modal(`
+    <h3>${grp?'עריכת קבוצת צהרון':'פתיחת קבוצת צהרון'} · שנת ${esc(DB.activeYear)}</h3>
+    <div class="note">קבוצה היא יחידת השיבוץ: גן אחד, או כמה גנים <b>מאותו קמפוס ומאותו סוג חינוך</b>.
+      גילים שונים — מותר. גן שכבר משויך לקבוצה אחרת אינו מוצע כאן.</div>
+    <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap">
+      <div class="field" style="min-width:170px"><label>קמפוס</label>
+        <select id="tzg-campus" ${grp?'disabled':''}>
+          <option value="">— ללא קמפוס (גן בודד) —</option>
+          ${campuses.map(c=>`<option ${st.campus===c?'selected':''}>${esc(c)}</option>`).join("")}
+        </select></div>
+      <div class="field" style="min-width:150px"><label>חינוך</label>
+        <select id="tzg-edu" ${grp?'disabled':''}>
+          ${EDU_TYPES.map(e=>`<option ${st.edu===e?'selected':''}>${esc(e)}</option>`).join("")}
+        </select></div>
+    </div>
+    <fieldset style="margin-top:10px"><legend>הגנים שבקבוצה</legend>
+      <div id="tzg-gans"></div>
+    </fieldset>
+    <div id="tzg-sum" style="margin-top:10px"></div>
+    <div class="field" style="margin-top:10px"><label>שם הקבוצה</label>
+      <input id="tzg-name" value="${esc(st.name)}" placeholder="נוצר אוטומטית מהקמפוס והגנים"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="tzg-save" type="button">${grp?'💾 שמירה':'✅ פתיחת הקבוצה'}</button>
+      ${grp?`<button class="btn ghost" id="tzg-close" type="button" title="הקבוצה נשארת עם השיבוץ שלה, אך אינה נספרת כפתוחה">↩️ סגירת הקבוצה</button>
+             <button class="btn ghost" id="tzg-del" type="button">🗑️ מחיקה</button>`:''}
+      <button class="btn ghost" id="tzg-cancel" type="button" style="margin-inline-start:auto">ביטול</button>
+    </div>`);
+
+  const draw=()=>{
+    const pick=tzPickableGans(st.campus, st.edu, st.id);
+    /* גן שנבחר וכבר אינו ברשימה (שינוי קמפוס/חינוך) — יורד מהבחירה */
+    st.ganIds=st.ganIds.filter(id=>pick.some(g=>g.id===id));
+    const box=$("#tzg-gans");
+    box.innerHTML = !pick.length
+      ? `<div class="hint">אין גנים פנויים בקמפוס ובחינוך שנבחרו.</div>`
+      : `<div class="checks" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr))">
+          ${pick.map(g=>{
+            const c=tzRegCount(g.id);
+            return `<label class="check"><input type="checkbox" data-tzg="${g.id}" ${st.ganIds.includes(g.id)?'checked':''}>
+              ${esc(ganName(g.id))} <span class="pill neutral">${c}</span>${g.age?` <span class="hint">גיל ${esc(g.age)}</span>`:''}</label>`;
+          }).join("")}</div>`;
+    box.querySelectorAll("[data-tzg]").forEach(cb=>cb.onchange=()=>{
+      const id=cb.dataset.tzg;
+      if(cb.checked){ if(!st.ganIds.includes(id)) st.ganIds.push(id); }
+      else st.ganIds=st.ganIds.filter(x=>x!==id);
+      sum();
+    });
+    sum();
+  };
+  const sum=()=>{
+    const L=tzLimits(st.edu);
+    const total=st.ganIds.reduce((n,id)=>n+tzRegCount(id),0);
+    const ages=[...new Set(st.ganIds.map(id=>(ganById(id)||{}).age).filter(Boolean))];
+    let msg="", cls="neutral";
+    if(!st.ganIds.length) msg="בחר/י לפחות גן אחד.";
+    else if(L.min && total<L.min){ cls="no"; msg=`חסרות ${L.min-total} תלמידות למינימום של ${esc(st.edu)} (${L.min}). אפשר לפתוח בכל זאת — תתבקש/י לאשר.`; }
+    else if(L.max && total>L.max){ cls="warn"; msg=`${total-L.max} מעל המקסימום של ${esc(st.edu)} (${L.max}). כדאי לשקול שתי קבוצות.`; }
+    else { cls="ok"; msg="עומדת במינימום."; }
+    $("#tzg-sum").innerHTML=`<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+        <div class="stat"><div class="k">ילדות בקבוצה</div><div class="v">${total}</div></div>
+        <div class="stat"><div class="k">מינימום · ${esc(st.edu)}</div><div class="v">${L.min||'—'}</div></div>
+        <div class="stat"><div class="k">מקסימום</div><div class="v">${L.max||'—'}</div></div>
+      </div>
+      <div style="margin-top:8px"><span class="pill ${cls}">${esc(msg)}</span></div>
+      ${ages.length>1?`<div class="hint" style="margin-top:6px">הקבוצה מכסה גילים ${ages.map(a=>esc(a)).join(" · ")} — צירוף בין גילים מותר.</div>`:''}`;
+    /* שם ברירת המחדל עוקב אחרי הבחירה, עד שנוגעים בשדה */
+    const nameEl=$("#tzg-name");
+    if(nameEl && !st.nameTouched) nameEl.value = st.ganIds.length ? tzGroupAutoName(st.ganIds) : "";
+  };
+
+  const cs=$("#tzg-campus"), es=$("#tzg-edu");
+  if(cs) cs.onchange=()=>{ st.campus=cs.value; draw(); };
+  if(es) es.onchange=()=>{ st.edu=es.value; draw(); };
+  $("#tzg-name").oninput=()=>{ st.nameTouched=true; st.name=$("#tzg-name").value; };
+  $("#tzg-cancel").onclick=closeModal;
+
+  $("#tzg-save").onclick=()=>{
+    if(!st.ganIds.length){ toast("בחר/י לפחות גן אחד"); return; }
+    const L=tzLimits(st.edu);
+    const total=st.ganIds.reduce((n,id)=>n+tzRegCount(id),0);
+    if(L.min && total<L.min &&
+       !confirm(`בקבוצה ${total} תלמידות, והמינימום ל${st.edu} הוא ${L.min}.\n\nלפתוח את הקבוצה בכל זאת?`)) return;
+    /* מירוץ אפשרי: גן שנתפס בינתיים על ידי קבוצה אחרת */
+    const taken=st.ganIds.map(id=>tzGroupOfGan(id)).filter(g=>g && g.id!==st.id);
+    if(taken.length){ toast(`${ganName(taken[0].ganIds[0])} כבר שויך לקבוצה "${taken[0].name||''}"`); draw(); return; }
+
+    const name=($("#tzg-name").value||"").trim() || tzGroupAutoName(st.ganIds);
+    const list=tzGroupsOfYear();
+    if(st.id){
+      const g=tzGroupById(st.id);
+      if(g){ g.name=name; g.ganIds=st.ganIds.slice(); g.status="open"; }
+    } else {
+      list.push({ id:"tz_"+uid(), name, campus:st.campus, ganIds:st.ganIds.slice(),
+                  education:st.edu, status:"open", openedAt:new Date().toISOString(),
+                  openedBy:(currentUser&&currentUser.email)||"", note:"" });
+    }
+    save(); closeModal();
+    const r=$("#view"); if(r && active==="tzaharon") viewTzaharon(r); else route();
+    toast(st.id?"הקבוצה עודכנה":`נפתחה הקבוצה "${name}"`);
+  };
+
+  if(grp){
+    $("#tzg-close").onclick=()=>{
+      if(!confirm(`לסגור את הקבוצה "${grp.name||''}"?\n\nהיא תפסיק להיספר כקבוצה שנפתחה, והגנים שלה יחזרו לחישוב "ניתן לפתוח". השיבוץ נשמר.`)) return;
+      grp.status="planned"; save(); closeModal();
+      const r=$("#view"); if(r && active==="tzaharon") viewTzaharon(r); else route();
+      toast("הקבוצה נסגרה");
+    };
+    $("#tzg-del").onclick=()=>{
+      const staff=Object.keys(ganAsg(grp.id,'tzaharon')).length;
+      if(staff){ toast(`לא ניתן למחוק — לקבוצה משובצים ${staff} אנשי צוות. הסר/י את השיבוץ תחילה, או סגור/י את הקבוצה.`); return; }
+      if(!confirm(`למחוק לצמיתות את הקבוצה "${grp.name||''}"?`)) return;
+      const y=DB.activeYear;
+      DB.tzGroups[y]=(DB.tzGroups[y]||[]).filter(x=>x.id!==grp.id);
+      save(); closeModal();
+      const r=$("#view"); if(r && active==="tzaharon") viewTzaharon(r); else route();
+      toast("הקבוצה נמחקה");
+    };
+  }
+
+  draw();
+}
+
+/* ============================================================
    מסך הצהרון — לשונית משנה תחת "תיקי התלמידות"
    ------------------------------------------------------------
    נפרד ממסך התלמידות בכוונה: נתוני הצהרון אינם על המסך הרגיל,
@@ -8175,7 +8338,7 @@ function tzRender(){
   if(gb) gb.innerHTML = !groups.length ? "" : `
     <h3 style="color:var(--accent-strong);margin-bottom:8px">קבוצות הצהרון <span class="pill neutral">${groups.length}</span></h3>
     <div class="table-wrap"><table><thead><tr>
-      <th>שם הקבוצה</th><th>קמפוס</th><th>חינוך</th><th>גנים</th><th>ילדות</th><th>צוות</th><th>מצב</th></tr></thead><tbody>
+      <th>שם הקבוצה</th><th>קמפוס</th><th>חינוך</th><th>גנים</th><th>ילדות</th><th>צוות</th><th>מצב</th><th></th></tr></thead><tbody>
       ${groups.map(gr=>{
         const c=tzGroupCount(gr), L=tzLimits(gr.education||"רגיל");
         const staff=Object.keys(ganAsg(gr.id,'tzaharon')).length;
@@ -8188,6 +8351,7 @@ function tzRender(){
           <td><span class="pill ${c<L.min?'no':(over?'warn':'ok')}" title="${over?`מעל המקסימום (${L.max})`:''}">${tzRatio(c,L.min)}</span></td>
           <td>${staff?`<span class="pill ok">${staff} משובצים</span>`:'<span class="pill neutral">ממתינה לצוות</span>'}</td>
           <td>${gr.status==='open'?'<span class="pill ok">נפתחה</span>':'<span class="pill neutral">מתוכננת</span>'}</td>
+          <td class="actions"><button class="btn sm ghost" data-tzgrp="${gr.id}">✍️ עריכה</button></td>
         </tr>`;
       }).join("")}
     </tbody></table></div>`;
@@ -8203,6 +8367,7 @@ function tzRender(){
         <div class="k">${esc(m.campus)} · ${esc(m.edu)}</div>
         <div style="margin:6px 0 4px;font-weight:700">${m.parts.map(x=>`${esc(ganName(x.ganId))} <span class="pill neutral">${x.count}</span>`).join(" + ")}</div>
         <div class="hint">סה"כ <b>${m.total}</b> · מינימום ${m.lim.min} <span class="pill ok">מעל המינימום</span></div>
+        <div class="row" style="margin-top:8px"><button class="btn sm" data-tzmerge="${esc(m.ganIds.join(","))}">✅ פתיחת קבוצה מצורפת</button></div>
       </div>`).join("")}
     </div>`;
 
@@ -8221,7 +8386,7 @@ function tzRender(){
     <h3 style="color:var(--accent-strong);margin-bottom:8px">הגנים <span class="pill neutral">${gans.length}</span></h3>
     <div class="hint" style="margin-bottom:8px">לחיצה על שורה פותחת את רשימת התלמידות של אותו גן — מי נרשמה ומי לא.</div>
     <div class="table-wrap"><table><thead><tr>
-      <th>גן</th><th>קמפוס</th><th>גיל</th><th>חינוך</th><th>נרשמות</th><th>חסר</th><th>מצב</th></tr></thead><tbody>
+      <th>גן</th><th>קמפוס</th><th>גיל</th><th>חינוך</th><th>נרשמות</th><th>חסר</th><th>מצב</th><th></th></tr></thead><tbody>
       ${gans.map(g=>{
         const r=P.byGan[g.id];
         const grp=r.groupId?tzGroupById(r.groupId):null;
@@ -8237,8 +8402,12 @@ function tzRender(){
           <td><span class="pill ${r.count>=r.lim.min&&r.lim.min?'ok':(r.count?'no':'neutral')}">${tzRatio(r.count,r.lim.min)}</span></td>
           <td>${gapTxt}</td>
           <td>${stateLabel[r.state]||''}${grp?` <span class="hint">${esc(grp.name||'')}</span>`:''}</td>
+          <td class="actions">${
+            grp ? `<button class="btn sm ghost" data-tzgrp="${grp.id}">✍️ הקבוצה</button>`
+                : (r.count ? `<button class="btn sm${r.state==='openable'?'':' ghost'}" data-tzopen="${g.id}">➕ פתיחת קבוצה</button>` : '')
+          }</td>
         </tr>
-        ${open?`<tr class="tz-stu-row"><td colspan="7" style="background:var(--surface-2)">${tzStudentListHtml(g.id, showPaid)}</td></tr>`:''}`;
+        ${open?`<tr class="tz-stu-row"><td colspan="8" style="background:var(--surface-2)">${tzStudentListHtml(g.id, showPaid)}</td></tr>`:''}`;
       }).join("")}
     </tbody></table></div>`;
 
@@ -8248,6 +8417,17 @@ function tzRender(){
     tzOpenGan = tzOpenGan===id ? "" : id;
     tzRender();
   });
+  const wireGroupBtns=host=>{
+    if(!host) return;
+    host.querySelectorAll("[data-tzgrp]").forEach(b=>b.onclick=e=>{
+      e.stopPropagation(); openTzGroupDialog({ groupId:b.dataset.tzgrp }); });
+    host.querySelectorAll("[data-tzopen]").forEach(b=>b.onclick=e=>{
+      e.stopPropagation(); openTzGroupDialog({ ganIds:[b.dataset.tzopen] }); });
+    host.querySelectorAll("[data-tzmerge]").forEach(b=>b.onclick=e=>{
+      e.stopPropagation(); openTzGroupDialog({ ganIds:b.dataset.tzmerge.split(",") }); });
+  };
+  wireGroupBtns($("#tzGroupsBox")); wireGroupBtns($("#tzMergeBox")); wireGroupBtns(box);
+
   box.querySelectorAll("[data-tzstu]").forEach(b=>b.onclick=e=>{
     e.stopPropagation();
     const s=DB.students.find(x=>x.id===b.dataset.tzstu); if(!s) return;
