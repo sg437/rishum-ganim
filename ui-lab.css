@@ -2353,6 +2353,19 @@ html.ui-lab .lab-tablecard .table-wrap{
 }
 html.ui-lab .lab-tablecard table{ border-radius:0 }
 
+/* ⚠️ בטלפון (וגם ב"מצב מחשב" שבטלפון — רוחב פריסה ~980) ‎.stu-stage‎ הופך
+   לעמודה, והציר הראשי נעשה אנכי. אז ‎flex:1 1 0‎ פירושו גובה־בסיס 0: הכרטיס
+   מתכווץ לגובה אפס, ‎overflow:hidden‎ חותך את שורת ההתאמות ואת הטבלה, והמסך
+   נראה ריק לגמרי. בציר האנכי הכרטיס נמדד לפי תוכנו — כמו ‎.lab-stmain‎ במסך
+   הצוות. תקף גם לתצוגת הכרטיסים, שיושבת באותו כרטיס. */
+@media(max-width:1100px){
+  html.ui-lab .stu-stage{ flex-direction:column; align-items:stretch }
+  html.ui-lab .stu-stage > .lab-tablecard,
+  html.ui-lab .stu-stage > .ls-cards{
+    flex:0 0 auto; width:100%; min-width:0; max-width:100%;
+  }
+}
+
 /* הפאנל החיצוני הוא העמוד — הכרטיסים שבתוכו נושאים את המסגרות */
 html.ui-lab #view > .panel.lab-bare > .stu-stage{ margin-top:0 }
 
