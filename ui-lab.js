@@ -3053,7 +3053,7 @@ var SET_FIND = [
   ["brand","#br-title"],       ["install","#install-box"],
   ["caps","#ac-reg"],          ["years","#years-box"],
   ["promote","#pr-from"],      ["hist","#hist-box"],
-  ["histGan","#hist-gans-box"],["tzmin","#tzmin"],
+  ["histGan","#hist-gans-box"],["tzmin","#saveTzMin"],
   ["ages","#ages-box"],        ["roles","#roles-box"],
   ["campus","#campus-box"],    ["admins","#admins-box"],
   ["feedback","#feedback-box"],["auth","#auth-box"],
@@ -3558,14 +3558,42 @@ function capsCard(P){
   return p;
 }
 
-/* ---- מינימום לפתיחת צהרון ------------------------------------------- */
+/* ---- צהרון: מינימום ומקסימום ----------------------------------------
+   ההגדרה נפרדת לכל סוג חינוך, כי המספרים שונים ברגיל ובחינוך מיוחד.
+   בתוכנה זו טבלה בת שתי שורות; כאן היא הופכת לשורת שדות אחת לכל סוג
+   חינוך, בלי כותרות עמודה — התווית יושבת על השדה עצמו. */
 function tzminCard(P){
   if(!P.tzmin) return null;
   P.tzmin.dataset.labUsed = "1";
-  var p = labPanel("tzmin", "מינימום לפתיחת צהרון",
-        "בלשונית שיבוץ → צהרונים, גן שמתחת למספר הזה יסומן באדום.");
+  var p = labPanel("tzmin", "צהרון — מינימום ומקסימום",
+        "גודל קבוצת הצהרון, בנפרד לכל סוג חינוך. מתחת למינימום הגן מסומן באדום; מקסימום ריק = בלי תקרה.");
   moveBody(P.tzmin, p);
   P.tzmin.remove();
+
+  var wrap = p.querySelector(".table-wrap");
+  if(wrap){
+    var rows = wrap.querySelectorAll("tbody tr");
+    var box  = el("div", "lab-tzlims");
+    Array.prototype.forEach.call(rows, function(tr){
+      var cells = tr.querySelectorAll("td");
+      if(cells.length < 3) return;
+      var line = el("div", "lab-tzrow");
+      line.appendChild(el("div", "lab-tzedu", (cells[0].textContent || "").trim()));
+      [["מינימום", cells[1]], ["מקסימום", cells[2]]].forEach(function(x){
+        var f = el("div", "lab-tzfield");
+        f.appendChild(el("label", null, x[0]));
+        var inp = x[1].querySelector("input");
+        if(inp) f.appendChild(inp);            /* מוזז, לא משוכפל — המאזינים נשמרים */
+        line.appendChild(f);
+      });
+      box.appendChild(line);
+    });
+    if(box.children.length){ wrap.parentNode.insertBefore(box, wrap); wrap.remove(); }
+  }
+
+  /* כפתור השמירה מצטרף לשורה התחתונה, כמו בשאר כרטיסי ההגדרות */
+  var save = p.querySelector("#saveTzMin");
+  if(save) save.textContent = "שמירה";
   return p;
 }
 
@@ -4198,6 +4226,63 @@ function isHome(){
   return !!(b && b.classList.contains("active"));
 }
 
+/* ---------------------------------------------------------------- צהרון
+   מסך הצהרון (לשונית משנה תחת התלמידות). הזיהוי הוא לפי התוכן ולא לפי
+   curTab, כי הלשונית שמסומנת בסרגל היא "תיקי התלמידות" שמעליה.
+
+   כאן *לא* מחליפים את המסך — הכרטיסים לחיצים, הטבלאות מתרעננות בכל
+   שינוי סינון, והחלפת ה-DOM הייתה שוברת את החיווט. רק שתי תוספות:
+   הכרטיס הראשון הופך לכהה עם טבעת התקדמות, ושורת המצב מקבלת מד.
+   ============================================================== */
+function tzScreen(){
+  var cards = view && view.querySelector("#tzCards");
+  if(!cards) return;
+
+  /* --- הכרטיס הראשון כהה, עם טבעת "כמה מהאפשריות כבר נפתחו" --- */
+  var tiles = cards.querySelectorAll(".stat");
+  if(tiles.length >= 4 && !tiles[0].classList.contains("lab-tzhero")){
+    tiles[0].classList.add("lab-tzhero");
+    var opened = numOf(tiles[1]), openable = numOf(tiles[2]);
+    var total  = opened + openable;
+    var pct    = total ? Math.round(opened / total * 100) : 0;
+    var ring = el("div", "lab-tzring");
+    ring.style.background = "conic-gradient(var(--lab-gold) 0 " + pct +
+                            "%, rgba(255,255,255,.16) " + pct + "% 100%)";
+    ring.appendChild(el("div", "lab-tzring-in", pct + "%"));
+    ring.title = opened + " מתוך " + total + " הקבוצות האפשריות כבר נפתחו";
+    tiles[0].appendChild(ring);
+  }
+  /* צבע סמנטי לכרטיסים — ירוק למה שנפתח, ענבר למה שאפשר, אדום לחוסר */
+  if(tiles.length >= 4){
+    tiles[1].classList.add("lab-tzok");
+    tiles[2].classList.add("lab-tzcan");
+    if(numOf(tiles[3]) > 0) tiles[3].classList.add("lab-tzlow");
+  }
+
+  /* --- שורת המצב: מד שממלא את החלק שנפתח --- */
+  var st = view.querySelector("#tzStatus");
+  if(st && !st.querySelector(".lab-tzbar")){
+    var o = numOf(tiles[1]), c = numOf(tiles[2]), t = o + c;
+    var bar = el("div", "lab-tzbar"), fill = el("i");
+    fill.style.width = (t ? Math.round(o / t * 100) : 0) + "%";
+    bar.appendChild(fill);
+    st.appendChild(bar);
+    st.classList.add("lab-tzstatus");
+  }
+
+  /* --- כותרות המקטעים מקבלות את סגנון הרצועה של המעבדה --- */
+  ["#tzGroupsBox", "#tzMergeBox", "#tzGansBox"].forEach(function(sel){
+    var box = view.querySelector(sel);
+    if(!box) return;
+    var h = box.querySelector("h3");
+    if(h) h.classList.add("lab-tzh");
+  });
+}
+function numOf(tile){
+  var v = tile && tile.querySelector(".v");
+  return v ? (parseInt(String(v.textContent).replace(/[^\d]/g, ""), 10) || 0) : 0;
+}
+
 function maybeHome(){
   if(homeBusy || !view) return;
   /* חלון בחירת הגנים שייך למסך המפה בלבד — יציאה ממנו סוגרת אותו */
@@ -4216,6 +4301,7 @@ function maybeHome(){
     try{ toolsScreen(); }catch(e){}
     try{ templatesScreen(); }catch(e){}
     try{ presenceSkin(); }catch(e){}
+    try{ tzScreen(); }catch(e){}
     homeBusy = false;
     return;
   }
