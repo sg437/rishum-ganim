@@ -4226,6 +4226,63 @@ function isHome(){
   return !!(b && b.classList.contains("active"));
 }
 
+/* ---------------------------------------------------------------- צהרון
+   מסך הצהרון (לשונית משנה תחת התלמידות). הזיהוי הוא לפי התוכן ולא לפי
+   curTab, כי הלשונית שמסומנת בסרגל היא "תיקי התלמידות" שמעליה.
+
+   כאן *לא* מחליפים את המסך — הכרטיסים לחיצים, הטבלאות מתרעננות בכל
+   שינוי סינון, והחלפת ה-DOM הייתה שוברת את החיווט. רק שתי תוספות:
+   הכרטיס הראשון הופך לכהה עם טבעת התקדמות, ושורת המצב מקבלת מד.
+   ============================================================== */
+function tzScreen(){
+  var cards = view && view.querySelector("#tzCards");
+  if(!cards) return;
+
+  /* --- הכרטיס הראשון כהה, עם טבעת "כמה מהאפשריות כבר נפתחו" --- */
+  var tiles = cards.querySelectorAll(".stat");
+  if(tiles.length >= 4 && !tiles[0].classList.contains("lab-tzhero")){
+    tiles[0].classList.add("lab-tzhero");
+    var opened = numOf(tiles[1]), openable = numOf(tiles[2]);
+    var total  = opened + openable;
+    var pct    = total ? Math.round(opened / total * 100) : 0;
+    var ring = el("div", "lab-tzring");
+    ring.style.background = "conic-gradient(var(--lab-gold) 0 " + pct +
+                            "%, rgba(255,255,255,.16) " + pct + "% 100%)";
+    ring.appendChild(el("div", "lab-tzring-in", pct + "%"));
+    ring.title = opened + " מתוך " + total + " הקבוצות האפשריות כבר נפתחו";
+    tiles[0].appendChild(ring);
+  }
+  /* צבע סמנטי לכרטיסים — ירוק למה שנפתח, ענבר למה שאפשר, אדום לחוסר */
+  if(tiles.length >= 4){
+    tiles[1].classList.add("lab-tzok");
+    tiles[2].classList.add("lab-tzcan");
+    if(numOf(tiles[3]) > 0) tiles[3].classList.add("lab-tzlow");
+  }
+
+  /* --- שורת המצב: מד שממלא את החלק שנפתח --- */
+  var st = view.querySelector("#tzStatus");
+  if(st && !st.querySelector(".lab-tzbar")){
+    var o = numOf(tiles[1]), c = numOf(tiles[2]), t = o + c;
+    var bar = el("div", "lab-tzbar"), fill = el("i");
+    fill.style.width = (t ? Math.round(o / t * 100) : 0) + "%";
+    bar.appendChild(fill);
+    st.appendChild(bar);
+    st.classList.add("lab-tzstatus");
+  }
+
+  /* --- כותרות המקטעים מקבלות את סגנון הרצועה של המעבדה --- */
+  ["#tzGroupsBox", "#tzMergeBox", "#tzGansBox"].forEach(function(sel){
+    var box = view.querySelector(sel);
+    if(!box) return;
+    var h = box.querySelector("h3");
+    if(h) h.classList.add("lab-tzh");
+  });
+}
+function numOf(tile){
+  var v = tile && tile.querySelector(".v");
+  return v ? (parseInt(String(v.textContent).replace(/[^\d]/g, ""), 10) || 0) : 0;
+}
+
 function maybeHome(){
   if(homeBusy || !view) return;
   /* חלון בחירת הגנים שייך למסך המפה בלבד — יציאה ממנו סוגרת אותו */
@@ -4244,6 +4301,7 @@ function maybeHome(){
     try{ toolsScreen(); }catch(e){}
     try{ templatesScreen(); }catch(e){}
     try{ presenceSkin(); }catch(e){}
+    try{ tzScreen(); }catch(e){}
     homeBusy = false;
     return;
   }
