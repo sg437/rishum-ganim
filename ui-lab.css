@@ -1378,6 +1378,10 @@ html.ui-lab .lab-shead h2{
 }
 html.ui-lab .lab-sacts{ display:flex; gap:9px; flex-wrap:wrap; align-items:center; flex:0 0 auto }
 html.ui-lab .lab-sacts .btn{ margin:0 }
+/* כפתורי הכותרת נבנו בעיצוב הקיים בשני גדלים: בגנים, בצוות ובשיבוץ הם
+   .btn רגיל, ובתלמידות ובצהרון .btn.sm — כלומר אותה פעולה בדיוק, בשתי
+   מידות, לפי המסך שבמקרה נכתב קודם. בכותרת המסך הגודל אחיד. */
+html.ui-lab .lab-sacts .btn.sm{ padding:10px 17px; font-size:.86rem }
 @media(max-width:900px){
   html.ui-lab .lab-shead{ gap:12px }
   html.ui-lab .lab-shead h2{ font-size:1.35rem }
