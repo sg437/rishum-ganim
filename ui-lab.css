@@ -2867,6 +2867,31 @@ html.ui-lab .lab-capsrow .check{
   background:none !important; border:0 !important; padding:0 !important;
 }
 
+/* -- צהרון: מינימום ומקסימום לכל סוג חינוך -------------------------------
+   שורה לכל סוג חינוך: שם החינוך, ואחריו שני שדות עם תווית משלהם. הטבלה
+   שבתוכנה נהפכת כאן לשורות, כי שתי שורות בשתי עמודות אינן טבלה — הן זוג. */
+html.ui-lab .lab-tzlims{
+  display:flex; flex-direction:column; gap:10px; margin:2px 0 4px;
+  max-width:420px;   /* שתי שורות קצרות — כרטיס ברוחב מלא היה כמעט כולו ריק */
+}
+html.ui-lab .lab-tzrow{
+  display:grid; grid-template-columns:86px 130px 130px; gap:10px 14px; align-items:end;
+  padding:10px 14px; border:1px solid var(--border); border-radius:12px;
+  background:var(--surface-2);
+}
+html.ui-lab .lab-tzedu{
+  align-self:center; font-weight:700; color:var(--ink);
+}
+html.ui-lab .lab-tzfield{ min-width:0; display:flex; flex-direction:column; gap:4px }
+html.ui-lab .lab-tzfield > label{
+  font-size:.72rem; font-weight:600; color:var(--muted); letter-spacing:.01em;
+}
+html.ui-lab .lab-tzfield > input{ max-width:none !important; width:100% }
+@media (max-width:520px){
+  html.ui-lab .lab-tzrow{ grid-template-columns:1fr 1fr }
+  html.ui-lab .lab-tzedu{ grid-column:1 / -1; align-self:auto }
+}
+
 /* -- שני טורים בכרטיס אחד: מי מחובר · יומן פעילות ------------------------- */
 html.ui-lab .lab-two{
   display:grid; gap:16px; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);

@@ -3053,7 +3053,7 @@ var SET_FIND = [
   ["brand","#br-title"],       ["install","#install-box"],
   ["caps","#ac-reg"],          ["years","#years-box"],
   ["promote","#pr-from"],      ["hist","#hist-box"],
-  ["histGan","#hist-gans-box"],["tzmin","#tzmin"],
+  ["histGan","#hist-gans-box"],["tzmin","#saveTzMin"],
   ["ages","#ages-box"],        ["roles","#roles-box"],
   ["campus","#campus-box"],    ["admins","#admins-box"],
   ["feedback","#feedback-box"],["auth","#auth-box"],
@@ -3558,14 +3558,42 @@ function capsCard(P){
   return p;
 }
 
-/* ---- מינימום לפתיחת צהרון ------------------------------------------- */
+/* ---- צהרון: מינימום ומקסימום ----------------------------------------
+   ההגדרה נפרדת לכל סוג חינוך, כי המספרים שונים ברגיל ובחינוך מיוחד.
+   בתוכנה זו טבלה בת שתי שורות; כאן היא הופכת לשורת שדות אחת לכל סוג
+   חינוך, בלי כותרות עמודה — התווית יושבת על השדה עצמו. */
 function tzminCard(P){
   if(!P.tzmin) return null;
   P.tzmin.dataset.labUsed = "1";
-  var p = labPanel("tzmin", "מינימום לפתיחת צהרון",
-        "בלשונית שיבוץ → צהרונים, גן שמתחת למספר הזה יסומן באדום.");
+  var p = labPanel("tzmin", "צהרון — מינימום ומקסימום",
+        "גודל קבוצת הצהרון, בנפרד לכל סוג חינוך. מתחת למינימום הגן מסומן באדום; מקסימום ריק = בלי תקרה.");
   moveBody(P.tzmin, p);
   P.tzmin.remove();
+
+  var wrap = p.querySelector(".table-wrap");
+  if(wrap){
+    var rows = wrap.querySelectorAll("tbody tr");
+    var box  = el("div", "lab-tzlims");
+    Array.prototype.forEach.call(rows, function(tr){
+      var cells = tr.querySelectorAll("td");
+      if(cells.length < 3) return;
+      var line = el("div", "lab-tzrow");
+      line.appendChild(el("div", "lab-tzedu", (cells[0].textContent || "").trim()));
+      [["מינימום", cells[1]], ["מקסימום", cells[2]]].forEach(function(x){
+        var f = el("div", "lab-tzfield");
+        f.appendChild(el("label", null, x[0]));
+        var inp = x[1].querySelector("input");
+        if(inp) f.appendChild(inp);            /* מוזז, לא משוכפל — המאזינים נשמרים */
+        line.appendChild(f);
+      });
+      box.appendChild(line);
+    });
+    if(box.children.length){ wrap.parentNode.insertBefore(box, wrap); wrap.remove(); }
+  }
+
+  /* כפתור השמירה מצטרף לשורה התחתונה, כמו בשאר כרטיסי ההגדרות */
+  var save = p.querySelector("#saveTzMin");
+  if(save) save.textContent = "שמירה";
   return p;
 }
 

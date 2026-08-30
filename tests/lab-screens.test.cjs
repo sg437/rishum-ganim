@@ -525,7 +525,7 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
       subIn:      !!document.querySelector('[data-lab="brand"] #br-sub'),
       installIn:  !!document.querySelector('[data-lab="brand"] #install-box'),
       capsIn:     !!document.querySelector('[data-lab="caps"] #ac-reg'),
-      tzIn:       !!document.querySelector('[data-lab="tzmin"] #tzmin'),
+      tzIn:       document.querySelectorAll('[data-lab="tzmin"] .lab-tzrow input.tzlim').length === 4,
       fbIn:       !!document.querySelector('[data-lab="feedback"] #feedback-box'),
       /* עמודת המשתמש בטבלה — עיגול ראשי תיבות, שם ומייל בתא אחד */
       uCell:      !!document.querySelector('table.lab-users .lab-ucell .lab-uini')
@@ -576,7 +576,7 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     bad('שורות התפקידים חסרות ידית גרירה / צבע / מחיקה',
         ['שורות=' + sg.roles.length + ' ידית=' + sg.roleGrip + ' צבע=' + sg.roleColor + ' מחיקה=' + sg.roleDel]);
   else if (!sg.capsIn || !sg.tzIn)
-    bad('רף השיבוץ / מינימום הצהרון אינם בכרטיסים שלהם');
+    bad('רף השיבוץ / מגבלות הצהרון אינם בכרטיסים שלהם', ['רף=' + sg.capsIn + ' צהרון=' + sg.tzIn]);
   else ok('רשימות המערכת: ' + sg.ages.length + ' גילים · ' + sg.camps.length + ' קמפוסים · '
           + sg.roles.length + ' תפקידים (גרירה · צבע · מחיקה)');
 
