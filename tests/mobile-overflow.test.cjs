@@ -226,8 +226,45 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     if(r.scroll > r.W+1){ bad++; console.log('❌ '+t+' — העמוד גולש '+(r.scroll-r.W)+'px  '+r.who.join(' · ')); }
   }
   if(!bad) console.log('✅ כל '+n+' המסכים ללא גלילה אופקית ברוחב 390px');
+
+  /* ---- הטבעת שבכרטיס "סה״כ רשומות" נשארת בתוך הכרטיס ------------------
+     גלישה בתוך כרטיס אינה מזיזה את העמוד, ולכן הבדיקה שלמעלה אינה רואה
+     אותה: הטבעת הזהובה בלטה מהרקע הירוק החוצה. היא מופיעה רק כשהמספר
+     תופס מקום — עם שש תלמידות בזרע הכרטיס מרווח, ולכן המספר נדרס ל-905. */
+  await goTab(p, 'students');
+  await p.waitForTimeout(700);
+  for(const W of [320, 360, 390, 430, 768, 1024]){
+    await p.setViewportSize({ width:W, height:844 });
+    await p.waitForTimeout(300);
+    await p.evaluate(()=>{
+      const h = document.querySelector('#stuSummary .stat.lab-hero');
+      if(h) h.querySelector('.v').textContent = '905';
+    });
+    await p.waitForTimeout(200);
+    const r = await p.evaluate(()=>{
+      const h = document.querySelector('#stuSummary .stat.lab-hero');
+      if(!h) return { err:'אין כרטיס כהה' };
+      const hb = h.getBoundingClientRect(), out = { v:h.querySelector('.v').textContent, spill:0, who:[] };
+      h.querySelectorAll('*').forEach(e=>{
+        const b = e.getBoundingClientRect();
+        if(b.width <= 0) return;
+        const sp = Math.round(Math.max(hb.left - b.left, b.right - hb.right));
+        if(sp > 0){ out.spill = Math.max(out.spill, sp); out.who.push((e.className||'')+' +'+sp+'px'); }
+      });
+      const v = h.querySelector('.v');
+      out.num = v.scrollWidth - v.clientWidth;       /* המספר חורג מהעמודה */
+      return out;
+    });
+    n++;
+    if(r.err){ bad++; console.log('❌ ' + W + 'px — ' + r.err); continue; }
+    if(r.v !== '905'){ bad++; console.log('❌ ' + W + 'px — המספר לא נקבע לבדיקה'); continue; }
+    if(r.spill > 0){ bad++; console.log('❌ ' + W + 'px — הטבעת חורגת מהכרטיס: ' + r.who.join(' · ')); }
+    else if(r.num > 0){ bad++; console.log('❌ ' + W + 'px — המספר חורג מעמודתו ב-' + r.num + 'px'); }
+  }
+  if(!bad) console.log('✅ הטבעת והמספר שבכרטיס הכהה נשארים בתוכו בכל רוחב');
+
   console.log('============================================');
-  console.log(bad ? 'תוצאה: '+bad+' מסכים גולשים ❌' : 'תוצאה: אין גלישה אופקית בנייד ✅');
+  console.log(bad ? 'תוצאה: '+bad+' ממצאי גלישה ❌' : 'תוצאה: אין גלישה אופקית בנייד ✅');
   await browser.close(); server.close();
   process.exit(bad ? 1 : 0);
 })();

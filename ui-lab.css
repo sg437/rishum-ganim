@@ -690,11 +690,15 @@ html.ui-lab #stuSummary.sticky{
   padding:10px 0; margin-bottom:4px;
 }
 html.ui-lab #stuSummary .stats{
-  grid-template-columns:1.4fr repeat(auto-fit, minmax(130px, 1fr)); gap:14px;
+  /* לכרטיס הכהה רצפה משלו. בלעדיה שאר הכרטיסים החזיקו 130px כל אחד
+     והוא — 1.4fr בלי רצפה — ספג את כל החוסר וירד ל-123px, צר משכניו,
+     והטבעת שבתוכו נדחקה החוצה. ‎min(...,100%)‎ שומר מפני גלישה במסך צר. */
+  grid-template-columns:minmax(min(150px, 45%), 1.4fr)
+                        repeat(auto-fit, minmax(130px, 1fr)); gap:14px;
 }
 html.ui-lab #stuSummary .stat{
   background:var(--surface); border:1px solid var(--border);
-  border-radius:16px; padding:16px 18px;
+  border-radius:16px; padding:16px clamp(12px, 4vw, 18px);
 }
 html.ui-lab #stuSummary .stat .k{ font-size:.79rem; color:var(--muted); font-weight:600 }
 html.ui-lab #stuSummary .stat .v{
@@ -704,17 +708,54 @@ html.ui-lab #stuSummary .stat .v{
 /* המשבצת הראשונה — כהה עם טבעת, כמו בלוח */
 /* .k ו-.v הם אחים ישירים בתוך המשבצת, ולכן flex פשוט היה מסדר אותם
    בשורה אחת עם הטבעת והכרטיס היה נחתך. grid מציב את הטבעת בעמודה שנייה
-   על פני שתי השורות. */
+   על פני כל השורות.
+   עמודת הטקסט היא ‎minmax(0,1fr)‎ ולא ‎1fr‎: ל-1fr יש רצפת min-content,
+   ובנייד סכום המינימומים (מספר בן שלוש ספרות + טבעת + ריפוד) גדל מעבר
+   לרוחב הכרטיס, והעודף נדחף החוצה בקצה — הטבעת החומה חרגה מהירוק. */
 html.ui-lab #stuSummary .stat.lab-hero{
   background:var(--lab-deep); border-color:transparent; color:#fff;
-  display:grid; grid-template-columns:1fr auto; column-gap:14px; align-items:center;
+  display:grid; grid-template-columns:minmax(0, 1fr) auto;
+  column-gap:14px; align-items:center;
+  container-type:inline-size; container-name:labhero;
 }
 html.ui-lab #stuSummary .stat.lab-hero .k{ grid-column:1; grid-row:1 }
 html.ui-lab #stuSummary .stat.lab-hero .v{ grid-column:1; grid-row:2 }
-html.ui-lab #stuSummary .stat.lab-hero .lh-ring{ grid-column:2; grid-row:1 / span 2 }
+html.ui-lab #stuSummary .stat.lab-hero .lab-ksub{ grid-column:1 }
+/* ‎span 3‎ ולא ‎1 / -1‎: אין ‎grid-template-rows‎, ולכן ‎-1‎ הוא קו 1 —
+   הטבעת הייתה יושבת בשורה הראשונה בלבד ונצמדת לראש הכרטיס. */
+html.ui-lab #stuSummary .stat.lab-hero .lh-ring{ grid-column:2; grid-row:1 / span 3 }
 html.ui-lab #stuSummary .stat.lab-hero .k{ color:rgba(255,255,255,.6) }
 html.ui-lab #stuSummary .stat.lab-hero .v{ color:#fff; font-size:2.6rem; letter-spacing:-.04em }
 html.ui-lab #stuSummary .stat.lab-hero .v small{ color:rgba(255,255,255,.55) }
+/* הטבעת מתכווצת עם *הכרטיס* ולא עם המסך: בנייד הכרטיס יושב בחצי רוחב
+   המסך, ו-74px קבועים לא נכנסו בו יחד עם המספר בן שלוש הספרות — הזהב
+   בלט אל מחוץ לרקע הירוק. ‎@container‎ מודד את תיבת התוכן של הכרטיס
+   עצמו, ובכל מדרגה הטבעת, המרווח והמספר יורדים יחד, כך שסכומם לעולם
+   קטן מהכרטיס — גם בכרטיס צר בשולחן העבודה, שמדיה-קוורי לא היה רואה. */
+@container labhero (max-width: 210px){
+  html.ui-lab #stuSummary .stat.lab-hero{ column-gap:10px }
+  html.ui-lab #stuSummary .stat.lab-hero .v{ font-size:2.05rem }
+  html.ui-lab #stuSummary .stat.lab-hero .lh-ring{ width:58px; height:58px }
+  html.ui-lab #stuSummary .stat.lab-hero .lh-ring-in{
+    width:44px; height:44px; font-size:.72rem;
+  }
+}
+@container labhero (max-width: 125px){
+  html.ui-lab #stuSummary .stat.lab-hero{ column-gap:8px }
+  html.ui-lab #stuSummary .stat.lab-hero .v{ font-size:1.75rem }
+  html.ui-lab #stuSummary .stat.lab-hero .lh-ring{ width:48px; height:48px }
+  html.ui-lab #stuSummary .stat.lab-hero .lh-ring-in{
+    width:36px; height:36px; font-size:.64rem;
+  }
+}
+@container labhero (max-width: 100px){
+  html.ui-lab #stuSummary .stat.lab-hero{ column-gap:6px }
+  html.ui-lab #stuSummary .stat.lab-hero .v{ font-size:1.35rem }
+  html.ui-lab #stuSummary .stat.lab-hero .lh-ring{ width:36px; height:36px }
+  html.ui-lab #stuSummary .stat.lab-hero .lh-ring-in{
+    width:28px; height:28px; font-size:.55rem;
+  }
+}
 
 
 /* ראשי תיבות בעיגול לכל שורה (מוזרקים ב-ui-lab.js) */
