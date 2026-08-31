@@ -6327,7 +6327,7 @@ function openImport(){
   <div class="note">מעלים קובץ CSV (או מדביקים ישירות מאקסל) והמערכת פותחת תיק נפרד לכל שורה, לפי הכותרות. הכותרות המזוהות: שם משפחה, שם פרטי, ת"ז, תאריך לידה, שם האם, שם האב, טלפון, נייד, רחוב, בניין, עיר, קמפוס, גן, גיל, מועד, חינוך, קלוט בעירייה, הערות. עמודות שלא זוהו — יידלגו. נייד שמתחיל ב-5 (ללא 0 מוביל) יתוקן אוטומטית, וכפילויות ת"ז בתוך הקובץ יושמטו.</div>
   <fieldset style="margin-top:12px"><legend>קובץ / הדבקה</legend>
     <div class="row" style="margin-bottom:8px">
-      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="imp-file" accept=".csv,.txt,.xlsx" hidden></label>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="imp-file" accept=".csv,.txt,.xlsx,.xls" hidden></label>
       <button class="btn ghost sm" id="imp-template" type="button">⬇️ הורדת תבנית</button>
     </div>
     <label>או הדבקה ישירה (שורת כותרות ואז שורה לכל תלמידה)</label>
@@ -8067,7 +8067,7 @@ function openTzImport(){
       או <b>קובץ CSV</b> עם עמודת ת"ז. ההתאמה לתיקים היא לפי ת"ז בלבד.</div>
     <fieldset style="margin-top:12px"><legend>הרשימה</legend>
       <div class="row" style="margin-bottom:8px">
-        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ<input type="file" id="tzi-file" accept=".csv,.txt,.xlsx" hidden></label>
+        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ<input type="file" id="tzi-file" accept=".csv,.txt,.xlsx,.xls" hidden></label>
       </div>
       <textarea id="tzi-text" rows="7" placeholder='123456789&#10;987654321&#10;…&#10;— או —&#10;ת"ז,שם&#10;123456789,כהן שרה'></textarea>
     </fieldset>
@@ -8962,7 +8962,7 @@ function openGanImport(){
   <div class="note">מעלים קובץ CSV (או מדביקים ישירות מאקסל) והמערכת מוסיפה גן לכל שורה, לפי הכותרות. הכותרות המזוהות: שם הגן, סמל פנימי, סמל הגן, שם הגננת, גיל, חינוך, כתובת, מספר, אזור, טלפון בגן, נייד גננת, שם סייעת, נייד סייעת, קיבולת, פעיל. עמודות שלא זוהו — יידלגו. הקובץ נקרא עם זיהוי מפריד אוטומטי (, / ; / טאב) וזיהוי קידוד (UTF-8 או Windows-1255) — בדיוק כמו בייבוא התלמידות, כך שקבצי אקסל בעברית נקראים כראוי.</div>
   <fieldset style="margin-top:12px"><legend>קובץ / הדבקה</legend>
     <div class="row" style="margin-bottom:8px">
-      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="gimp-file" accept=".csv,.txt,.xlsx" hidden></label>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="gimp-file" accept=".csv,.txt,.xlsx,.xls" hidden></label>
       <button class="btn ghost sm" id="gimp-template" type="button">⬇️ הורדת תבנית</button>
     </div>
     <label>או הדבקה ישירה (שורת כותרות ואז שורה לכל גן)</label>
@@ -10153,7 +10153,7 @@ function muniSectionHTML(descClass){
         </select></div>
       <div class="field" id="muni-edu-wrap"><label>סוג החינוך של הרשימה</label>
         <select id="muni-edu">${EDU_TYPES.map(t=>`<option ${t===edu?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
-      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="muni-file" accept=".csv,.txt,.xlsx" hidden></label>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="muni-file" accept=".csv,.txt,.xlsx,.xls" hidden></label>
       <button class="btn ghost sm" id="muni-template" type="button">⬇️ הורדת תבנית לאקסל</button>
     </div>
     <div class="checks" style="margin-top:8px" id="muni-create-wrap">
@@ -10851,7 +10851,7 @@ function labStaffTzUpdate(){
     <div class="note">מדביקים/מעלים קובץ שבו עמודת ת"ז, ולצידה כל עמודה שרוצים לעדכן — למשל רשימת ת"ז ומספרי טלפון. כל תיק שה-ת"ז שלו נמצא במאגר יתעדכן, וערך קיים יוחלף בערך שבקובץ. ת"ז שאינה במאגר תיפתח כתיק חדש.</div>
     <fieldset style="margin-top:10px"><legend>קובץ / הדבקה</legend>
       <div class="row" style="margin-bottom:8px">
-        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="stu-file" accept=".csv,.txt,.xlsx" hidden></label>
+        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="stu-file" accept=".csv,.txt,.xlsx,.xls" hidden></label>
         <button class="btn ghost sm" id="stu-template" type="button">⬇️ הורדת תבנית</button>
       </div>
       <textarea id="stu-text" rows="6" placeholder="ת&quot;ז,נייד&#10;123456789,050-1234567&#10;987654321,052-7654321"></textarea>
@@ -11071,7 +11071,7 @@ function openStaffImport(){
     <div class="note">מדביקים/מעלים קובץ עם כותרות. עמודות מזוהות: שם משפחה, שם פרטי (או "שם" מלא), ת"ז, מייל, תפקיד, טלפון, נייד, עיר, הערות. תפקיד שאינו מזוהה יסומן כ"סייעת". הקובץ נקרא עם זיהוי מפריד וקידוד אוטומטי (כמו בייבוא התלמידות).</div>
     <fieldset style="margin-top:10px"><legend>קובץ / הדבקה</legend>
       <div class="row" style="margin-bottom:8px">
-        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="sti-file" accept=".csv,.txt,.xlsx" hidden></label>
+        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="sti-file" accept=".csv,.txt,.xlsx,.xls" hidden></label>
         <button class="btn ghost sm" id="sti-template" type="button">⬇️ הורדת תבנית</button>
       </div>
       <textarea id="sti-text" rows="6" placeholder="שם משפחה,שם פרטי,ת&quot;ז,מייל,תפקיד,טלפון,נייד,עיר&#10;כהן,מרים,123456789,mk@mail.com,גננת,02-1234567,050-1234567,ירושלים"></textarea>
@@ -12191,6 +12191,187 @@ async function xlsxToRows(buf){
   return { rows, sheetName, sheetCount };
 }
 function rowsToCsv(rows){ return rows.map(r=>r.map(csvCell).join(",")).join("\r\n"); }
+/* ---------- קריאת קובץ אקסל ישן (.xls) בדפדפן, בלי ספרייה חיצונית ----------
+   ‎.xls‎ הוא פורמט בינארי אחר לגמרי מ-xlsx: מיכל OLE2 (Compound File) שבתוכו
+   זרם "Workbook" של רשומות BIFF8. כאן מפוענחים שני השלבים — המיכל, ואז
+   הרשומות של הגיליון הראשון — ומוחזרת טבלה, בדיוק כמו מ-xlsx. */
+/* שלב 1: המיכל. מאתר זרם אחד לפי שם ומחזיר את הבייטים שלו. קוראים רק את
+   הזרם שצריך — קובץ אמיתי נושא גם זרמי מטא-דאטה קטנים, ואין סיבה שתקלה
+   באחד מהם תפיל את קריאת הגיליון. */
+function oleReadStream(buf, names){
+  const dv=new DataView(buf), u8=new Uint8Array(buf);
+  if(dv.getUint32(0,true)!==0xE011CFD0 || dv.getUint32(4,true)!==0xE11AB1A1) throw new Error("ole");
+  const ssz=1<<dv.getUint16(30,true), msz=1<<dv.getUint16(32,true);
+  const dirStart=dv.getUint32(48,true), miniCut=dv.getUint32(56,true);
+  const miniFatStart=dv.getUint32(60,true);
+  let difSect=dv.getUint32(68,true); const difCount=dv.getUint32(72,true);
+  const secOff=n=>(n+1)*ssz;                      // הכותרת תופסת סקטור אחד
+  const END=0xFFFFFFFA;                            // מכאן ומעלה: סופי שרשרת/מיוחדים
+  /* ה-DIFAT: 109 הכניסות הראשונות בכותרת, והשאר בסקטורים ייעודיים */
+  const fatSectors=[];
+  for(let i=0;i<109;i++){ const s=dv.getUint32(76+4*i,true); if(s>=END) break; fatSectors.push(s); }
+  for(let n=0; n<difCount && difSect<END; n++){
+    const base=secOff(difSect), per=ssz/4-1;
+    for(let i=0;i<per;i++){ const s=dv.getUint32(base+4*i,true); if(s<END) fatSectors.push(s); }
+    difSect=dv.getUint32(base+4*per,true);
+  }
+  const fat=[];
+  fatSectors.forEach(s=>{ const base=secOff(s); for(let i=0;i<ssz/4;i++) fat.push(dv.getUint32(base+4*i,true)); });
+  const chain=(start,table)=>{ const out=[]; let s=start, guard=0;
+    while(s<END && guard++<table.length+8){ out.push(s); s=table[s]; if(s==null) break; } return out; };
+  const readChain=(start,size)=>{ const parts=chain(start,fat).map(s=>u8.subarray(secOff(s),secOff(s)+ssz));
+    const total=parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0;
+    parts.forEach(pt=>{ out.set(pt,o); o+=pt.length; }); return size!=null?out.subarray(0,size):out; };
+  /* ספריית הקבצים */
+  const dir=readChain(dirStart);
+  const ddv=new DataView(dir.buffer, dir.byteOffset, dir.byteLength);
+  const entries=[];
+  for(let i=0;i+128<=dir.length;i++){
+    const o=i*128; if(o+128>dir.length) break;
+    const nameLen=ddv.getUint16(o+64,true), type=dir[o+66];
+    if(!type) continue;
+    let name=""; for(let c=0;c+1<Math.max(0,nameLen-2);c+=2) name+=String.fromCharCode(ddv.getUint16(o+c,true));
+    entries.push({ name, type, start:ddv.getUint32(o+116,true), size:ddv.getUint32(o+120,true) });
+    if((i+1)*128>=dir.length) break;
+  }
+  /* זרמים קטנים יושבים בתוך "המיני-זרם" של הרשומה הראשית, עם FAT משלהם */
+  const root=entries.find(e=>e.type===5);
+  let mini=null, miniFat=null;
+  const getMini=()=>{
+    if(mini) return;
+    mini=root?readChain(root.start,root.size):new Uint8Array(0);
+    miniFat=[]; const mf=readChain(miniFatStart);
+    const mdv=new DataView(mf.buffer, mf.byteOffset, mf.byteLength);
+    for(let i=0;i+4<=mf.length;i+=4) miniFat.push(mdv.getUint32(i,true));
+  };
+  const e=entries.find(x=>x.type===2 && names.includes(x.name));
+  if(!e) return null;
+  if(e.size>=miniCut || !root) return readChain(e.start,e.size);
+  /* זרם קטן — יושב בתוך המיני-זרם של הרשומה הראשית, עם FAT משלו */
+  getMini();
+  const parts=chain(e.start,miniFat).map(s=>mini.subarray(s*msz,(s+1)*msz));
+  const total=parts.reduce((a,b)=>a+b.length,0); const b=new Uint8Array(total); let o=0;
+  parts.forEach(pt=>{ b.set(pt,o); o+=pt.length; });
+  return b.subarray(0,e.size);
+}
+/* ערך RK: 30 ביט של מספר שלם, או 30 הביטים העליונים של double; ביט 0 = חלוקה ב-100 */
+function biffRk(rk){
+  let v;
+  if(rk & 2) v = rk >> 2;
+  else { const b=new ArrayBuffer(8), d=new DataView(b);
+         d.setUint32(0,0,true); d.setUint32(4, rk & 0xFFFFFFFC, true); v=d.getFloat64(0,true); }
+  return (rk & 1) ? v/100 : v;
+}
+/* מספר לתא: שלם נשאר שלם, שבר מעוגל כדי לא לגרור רעש של נקודה צפה */
+function biffNum(v){ if(!isFinite(v)) return ""; return Number.isInteger(v)?String(v):String(Math.round(v*1e10)/1e10); }
+/* מחרוזת BIFF8 שיכולה להימשך לרשומות CONTINUE. בכל מעבר לרשומה הבאה מגיע
+   בייט דגלים חדש, ואיתו יכולה להשתנות גם צורת הקידוד (בייט או שני בייטים)
+   באמצע אותה מחרוזת — זו הנקודה שבה קוראים תמימים נשברים. */
+function biffStrReader(blocks){
+  let bi=0, p=0;
+  const st={
+    ended(){ return bi>=blocks.length; },
+    left(){ return bi<blocks.length ? blocks[bi].length-p : 0; },
+    step(){ bi++; p=0; },
+    u8(){ return blocks[bi][p++]; },
+    u16(){ const b=blocks[bi]; const v=b[p]|(b[p+1]<<8); p+=2; return v; },
+    u32(){ const b=blocks[bi]; const v=(b[p]|(b[p+1]<<8)|(b[p+2]<<16)|(b[p+3]<<24))>>>0; p+=4; return v; },
+    skip(n){ while(n>0 && !st.ended()){ const t=Math.min(n, st.left()); p+=t; n-=t; if(n>0) st.step(); } },
+    /* מדלגים לרשומה הבאה כשנגמרה הנוכחית, לפני קריאת כותרת מחרוזת */
+    align(){ while(!st.ended() && st.left()<=0) st.step(); },
+    chars(cch, high){
+      let out="";
+      while(cch>0 && !st.ended()){
+        if(st.left()<=0 || (high && st.left()<2)){ st.step(); if(st.ended()) break; high=st.u8()&1; continue; }
+        const can = high ? Math.floor(st.left()/2) : st.left();
+        const take = Math.min(cch, can);
+        for(let i=0;i<take;i++) out += String.fromCharCode(high?st.u16():st.u8());
+        cch-=take;
+        if(cch>0){ st.step(); if(st.ended()) break; high=st.u8()&1; }
+      }
+      return out;
+    },
+    /* מחרוזת שלמה: אורך, דגלים, התווים, ואחריהם זנבות עיצוב שמדלגים עליהם */
+    str(){
+      st.align(); if(st.ended()) return "";
+      const cch=st.u16(), grbit=st.u8();
+      const high=grbit&1, rich=grbit&8, ext=grbit&4;
+      const cRun=rich?st.u16():0, cbExt=ext?st.u32():0;
+      const s=st.chars(cch, high);
+      if(cRun) st.skip(4*cRun);
+      if(cbExt) st.skip(cbExt);
+      return s;
+    }
+  };
+  return st;
+}
+/* שלב 2: רשומות BIFF8. מחזיר את הטבלה שבגיליון הראשון. */
+function xlsToRows(buf){
+  const wbBytes=oleReadStream(buf, ["Workbook","Book"]);
+  if(!wbBytes) throw new Error("nowb");
+  const dv=new DataView(wbBytes.buffer, wbBytes.byteOffset, wbBytes.byteLength);
+  const rec=[];                       // כל הרשומות: [סוג, היסט הנתונים, אורך, היסט הרשומה]
+  for(let p=0;p+4<=wbBytes.length;){
+    const t=dv.getUint16(p,true), l=dv.getUint16(p+2,true);
+    if(t===0 && l===0) break;
+    if(p+4+l>wbBytes.length) break;
+    rec.push([t,p+4,l,p]); p+=4+l;
+  }
+  const byOffset=new Map(); rec.forEach((r,i)=>byOffset.set(r[3],i));
+  /* שמות הגיליונות ומיקומם בזרם */
+  const sheets=[];
+  rec.forEach(([t,o,l])=>{
+    if(t!==0x0085) return;
+    const pos=dv.getUint32(o,true), cch=wbBytes[o+6], grbit=wbBytes[o+7];
+    let name="";
+    for(let i=0;i<cch;i++) name += String.fromCharCode((grbit&1) ? dv.getUint16(o+8+2*i,true) : wbBytes[o+8+i]);
+    sheets.push({ name, pos });
+  });
+  /* טבלת המחרוזות המשותפת — SST ורשומות ה-CONTINUE שאחריה */
+  const shared=[];
+  const sstIdx=rec.findIndex(r=>r[0]===0x00FC);
+  if(sstIdx>=0){
+    const blocks=[wbBytes.subarray(rec[sstIdx][1], rec[sstIdx][1]+rec[sstIdx][2])];
+    for(let i=sstIdx+1;i<rec.length && rec[i][0]===0x003C;i++) blocks.push(wbBytes.subarray(rec[i][1], rec[i][1]+rec[i][2]));
+    const rd=biffStrReader(blocks);
+    rd.u32();                          // סך המופעים — לא נחוץ
+    const uniq=rd.u32();
+    for(let i=0;i<uniq && !rd.ended();i++) shared.push(rd.str());
+  }
+  /* התאים של הגיליון הראשון */
+  const grid=[];
+  const put=(r,c,v)=>{ if(r<0||c<0) return; (grid[r]||(grid[r]=[]))[c]=v; };
+  const first=sheets[0];
+  let i = first && byOffset.has(first.pos) ? byOffset.get(first.pos) : rec.findIndex(r=>r[0]===0x0809);
+  if(first && byOffset.has(first.pos)) i++;      // אחרי ה-BOF של הגיליון
+  else i = rec.length;                            // בלי BOUNDSHEET אין מה לקרוא
+  for(; i<rec.length; i++){
+    const [t,o,l]=rec[i];
+    if(t===0x000A) break;                         // EOF של הגיליון
+    if(t===0x00FD){ put(dv.getUint16(o,true), dv.getUint16(o+2,true), shared[dv.getUint32(o+6,true)]??""); continue; }
+    if(t===0x0204){ const r=dv.getUint16(o,true), c=dv.getUint16(o+2,true);
+      put(r,c,biffStrReader([wbBytes.subarray(o+6,o+l)]).str()); continue; }
+    if(t===0x027E){ put(dv.getUint16(o,true), dv.getUint16(o+2,true), biffNum(biffRk(dv.getInt32(o+6,true)))); continue; }
+    if(t===0x0203){ put(dv.getUint16(o,true), dv.getUint16(o+2,true), biffNum(dv.getFloat64(o+6,true))); continue; }
+    if(t===0x00BD){ const r=dv.getUint16(o,true), c0=dv.getUint16(o+2,true);
+      for(let k=0; o+4+6*k+6<=o+l; k++) put(r, c0+k, biffNum(biffRk(dv.getInt32(o+4+6*k+2,true))));
+      continue; }
+    if(t===0x0006){ const r=dv.getUint16(o,true), c=dv.getUint16(o+2,true);
+      /* תוצאת נוסחה: מחרוזת מגיעה ברשומת STRING שאחריה, מספר יושב כאן */
+      if(wbBytes[o+12]===0xFF && wbBytes[o+13]===0xFF){
+        const nx=rec[i+1];
+        if(nx && nx[0]===0x0207) put(r,c, biffStrReader([wbBytes.subarray(nx[1], nx[1]+nx[2])]).str());
+      } else put(r,c, biffNum(dv.getFloat64(o+6,true)));
+      continue; }
+  }
+  const rows=[];
+  for(let r=0;r<grid.length;r++){
+    const line=[], g=grid[r]||[];
+    for(let c=0;c<g.length;c++) line.push(g[c]==null?"":String(g[c]));
+    if(line.some(x=>x.trim()!=="")) rows.push(line);
+  }
+  return { rows, sheetName:first?first.name:"", sheetCount:sheets.length };
+}
 /* קריאת קובץ שהמשתמש העלה, כטקסט טבלאי אחד. קובץ .xlsx מפוענח כאן לטבלה
    ומוחזר כ-CSV, כך שכל מסכי הייבוא ממשיכים לעבוד על אותו טקסט בדיוק כמו
    קודם. קובץ בינארי שאינו xlsx (למשל xls ישן) נעצר בהודעה ברורה, במקום
@@ -12215,8 +12396,18 @@ function readFileSmart(file,cb){
       });
       return;
     }
-    if(sig(0xD0,0xCF,0x11,0xE0)){          // xls ישן (OLE) — פורמט בינארי שאינו נתמך
-      toast("זהו קובץ xls ישן. שמור/י אותו באקסל כ-xlsx או כ-CSV ונסה/י שוב"); return;
+    if(sig(0xD0,0xCF,0x11,0xE0)){          // חתימת OLE2 — כלומר xls בפורמט הישן
+      try{
+        const res=xlsToRows(buf);
+        if(!res.rows.length){ toast("הגיליון בקובץ ריק"); return; }
+        cb(rowsToCsv(res.rows));
+        toast(res.sheetName
+          ? ('נקרא הגיליון "'+res.sheetName+'"'+(res.sheetCount>1?" (הראשון מבין "+res.sheetCount+")":"")+" · "+(res.rows.length-1)+" שורות")
+          : "הקובץ נקרא");
+      }catch(err){
+        toast("לא הצלחתי לקרוא את קובץ ה-xls. שמור/י אותו באקסל כ-xlsx או כ-CSV ונסה/י שוב");
+      }
+      return;
     }
     if(u8.subarray(0,2000).indexOf(0)>=0){ // בייט אפס = קובץ בינארי, לא טקסט
       toast("הקובץ אינו קובץ אקסל או טקסט שאפשר לקרוא"); return;
@@ -12351,7 +12542,7 @@ function renderHistGans(host, admin){
     ${editable?`
     <div class="row" style="margin-top:12px">
       <button class="btn ghost" id="hg-add">➕ הוספת גן</button>
-      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 ייבוא CSV<input type="file" id="hg-file" accept=".csv,.txt,.xlsx" hidden></label>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 ייבוא CSV<input type="file" id="hg-file" accept=".csv,.txt,.xlsx,.xls" hidden></label>
     </div>
     <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;color:var(--accent-strong)">📋 ייבוא בהדבקה (מאקסל / טבלה)</summary>
       <div class="hint" style="margin:8px 0">הדביקו טבלה עם כותרות. עמודות מזוהות: <b>גן</b> (חובה), כתובת, קמפוס, גיל, מועד א׳, מועד ב׳, מועד ג׳, סופי. הייבוא מוסיף/מעדכן את השנה הנבחרת (${esc(y)}).</div>
