@@ -971,10 +971,97 @@ function enterRestMode(){
 const knownStudentDocs = new Set(); // מזהי מסמכי students_<שנה> הקיימים בענן
 function safeYearId(y){ return "students_"+String(y).replace(/[^0-9A-Za-z֐-׿]/g,"_"); }
 
+/* ============================================================
+   תקרת גודל המסמך ב-Firestore (1MiB)
+   ------------------------------------------------------------
+   כל תלמידות השנה יושבות במסמך אחד (students_<שנה>). ככל שהמספר גדל המסמך
+   מתקרב לתקרה הקשיחה של Firestore — 1,048,576 בייט — ואז השרת דוחה את הכתיבה
+   בשגיאת invalid-argument. בלי בדיקה מוקדמת השגיאה נראית כמו "כשל שמירה" סתמי:
+   החיווי נתקע על "טרם נשמר", הבאנר מכריז "אין חיבור לענן", והמשתמש רודף אחרי
+   ה-Wi-Fi בזמן שהרשת תקינה לחלוטין. כאן מחשבים את הגודל *לפני* הכתיבה לפי כללי
+   החישוב של Firestore ועוצרים עם הודעה שאומרת מה קרה ומה לעשות.
+   כללי החישוב: מחרוזת = בייטים ב-UTF-8 + 1 · בוליאני/null = 1 · מספר/תאריך = 8 ·
+   שדה במפה = אורך-השם + 1 + הערך · מערך = סכום האיברים.
+   ============================================================ */
+const FS_DOC_LIMIT = 1048576;  // התקרה הקשיחה של Firestore
+const FS_DOC_SAFE  = 1000000;  // סף עצירה — מרווח לשם המסמך, לתקורה ולהפרשי-חישוב
+const FS_DOC_WARN  = 0.85;     // מאיזה אחוז מהתקרה מתחילים להזהיר מראש
+/* אורך מחרוזת ב-UTF-8 בלי הקצאת חוצץ (נקרא לכל שדה בכל רשומה — חייב להיות זול) */
+function fsStrBytes(str){
+  const s=String(str); let n=0;
+  for(let i=0;i<s.length;i++){
+    const c=s.charCodeAt(i);
+    if(c<0x80) n+=1;
+    else if(c<0x800) n+=2;
+    else if(c>=0xD800 && c<0xDC00 && i+1<s.length){ n+=4; i++; } // זוג-תחליף = תו אחד בן 4 בייטים
+    else n+=3;
+  }
+  return n;
+}
+function fsSize(v){
+  if(v===null || v===undefined) return 1;
+  const t=typeof v;
+  if(t==="boolean") return 1;
+  if(t==="number") return 8;
+  if(t==="string") return fsStrBytes(v)+1;
+  if(v instanceof Date) return 8;
+  if(Array.isArray(v)){ let n=0; for(const x of v) n+=fsSize(x); return n; }
+  let n=0; for(const k in v){ if(Object.prototype.hasOwnProperty.call(v,k)) n+=fsStrBytes(k)+1+fsSize(v[k]); }
+  return n;
+}
+/* גודל מסמך משוער: השדות + שם המסמך + תקורה קבועה של 32 בייט */
+function fsDocSize(docId, obj){ return fsSize(obj) + fsStrBytes(docId) + 1 + 32; }
+/* עצירה מוקדמת עם שגיאה מוסברת. code ייעודי כדי שתרגום-השגיאות יזהה אותה. */
+function assertFsDocFits(docId, obj, humanWhat){
+  const n=fsDocSize(docId,obj);
+  if(n<=FS_DOC_SAFE) return n;
+  const e=new Error(`מסמך "${docId}" הגיע ל-${Math.round(n/1024)}KB — מעל התקרה של Firestore (1024KB). ${humanWhat||""}`);
+  e.code="rg/doc-too-large"; e.docId=docId; e.bytes=n;
+  throw e;
+}
+const DOC_FULL_HOWTO = 'כל תלמידות השנה נשמרות במסמך אחד, והוא התמלא. אפשר לפנות מקום: לסמן כ"סיימה" ולארכב תלמידות משנים קודמות, למחוק רשומות ריקות/כפולות, או לקצר הערות ארוכות. עד אז השינוי שמור במכשיר וימשיך להיות מנוסה.';
+/* אזהרה מקדימה פעם אחת לטעינה, לפני שהתקרה נהפכת לכשל-שמירה מסתורי */
+let _docFullWarned=false;
+function warnIfYearDocNearFull(){
+  let u; try{ u=studentsDocUsage(); }catch(_){ return; }
+  if(u.pct<FS_DOC_WARN || _docFullWarned) return;
+  _docFullWarned=true;
+  try{ toast(`שימו לב: מסמך שנת ${u.year} תפוס ב-${Math.round(u.pct*100)}% מהמקום המותר בענן. ${DOC_FULL_HOWTO}`, 9000); }catch(_){}
+}
+/* כמה מקום תופס מסמך התלמידות של שנה — לתצוגת אזהרה מקדימה ולבדיקת החיבור */
+function studentsDocUsage(year){
+  const y=year||DB.activeYear;
+  const list=DB.students.filter(s=>s.year===y);
+  const id=safeYearId(y), bytes=fsDocSize(id,{ year:y, students:list });
+  return { year:y, docId:id, count:list.length, bytes, pct:bytes/FS_DOC_LIMIT };
+}
+
 /* שמירה לענן — דחייה קצרה לאיגוד שינויים, ושמירה על שינויים מקומיים שטרם נכתבו */
 let _saveTimer=null, savePending=false, cloudDocs=new Map();
 let serverConfirmed=false; // האם התקבל סנאפשוט מהשרת (לא ממטמון) — תנאי בטיחות לפני כתיבה
 let lastSyncError="";      // קוד/הודעת השגיאה האחרונה מ-Firestore (לאבחון הרשאות/אימות)
+/* השגיאה האחרונה של *כתיבה* (להבדיל מקריאה). בלעדיה כל כשל שמירה נראה זהה למשתמש —
+   הבאנר הכריז "אין חיבור לענן" גם כשהרשת מצוינת והדחייה הגיעה מהשרת מסיבה אחרת לגמרי. */
+let lastSaveError=null;    // { code, message, ts }
+let _lastSaveErrShown="";  // חתימת השגיאה שכבר הוצגה — כדי לא להקפיץ אותה בכל ניסיון-חוזר
+/* האם זו שגיאה שניסיון-חוזר לא יפתור (בניגוד לרשת/זמינות) */
+function saveErrIsHard(){
+  const c=(lastSaveError&&lastSaveError.code)||"";
+  return c==="rg/doc-too-large" || c==="permission-denied" || c==="invalid-argument" || c==="unauthenticated";
+}
+/* תרגום שגיאת הכתיבה להסבר בעברית שאומר מה קרה ומה לעשות */
+function saveErrHe(){
+  if(!lastSaveError) return "";
+  const code=lastSaveError.code||"", msg=lastSaveError.message||"";
+  const big=/rg\/doc-too-large|invalid-argument|maximum|too large|exceeds/i.test(code+" "+msg);
+  if(big) return `<b style="color:var(--bad)">המסמך בענן מלא — לא בעיית רשת.</b> ${esc(msg)}`;
+  if(/permission-denied/i.test(code)) return `<b style="color:var(--bad)">אין הרשאת כתיבה לחשבון הזה.</b> יש לפנות למנהל כדי להוסיף את המשתמש להרשאות.`;
+  if(/unauthenticated/i.test(code)) return `<b style="color:var(--bad)">ההתחברות פגה.</b> יש להתנתק ולהתחבר מחדש.`;
+  if(/resource-exhausted/i.test(code)) return `<b style="color:var(--bad)">מכסת הכתיבה של הפרויקט נגמרה להיום.</b> יש לפנות למנהל.`;
+  if(/unavailable|deadline-exceeded|failed to fetch|network/i.test(code+" "+msg))
+    return `<b style="color:var(--bad)">השרת לא נענה</b> (${esc(code||msg)}) — כנראה רשת חלשה. השלבים למטה אמורים לפתור.`;
+  return `<b style="color:var(--bad)">השרת דחה את השמירה:</b> ${esc(code?code+" — ":"")}${esc(msg)}`;
+}
 /* חיווי סטטוס סנכרון בכותרת — מבוסס על metadata של Firestore (hasPendingWrites/fromCache),
    כדי לדעת אם הנתונים באמת עלו לשרת (ונראים לשאר המשתמשים) או תקועים מקומית. */
 function setSyncStatus(state){
@@ -1023,6 +1110,74 @@ let _offlineTimer=null, _offlineDismissed=false, _pendingWatch=null, _syncState=
    _saveFailed = הניסיון האחרון נכשל (מציג "טרם נשמר"); אחרת ממתין-לאישור (מציג "מסנכרן"). */
 const _pending = new Map();
 let _saveFailed=false, _retryTimer=null, _retryDelay=0, _confirmTimer=null;
+
+/* ============================================================
+   שרידות רענון — הממתינים נשמרים בדפדפן
+   ------------------------------------------------------------
+   _pending חי בזיכרון בלבד. כל עוד הכתיבה מצליחה זה מספיק, אבל כשהיא נכשלת
+   (רשת חלשה בטלפון, או מסמך שחרג מהתקרה) העריכה קיימת *רק* בלשונית הפתוחה:
+   רענון, סגירת הדפדפן, או השהיית הלשונית ע"י אנדרואיד — והכול נמחק. זה בדיוק
+   מה שקורה אחרי ייבוא גדול מהטלפון: "העליתי, לא הסתנכרן, ורענון ביטל הכול".
+   שים לב שהמנעול-נגד-דריסה כותב בטרנזקציה (runTransaction), וטרנזקציה — בשונה
+   מ-setDoc — אינה נכנסת לתור הכתיבות הקבוע של Firestore ב-IndexedDB. כלומר אין
+   שום גיבוי מתחתינו: אם לא נשמור בעצמנו, אין מי שישמור.
+   לכן כל שינוי ב-_pending מסונכרן ל-localStorage, ובטעינה הבא שחוזרים אליו,
+   מוחלים אותו מעל מצב השרת ומנסים לכתוב שוב. מיזוג תלת-כיווני (prev→ours מול
+   השרת) ממשיך להגן: אם השרת כבר קיבל את העריכה היא משתחררת, ואם מישהו אחר
+   ערך את אותה רשומה בינתיים — נסוגים לטובתו, בדיוק כמו בזיכרון.
+   ============================================================ */
+const PENDING_LS_KEY = "rg-pending-v1";
+let _pendingOwner = "";        // האימייל שהעריכות שייכות לו — לא משחזרים לחשבון אחר
+let _pendingPersisted = true;  // האם ההצלה ל-localStorage הצליחה (מכסה מלאה → false)
+let _pendingRestored = 0;      // כמה עריכות שוחזרו מטעינה קודמת (לתצוגה בבאנר)
+let _pendingRestoredAt = 0;    // מתי נשמרו במקור
+let _pendingLoadedOnce = false;
+function _pendingPersist(){
+  if(!RESILIENT_SAVE) return;
+  try{
+    if(!_pending.size){ localStorage.removeItem(PENDING_LS_KEY); _pendingPersisted=true; return; }
+    const owner=((currentUser&&currentUser.email)||_pendingOwner||"").toLowerCase();
+    localStorage.setItem(PENDING_LS_KEY, JSON.stringify({ v:1, owner, ts:Date.now(), items:[..._pending.values()] }));
+    _pendingPersisted=true;
+  }catch(e){
+    // מכסת האחסון מלאה — לא מפילים את השמירה עצמה, אבל כן מפסיקים להבטיח שרענון בטוח
+    _pendingPersisted=false;
+    if(TEST_DB_MODE) dlog("⚠️ שמירת הממתינים בדפדפן נכשלה: "+((e&&e.message)||e));
+  }
+}
+function _pendingForget(){ try{ localStorage.removeItem(PENDING_LS_KEY); }catch(_){} _pendingPersisted=true; }
+/* שחזור חד-פעמי אחרי טעינה — נקרא כשכבר יש מצב-שרת ובסיס-השוואה טרי */
+function _pendingRestoreOnce(){
+  if(!RESILIENT_SAVE || _pendingLoadedOnce) return false;
+  _pendingLoadedOnce=true;
+  let raw=null; try{ raw=localStorage.getItem(PENDING_LS_KEY); }catch(_){ return false; }
+  if(!raw) return false;
+  let saved=null; try{ saved=JSON.parse(raw); }catch(_){ _pendingForget(); return false; }
+  const items=(saved&&Array.isArray(saved.items))?saved.items:[];
+  if(!items.length){ _pendingForget(); return false; }
+  const owner=((currentUser&&currentUser.email)||"").toLowerCase();
+  // עריכות של חשבון אחר על אותו מכשיר — לא שלנו לכתוב, ולא שלנו למחוק
+  if(saved.owner && owner && saved.owner!==owner) return false;
+  let n=0;
+  for(const it of items){
+    if(!it || !it.coll || !it.id) continue;
+    _pending.set(_pendKey(it.coll,it.id), { coll:it.coll, id:it.id, j:it.j??null, prev:it.prev??null });
+    n++;
+  }
+  if(!n){ _pendingForget(); return false; }
+  _pendingOwner=saved.owner||owner; _pendingRestored=n; _pendingRestoredAt=saved.ts||0;
+  if(TEST_DB_MODE) dlog("♻️ שוחזרו "+n+" עריכות ממתינות מטעינה קודמת");
+  return true;
+}
+let _pendingResumed=false;
+/* אחרי שחזור — מנסים לכתוב שוב מיד, ואומרים למשתמש שהעבודה שלו לא אבדה */
+function _pendingResume(){
+  if(_pendingResumed || !_pending.size) return;
+  _pendingResumed=true;
+  const n=_pendingRestored;
+  try{ toast(`שוחזרו ${n} שינויים שלא הספיקו לעלות לענן — מנסים לשמור שוב`); }catch(_){}
+  _retryDelay=0; save();
+}
 /* מעבר אוטומטי לכתיבה דרך REST כשכתיבת ה-SDK נתקעת על "מסנכרן" (ראו setSyncStatus).
    דוחף את הנתונים המקומיים כפי שהם — כדי לא לאבד עריכה שטרם עלתה לשרת. */
 async function recoverStuckWrite(){
@@ -1058,6 +1213,7 @@ function recordPending(){
   };
   add("stu",DB.students,_mergeBase.stu); add("gan",DB.gans,_mergeBase.gan);
   add("staff",DB.staff,_mergeBase.staff); add("mgmt",DB.management,_mergeBase.mgmt);
+  _pendingPersist(); // מציל את העריכה לדפדפן *לפני* הכתיבה — שגם קריסה/רענון עכשיו לא ימחקו אותה
 }
 /* החלת הממתינים מעל ה-DB המוצג (מגן מפני דריסת-סנאפשוט) + ניקוי מה שאושר בשרת.
    TTL=Infinity: לעולם לא נזרק בשקט — רק אישור-שרת (cj===j) או עריכת-אחר (yield) מנקים. */
@@ -1068,7 +1224,10 @@ function applyPending(){
   DB.gans       = _guardApplyList("gan",   DB.gans,       _pending, now, Infinity);
   DB.staff      = _guardApplyList("staff", DB.staff,      _pending, now, Infinity);
   DB.management = _guardApplyList("mgmt",  DB.management, _pending, now, Infinity);
-  if(TEST_DB_MODE && before!==_pending.size) dlog("  applyPending: "+before+"→"+_pending.size+" (אושרו/נסוגו "+(before-_pending.size)+")");
+  if(before!==_pending.size){ // חלק אושרו/נסוגו — עדכן את העותק בדפדפן כדי שלא נכתוב אותם שוב
+    if(TEST_DB_MODE) dlog("  applyPending: "+before+"→"+_pending.size+" (אושרו/נסוגו "+(before-_pending.size)+")");
+    _pendingPersist();
+  }
 }
 /* ניסיון-חוזר אוטומטי כל עוד יש ממתינים — נסיגה מדורגת (backoff) עד 30ש'. */
 function scheduleRetry(){
@@ -1084,12 +1243,12 @@ function retryNow(){ if(TEST_DB_MODE) dlog("👆 retryNow (ידני)"); if(!save
    אם משום-מה לא הגיע — נשחרר בכל זאת (הכתיבה כן הצליחה), כדי שלא יישאר "מסנכרן" תקוע. */
 function armConfirmSafety(){
   clearTimeout(_confirmTimer);
-  _confirmTimer=setTimeout(()=>{ _confirmTimer=null; if(RESILIENT_SAVE && _pending.size && !_saveFailed){ _pending.clear(); cancelRetry(); setSyncStatus("synced"); try{ route(); }catch(_){} } }, 15000);
+  _confirmTimer=setTimeout(()=>{ _confirmTimer=null; if(RESILIENT_SAVE && _pending.size && !_saveFailed){ _pending.clear(); _pendingForget(); cancelRetry(); setSyncStatus("synced"); try{ route(); }catch(_){} } }, 15000);
 }
 /* אחרי כל סנאפשוט/כתיבה: אם התנקו כל הממתינים — סיים מצב "טרם נשמר" והצג "נשמר". */
 function refreshPendingState(fromCache){
   if(!RESILIENT_SAVE) return;
-  if(!_pending.size){ _saveFailed=false; cancelRetry(); clearTimeout(_confirmTimer); _confirmTimer=null; setSyncStatus(fromCache?"offline":"synced"); }
+  if(!_pending.size){ _saveFailed=false; _pendingRestored=0; _pendingForget(); cancelRetry(); clearTimeout(_confirmTimer); _confirmTimer=null; setSyncStatus(fromCache?"offline":"synced"); }
 }
 /* כשהרשת חוזרת (מצב-טיסה כובה, סלולרי חזר) — נסה מיד לשמור את הממתינים. */
 if(typeof window!=="undefined") window.addEventListener("online", ()=>{
@@ -1099,15 +1258,31 @@ if(typeof window!=="undefined") window.addEventListener("online", ()=>{
 function hideOfflineBanner(){ const b=$("#offlineBanner"); if(b) b.style.display="none"; }
 function showOfflineBanner(){
   const b=$("#offlineBanner"); if(!b) return;
-  b.innerHTML=`<div style="background:var(--bad-soft);color:var(--bad);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;font-weight:600">
-    <div style="flex:1;min-width:240px">
-      ⚠️ <b>אין כרגע חיבור לענן.</b> המידע שהזנת שמור ובטוח — הוא פשוט עדיין לא מתעדכן אצל אחרים. נסה/י את השלבים לפי הסדר, ואחרי כל שלב הסתכל/י על הכיתוב למעלה — אם הפך ל<b>"נשמר בענן"</b> הכול תקין:
+  // מה באמת קרה: כשל *כתיבה* מוסבר גובר על ההנחה הכללית של "אין רשת". השלבים של
+  // החלפת Wi-Fi נכונים רק לתקלת רשת — בשגיאה קשיחה הם רק שולחים לרדוף אחרי הרוח.
+  const errHtml = saveErrHe();
+  const hard = !!lastSaveError && saveErrIsHard();
+  const safeLine = _pendingPersisted
+    ? `המידע שהזנת <b>שמור במכשיר</b> — הוא לא ייעלם ברענון או בסגירת הדף, הוא פשוט עדיין לא מתעדכן אצל אחרים.`
+    : `⚠️ <b>אחסון הדפדפן מלא ולא הצלחנו לגבות את השינוי במכשיר.</b> אל תסגור/י את הדף עד שהחיווי למעלה יהפוך ל"נשמר בענן".`;
+  const restoredLine = _pendingRestored
+    ? `<div style="margin-top:6px;font-weight:500">♻️ ${_pendingRestored} שינויים מטעינה קודמת שוחזרו ומנוסים שוב עכשיו.</div>` : "";
+  const head = hard
+    ? `⚠️ <b>השמירה לענן נדחתה — זו אינה בעיית רשת.</b> ${safeLine}`
+    : `⚠️ <b>אין כרגע חיבור לענן.</b> ${safeLine} נסה/י את השלבים לפי הסדר, ואחרי כל שלב הסתכל/י על הכיתוב למעלה — אם הפך ל<b>"נשמר בענן"</b> הכול תקין:`;
+  const steps = hard ? "" : `
       <ol style="margin:6px 0 0;padding-inline-start:20px;font-weight:500;line-height:1.7">
         <li>לחצ/י על הכפתור <b>"רענן"</b> כאן למטה.</li>
         <li>אם את/ה על <b>Wi-Fi</b> — כבה/י אותו ועבור/עברי לאינטרנט של הטלפון (גלישה סלולרית); ואם את/ה כבר על סלולרי — נסה/י Wi-Fi.</li>
         <li>סגור/י לגמרי את הדף (או האפליקציה) ופתח/י מחדש את הקישור.</li>
         <li>נסה/י לפתוח את אותו קישור ב<b>דפדפן אחר</b> (למשל Chrome).</li>
-      </ol>
+      </ol>`;
+  b.innerHTML=`<div style="background:var(--bad-soft);color:var(--bad);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;font-weight:600">
+    <div style="flex:1;min-width:240px">
+      ${head}
+      ${errHtml?`<div style="margin-top:8px;font-weight:500;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px">${errHtml}</div>`:""}
+      ${restoredLine}
+      ${steps}
       <div style="margin-top:8px;font-weight:500">כדי לדעת בדיוק מה הבעיה — לחצ/י על <b>"בדיקת חיבור"</b>:</div>
       <div id="ob-result" style="margin-top:6px;font-weight:500"></div>
       <div style="margin-top:6px;font-weight:500">עדיין תקוע אחרי הכול? עדכן/י את המנהל (עם צילום מסך של הבדיקה) — ונטפל בזה יחד.</div>
@@ -1172,6 +1347,7 @@ async function loadViaRest(){
     cloudDocs=map; serverConfirmed=true;
     knownStudentDocs.clear(); [...map.keys()].forEach(id=>{ if(id.startsWith("students_")) knownStudentDocs.add(id); });
     enterRestMode(); rebuildDB(cloudDocs); refreshMergeBase(); maybeMigrateBranding(); maybeCleanupNewModel();
+    if(_pendingRestoreOnce()){ applyPending(); _pendingResume(); } // גם במצב החלופי — לא מאבדים עריכה שטרם עלתה
     if(!enforceAccess()) return; // חסימת התחברות Google לא-מורשית גם במצב חלופי
     hideOfflineBanner(); _offlineDismissed=true; setSyncStatus("synced"); route();
     toast("הנתונים נטענו (מצב חלופי) — אפשר גם לערוך");
@@ -1262,7 +1438,9 @@ async function _restMergeStudents(base, hdr){
       const m=new Map(server.map(o=>[o.id,o]));
       for(const s of adds) m.set(s.id,s);
       for(const rid of rms) m.delete(rid);
-      const p=await fetch(_condUrl(base,id,g.updateTime),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields({year:y,students:[...m.values()]})}) });
+      const payload={ year:y, students:[...m.values()] };
+      assertFsDocFits(id, payload, `בשנת ${y} יש ${payload.students.length} תלמידות. `+DOC_FULL_HOWTO);
+      const p=await fetch(_condUrl(base,id,g.updateTime),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(payload)}) });
       if(p.ok){ knownStudentDocs.add(id); done=true; break; }
       if(p.status===409||p.status===412) continue;
       throw new Error("restMerge "+id+" ("+p.status+")");
@@ -1459,7 +1637,7 @@ async function testCloudConnection(){
   const netBlocked=/failed to fetch|networkerror|load failed|type ?error|err_|ERR_/i.test(realMsg);
   let msg = email ? `מחובר/ת כ: <b dir="ltr">${esc(email)}</b>.<br>` : `${R("לא מחובר/ת לחשבון")} — יש להתחבר עם חשבון Google מורשה.<br>`;
   if(email){
-    msg += realOk ? `בדיקת חיבור אמיתית לשרת: ${G("עברה ✓")} — החיבור תקין, אפשר לשמור.<br>`
+    msg += realOk ? `בדיקת חיבור אמיתית לשרת: ${G("עברה ✓")} — הרשת תקינה${lastSaveError?", ולכן הכשל אינו נובע מהחיבור (ראו למטה)":", אפשר לשמור"}.<br>`
       : `בדיקת חיבור אמיתית לשרת: ${R("נכשלה")} ${esc(realMsg)} — ${netBlocked?"הרשת/הדפדפן חוסמים כרגע את החיבור ל-Firebase. עברו ל<b>רשת סלולרית</b> (או להיפך), כבו <b>VPN/סינון תוכן</b>, או נסו <b>דפדפן/מכשיר אחר</b>":"נסו שוב מאוחר יותר"}.<br>`;
   }
   msg += reachable ? `רשת (בדיקה בסיסית): ${G("הדומיין נגיש")}.<br>` : `רשת (בדיקה בסיסית): ${R("הדומיין חסום")} — עבור/עברי לרשת אחרת (חבילת גלישה) או דפדפן אחר.<br>`;
@@ -1467,6 +1645,16 @@ async function testCloudConnection(){
   const totalStu=DB.students.length, totalGan=DB.gans.length;
   msg += `נתונים מהשרת: ${serverConfirmed? G("התקבלו ✓") : R("טרם התקבלו ✗")} · נטענו <b>${totalStu}</b> תלמידות ו-<b>${totalGan}</b> גנים.<br>`;
   msg += `שנה נבחרת: <b>${esc(DB.activeYear)}</b> · בשנה זו: <b>${studentsOfYear().length}</b> תלמידות.<br>`;
+  // תפוסת מסמך השנה מול תקרת Firestore — הגורם השקט שמפיל שמירות דווקא כשהמאגר גדל
+  try{
+    const u=studentsDocUsage();
+    const pct=Math.round(u.pct*100);
+    msg += `תפוסת מסמך השנה: <b>${Math.round(u.bytes/1024)}KB מתוך 1024KB (${pct}%)</b>` +
+           (u.pct>=1 ? ` — ${R("מעל התקרה! השמירה תידחה")}` : u.pct>=FS_DOC_WARN ? ` — ${R("מתקרב לתקרה")}` : ` ${G("תקין")}`) + `.<br>`;
+  }catch(_){}
+  // עריכות שטרם עלו — כולל כאלה ששוחזרו מטעינה קודמת
+  if(_pending.size) msg += `עריכות שטרם נשמרו בשרת: <b>${_pending.size}</b>${_pendingPersisted?" (מגובות במכשיר — רענון לא ימחק אותן)":` ${R("(לא הצלחנו לגבות במכשיר — אל תסגור/י את הדף)")}`}.<br>`;
+  if(lastSaveError) msg += `שגיאת שמירה אחרונה: ${saveErrHe()}<br>`;
   const e=lastSyncError.toLowerCase();
   if(lastSyncError){
     const he = e.includes("permission") ? "אין הרשאה לחשבון הזה לגשת לנתונים — יש לעדכן את הרשאות השרת (Firestore rules) / להוסיף את המשתמש/ת"
@@ -1531,8 +1719,17 @@ async function runPush(){
   if(RESILIENT_SAVE) recordPending(); // רשום את מה שעומדים לכתוב *לפני* הכתיבה (בסיס = מצב השרת שלפנינו)
   if(TEST_DB_MODE) dlog("▶ runPush: pending="+_pending.size+" restMode="+restMode+" online="+navigator.onLine);
   let ok=false;
-  try{ await pushAll(); ok=true; if(TEST_DB_MODE) dlog("  pushAll OK"); if(restMode) setSyncStatus("synced"); }
-  catch(e){ console.error(e); if(TEST_DB_MODE) dlog("  pushAll FAIL: "+(e&&(e.code||e.message)||e)); if(!RESILIENT_SAVE){ setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); } }
+  try{ await pushAll(); ok=true; lastSaveError=null; _lastSaveErrShown=""; if(TEST_DB_MODE) dlog("  pushAll OK"); if(restMode) setSyncStatus("synced"); }
+  catch(e){
+    console.error(e);
+    lastSaveError={ code:(e&&e.code)||"", message:(e&&e.message)||String(e), ts:Date.now() };
+    if(TEST_DB_MODE) dlog("  pushAll FAIL: "+(e&&(e.code||e.message)||e));
+    // שגיאה שאינה חולפת (מסמך מלא / אין הרשאה) לא תיפתר בניסיון-חוזר שקט — אומרים אותה מיד.
+    // פעם אחת לכל שגיאה: הניסיון-החוזר רץ שוב ושוב, ואין טעם להקפיץ את אותה הודעה כל 30ש'.
+    const sig=lastSaveError.code+"|"+lastSaveError.message;
+    if(saveErrIsHard() && sig!==_lastSaveErrShown){ _lastSaveErrShown=sig; toast("השמירה נדחתה: "+lastSaveError.message, 8000); }
+    else if(!RESILIENT_SAVE){ setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
+  }
   finally{
     savePending=false;
     if(!restMode){ rebuildDB(cloudDocs); if(RESILIENT_SAVE) applyPending(); else applyGuard(); } // הצג מצב-שרת + החזק עריכות ממתינות
@@ -1689,7 +1886,10 @@ async function _txnMergeStudents(){
       const m=new Map(server.map(o=>[o.id,o]));
       for(const s of adds) m.set(s.id, s);
       for(const id of rms) m.delete(id);
-      tx.set(ref, { year:y, students:[...m.values()] });
+      const payload={ year:y, students:[...m.values()] };
+      // עוצרים לפני השרת: כך השגיאה אומרת "המסמך מלא" ולא "כשל שמירה" עלום
+      assertFsDocFits(docId, payload, `בשנת ${y} יש ${payload.students.length} תלמידות. `+DOC_FULL_HOWTO);
+      tx.set(ref, payload);
     });
     knownStudentDocs.add(docId);
   }
@@ -1970,7 +2170,7 @@ function migrateAssignments(){
 /* ---------- כלי עזר ---------- */
 const $  = (s,r=document)=>r.querySelector(s);
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+function toast(msg, ms){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"), ms||2200); } // ms — להודעות ארוכות שצריך זמן לקרוא
 function ganById(id){ return DB.gans.find(g=>g.id===id); }
 function ganName(id){ const g=ganById(id); return g? (g.ganName || g.teacherName || ("גן "+ (g.ganSymbol||g.internalSymbol||""))) : "—"; }
 /* שם איש/אשת צוות: משפחה + פרטי, עם נפילה לשם ישן (סעיף 1) */
@@ -4300,6 +4500,13 @@ function renderActivityPanel(){
   }</tbody></table></div>`;
 }
 window.addEventListener("beforeunload", ()=>{ try{ clearPresence(); }catch(_){} });
+/* אזהרה לפני סגירה/רענון — *רק* כשלא הצלחנו לגבות את הממתינים במכשיר (מכסת אחסון מלאה).
+   כשהגיבוי הצליח הרענון בטוח לחלוטין, ואזהרה כזו תהיה רעש מיותר. */
+window.addEventListener("beforeunload", ev=>{
+  if(!RESILIENT_SAVE || !_pending.size || _pendingPersisted) return;
+  ev.preventDefault(); ev.returnValue="";
+  return "";
+});
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState!=="hidden") writePresence(); });
 function startDataSync(){
   if(dataUnsub) return;
@@ -4322,9 +4529,13 @@ function startDataSync(){
     if(savePending) return; // בזמן שמירה מקומית — אל תדרוס שינויים שטרם נכתבו
     rebuildDB(cloudDocs);
     if(!md.hasPendingWrites) refreshMergeBase(); // בסיס-השוואה למיזוג = מצב שרת מאושר (לפני הכיסוי האופטימי)
+    // עריכות שלא הספיקו לעלות לפני רענון/סגירה — נטענות פעם אחת מול מצב-שרת מאושר,
+    // ומכאן ממשיכות במסלול הרגיל של הממתינים (מיזוג תלת-כיווני + ניסיון-חוזר).
+    const _restored = serverConfirmed && _pendingRestoreOnce();
     applyGuard();   // שומר-ראש (SYNC_GUARD): השאר עריכות שטרם הודהדו; שחרר את שאושרו/שנדחו
     applyPending(); // שמירה עמידה (RESILIENT_SAVE): החזק עריכות ממתינות מעל הסנאפשוט; שחרר מה שאושר בשרת
     refreshPendingState(md.fromCache); // אם כל הממתינים אושרו → סיים "מסנכרן"/"טרם נשמר" והצג "נשמר"
+    if(_restored) _pendingResume(); // ...ואם נשארו — כתוב אותם עכשיו
     maybeMigrateBranding();
     maybeCleanupNewModel();
     if(!md.fromCache) maybeDailyBackup(); // גיבוי אוטומטי יומי (רק לאחר אישור מהשרת)
@@ -4339,7 +4550,7 @@ function startDataSync(){
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
   startPresence(); // נוכחות: "מי מחובר עכשיו"
 }
-function stopDataSync(){ _accessDenied=false; stopPresence(); clearPresence(); if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); _guard.clear(); _pending.clear(); _saveFailed=false; cancelRetry(); clearTimeout(_confirmTimer); _confirmTimer=null; cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
+function stopDataSync(){ _accessDenied=false; stopPresence(); clearPresence(); if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); _guard.clear(); _pending.clear(); _pendingLoadedOnce=false; _pendingRestored=0; _saveFailed=false; cancelRetry(); /* העותק ב-localStorage *לא* נמחק: עריכה שטרם עלתה תשוחזר בהתחברות הבאה */ clearTimeout(_confirmTimer); _confirmTimer=null; cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
 
 function boot(){
   try{ history.replaceState({rgTab:active, rgBase:true},""); }catch(_){} // מצב בסיס לניהול כפתור "חזור" בנייד
@@ -6406,6 +6617,7 @@ function openImport(){
     if(!toAdd.length){ toast("אין תלמידות חדשות לייבוא"); return; }
     toAdd.forEach(st=>DB.students.push(st));
     save(); closeModal(); route(); toast(`יובאו ${toAdd.length} תלמידות לשנת ${DB.activeYear}`);
+    warnIfYearDocNearFull(); // ייבוא מרוכז הוא הרגע שבו מסמך השנה קופץ — כאן שווה להזהיר מראש
   };
 }
 
