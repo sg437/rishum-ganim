@@ -1024,6 +1024,54 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   g2['ברשימה ולא מסומנות'] === 0
     ? ok('אחרי התיקון — אין יותר חריגות') : bad('נשארו חריגות', [JSON.stringify(g2)]);
 
+  console.log('\n27. ייצוא לפי מאפיין — "בלי מספר זהות"');
+  /* אותן 8 תלמידות ממקטע 26 (מהן 2 בלי ת"ז), אחרי שהתיקון סימן שלוש כקלוטות.
+     המטרה: להוציא לאקסל בדיוק את מי שאין לה ת"ז, כדי להשלים אותן ולסגור את
+     הפער. המסנן חייב להיות אותו STU_FLAGS של המסך — לא עותק שיכול לסטות. */
+  await p.evaluate(() => { __set('activeEdu', null); navToTab('students'); });
+  await p.waitForTimeout(400);
+  await p.evaluate(() => document.querySelector('#exportStu').click());
+  await p.waitForTimeout(400);
+
+  const flagOpts = await p.evaluate(() => {
+    const sel = document.querySelector('#x-flag');
+    return sel ? [...sel.options].map(o => o.value) : null;
+  });
+  (flagOpts && flagOpts.includes('noTz'))
+    ? ok('נוסף מסנן "מאפיין" לחלון הייצוא, עם "בלי מספר זהות"') : bad('אין מסנן מאפיין בייצוא', [JSON.stringify(flagOpts)]);
+  const sameAsScreen = await p.evaluate(() => {
+    const a = [...document.querySelector('#x-flag').options].map(o => o.value).filter(Boolean).sort();
+    return JSON.stringify(a);
+  });
+  const screenOpts = await p.evaluate(() => {
+    /* אותה רשימה בדיוק כמו במסך התלמידות — שתיהן נגזרות מ-STU_FLAGS */
+    return JSON.stringify(['campEndYear','campHanukkah','campNisan','insurancePaid','insuranceUnpaid','noTz','retention','retentionNext','tzaharon'].sort());
+  });
+  sameAsScreen === screenOpts
+    ? ok('אותן אפשרויות בדיוק כמו במסך התלמידות') : bad('הרשימות נבדלו', [sameAsScreen, screenOpts]);
+
+  const res = await p.evaluate(() => {
+    document.querySelector('#x-flag').value = 'noTz';
+    document.querySelector('#x-preview').click();
+    return new Promise(r => setTimeout(() => {
+      const rows = [...document.querySelectorAll('#x-out tbody tr')].map(tr => tr.textContent.replace(/\s+/g, ' ').trim());
+      r({ n: rows.length, rows, hint: (document.querySelector('#x-out .hint') || {}).textContent || '' });
+    }, 350));
+  });
+  res.n === 2 ? ok('הייצוא מסונן ל-2 התיקים שאין להם ת"ז') : bad('מספר השורות שגוי', [JSON.stringify(res)]);
+  res.rows.every(r => /בליתז/.test(r))
+    ? ok('אלה בדיוק התיקים הנכונים') : bad('סוננו תיקים שגויים', [JSON.stringify(res.rows)]);
+
+  /* וללא המסנן — כל התיקים חוזרים, כלומר המסנן אינו "דביק" */
+  const all = await p.evaluate(() => {
+    document.querySelector('#x-flag').value = '';
+    document.querySelector('#x-preview').click();
+    return new Promise(r => setTimeout(() =>
+      r(document.querySelectorAll('#x-out tbody tr').length), 350));
+  });
+  all === 8 ? ok('ביטול המסנן מחזיר את כל 8 התיקים') : bad('הביטול לא עבד', [String(all)]);
+  await p.evaluate(() => closeModal());
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
