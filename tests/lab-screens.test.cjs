@@ -1202,6 +1202,80 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     }
   }
 
+  /* --- 12. זכוכית המגדלת בשדות החיפוש ----------------------------------
+     שני דברים שנשברו יחד: כללי המעבדה דרסו בקיצור `padding` את
+     ה-`padding-inline-start:36px` שמפנה מקום לאייקון, ולכן הטקסט שהוקלד
+     נכנס *מתחת* לזכוכית והיא "נשארה" עליו; והאייקון עצמו היה האמוג'י 🔎,
+     שהדפדפן מצייר ככלי כחול ולא כקו דק כמו בקנבס.
+
+     לשדה שתי דרכי פריסה, ושתיהן נבדקות: בשורת השבבים העטיפה היא flex
+     והזכוכית פריט אמיתי בה (נבדק בגאומטריה בפועל), ובשדה הרגיל הזכוכית
+     מרחפת מעל השדה ומקומה נובע מה-padding (נבדק במידות עצמן, ולכן גם
+     כשהשדה אינו על המסך — במעבדה שדה החיפוש של שיבוץ הצוות מוסתר). */
+  {
+    const bads = [];
+    const paths = { fbar: 0, plain: 0 };
+    for (const tab of ['students', 'gans', 'staff', 'assign', 'tzaharon']) {
+      if (tab === 'tzaharon') {
+        /* צהרונים אינו לשונית ראשית אלא לשונית משנה תחת התלמידות */
+        await goTab(p, 'students'); await p.waitForTimeout(700);
+        await p.evaluate(() => {
+          const b = document.querySelector('#tabs #stuSubnav [data-tab="tzaharon"]');
+          if (b) b.click();
+        });
+      } else {
+        await goTab(p, tab);
+      }
+      await p.waitForTimeout(700);
+
+      const res = await p.evaluate(() => {
+        const num = v => parseFloat(v) || 0;
+        return [...document.querySelectorAll('.search-field')].map(sf => {
+          const mag = sf.querySelector('.mag'), inp = sf.querySelector('input');
+          if (!mag || !inp) return null;
+          const ms = getComputedStyle(mag), cs = getComputedStyle(inp);
+          const o = { id: inp.id, floats: ms.position === 'absolute',
+                      mask: ms.maskImage || ms.webkitMaskImage || 'none',
+                      fontSize: num(ms.fontSize),
+                      pad: num(cs.paddingInlineStart),
+                      need: num(ms.insetInlineStart) + num(ms.width) + 4,
+                      overlap: null };
+          if (!sf.getClientRects().length) return o;
+          inp.value = 'שרה בת אהרן';                 /* הטקסט שעליו נשארה הזכוכית */
+          const ir = inp.getBoundingClientRect(), mr = mag.getBoundingClientRect();
+          const rtl = getComputedStyle(document.documentElement).direction === 'rtl';
+          /* תחום הטקסט = תיבת התוכן של השדה, בלי ה-padding משני צדדיו */
+          const from = rtl ? ir.left + num(cs.paddingInlineEnd) : ir.left + o.pad;
+          const to   = rtl ? ir.right - o.pad : ir.right - num(cs.paddingInlineEnd);
+          o.overlap = Math.min(mr.right, to) - Math.max(mr.left, from);
+          return o;
+        }).filter(Boolean);
+      });
+
+      res.forEach(r => {
+        const who = tab + '/' + (r.id || '?');
+        paths[r.floats ? 'plain' : 'fbar']++;
+        if (!/^url\(/.test(r.mask))
+          bads.push(who + ': האייקון אינו מצויר כמסכה (' + r.mask + ')');
+        if (r.fontSize > 0)
+          bads.push(who + ': תו האמוג\'י עדיין נראה (font-size ' + r.fontSize + 'px)');
+        if (r.overlap !== null && r.overlap > 0.5)
+          bads.push(who + ': האייקון חופף לטקסט ב-' + r.overlap.toFixed(1) + 'px');
+        if (r.floats && r.pad < r.need)
+          bads.push(who + ': אין מקום לאייקון — padding ' + r.pad + 'px מול ' + r.need + 'px');
+      });
+    }
+
+    const seen = paths.fbar + paths.plain;
+    if (!seen)                            bad('לא נמצא אף שדה חיפוש לבדיקה');
+    else if (bads.length)                 bad('זכוכית המגדלת בשדות החיפוש', bads.slice(0, 6));
+    /* אם דרך פריסה שלמה נעלמה מהמסכים, הבדיקה שמרה על ✅ בלי לבדוק אותה */
+    else if (!paths.fbar || !paths.plain) bad('הבדיקה לא ראתה את שתי דרכי הפריסה',
+      ['בשורת השבבים: ' + paths.fbar + ' · רגיל: ' + paths.plain]);
+    else ok('זכוכית המגדלת ב-' + seen + ' שדות חיפוש (' + paths.fbar +
+            ' בשורת השבבים, ' + paths.plain + ' רגילים): קו דק, ומחוץ לשטח הטקסט');
+  }
+
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));
   else ok('אף שגיאת JS לא נזרקה');

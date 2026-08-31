@@ -82,6 +82,11 @@ html.ui-lab[data-theme="light"]{
   /* צבעי קטגוריה לגילאים ולמפה */
   --lab-cat1:#2c6a4c; --lab-cat2:#e0a53a; --lab-cat3:#3f7cac;
   --lab-cat4:#7b5ea7; --lab-cat5:#c65d5d; --lab-cat6:#4bb1a6;
+
+  /* זכוכית המגדלת של שדות החיפוש — קו דק במקום האמוג'י הכחול של המערכת.
+     מוגדרת כמסכה (mask) ולא כתמונה, ולכן היא נצבעת ב-currentColor ומתחלפת
+     מאליה בין מצב יום ללילה. */
+  --lab-mag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.1' stroke-linecap='round'%3E%3Ccircle cx='10.4' cy='10.4' r='6.6'/%3E%3Cpath d='M15.3 15.3 20.6 20.6'/%3E%3C/svg%3E");
 }
 
 /* מצב לילה.
@@ -1312,7 +1317,7 @@ html.ui-lab .la-find{
   background:var(--lab-surface-warm); border:1px solid var(--border);
   border-radius:11px; padding:7px 11px;
 }
-html.ui-lab .la-findmag{ font-size:.85rem; opacity:.6; flex:0 0 auto }
+html.ui-lab .la-findmag{ flex:0 0 auto }   /* הציור עצמו — במקטע שדות החיפוש */
 html.ui-lab .la-findi{
   flex:1; min-width:0; border:0; background:none; font:inherit;
   font-size:.85rem; color:var(--ink); outline:none;
@@ -1459,7 +1464,23 @@ html.ui-lab .btn.danger{ background:var(--bad-soft); color:var(--bad) }
 
 /* סרגל חיפוש וסינון */
 html.ui-lab .search-field{ border-radius:12px }
-html.ui-lab .search-field input{ border-radius:12px; padding:11px 12px }
+/* ⚠️ ה-padding כאן הוא קיצור, ולכן הוא מוחק את ה-padding-inline-start:36px
+   שבעיצוב הקיים — זה שמפנה מקום לזכוכית המגדלת. בלי ההשלמה שבשורה הבאה
+   הטקסט מתחיל מתחת לאייקון, והאייקון "נשאר" על מה שמקלידים. */
+html.ui-lab .search-field input{ border-radius:12px; padding:11px 12px; padding-inline-start:38px }
+
+/* זכוכית מגדלת אחידה לכל שדות החיפוש: קו דק בצבע הטקסט העמום, במקום
+   האמוג'י 🔎 שהדפדפן מצייר כאייקון כחול. התו עצמו נשאר בקוד המשותף (ולכן
+   העיצוב הקיים אינו מושפע) — כאן רק מאפסים לו את הגודל ומציירים במקומו. */
+html.ui-lab .search-field .mag,
+html.ui-lab .la-findmag{
+  display:block; width:15px; height:15px; font-size:0; line-height:0;
+  color:var(--muted); background:currentColor;
+  -webkit-mask-image:var(--lab-mag);         mask-image:var(--lab-mag);
+  -webkit-mask-repeat:no-repeat;             mask-repeat:no-repeat;
+  -webkit-mask-position:center;              mask-position:center;
+  -webkit-mask-size:contain;                 mask-size:contain;
+}
 html.ui-lab .filter-toggle{
   border-radius:999px; padding:9px 16px; font-weight:600;
   background:var(--surface); border:1px solid var(--lab-border-strong); color:var(--ink-soft);
@@ -2223,12 +2244,19 @@ html.ui-lab .searchbar.lab-fbar{
 }
 /* תווית "סינון:" מיותרת — השבבים מדברים בעד עצמם, כמו בלוח */
 html.ui-lab .lab-fbar > span:not(.fchip){ display:none }
+/* כאן המסגרת יושבת על העטיפה והשדה עצמו שקוף, ולכן האייקון אינו צריך
+   לרחף מעל השדה: העטיפה היא flex והזכוכית היא פריט אמיתי בשורה. כך אי
+   אפשר שהטקסט ייכנס תחתיה — לא בהקלדה ארוכה, לא בהגדלת גופן ולא בזום. */
 html.ui-lab .lab-fbar .search-field{
+  display:flex; align-items:center; gap:8px;
   flex:0 1 320px; min-width:180px; border-radius:99px;
   background:var(--surface); border:1px solid var(--border); padding:0 14px;
 }
-html.ui-lab .lab-fbar .search-field .mag{ opacity:.45; font-size:.9rem; order:9 }
+html.ui-lab .lab-fbar .search-field .mag{
+  position:static; transform:none; flex:0 0 auto; order:0;
+}
 html.ui-lab .lab-fbar .search-field input{
+  flex:1; min-width:0;
   border:0; background:none; box-shadow:none; padding:10px 0; font-size:.88rem;
 }
 html.ui-lab .lab-fbar .search-field input:focus{ outline:none }
