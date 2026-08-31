@@ -10746,14 +10746,23 @@ function wireMuniSection(root, inModal){
       /* פילוח לפי סוג חינוך — מסך התלמידות מציג סוג אחד בכל פעם, והקובץ כולל
          את כולם. בלי הפילוח הזה הפער בין המספרים נשאר בלתי ניתן לפענוח. */
       const cmpEdu={}, bumpC=(o,k)=>{ o[k]=(o[k]||0)+1; };
+      /* ביקורת שורה-לשורה: לכל ת"ז בקובץ — מה בדיוק מצבה אצלנו. זה המסמך
+         שסוגר כל ויכוח על מספרים, כי אפשר לפתוח אותו באקסל ולסנן בעצמך. */
+      const audit=[];
+      let unmarked=0;   // בקובץ, קיימת אצלנו, ואינה מסומנת קלוטה
       nums.forEach(tz=>{
         const rec=recs.get(tz)||{tz};
         const sym=String(rec.symbol||"").trim();
         if(sym){ muniBySym.set(sym,(muniBySym.get(sym)||0)+1); symsSeen.add(sym); } else noSym++;
         const s=byTz.get(tzKey(tz));
-        if(!s){ missing.push(tz); return; }
+        if(!s){ missing.push(tz); audit.push([tz,"","","","אינה בתוכנה כלל",sym]); return; }
         if(s.finished) leftCmp++; else bumpC(cmpEdu, eduLabel(s));
         found++;
+        const st = !s.absorbedMunicipality ? "בתוכנה — אינה מסומנת קלוטה"
+                 : s.finished              ? "מסומנת קלוטה — אך סיימה ועזבה"
+                 :                           "מסומנת קלוטה";
+        if(!s.absorbedMunicipality) unmarked++;
+        audit.push([tz, s.lastName||"", s.firstName||"", eduLabel(s), st, sym]);
         const ourSym=ganSymbolText(ganById(s.ganId));
         if(ourSym) symsSeen.add(ourSym);
         if(sym && ourSym!==sym) diffs.push({ s, muniSym:sym, ourSym });
@@ -10768,6 +10777,7 @@ function wireMuniSection(root, inModal){
           <div class="stat"><div class="k">אינן בתוכנה כלל</div><div class="v">${missing.length}</div></div>
           <div class="stat ${diffs.length?'bad':''}"><div class="k">בסמל שונה</div><div class="v">${diffs.length}</div></div>
           <div class="stat"><div class="k">סיימו ועזבו אצלנו</div><div class="v">${leftCmp}</div></div>
+          <div class="stat ${unmarked?'bad':''}"><div class="k">בתוכנה ולא מסומנות</div><div class="v">${unmarked}</div></div>
         </div>
         ${noSym?`<div class="hint" style="margin-top:8px">${noSym} שורות בקובץ בלי סמל מוסד — הן נספרות ב"ברשימת העירייה" אך לא בטבלת הסמלים. ודא/י שמופתה עמודת "סמל מוסד".</div>`:''}
         ${(noTz&&noTz.length)?`<div class="note" style="margin-top:8px">${noTz.length} שורות בקובץ בלי מספר זהות — לא נספרו כלל. ההתאמה היא לפי ת"ז בלבד.</div>`:''}
@@ -10790,6 +10800,10 @@ function wireMuniSection(root, inModal){
               <tr style="border-top:2px solid var(--border)"><td><b>סה״כ שורות בקובץ</b></td><td><b>${fileRows}</b></td><td class="hint">כולל כפולות ושורות בלי ת"ז</td></tr>
             </tbody>`)}
             <div class="note" style="margin-top:8px">אם המספר שאת/ה סופר/ת באקסל גדול מ-<b>${nums.length}</b>, ההפרש הוא <b>שורות כפולות או שורות בלי ת"ז</b> — הן נספרות באקסל פעם אחת כל אחת, ובתוכנה לא.</div>
+            <div class="row" style="margin-top:10px">
+              <button class="btn" id="muni-dl-audit" type="button">⬇️ הורדת מאזן מלא — שורה לכל ת"ז מהקובץ</button>
+            </div>
+            <div class="hint" style="margin-top:4px">קובץ אקסל עם <b>${audit.length}</b> שורות — לכל מספר זהות שבקובץ, מה מצבו אצלנו. אפשר לסנן בעצמך לפי עמודת "מצב" ולראות בדיוק לאן הלכה כל שורה.</div>
           </div>`;
         })()}
         ${symBlockHTML(symRows)}
@@ -10799,6 +10813,8 @@ function wireMuniSection(root, inModal){
         ${!symRows.length?`<div class="empty" style="margin-top:12px">לא נמצא סמל מוסד בקובץ ולא בשיבוצים שלנו. כדי לקבל את הסיכום צריך שבקובץ תהיה עמודה שממופה ל"סמל מוסד", ושבכרטיסי הגנים יהיה מלא "סמל הגן".</div>`:''}`;
       wireSymDownloads(symRows, diffs);
       wireDownload("muni-dl-nf", "ת-ז מהעירייה שאינן בתוכנה.csv", ['ת"ז'], missing.map(t=>[t]));
+      wireDownload("muni-dl-audit", "מאזן רשימת העירייה — שורה לכל ת-ז.csv",
+        ['ת"ז',"שם משפחה","שם פרטי","חינוך","מצב","סמל בעירייה"], audit);
       if(leftCmp) toast(`הופק סיכום ל-${symRows.length} סמלים · ${diffs.length} בסמל שונה · ${leftCmp} סיימו אצלנו`);
       else toast(`הופק סיכום ל-${symRows.length} סמלים · ${diffs.length} בסמל שונה`);
       return;
