@@ -748,6 +748,92 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   /שמירה בשם/.test(enc.modal) ? ok('החלון מסביר איך להסיר את ההגנה') : bad('אין הוראות בחלון');
   await p.evaluate(() => closeModal());
 
+  console.log('\n21. מאזן הקלוטות — סיימו ועזבו · שורות בלי ת"ז · תיקים בלי ת"ז');
+  /* התרחיש שדווח מהשטח: בקובץ העירייה 871 קלוטות ובתוכנה 861, בלי הסבר לפער.
+     שלושת המקורות לפער נבדקים כאן יחד — מי שסיימה אצלנו (מוסתרת במסך התלמידות),
+     שורה בקובץ בלי ת"ז (נשמטה בשקט), ותיק אצלנו בלי ת"ז (אינו ניתן להתאמה
+     ולכן שורת העירייה פותחת לו כפילות). */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'a1',tz:'300000001',firstName:'רחל',lastName:'כהן',ganId:'g1'}),
+      mk({id:'a2',tz:'300000002',firstName:'שרה',lastName:'לוי',ganId:'g1',finished:true}),
+      mk({id:'a3',tz:'',firstName:'דבורה',lastName:'מזרחי',ganId:'g1'})];
+    DB.municipality={};
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('municipality'));
+  await p.waitForTimeout(300);
+  await load(p, [
+    'מספר זהות,שם משפחה,שם פרטי,סמל מוסד',
+    '300000001,כהן,רחל,111111',
+    '300000002,לוי,שרה,111111',
+    ',מזרחי,דבורה,111111',
+    '300000007,חדשה,מלכה,111111'
+  ].join('\n'));
+  await run(p);
+  const st21 = await stats(p);
+  const html21 = await p.evaluate(() => document.querySelector('#muni-result').innerHTML);
+
+  st21['סיימו ועזבו אצלנו'] === 1
+    ? ok('חלון חדש: "סיימו ועזבו אצלנו" סופר את מי שברשימה וכבר עזבה')
+    : bad('ספירת "סיימו ועזבו" שגויה', [JSON.stringify(st21)]);
+  /1 מהקלוטות בעירייה מסומנות אצלנו/.test(html21)
+    ? ok('מוצגת רשימת הקלוטות שסיימו, עם הורדה')
+    : bad('חסר הפירוט של מי שסיימה');
+
+  st21['ברשימת העירייה'] === 3
+    ? ok('שורה בלי ת"ז אינה נספרת כמספר זהות') : bad('ספירת הרשימה שגויה', [JSON.stringify(st21)]);
+  /1 שורות בקובץ העירייה בלי מספר זהות/.test(html21)
+    ? ok('שורה בקובץ בלי ת"ז מדווחת (ולא נשמטת בשקט)') : bad('השורה בלי ת"ז לא דווחה');
+  /שורה 4/.test(html21)
+    ? ok('מספר השורה בקובץ מוצג לאיתור מהיר') : bad('מספר השורה חסר');
+
+  /1 תיקים אצלנו בשנה זו בלי מספר זהות/.test(html21)
+    ? ok('אזהרה: תיק אצלנו בלי ת"ז — מקור הכפילויות') : bad('אין אזהרה על תיק בלי ת"ז');
+  /פותחת תיק חדש כפול/.test(html21)
+    ? ok('האזהרה מסבירה למה נפתחות כפילויות') : bad('ההסבר על הכפילות חסר');
+  /מאזן הקובץ/.test(html21)
+    ? ok('מוצג מאזן שמסביר כל שורה בקובץ') : bad('אין שורת מאזן');
+
+  /* תיק חדש שנפתח מרשימת הקלוטות — חייב להופיע כקלוט, ורק לא משובץ */
+  const nu = await stu(p, '300000007');
+  (nu && nu.absorbedMunicipality === true)
+    ? ok('תיק חדש מרשימת הקלוטות מסומן "קלוט בעירייה"') : bad('התיק החדש אינו מסומן קלוט');
+  (nu && nu.placed === false)
+    ? ok('...ואינו משובץ') : bad('התיק החדש נפתח כמשובץ');
+  /* מי שסיימה — עדיין מסומנת קלוט, כדי שהמספר מול העירייה יהיה נכון */
+  const fin = await stu(p, '300000002');
+  (fin && fin.absorbedMunicipality === true && fin.finished === true)
+    ? ok('מי שסיימה סומנה קלוט ונשארה "סיימה"') : bad('הסימון על מי שסיימה שגוי', [JSON.stringify(fin)]);
+
+  console.log('\n22. מסנן "בלי מספר זהות" במסך התלמידות');
+  await p.evaluate(() => navToTab('students'));
+  await p.waitForTimeout(300);
+  const hasOpt = await p.evaluate(() => {
+    const t = document.querySelector('#stuFilterToggle'); if (t) t.click();
+    return new Promise(r => setTimeout(() => {
+      const sel = document.querySelector('#f-flag');
+      r(sel ? [...sel.options].some(o => o.value === 'noTz') : false);
+    }, 300));
+  });
+  hasOpt ? ok('האפשרות קיימת במסנן "מאפיין"') : bad('המסנן לא נוסף');
+  const only = await p.evaluate(() => {
+    const sel = document.querySelector('#f-flag'); sel.value = 'noTz';
+    sel.dispatchEvent(new Event('change'));
+    return new Promise(r => setTimeout(() => {
+      const names = [...document.querySelectorAll('#stuTable tbody tr td:nth-child(2)')].map(x => x.textContent.trim());
+      r(names);
+    }, 300));
+  });
+  (only.length === 1 && /מזרחי/.test(only[0]))
+    ? ok('הסינון מציג רק את התיק שאין לו ת"ז') : bad('הסינון שגוי', [JSON.stringify(only)]);
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
