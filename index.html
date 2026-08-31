@@ -5480,10 +5480,16 @@ function noteMark(s){
 function renderStuSummary(){
   const el=$("#stuSummary"); if(!el) return;
   const base=studentsScopeBase();
-  const total=base.length;
-  const absorbed=base.filter(s=>s.absorbedMunicipality).length;
+  /* מי שסומנה "סיימה / יצאה" אינה נספרת באף משבצת — גם כשהסינון מציג אותה.
+     תיק שעזב אינו עבודה שממתינה: "לא קלוט" שמונה עוזבות שולח לטפל במי שכבר
+     איננה, וכך גם "ממתינות לשיבוץ". הן נשארות נגישות לגמרי דרך הסינון
+     ("שסיימו / יצאו") ודרך החיפוש — רק לא בספירה. */
+  const live=base.filter(s=>!s.finished);
+  const leftShown=base.length-live.length;   // כמה עוזבות מוצגות כרגע ואינן נספרות
+  const total=live.length;
+  const absorbed=live.filter(s=>s.absorbedMunicipality).length;
   const notAbsorbed=total-absorbed;
-  const placed=base.filter(s=>s.placed!==false).length;   // משובצות סופית
+  const placed=live.filter(s=>s.placed!==false).length;   // משובצות סופית
   const waiting=total-placed;                              // ממתינות לשיבוץ
   const g=(stuFilter.gans && stuFilter.gans.length===1 && stuFilter.gans[0]!=='__none__') && DB.gans.find(x=>x.id===stuFilter.gans[0]);
   const capTxt = g && g.capacity ? ` <small>/ ${esc(g.capacity)}</small>` : "";
@@ -5491,7 +5497,12 @@ function renderStuSummary(){
   const tile=(k,v,color,title)=>`<div class="stat"${title?` title="${esc(title)}"`:''}><div class="k">${k}</div><div class="v"${color?` style="color:${color}"`:''}>${v}</div></div>`;
   // משבצת מותנית: רק כשמסננים לפי מאפיין (השארות/צהרון/קייטנה) מוצג הסיכום שלו
   const fd=stuFilter.flag && STU_FLAGS[stuFilter.flag];
-  const flagTile = fd ? tile(fd.label, base.filter(fd.test).length, 'var(--accent-strong)') : "";
+  const flagTile = fd ? tile(fd.label, live.filter(fd.test).length, 'var(--accent-strong)') : "";
+  /* כשהסינון מציג גם עוזבות — אומרים את זה מתחת למשבצות, כדי שההפרש בין
+     מספר השורות בטבלה למספרים שבמשבצות לא ייראה כמו תקלה. */
+  const leftNote = leftShown
+    ? `<div class="hint" style="margin-top:6px">בטבלה מוצגות גם <b>${leftShown}</b> שסיימו/יצאו — הן אינן נספרות במשבצות שלמעלה.</div>`
+    : "";
   el.innerHTML=`<div class="stats">
     ${tile("רשומות"+(g?" בגן":""), total+capTxt, regColor)}
     ${tile("משובצות", placed, "var(--good)", "שיבוץ סופי בגן")}
@@ -5499,7 +5510,7 @@ function renderStuSummary(){
     ${tile("קלוט בעירייה", absorbed, absorbed===total&&total?'var(--good)':'')}
     ${tile("לא קלוט", notAbsorbed, notAbsorbed>0?'var(--bad)':'var(--good)')}
     ${flagTile}
-  </div>`;
+  </div>${leftNote}`;
   /* גובה הפס הנעוץ — "תקרה" לתיק המקוצר שנעוץ אף הוא */
   try{ document.documentElement.style.setProperty("--stu-sum-h", Math.round(el.getBoundingClientRect().height)+"px"); }catch(e){}
 }

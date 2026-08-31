@@ -834,6 +834,71 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   (only.length === 1 && /מזרחי/.test(only[0]))
     ? ok('הסינון מציג רק את התיק שאין לו ת"ז') : bad('הסינון שגוי', [JSON.stringify(only)]);
 
+  console.log('\n23. "לא קלוט בעירייה" אינו סופר את מי שסיימה ועזבה');
+  /* תיק שעזב אינו עבודה שממתינה. משבצת "לא קלוט" שמונה עוזבות שולחת לטפל
+     במי שכבר איננה — ולכן אף משבצת אינה סופרת אותן, גם כשהסינון מציג אותן. */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'b1',tz:'300000001',firstName:'א',lastName:'קלוטה',ganId:'g1',absorbedMunicipality:true}),
+      mk({id:'b2',tz:'300000002',firstName:'ב',lastName:'לאקלוטה',ganId:'g1'}),
+      mk({id:'b3',tz:'300000003',firstName:'ג',lastName:'עזבהלאקלוטה',ganId:'g1',finished:true}),
+      mk({id:'b4',tz:'300000004',firstName:'ד',lastName:'עזבהקלוטה',ganId:'g1',absorbedMunicipality:true,finished:true})];
+    DB.municipality={};
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('students'));
+  await p.waitForTimeout(400);
+  /* מנקים את הסינון שנשאר ממקטע 22, אחרת הטבלה עדיין מסוננת ל"בלי ת\"ז" */
+  await p.evaluate(() => {
+    const t = document.querySelector('#stuFilterToggle');
+    if (t && document.querySelector('#stuFilterPanel').hasAttribute('hidden')) t.click();
+    const c = document.querySelector('#f-clear'); if (c) c.click();
+  });
+  await p.waitForTimeout(400);
+  const tiles = () => p.evaluate(() => ({
+    t: Object.fromEntries([...document.querySelectorAll('#stuSummary .stat')].map(c =>
+         [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)])),
+    rows: document.querySelectorAll('#stuTable tbody tr').length,
+    note: (document.querySelector('#stuSummary .hint') || {}).textContent || '' }));
+  const setStatus = async v => {
+    await p.evaluate(val => {
+      const t = document.querySelector('#stuFilterToggle');
+      if (t && document.querySelector('#stuFilterPanel').hasAttribute('hidden')) t.click();
+      const sel = document.querySelector('#f-status');
+      if (sel) { sel.value = val; sel.dispatchEvent(new Event('change')); }
+    }, v);
+    await p.waitForTimeout(300);
+  };
+
+  let v = await tiles();
+  (v.t['לא קלוט'] === 1 && v.t['רשומות'] === 2 && v.rows === 2)
+    ? ok('ברירת מחדל — רק הפעילות נספרות ומוצגות') : bad('ברירת המחדל השתנתה', [JSON.stringify(v)]);
+  !v.note ? ok('אין הערה מיותרת כשאין עוזבות בתצוגה') : bad('הופיעה הערה מיותרת', [v.note]);
+
+  await setStatus('all');
+  v = await tiles();
+  v.rows === 4 ? ok('סינון "הכל" — הטבלה מציגה גם את העוזבות') : bad('הטבלה לא הציגה את העוזבות', [JSON.stringify(v)]);
+  v.t['לא קלוט'] === 1
+    ? ok('"לא קלוט" נשאר 1 — העוזבת הלא-קלוטה אינה נספרת')
+    : bad('"לא קלוט" ספר עוזבת', [JSON.stringify(v.t)]);
+  v.t['קלוט בעירייה'] === 1 ? ok('"קלוט בעירייה" גם הוא סופר רק פעילות') : bad('"קלוט" ספר עוזבת');
+  v.t['רשומות'] === 2 ? ok('"רשומות" סופר רק פעילות') : bad('"רשומות" ספר עוזבות');
+  /בטבלה מוצגות גם/.test(v.note) && /2/.test(v.note)
+    ? ok('הערה מסבירה שההפרש בין הטבלה למשבצות הוא העוזבות') : bad('אין הערה מסבירה', [v.note]);
+
+  await setStatus('finished');
+  v = await tiles();
+  (v.rows === 2 && v.t['לא קלוט'] === 0 && v.t['רשומות'] === 0)
+    ? ok('סינון "שסיימו" — נגישות לחיפוש, אך אינן נספרות באף משבצת')
+    : bad('העוזבות נספרו בסינון "שסיימו"', [JSON.stringify(v)]);
+  await setStatus('active');
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
