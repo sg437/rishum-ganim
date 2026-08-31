@@ -47,7 +47,7 @@ Object.defineProperty(window,'_geoGoogle',{get:()=>_geoGoogle,set:v=>{_geoGoogle
 window.__setDriveCall=fn=>{ driveCall=fn; };   // הצהרת פונקציה — ניתנת להחלפה בתוך המודול
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, drivePing, bridgeHasMailDoc, shareReportDoc, shareDocClose, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, bridgeErrHe, mapPlaceSave, save });
+  guideContent, ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, drivePing, bridgeHasMailDoc, shareReportDoc, shareDocClose, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, bridgeErrHe, mapPlaceSave, save });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -265,6 +265,20 @@ const server=require('http').createServer((req,res)=>{
     __set('active','guide'); route();
     const t=document.body.innerText;
     return t.includes('מרכז ההודעות') && t.includes('עוזר חכם — פאנל צד שגם מבצע'); }));
+  /* המדריך מתיישן בשקט: מסך שנוסף לתוכנה ולא נכתב בו נשאר בלתי מתועד בלי
+     שאיש ישים לב. הבדיקה מחזיקה את המקטעים של המסכים שאין להם תיעוד אחר. */
+  await step('לכל מסך בסרגל יש מקטע במדריך', ()=>pg.evaluate(()=>{
+    const titles=guideContent().sections.map(s=>s.title).join(" | ");
+    return ['עירייה','הנהלה','צוות הגנים','מפת שיבוץ','דוחות','הודעות','כלים ושירותים']
+      .every(x=>titles.includes(x)); }));
+  await step('מדריך מתעד את מסך העירייה על כל חלקיו', ()=>pg.evaluate(()=>{
+    const h=guideContent().sections.map(s=>s.html).join("");
+    return ['מיפוי','המספר להשוואה','הכיוון ההפוך','למה N לא קלוטות','מאזן שורה-לשורה',
+            'סמל המוסד שבקובץ אינו נכנס לשום תיק']
+      .every(x=>h.includes(x)); }));
+  await step('מדריך מתעד את השמירה העמידה ואת מסנן "בלי מספר זהות"', ()=>pg.evaluate(()=>{
+    const h=guideContent().sections.map(s=>s.html).join("");
+    return ['עריכה שלא הולכת לאיבוד','בלי מספר זהות','אינה נספרת'].every(x=>h.includes(x)); }));
 
   /* ---- רגרסיה: אין גלישה אופקית ברוחב טלפון ----
      באג שהיה: .stu-stage עבר ל-flex-direction:column בלי align-items:stretch,
