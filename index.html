@@ -10674,6 +10674,14 @@ function wireMuniSection(root, inModal){
     const noTzUs=notAbs.filter(x=>!digits(x.tz));
     const inList=notAbs.filter(x=>digits(x.tz) && listTz.has(tzKey(x.tz)));   // ← החריגה
     const outList=notAbs.filter(x=>digits(x.tz) && !listTz.has(tzKey(x.tz)));
+    /* ---- הכיוון ההפוך ----
+       הסימון "קלוט בעירייה" נכתב רק כ-true ולעולם אינו מתנקה: תלמידה שסומנה
+       בהעלאה קודמת נשארת מסומנת גם אחרי שירדה מרשימת העירייה. מקור שני הוא
+       ייבוא התלמידות, שבו "סמן את כולם כקלוט" מסומן כברירת מחדל. התוצאה:
+       אצלנו יש יותר קלוטות מאשר בקובץ, ואי-אפשר לאתר אותן — עד עכשיו. */
+    const marked=scope.filter(x=>x.absorbedMunicipality);
+    const markedNotInList=marked.filter(x=>digits(x.tz) && !listTz.has(tzKey(x.tz)));
+    const markedNoTz=marked.filter(x=>!digits(x.tz));
     const eduTxt="כל סוגי החינוך";
     /* תמיד מציינים באיזה חינוך הן יושבות — גם כשכולן באותו אחד. דווקא אז זה
        המידע החשוב ביותר: קבוצה שכולה בחינוך שאינו מוצג במסך היא בדיוק המקרה
@@ -10707,11 +10715,44 @@ function wireMuniSection(root, inModal){
         </div>
       </div>`:''}
       ${noTzUs.length?`<div class="note" style="margin-top:10px">${noTzUs.length} תיקים בלי ת"ז — במסך התלמידות, מסנן <b>"מאפיין → בלי מספר זהות"</b>. השלמת הת"ז תפתור גם את הכפילויות.
-        <button class="btn ghost sm" id="muni-dl-notz2" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button></div>`:''}`;
+        <button class="btn ghost sm" id="muni-dl-notz2" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button></div>`:''}
+
+      <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:12px">
+        <b>הכיוון ההפוך — מסומנות קלוטות אצלנו, ואינן ברשימה</b>
+        <div class="hint" style="margin-top:4px">הסימון "קלוט" אינו מתנקה מעצמו: מי שסומנה בהעלאה קודמת נשארת מסומנת גם אחרי שירדה מרשימת העירייה. גם ייבוא תלמידות מסמן "קלוט" כברירת מחדל. לכן ייתכן שאצלנו יש <b>יותר</b> קלוטות מאשר בקובץ — וזה מסביר הפרש בכיוון ההפוך.</div>
+        <div class="stats" style="margin-top:8px">
+          <div class="stat"><div class="k">מסומנות קלוטות (פעילות)</div><div class="v">${marked.length}</div></div>
+          <div class="stat ${markedNotInList.length?'bad':''}"><div class="k">מסומנות ואינן ברשימה</div><div class="v">${markedNotInList.length}</div></div>
+          <div class="stat"><div class="k">מסומנות בלי ת"ז</div><div class="v">${markedNoTz.length}</div></div>
+        </div>
+        ${markedNotInList.length?`
+          <div class="note" style="margin-top:8px">
+            ${tbl(`<thead><tr><th>#</th><th>ת"ז</th><th>שם משפחה</th><th>שם פרטי</th><th>חינוך</th></tr></thead><tbody>
+              ${markedNotInList.slice(0,80).map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.tz)}</td><td>${esc(x.lastName)||'—'}</td><td>${esc(x.firstName)||'—'}</td><td>${eduBadge(x)}</td></tr>`).join("")}
+            </tbody>`)}
+            <div class="hint">${byEdu(markedNotInList)}</div>
+            <div class="row" style="margin-top:8px;gap:8px">
+              <button class="btn ghost sm" id="muni-dl-extra" type="button">⬇️ הורדת הרשימה</button>
+              <button class="btn ghost sm" id="muni-unmark" type="button">✖️ הסרת סימון "קלוט" מ-${markedNotInList.length} התיקים</button>
+            </div>
+            <div class="hint" style="margin-top:4px">הסרת הסימון מתאימה כשהקובץ הנוכחי הוא רשימת הקלוטות המלאה והמעודכנת. אם הוא חלקי (למשל רק חינוך אחד) — אין להסיר.</div>
+          </div>`:`<div class="hint" style="margin-top:8px">אין כאלה — כל מי שמסומנת קלוטה אצלנו אכן מופיעה ברשימה.</div>`}
+      </div>`;
     wireDownload("muni-dl-gap", "ברשימה אך לא מסומנות.csv", ['ת"ז',"שם משפחה","שם פרטי","חינוך"],
       inList.map(x=>[x.tz,x.lastName,x.firstName,eduLabel(x)]));
     wireDownload("muni-dl-notz2", "תיקים בלי ת-ז.csv", ["שם משפחה","שם פרטי","גן","חינוך"],
       noTzUs.map(x=>[x.lastName,x.firstName,x.ganId?ganName(x.ganId):"",eduLabel(x)]));
+    wireDownload("muni-dl-extra", "מסומנות קלוטות ואינן ברשימה.csv",
+      ['ת"ז',"שם משפחה","שם פרטי","חינוך","גן"],
+      markedNotInList.map(x=>[x.tz,x.lastName,x.firstName,eduLabel(x),x.ganId?ganName(x.ganId):""]));
+    const unm=q("#muni-unmark");
+    if(unm) unm.onclick=()=>{
+      if(!confirm(`להסיר את הסימון "קלוט בעירייה" מ-${markedNotInList.length} תיקים?\n\nהם מסומנים אצלנו ואינם מופיעים ברשימה שהועלתה לשנה זו.\n\n⚠️ יש לעשות זאת רק אם הקובץ שהועלה הוא רשימת הקלוטות המלאה. אם הוא חלקי — הסימון יוסר בטעות.`)) return;
+      markedNotInList.forEach(x=>{ x.absorbedMunicipality=false; });
+      save(); if(inModal) pendingRender=true; else route();
+      toast(`הוסר הסימון מ-${markedNotInList.length} תיקים`);
+      whyBtn.click();
+    };
     const fix=q("#muni-fix");
     if(fix) fix.onclick=()=>{
       if(!confirm(`לסמן ${inList.length} תיקים כ"קלוט בעירייה"?\n\nהם מופיעים ברשימה שהועלתה לשנה זו.`)) return;

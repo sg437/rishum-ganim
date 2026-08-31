@@ -1314,6 +1314,65 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   (csv2.match(/,לא,/g) || []).length === 2
     ? ok('ערך "לא" בעמודת בחשבון — לסינון מהיר באקסל') : bad('ערך העמודה שגוי', [csv2]);
 
+  console.log('\n32. הכיוון ההפוך — מסומנות אצלנו ואינן ברשימה');
+  /* המצב שדווח: בתוכנה 847 קלוטות בחינוך רגיל, ובקובץ רק 843 — העודף אצלנו.
+     הסיבה בקוד: absorbedMunicipality נכתב רק כ-true ואינו מתנקה לעולם, ולכן
+     מי שסומנה בהעלאה קודמת נשארת מסומנת גם אחרי שירדה מהרשימה. עד עכשיו לא
+     הייתה שום דרך לאתר אותן.
+     כאן: 4 מסומנות — 2 ברשימה, 2 שאינן (אחת מהן בחינוך מיוחד). */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'m1',tz:'300000001',firstName:'א',lastName:'ברשימה',ganId:'g1',absorbedMunicipality:true}),
+      mk({id:'m2',tz:'300000002',firstName:'ב',lastName:'ברשימה',ganId:'g1',absorbedMunicipality:true}),
+      mk({id:'m3',tz:'300000031',firstName:'ג',lastName:'מסומנתעודפת',ganId:'g1',absorbedMunicipality:true}),
+      mk({id:'m4',tz:'300000032',firstName:'ד',lastName:'מסומנתעודפתחמ',education:'ח"מ',absorbedMunicipality:true}),
+      mk({id:'m5',tz:'300000005',firstName:'ה',lastName:'לאמסומנת',ganId:'g1'})];
+    /* הרשימה השמורה — רק שתי הראשונות */
+    DB.municipality={'תשפ"ז':['300000001','300000002']};
+    __set('activeEdu','רגיל');
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('students'));
+  await p.waitForTimeout(250);
+  await p.evaluate(() => navToTab('municipality'));
+  await p.waitForTimeout(450);
+  await p.evaluate(() => document.querySelector('#muni-why').click());
+  await p.waitForTimeout(400);
+  const rv = await p.evaluate(() => Object.fromEntries(
+    [...document.querySelectorAll('#muni-result .stat')].map(c =>
+      [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)])));
+  const rvTxt = await p.evaluate(() => document.querySelector('#muni-result').textContent.replace(/\s+/g, ' '));
+
+  rv['מסומנות קלוטות (פעילות)'] === 4 ? ok('4 מסומנות קלוטות') : bad('ספירת המסומנות שגויה', [JSON.stringify(rv)]);
+  rv['מסומנות ואינן ברשימה'] === 2
+    ? ok('2 מסומנות ואינן ברשימה — כולל את זו שבחינוך מיוחד')
+    : bad('הכיוון ההפוך לא זוהה', [JSON.stringify(rv)]);
+  /300000031/.test(rvTxt) && /300000032/.test(rvTxt)
+    ? ok('שתיהן מפורטות בת"ז') : bad('אין פירוט של העודפות');
+  /הסימון "קלוט" אינו מתנקה מעצמו/.test(rvTxt)
+    ? ok('מוסבר למה זה קורה') : bad('אין הסבר על מקור הבעיה');
+
+  /* הסרת הסימון — רק מהעודפות */
+  p.once('dialog', dlg => dlg.accept());
+  await p.evaluate(() => document.querySelector('#muni-unmark').click());
+  await p.waitForTimeout(500);
+  const unmState = await p.evaluate(() => ({
+    kept: ['300000001','300000002'].map(t => !!(DB.students.find(x => x.tz === t) || {}).absorbedMunicipality),
+    cleared: ['300000031','300000032'].map(t => !!(DB.students.find(x => x.tz === t) || {}).absorbedMunicipality) }));
+  unmState.kept.every(Boolean) ? ok('מי שברשימה נשארה מסומנת') : bad('הוסר סימון ממי שברשימה', [JSON.stringify(unmState)]);
+  unmState.cleared.every(v => v === false) ? ok('הסימון הוסר משתי העודפות, בשני החינוכים') : bad('הסימון לא הוסר', [JSON.stringify(unmState)]);
+  const rv2 = await p.evaluate(() => Object.fromEntries(
+    [...document.querySelectorAll('#muni-result .stat')].map(c =>
+      [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)])));
+  rv2['מסומנות ואינן ברשימה'] === 0 ? ok('אחרי הניקוי — שני הצדדים תואמים') : bad('נשארו עודפות', [JSON.stringify(rv2)]);
+  await p.evaluate(() => { __set('activeEdu', null); });
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
