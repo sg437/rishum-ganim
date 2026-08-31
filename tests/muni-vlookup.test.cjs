@@ -15,7 +15,9 @@
     10. אותו מקטע בדיוק עובד גם בעיצוב החדש (חלון "עדכון לפי מ.ז.").
     11. קובץ xlsx אמיתי נקרא כטבלה — ולא נשפך כג'יבריש לתיבה.
     12. ת"ז שאיבדה אפס מוביל באקסל עדיין מתאימה לתיק שבתוכנה.
-    13. קובץ בינארי שאינו xlsx נעצר בהודעה, בלי לזהם את התיבה.
+    13. קובץ בינארי שאינו גיליון נעצר בהודעה, בלי לזהם את התיבה.
+    14. קובץ xls ישן (BIFF8 אמיתי) נקרא כטבלה.
+    15. מחרוזת שנחתכת בין רשומות CONTINUE נקראת שלמה.
 
    הרצה:  NODE_PATH=$(npm root -g) node tests/muni-vlookup.test.cjs
    ============================================================================ */
@@ -37,7 +39,7 @@ function buildApp() {
   const expose = `
 window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; else if(k==='currentUser')currentUser=v; else if(k==='db')db=v; };
 Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
-Object.assign(window,{ route, navToTab, openBulkImport, closeModal, parseMuniInput, muniDetectColumns, phoneKey, tzKey, xlsxToRows, readFileSmart });
+Object.assign(window,{ route, navToTab, openBulkImport, closeModal, parseMuniInput, muniDetectColumns, phoneKey, tzKey, xlsxToRows, xlsToRows, biffStrReader, readFileSmart });
 window.__ready=true;
 `;
   const i = html.lastIndexOf('</script>');
@@ -112,6 +114,88 @@ const FILE = [
   '9003,300000003,פרץ,לאה,20/05/2021,אסתר,משה,03-3333333,050-3333333,052-3333333,leah@example.com,בן יהודה,3,111111,חוב',
   '9004,300000009,אדומי,מלכה,10/10/2021,פנינה,יצחק,03-9999999,050-9999999,052-9999999,malka@example.com,הנביאים,44,222222,שולם'
 ].join('\n');
+
+
+/* קובץ xls אמיתי בפורמט BIFF8 (נוצר בכלי חיצוני, לא על ידי התוכנה), עם
+   עברית, מחרוזות משותפות, מספרים ו-MULRK — הפורמט שהעירייה שולחת. */
+const XLS_B64 = [
+  '0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAGAAAAAAAAAAAAAAABAAAACQAAAAAAAAAAEAAA/v///wAAAAD+////AAAA',
+  'AAgAAAD/////////////////////////////////////////////////////////////////////////////////////////////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '//////////////////////////////////////////////////////////////////////////////////8JCBAAAAYFALsNzAcA',
+  'AAAABgAAAOEAAgCwBMEAAgAAAOIAAABcAHAATm9uZSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg',
+  'ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIEIAAgCwBGEBAgAA',
+  'AD0BAgABAJwAAgAOABkAAgAAABIAAgAAAGMAAgAAABMAAgAAAK8BAgAAALwBAgAAAEAAAgAAAI0AAgAAAD0AEgDgAVoAzz9OKjgA',
+  'AAAAAAEAWAIiAAIAAAAOAAIAAQC3AQIAAADaAAIAAAAxABUAyAAAAP9/kAEAAAAAAQAFAEFyaWFsMQAVAMgAAAD/f5ABAAAAAAEA',
+  'BQBBcmlhbDEAFQDIAAAA/3+QAQAAAAABAAUAQXJpYWwxABUAyAAAAP9/kAEAAAAAAQAFAEFyaWFsMQAVAMgAAAD/f5ABAAAAAAEA',
+  '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',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAP7////9/////v//////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '////////////////////////////////////////////////////////////////////////////////////////////////////',
+  '//////////////////////////9SAG8AbwB0ACAARQBuAHQAcgB5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAFgAFAf//////////AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP7///8AAAAAAAAAAFcA',
+  'bwByAGsAYgBvAG8AawAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAIB////////////',
+  '////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH///////////////8AAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAD+////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAf///////////////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP7///8A',
+  'AAAAAAAAAA==',
+].join('');
 
 let fail = 0;
 const ok  = m => console.log('  ✅ ' + m);
@@ -388,7 +472,7 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   const xst = await stats(p);
   xst['תיקים חדשים שנפתחו'] === 0 ? ok('לא נפתח תיק כפול למרים') : bad('נפתח תיק כפול', [JSON.stringify(xst)]);
 
-  console.log('\n13. קובץ בינארי שאינו xlsx');
+  console.log('\n13. קובץ בינארי שאינו גיליון');
   const beforeTxt = await p.evaluate(() => document.querySelector('#muni-text').value);
   const kept = await p.evaluate(async () => {
     const f = new File([new Uint8Array([0xD0, 0xCF, 0x11, 0xE0, 0, 1, 2, 3])], 'old.xls');
@@ -398,7 +482,54 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     return { called, text: document.querySelector('#muni-text').value };
   });
   (!kept.called && kept.text === beforeTxt)
-    ? ok('xls ישן נעצר בהודעה, והתיבה לא זוהמה') : bad('הקובץ הבינארי נכנס לתיבה', [JSON.stringify(kept.called)]);
+    ? ok('קובץ פגום נעצר בהודעה, והתיבה לא זוהמה') : bad('הקובץ הבינארי נכנס לתיבה', [JSON.stringify(kept.called)]);
+
+  console.log('\n14. קובץ xls ישן (BIFF8)');
+  const xlsRes = await p.evaluate(async b64 => {
+    const bin = atob(b64), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const file = new File([u8], 'muni.xls');
+    const text = await new Promise(res => { readFileSmart(file, t => res(t)); setTimeout(() => res(null), 3000); });
+    const grid = xlsToRows(u8.buffer.slice(0));
+    return { text, sheet: grid.sheetName, rows: grid.rows };
+  }, XLS_B64);
+  xlsRes.text ? ok('ה-xls נקרא ולא נחסם') : bad('ה-xls לא נקרא כלל');
+  xlsRes.sheet === 'רשימת העירייה' ? ok('שם הגיליון בעברית נקרא נכון') : bad('שם הגיליון שגוי: ' + xlsRes.sheet);
+  JSON.stringify(xlsRes.rows[0]) === JSON.stringify(['מספר תיק','מספר זהות','שם משפחה','שם פרטי','תאריך לידה','שם האם','נייד אם','סמל מוסד'])
+    ? ok('שורת הכותרות נקראה מהגיליון') : bad('הכותרות שגויות', [JSON.stringify(xlsRes.rows[0])]);
+  JSON.stringify(xlsRes.rows[1]) === JSON.stringify(['9001','300000001','כהן','רחל','01/09/2021','ברכה','052-1111111','111111'])
+    ? ok('שורת נתונים מלאה — מחרוזות ומספרים') : bad('שורת הנתונים שגויה', [JSON.stringify(xlsRes.rows[1])]);
+  (xlsRes.text || '').split(/\r?\n/).length === 4 ? ok('הומר ל-CSV בן 4 שורות') : bad('ההמרה ל-CSV שגויה');
+
+  /* אותו קובץ, דרך המסך — כולל ת"ז שאיבדה אפס מוביל (12345678) */
+  await p.evaluate(() => { DB.students.forEach(s => { s.motherName=''; s.momMobile=''; }); });
+  await load(p, xlsRes.text);
+  await run(p);
+  const s5x = await stu(p, '012345678');
+  (s5x && s5x.motherName === 'זהבה') ? ok('העדכון מהקובץ הישן הגיע לתיק') : bad('העדכון מה-xls לא נכנס', [JSON.stringify(s5x)]);
+
+  console.log('\n15. מחרוזת חצויה בין רשומות CONTINUE');
+  /* SST גדול נחתך לרשומות, ומחרוזת אחת נמשכת מעבר לגבול — ושם גם צורת
+     הקידוד יכולה להשתנות. זו נקודת השבירה הקלאסית בקריאת xls. */
+  const split = await p.evaluate(() => {
+    const wide = s => { const a = []; for (const ch of s) a.push(ch.charCodeAt(0) & 0xFF, ch.charCodeAt(0) >> 8); return a; };
+    const nar  = s => [...s].map(c => c.charCodeAt(0));
+    /* א. עברית שנחתכת באמצע — שני החלקים בקידוד שני בייטים */
+    const heb = biffStrReader([
+      new Uint8Array([12, 0, 0x01, ...wide('שלוםעולם')]),   // cch=12, נגמר הבלוק אחרי 8 תווים
+      new Uint8Array([0x01, ...wide('המשך')])               // grbit חדש, עדיין שני בייטים
+    ]).str();
+    /* ב. שינוי קידוד באמצע: הראש עברי (שני בייטים), הזנב לטיני (בייט אחד) */
+    const mixed = biffStrReader([
+      new Uint8Array([7, 0, 0x01, ...wide('שלום')]),
+      new Uint8Array([0x00, ...nar('abc')])
+    ]).str();
+    return { heb, mixed };
+  });
+  split.heb === 'שלוםעולםהמשך'
+    ? ok('מחרוזת עברית חצויה חוברה שלמה') : bad('חיבור ה-CONTINUE שגוי', [JSON.stringify(split.heb)]);
+  split.mixed === 'שלוםabc'
+    ? ok('שינוי קידוד באמצע המחרוזת טופל נכון') : bad('שינוי הקידוד שגוי', [JSON.stringify(split.mixed)]);
 
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
