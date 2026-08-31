@@ -1187,6 +1187,70 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   fixed.every(Boolean) ? ok('התיקון סימן גם את מי שבחינוך מיוחד') : bad('התיקון פספס', [JSON.stringify(fixed)]);
   await p.evaluate(() => { __set('activeEdu', null); });
 
+  console.log('\n30. מאזן שורה-לשורה: "בתוכנה ולא מסומנת" נספרת ומיוצאת');
+  /* המחלוקת שנשארה היא על מספרים, ולכן התשובה חייבת להיות ברמת השורה ולא
+     ברמת הסיכום: לכל ת"ז בקובץ — מה בדיוק מצבה אצלנו, בקובץ שאפשר לפתוח
+     באקסל ולסנן. כאן: 5 ת"ז בקובץ — 1 קלוטה, 1 קלוטה שסיימה, 2 שאינן
+     מסומנות (החשודות), 1 שאינה בתוכנה. */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'h1',tz:'300000001',firstName:'א',lastName:'קלוטה',ganId:'g1',absorbedMunicipality:true}),
+      mk({id:'h2',tz:'300000002',firstName:'ב',lastName:'קלוטהעזבה',ganId:'g1',absorbedMunicipality:true,finished:true}),
+      mk({id:'h3',tz:'300000003',firstName:'ג',lastName:'לאמסומנת',ganId:'g1'}),
+      mk({id:'h4',tz:'300000004',firstName:'ד',lastName:'לאמסומנתחמ',education:'ח"מ'})];
+    DB.municipality={};
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('students'));
+  await p.waitForTimeout(250);
+  await p.evaluate(() => navToTab('municipality'));
+  await p.waitForTimeout(450);
+  await load(p, [
+    'מספר זהות,שם משפחה,שם פרטי,סמל מוסד',
+    '300000001,קלוטה,א,111111',
+    '300000002,קלוטהעזבה,ב,111111',
+    '300000003,לאמסומנת,ג,111111',
+    '300000004,לאמסומנתחמ,ד,111111',
+    '300000055,חיצונית,ה,111111'
+  ].join('\n'));
+  await p.evaluate(() => { const m = document.querySelector('#muni-mode'); m.value = 'compare'; m.dispatchEvent(new Event('change')); });
+  await p.waitForTimeout(250);
+  await run(p);
+  const au = await p.evaluate(() => Object.fromEntries(
+    [...document.querySelectorAll('#muni-result .stat')].map(c =>
+      [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)])));
+  au['בתוכנה ולא מסומנות'] === 2
+    ? ok('"בתוכנה ולא מסומנות" = 2 — כולל את זו שבחינוך מיוחד')
+    : bad('הספירה שגויה', [JSON.stringify(au)]);
+  const still = await p.evaluate(() => DB.students.filter(x => x.absorbedMunicipality).length);
+  still === 2 ? ok('מצב השוואה עדיין לא שינה דבר') : bad('נתונים שונו', [String(still)]);
+
+  /* הקובץ עצמו — נלכד דרך יירוט ההורדה */
+  const csv = await p.evaluate(() => new Promise(r => {
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = b => { b.text().then(t => { URL.createObjectURL = orig; r(t); }); return 'blob:x'; };
+    document.querySelector('#muni-dl-audit').click();
+    setTimeout(() => { URL.createObjectURL = orig; r(''); }, 1500);
+  }));
+  const lines = csv.replace(/^﻿/, '').trim().split(/\r?\n/);
+  lines.length === 6 ? ok('הקובץ מכיל כותרת + שורה לכל אחת מ-5 הת"ז') : bad('מספר שורות שגוי', [String(lines.length), csv.slice(0, 200)]);
+  /מצב/.test(lines[0]) ? ok('יש עמודת "מצב" לסינון באקסל') : bad('אין עמודת מצב', [lines[0]]);
+  (csv.match(/בתוכנה — אינה מסומנת קלוטה/g) || []).length === 2
+    ? ok('שתי השורות הלא-מסומנות מסומנות ככאלה בקובץ') : bad('סימון המצב שגוי', [csv]);
+  /מסומנת קלוטה — אך סיימה ועזבה/.test(csv)
+    ? ok('מי שסיימה מקבלת מצב נפרד משלה') : bad('אין מצב נפרד למי שסיימה');
+  /300000055.*אינה בתוכנה כלל/.test(csv)
+    ? ok('מי שאינה בתוכנה מופיעה אף היא, כדי שהסכום ייסגר') : bad('חסרה מי שאינה בתוכנה');
+  /* csvCell עוטף מרכאות בעברית ככפולות — לכן מחפשים את הצורה שבקובץ עצמו */
+  /ח""מ|ח"מ/.test(csv) ? ok('עמודת החינוך מאפשרת לפצל רגיל מול ח"מ באקסל')
+    : bad('אין עמודת חינוך', [csv.split(/\r?\n/).slice(0,6).join(' | ')]);
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
