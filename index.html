@@ -1032,7 +1032,7 @@ function warnIfYearDocNearFull(){
 function studentsDocUsage(year){
   const y=year||DB.activeYear;
   const list=DB.students.filter(s=>s.year===y);
-  const id=safeYearId(y), bytes=fsDocSize(id,{ year:y, students:list });
+  const id=safeYearId(y), bytes=fsDocSize(id,{ year:y, students:packStudents(list) }); // כפי שנכתב בפועל — דחוס
   return { year:y, docId:id, count:list.length, bytes, pct:bytes/FS_DOC_LIMIT };
 }
 
@@ -1438,7 +1438,7 @@ async function _restMergeStudents(base, hdr){
       const m=new Map(server.map(o=>[o.id,o]));
       for(const s of adds) m.set(s.id,s);
       for(const rid of rms) m.delete(rid);
-      const payload={ year:y, students:[...m.values()] };
+      const payload={ year:y, students:packStudents([...m.values()]) };
       assertFsDocFits(id, payload, `בשנת ${y} יש ${payload.students.length} תלמידות. `+DOC_FULL_HOWTO);
       const p=await fetch(_condUrl(base,id,g.updateTime),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(payload)}) });
       if(p.ok){ knownStudentDocs.add(id); done=true; break; }
@@ -1474,7 +1474,7 @@ async function pushAllRest(){
   await put("staff", { staff:DB.staff.slice() });
   const byYear={}; DB.students.forEach(s=>{ (byYear[s.year]=byYear[s.year]||[]).push(s); });
   const wantIds=new Set();
-  for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await put(id,{ year:y, students:byYear[y] }); }
+  for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await put(id,{ year:y, students:packStudents(byYear[y]) }); }
   for(const id of [...knownStudentDocs]){ if(!wantIds.has(id)){ try{ await fetch(base+encodeURIComponent(id),{ method:"DELETE", headers:hdr }); }catch(e){} knownStudentDocs.delete(id); } }
   // עדכון עותק הענן המקומי כדי שרענון פנימי לא ישחזר מצב ישן
   const nm=new Map(); nm.set("meta",meta); nm.set("gans",{gans:DB.gans.slice()}); nm.set("management",{management:DB.management.slice()}); nm.set("staff",{staff:DB.staff.slice()});
@@ -1886,7 +1886,9 @@ async function _txnMergeStudents(){
       const m=new Map(server.map(o=>[o.id,o]));
       for(const s of adds) m.set(s.id, s);
       for(const id of rms) m.delete(id);
-      const payload={ year:y, students:[...m.values()] };
+      // דוחסים את *כל* המערך, לא רק את מה שהשתנה — כך גם רשומות שנכתבו לפני
+      // הדחיסה מתכווצות בשמירה הראשונה, והמסמך יורד בבת אחת מהתקרה.
+      const payload={ year:y, students:packStudents([...m.values()]) };
       // עוצרים לפני השרת: כך השגיאה אומרת "המסמך מלא" ולא "כשל שמירה" עלום
       assertFsDocFits(docId, payload, `בשנת ${y} יש ${payload.students.length} תלמידות. `+DOC_FULL_HOWTO);
       tx.set(ref, payload);
@@ -1920,7 +1922,7 @@ async function pushAll(){
   await setDoc(doc(db,"app","management"), { management });
   await setDoc(doc(db,"app","staff"), { staff });
   const wantIds=new Set();
-  for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await setDoc(doc(db,"app",id), { year:y, students:byYear[y] }); }
+  for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await setDoc(doc(db,"app",id), { year:y, students:packStudents(byYear[y]) }); }
   for(const id of [...knownStudentDocs]){ if(!wantIds.has(id)){ try{ await deleteDoc(doc(db,"app",id)); }catch(e){} knownStudentDocs.delete(id); } }
   try{ await shadowWriteNewModel(); }catch(e){ console.error("shadow write (SDK) failed", e); }
 }
@@ -1962,19 +1964,62 @@ function rebuildDB(docsMap){
   DB.students = studs.map(normStudent);
 }
 /* השלמת שדות חדשים לרשומות ישנות שנשמרו לפני העדכון */
+/* ============================================================
+   דחיסת רשומת תלמידה לכתיבה (pack) והשלמתה בקריאה (normStudent)
+   ------------------------------------------------------------
+   תיק תלמידה הוא ברובו ברירות-מחדל: עשרות דגלים שערכם false ומחרוזות ריקות.
+   הם נכתבו לענן במלואם, בכל שמירה, לכל תלמידה — ~890 בייט לתיק, מתוכם רק כ-250
+   הם מידע אמיתי. כל תלמידות השנה יושבות במסמך אחד, ולכן הבזבוז הזה הוא שקבע את
+   התקרה: ב-1,046 תיקים המסמך הגיע ל-99.5% מ-1MiB, וכל שמירה נדחתה בשקט.
+
+   הפתרון: לא כותבים לענן שדה שערכו שווה לברירת המחדל — ומשלימים אותו בקריאה.
+   שתי הפונקציות חייבות להישאר הופכיות זו לזו: packStudent מוריד בדיוק את מה
+   ש-normStudent יודע להחזיר, ושתיהן נגזרות מ-makeStudent() כמקור אמת אחד, כך
+   ששדה חדש שיתווסף שם ייכנס לשתיהן מעצמו.
+
+   normStudent גם בונה את הרשומה בסדר-שדות קנוני קבוע. הסדר חשוב מפני שההשוואות
+   של מנגנון הסנכרון הן על JSON.stringify — בלי סדר קבוע, רשומה שחזרה מהשרת לא
+   הייתה נחשבת זהה לזו שנכתבה.
+   ============================================================ */
+let _stuKeys=null, _stuBlank=null;
+/* סדר השדות הקנוני = הסדר ב-makeStudent (המקור היחיד לתבנית התיק) */
+function stuKeys(){ if(!_stuKeys) _stuKeys=Object.keys(makeStudent()); return _stuKeys; }
+/* ברירות המחדל להשוואה — בלי השדות שערכם ייחודי לכל רשומה */
+function stuBlank(){
+  if(!_stuBlank){ const b=makeStudent(); delete b.id; delete b.year; delete b.createdAt; _stuBlank=b; }
+  return _stuBlank;
+}
+/* הורדת כל מה ששווה לברירת המחדל. שדה שאינו בתבנית נשמר כמו שהוא — לא מאבדים מידע. */
+function packStudent(s){
+  const d=stuBlank(), out={};
+  for(const k in s){
+    const v=s[k];
+    if(!(k in d)){ if(v!==undefined) out[k]=v; continue; } // id / year / createdAt / שדה עתידי
+    const dv=d[k];
+    if(dv!==null && typeof dv==="object" && !Array.isArray(dv)){
+      const sub={}; let any=false;                          // מפה מקוננת: רק המפתחות שנבדלים
+      for(const k2 in (v||{})) if(v[k2]!==dv[k2]){ sub[k2]=v[k2]; any=true; }
+      if(any) out[k]=sub;
+      continue;
+    }
+    if(v!==dv && v!==undefined) out[k]=v;
+  }
+  return out;
+}
+function packStudents(list){ return list.map(packStudent); }
+/* השלמה מלאה לתבנית, בסדר קנוני — כל שדה חסר חוזר לערך ברירת המחדל שלו,
+   כדי שקוד אחר לעולם לא יפגוש undefined ברשומה שהגיעה מהענן. */
 function normStudent(s){
-  if(!s.id) s.id=uid(); // מזהה יציב לכל רשומה — בסיס למיזוג נגד דריסה
-  if(s.campus==null) s.campus=""; // קמפוס גנים (סעיף 1)
-  if(s.placed==null) s.placed=true; // רשומות קיימות נחשבות משובצות (הגירה חד-פעמית)
-  if(s.insurancePaid==null) s.insurancePaid=false; // תשלום ביטוח תלמידים
-  if(s.retentionNext==null) s.retentionNext=false; // השארות לשנה הבאה
-  s.docs = Object.assign({ nispach:false, idCopy:false, takanon:false }, s.docs||{});
-  s.docFiles = s.docFiles||{};
-  s.programs = Object.assign({ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false }, s.programs||{});
-  s.special = Object.assign({ divorced:false, approvalFather:false, approvalMother:false,
-    outOfCity:false, paymentArrangement:false, retention:false, retentionDoc:false,
-    other:false, otherText:"" }, s.special||{});
-  return s;
+  const d=stuBlank(), out={};
+  for(const k of stuKeys()){
+    if(k==="id"){ out.id = s.id || uid(); continue; }        // מזהה יציב — בסיס למיזוג נגד דריסה
+    if(!(k in d)){ if(k in s) out[k]=s[k]; continue; }        // year / createdAt — כפי שהם, ורק אם קיימים
+    const dv=d[k];
+    if(dv!==null && typeof dv==="object" && !Array.isArray(dv)) out[k]=Object.assign({}, dv, s[k]||{});
+    else out[k] = (s[k]==null ? dv : s[k]);                  // false / "" נשמרים; חסר בלבד מושלם
+  }
+  for(const k in s) if(!(k in out)) out[k]=s[k];             // שדות שאינם בתבנית — נשמרים
+  return out;
 }
 /* השלמת שדות חדשים לאנשי צוות ישנים (ת"ז, מייל, שם משפחה/פרטי) — סעיף 1 */
 function normStaff(m){
