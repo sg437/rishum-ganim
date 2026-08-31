@@ -10969,6 +10969,31 @@ function wireMuniSection(root, inModal){
         <div style="margin-top:6px">${noTz.slice(0,25).map(n=>esc(`שורה ${n.row}${n.name?" · "+n.name:""}`)).join(" · ")}${noTz.length>25?' …':''}</div>
       </div>` : '';
 
+    /* פילוח קצר לפי סוג חינוך — משמש את הבלוקים שלמטה. מוצהר כאן, לפני
+       השימוש הראשון: const אינו מורם, וההצהרה מאוחר יותר הפילה את הסיכום. */
+    const byEduU=l=>{ if(!l.length) return ""; const m={}; l.forEach(x=>{ const e=eduLabel(x); m[e]=(m[e]||0)+1; });
+      return "לפי חינוך — "+Object.keys(m).map(e=>`${e}: ${m[e]}`).join(" · "); };
+    /* ---- הכיוון ההפוך, אוטומטית אחרי כל העלאה ----
+       הסימון "קלוט" אינו מתנקה מעצמו, ולכן מי שסומנה בהעלאה קודמת נשארת
+       מסומנת גם אחרי שירדה מהרשימה. בלי הבדיקה הזאת כאן, ההפרש הזה מתגלה
+       רק אם מישהו יחשב ידנית — וזה בדיוק מה שקרה. */
+    const listSet=new Set(nums.map(t=>tzKey(t)));
+    const extraMarked=studentsOfYear().filter(x=>!x.finished && x.absorbedMunicipality
+                                             && digits(x.tz) && !listSet.has(tzKey(x.tz)));
+    const extraBlock = extraMarked.length ? `
+      <div class="note" style="margin-top:14px;border-inline-start:4px solid var(--warn);padding-inline-start:10px">
+        <b>⚠️ ${extraMarked.length} תיקים מסומנים אצלנו כ"קלוט בעירייה" — ואינם בקובץ שהועלה עכשיו</b>
+        <div class="hint" style="margin-top:4px">${byEduU(extraMarked)} · הסימון "קלוט" אינו מתנקה מעצמו: מי שסומנה בהעלאה קודמת נשארת מסומנת גם אחרי שהעירייה הורידה אותה מהרשימה. ההחלטה שלך — ייתכן שהן באמת ירדו, וייתכן שהקובץ הזה חלקי.</div>
+        ${tbl(`<thead><tr><th>#</th><th>ת"ז</th><th>שם משפחה</th><th>שם פרטי</th><th>חינוך</th></tr></thead><tbody>
+          ${extraMarked.slice(0,80).map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.tz)}</td><td>${esc(x.lastName)||'—'}</td><td>${esc(x.firstName)||'—'}</td><td>${eduBadge(x)}</td></tr>`).join("")}
+        </tbody>`)}
+        <div class="row" style="margin-top:8px;gap:8px">
+          <button class="btn ghost sm" id="muni-dl-extra2" type="button">⬇️ הורדת הרשימה</button>
+          <button class="btn ghost sm" id="muni-unmark2" type="button">✖️ הסרת הסימון מ-${extraMarked.length} התיקים</button>
+        </div>
+        <div class="hint" style="margin-top:4px">להסרה רק אם הקובץ שהועלה הוא רשימת הקלוטות <b>המלאה</b>. אם הוא חלקי (למשל רק סוג חינוך אחד) — אין להסיר.</div>
+      </div>` : '';
+
     /* תיקים אצלנו בלי ת"ז — הם שגורמים לכפילויות: שורת העירייה לא מוצאת אותם ופותחת תיק חדש */
     const ourNoTz = studentsOfYear().filter(x=>!x.finished && !digits(x.tz)); // עוזבות אינן בחשבון
     const ourNoTzBlock = ourNoTz.length ? `
@@ -11032,7 +11057,7 @@ function wireMuniSection(root, inModal){
         <div class="stat"><div class="k">ברשימת העירייה</div><div class="v">${nums.length}</div></div>
         ${phoneDup?`<div class="stat"><div class="k">טלפונים שדולגו (כבר קיימים)</div><div class="v">${phoneDup}</div></div>`:''}
       </div>
-      ${reconLine}${fieldLine}${whereBlock}${leftBlock}${noTzBlock}${ourNoTzBlock}${createdBlock}${notFoundBlock}
+      ${reconLine}${fieldLine}${whereBlock}${extraBlock}${leftBlock}${noTzBlock}${ourNoTzBlock}${createdBlock}${notFoundBlock}
       ${symBlockHTML(symRows)}
       ${diffBlockHTML(diffs, "הסמל שבקובץ לא שינה שום שיבוץ — ההפרש מדווח בלבד. התיקים החדשים שנפתחו זה עתה אינם בטבלה הזאת.")}`;
 
@@ -11040,6 +11065,16 @@ function wireMuniSection(root, inModal){
       ['ת"ז',"שם משפחה","שם פרטי","תאריך לידה","שם האם","שם האב","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","מספר בניין","עיר","חינוך","סמל בעירייה"],
       created.map(c=>[c.s.tz,c.s.lastName,c.s.firstName,c.s.dob?fmtDate(c.s.dob):"",c.s.motherName,c.s.fatherName,c.s.phone,c.s.dadMobile,c.s.momMobile,c.s.email,c.s.street,c.s.building,c.s.city,eduLabel(c.s),c.sym]));
     wireDownload("muni-dl-nf", "ת-ז מהעירייה שאינן בתוכנה.csv", ['ת"ז'], notFound.map(t=>[t]));
+    wireDownload("muni-dl-extra2", "מסומנות קלוטות ואינן בקובץ.csv",
+      ['ת"ז',"שם משפחה","שם פרטי","חינוך","גן"],
+      extraMarked.map(x=>[x.tz,x.lastName,x.firstName,eduLabel(x),x.ganId?ganName(x.ganId):""]));
+    const unm2=q("#muni-unmark2");
+    if(unm2) unm2.onclick=()=>{
+      if(!confirm(`להסיר את הסימון "קלוט בעירייה" מ-${extraMarked.length} תיקים?\n\nהם מסומנים אצלנו ואינם מופיעים בקובץ שהועלה עכשיו.\n\n⚠️ רק אם הקובץ הוא רשימת הקלוטות המלאה. אם הוא חלקי — הסימון יוסר בטעות.`)) return;
+      extraMarked.forEach(x=>{ x.absorbedMunicipality=false; });
+      save(); if(inModal) pendingRender=true; else route();
+      toast(`הוסר הסימון מ-${extraMarked.length} תיקים`);
+    };
     wireDownload("muni-dl-left", "קלוטות בעירייה שסיימו אצלנו.csv",
       ['ת"ז',"שם משפחה","שם פרטי","חינוך","גן","סמל בעירייה"],
       left.map(c=>[c.s.tz,c.s.lastName,c.s.firstName,eduLabel(c.s),c.s.ganId?ganName(c.s.ganId):"",c.sym]));
