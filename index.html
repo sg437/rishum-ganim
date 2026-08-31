@@ -9943,92 +9943,433 @@ function renderProjection(host){
 }
 
 /* ============================================================
-   טאב עירייה — התאמה לפי ת"ז
+   רשימת העירייה — התאמה לפי ת"ז, השלמת פרטים והשוואת סמלים
+   ------------------------------------------------------------
+   הקובץ שמגיע מהעירייה נטען כמו שהוא, על כל העמודות שבו — גם אלה שאינן
+   מעניינות אותנו. אחרי הטעינה נפתחת טבלת מיפוי: שורה לכל עמודה בקובץ, עם
+   הכותרת כפי שהיא, דוגמה מהשורה הראשונה, ובחירה לאיזה שדה בתוכנה היא
+   נכנסת — או "לא לעדכן". כותרת שנקראת כמו שם השדה בתוכנה מזוהה לבד
+   ומסומנת; כל השאר מכובה, ואפשר למפות ידנית. רק מה שמסומן נקלט.
    ============================================================ */
+/* השדות שאפשר למפות אליהם. התוויות כאן הן גם שמות הכותרות שהתוכנה מזהה
+   לבד — כותרת שכתובה בדיוק כשם השדה תזוהה אוטומטית. */
+const MUNI_FIELD_OPTIONS = [
+  { key:"tz",         label:"מספר זהות" },
+  { key:"lastName",   label:"שם משפחה" },
+  { key:"firstName",  label:"שם פרטי" },
+  { key:"dob",        label:"תאריך לידה" },
+  { key:"motherName", label:"שם האם" },
+  { key:"fatherName", label:"שם האב" },
+  { key:"phone",      label:"טלפון בית" },
+  { key:"dadMobile",  label:"נייד אב" },
+  { key:"momMobile",  label:"נייד אם" },
+  { key:"email",      label:'דוא"ל' },
+  { key:"street",     label:"רחוב" },
+  { key:"building",   label:"מספר בניין" },
+  { key:"city",       label:"עיר" },
+  { key:"symbol",     label:"סמל מוסד" },
+  { key:"education",  label:"סוג חינוך" }
+];
+/* מיפוי כותרות לזיהוי אוטומטי. normHeader מסיר רווחים ומרכאות, ולכן
+   'ת"ז' מגיע לכאן כ-"תז" ו'דוא"ל' כ-"דואל". */
 const MUNI_HEADER_MAP = {
-  "תז":"tz","תעודתזהות":"tz","מספרזהות":"tz","זהות":"tz","מסזהות":"tz",
+  "תז":"tz","תעודתזהות":"tz","מספרזהות":"tz","זהות":"tz","מסזהות":"tz","מז":"tz","מספרתז":"tz","תזתלמידה":"tz",
+  "שםמשפחה":"lastName","משפחה":"lastName",
+  "שםפרטי":"firstName","פרטי":"firstName","שם":"firstName","שםהילדה":"firstName","שםהתלמידה":"firstName","שםהילד":"firstName",
+  "תאריךלידה":"dob","תלידה":"dob","תאריך":"dob","לידה":"dob",
+  "שםהאם":"motherName","אם":"motherName","אמא":"motherName","שםאם":"motherName","שםהאמא":"motherName","שםאמא":"motherName",
   "שםהאב":"fatherName","אב":"fatherName","אבא":"fatherName","שםאב":"fatherName","שםהאבא":"fatherName","שםאבא":"fatherName",
-  "שםהאם":"motherName","אם":"motherName","אמא":"motherName","שםאם":"motherName","שםהאמא":"motherName","שםאמא":"motherName"
+  "טלפוןבית":"phone","טלפון":"phone","טל":"phone","טלפוןבבית":"phone","טלבית":"phone",
+  "ניידאב":"dadMobile","ניידהאב":"dadMobile","ניידאבא":"dadMobile","סלולריאב":"dadMobile","פלאפוןאב":"dadMobile","טלפוןאב":"dadMobile",
+  "ניידאם":"momMobile","ניידהאם":"momMobile","ניידאמא":"momMobile","סלולריאם":"momMobile","פלאפוןאם":"momMobile","טלפוןאם":"momMobile",
+  "נייד":"momMobile","סלולרי":"momMobile","פלאפון":"momMobile", /* "נייד" בלי ציון הורה — לשדה נייד אם, ברירת המחדל בטופס */
+  "דואל":"email","מייל":"email","אימייל":"email","דואראלקטרוני":"email","email":"email","מיילהורים":"email",
+  "רחוב":"street","כתובת":"street",
+  "מספרבניין":"building","בניין":"building","מספרבית":"building","מסבית":"building","בית":"building","מסבניין":"building",
+  "עיר":"city","יישוב":"city","ישוב":"city",
+  "סמלמוסד":"symbol","סמל":"symbol","סמלגן":"symbol","סמלהגן":"symbol","סמלמוסדחינוכי":"symbol","סמלמשרד":"symbol",
+  "חינוך":"education","סוגחינוך":"education"
 };
-/* פענוח קלט העירייה: אם יש כותרת "ת"ז" — קוראים כטבלה (כולל שם אב/אם); אחרת — רשימת ת"ז חופשית */
-function parseMuniInput(text){
-  const rows=parseTable(text);
-  const parents=new Map(); // tz -> {father,mother}
-  let structured=false, tzList=[];
-  if(rows.length){
-    const header=rows[0].map(normHeader); const hi={};
-    header.forEach((h,i)=>{ const k=MUNI_HEADER_MAP[h]; if(k && hi[k]==null) hi[k]=i; });
-    if(hi.tz!=null){
-      structured=true;
-      for(let r=1;r<rows.length;r++){ const c=rows[r];
-        const tz=digits(c[hi.tz]||""); if(!tz) continue; tzList.push(tz);
-        const fa=hi.fatherName!=null?String(c[hi.fatherName]??"").trim():"";
-        const mo=hi.motherName!=null?String(c[hi.motherName]??"").trim():"";
-        if(fa||mo){ const cur=parents.get(tz)||{}; if(fa&&!cur.father)cur.father=fa; if(mo&&!cur.mother)cur.mother=mo; parents.set(tz,cur); }
-      }
+/* השדות שרשימת העירייה משלימה בתיק, לפי הסדר שבו הם מוצגים בסיכום.
+   phone:true — שדה טלפון, שעובר בדיקת כפילות מול כל שדות הטלפון של אותו
+   תיק לפני שהוא נכתב. norm — נרמול הערך לפני הכתיבה. */
+const MUNI_FILL_FIELDS = [
+  { key:"dob",        label:"תאריך לידה", norm:v=>normDateVal(v) },
+  { key:"motherName", label:"שם האם" },
+  { key:"fatherName", label:"שם האב" },
+  { key:"phone",      label:"טלפון בית", phone:true },
+  { key:"dadMobile",  label:"נייד אב",   phone:true },
+  { key:"momMobile",  label:"נייד אם",   phone:true },
+  { key:"email",      label:'דוא"ל' },
+  { key:"street",     label:"רחוב" },
+  { key:"building",   label:"מספר בניין" },
+  { key:"city",       label:"עיר" }
+];
+/* שדות הטלפון של התיק. mobile הוא שדה ישן שהטופס עדיין מציג כ"נייד אם"
+   כשאין ניידים מפורשים, ולכן הוא נספר גם הוא בבדיקת הכפילות. */
+const STU_PHONE_KEYS = ["phone","dadMobile","momMobile","mobile"];
+/* מפתח השוואה למספר טלפון: ספרות בלבד, בלי קידומת בינלאומית ובלי אפסים
+   מובילים — כדי ש-"052-2222222", "522222222" ו-"+972522222222" ייחשבו
+   לאותו מספר. מחרוזת קצרה מ-7 ספרות אינה נחשבת מספר. */
+function phoneKey(v){ const d=digits(v).replace(/^972/,"").replace(/^0+/,""); return d.length>=7?d:""; }
+function studentPhoneKeys(s){ const set=new Set(); STU_PHONE_KEYS.forEach(k=>{ const p=phoneKey(s[k]); if(p) set.add(p); }); return set; }
+/* הערך שהטופס מציג בשדה. "נייד אם" יורש את השדה הישן mobile כשאין ניידים
+   מפורשים, ולכן הוא נחשב תפוס גם אז — ולא נדרס בעדכון מהעירייה. */
+function stuFieldValue(s, key){
+  if(key==="momMobile") return String(s.momMobile || ((!s.dadMobile && !s.momMobile) ? (s.mobile||"") : "") || "").trim();
+  return String(s[key]??"").trim();
+}
+/* סמל המוסד של הגן להשוואה מול העירייה — סמל הגן, ובהיעדרו הסמל הפנימי
+   (בקבצים שמתקבלים "סמל מוסד" מופיע בשני השמות). */
+function ganSymbolText(g){ return String((g && (g.ganSymbol||g.internalSymbol))||"").trim(); }
+function ganByMuniSymbol(sym){
+  const t=String(sym||"").trim(); if(!t) return null;
+  return DB.gans.find(g=>String(g.ganSymbol||"").trim()===t)
+      || DB.gans.find(g=>String(g.internalSymbol||"").trim()===t) || null;
+}
+/* השלמת פרטים חסרים בתיק מתוך שורת העירייה.
+   ממלאים רק שדה ריק — ערך שכבר קיים בתוכנה לעולם אינו נדרס.
+   מספר טלפון שכבר מופיע באחד משדות הטלפון האחרים של אותה ילדה לא נכתב
+   שוב לשדה אחר (למשל נייד האב שבקובץ, שאצלנו כבר יושב בטלפון הבית). */
+function applyMuniRec(s, rec){
+  const filled=[]; let phoneDup=0;
+  const phones=studentPhoneKeys(s);
+  MUNI_FILL_FIELDS.forEach(f=>{
+    let v=String(rec[f.key]??"").trim(); if(!v) return;
+    if(f.phone) v=fixPhone(v);
+    if(f.norm)  v=f.norm(v);
+    v=String(v||"").trim(); if(!v) return;
+    if(f.phone){
+      const pk=phoneKey(v); if(!pk) return;
+      if(phones.has(pk)){ phoneDup++; return; }   // כבר מופיע באחד משדות הטלפון
+      if(stuFieldValue(s,f.key)) return;          // השדה תפוס במספר אחר — לא דורסים
+      s[f.key]=v; phones.add(pk); filled.push(f.label); return;
     }
+    if(stuFieldValue(s,f.key)) return;
+    s[f.key]=v; filled.push(f.label);
+  });
+  return { filled, phoneDup };
+}
+/* פתיחת תיק חדש לת"ז שברשימת העירייה ואינה בתוכנה. התיק נפתח כ"קלוט
+   בעירייה" וכ"לא נרשמה על ידינו" — היא הגיעה מרשימת העירייה ולא מרישום
+   אצלנו — וללא שיבוץ סופי. */
+function muniNewStudent(rec, edu, assignBySymbol){
+  const st=makeStudent();
+  st.tz=rec.tz;
+  st.lastName=String(rec.lastName||"").trim();
+  st.firstName=String(rec.firstName||"").trim();
+  st.education=rec.education ? normEduVal(rec.education) : (edu||"רגיל");
+  applyMuniRec(st, rec);
+  st.absorbedMunicipality=true;
+  st.registeredByUs=false;
+  st.placed=false;
+  if(assignBySymbol){ const g=ganByMuniSymbol(rec.symbol);
+    if(g){ st.ganId=g.id; if(ganCampus(g.id)) st.campus=ganCampus(g.id); } }
+  return st;
+}
+/* זיהוי העמודות שבקובץ: לכל עמודה — הכותרת כפי שהיא, דוגמה מהשורה
+   הראשונה, וניחוש השדה לפי הכותרת. שדה שכבר נוחש לעמודה קודמת לא ינוחש
+   שוב, כדי ששתי עמודות לא ייקלטו לאותו שדה בלי בחירה מפורשת. */
+function muniDetectColumns(rows){
+  if(!rows.length) return [];
+  const sample=rows[1]||[], used=new Set();
+  return rows[0].map((h,i)=>{
+    let guess=MUNI_HEADER_MAP[normHeader(h)]||"";
+    if(guess && used.has(guess)) guess=""; else if(guess) used.add(guess);
+    return { i, header:String(h??"").trim(), guess, sample:String(sample[i]??"").trim() };
+  });
+}
+/* האם הקלט הוא טבלה בכלל. שורה ראשונה עם יותר מעמודה אחת, או עמודה
+   בודדת שכותרתה מוכרת — טבלה. רשימת ת"ז נטו (עמודה אחת של מספרים) אינה
+   טבלה, ואין מה למפות בה. */
+function muniLooksTabular(rows){
+  if(rows.length<2) return false;
+  const head=rows[0];
+  return head.length>1 || !!MUNI_HEADER_MAP[normHeader(head[0])];
+}
+/* מיפוי אוטומטי מלא: { fieldKey: columnIndex } */
+function muniAutoMap(rows){
+  const m={}; muniDetectColumns(rows).forEach(c=>{ if(c.guess && m[c.guess]==null) m[c.guess]=c.i; });
+  return m;
+}
+/* בניית הרשומות לפי מיפוי עמודות מפורש — רק השדות שבמיפוי נקלטים */
+function muniRowsToRecs(rows, map){
+  const recs=new Map(), tzList=[];
+  const tzCol=map.tz; if(tzCol==null) return { nums:[], recs };
+  const keys=Object.keys(map).filter(k=>k!=="tz");
+  for(let r=1;r<rows.length;r++){ const c=rows[r];
+    const tz=digits(c[tzCol]||""); if(!tz) continue; tzList.push(tz);
+    const rec=recs.get(tz)||{tz};
+    keys.forEach(k=>{ const v=String(c[map[k]]??"").trim(); if(v && !rec[k]) rec[k]=v; }); // שתי שורות לאותה ת"ז — הערך הראשון שנמצא
+    recs.set(tz,rec);
   }
-  if(!structured) tzList=(String(text||"").match(/\d{5,}/g)||[]);
-  return { nums:[...new Set(tzList)], parents, structured };
+  return { nums:[...new Set(tzList)], recs };
+}
+/* פענוח קלט העירייה. map — מיפוי העמודות שנבחר בטבלת המיפוי; בלעדיו
+   מזוהה מיפוי אוטומטי לפי הכותרות. בלי עמודת ת"ז — הקלט נקרא כרשימת
+   מספרי זהות חופשית. */
+function parseMuniInput(text, map){
+  const rows=parseTable(text);
+  let structured=false, nums=[], recs=new Map();
+  if(muniLooksTabular(rows)){
+    const m = (map && map.tz!=null) ? map : muniAutoMap(rows);
+    if(m.tz!=null){ structured=true; const built=muniRowsToRecs(rows,m); nums=built.nums; recs=built.recs; }
+  }
+  if(!structured) nums=[...new Set(String(text||"").match(/\d{5,}/g)||[])];
+  /* parents — לתאימות עם קריאות שביקשו רק את שמות ההורים */
+  const parents=new Map();
+  recs.forEach((r,tz)=>{ if(r.fatherName||r.motherName) parents.set(tz,{father:r.fatherName||"",mother:r.motherName||""}); });
+  return { nums, recs, parents, structured, rows };
+}
+/* תבנית לאקסל להורדה ומילוי — הכותרות הן בדיוק שמות השדות שבתוכנה,
+   ולכן קובץ שנבנה עליה מזוהה במלואו לבד. */
+function muniTemplateCSV(){
+  const headers=MUNI_FIELD_OPTIONS.map(f=>f.label);
+  const example={ tz:"123456789", lastName:"ישראלי", firstName:"שרה", dob:"01/09/2021", motherName:"רבקה", fatherName:"יעקב",
+    phone:"03-1234567", dadMobile:"050-1234567", momMobile:"052-7654321", email:"home@example.com",
+    street:"הרב קוק", building:"12", city:"ירושלים", symbol:"123456", education:"רגיל" };
+  const csv=[headers.map(csvCell).join(","), MUNI_FIELD_OPTIONS.map(f=>csvCell(example[f.key]||"")).join(",")].join("\r\n");
+  downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), "תבנית-רשימת-עירייה.csv");
 }
 /* ---------- רשימת העירייה — מקטע אחד, שני מקומות ----------
-   הגוף של מסך "רשימת העירייה" (הדבקת ת"ז, טעינת CSV, התאמה וסימון) נבנה
-   כאן ולא בתוך viewMunicipality, כדי שאותו מקטע בדיוק ישרת שני מקומות:
-   הלשונית "עירייה" בעיצוב הקיים, ובעיצוב החדש (מעבדת העיצוב) — התחתית של
-   חלון "עדכון לפי ת"ז", ששם הלשונית בוטלה. ראה docs/UI_LAB.md.
-   אין כאן שני עותקים של הלוגיקה: הכפתור, ההתאמה והשמירה זהים בשני המקומות. */
+   הגוף של מסך "רשימת העירייה" נבנה כאן ולא בתוך viewMunicipality, כדי
+   שאותו מקטע בדיוק ישרת שני מקומות: הלשונית "עירייה" בעיצוב הקיים,
+   ובעיצוב החדש (מעבדת העיצוב) — התחתית של חלון "עדכון לפי ת"ז", ששם
+   הלשונית בוטלה. ראה docs/UI_LAB.md. אין כאן שני עותקים של הלוגיקה. */
 function muniSectionHTML(descClass){
   const stored = DB.municipality[DB.activeYear]||[];
+  const edu = activeEdu || "רגיל";
   return `
-    <div class="${descClass||"sub"}">הדבק/י או העלה/י את רשימת תעודות הזהות שקיבלת מהעירייה. המערכת תבצע התאמה (VLOOKUP) לפי ת"ז ותסמן כל תלמידה כ"קלוט בעירייה". אם הקובץ כולל כותרות עם עמודות "שם אב" / "שם אם" — המערכת תשלים אותן לתיקים שבהם הן חסרות.</div>
-    <div class="grid g2">
-      <div>
-        <label>הדבקת ת"ז (שורה לכל אחת) — או טבלה עם כותרות: ת"ז, שם אב, שם אם</label>
-        <textarea id="muni-text" rows="8" placeholder="123456789&#10;987654321&#10;…&#10;— או —&#10;ת&quot;ז,שם אב,שם אם&#10;123456789,יעקב,רבקה">${stored.join("\n")}</textarea>
-        <div class="row" style="margin-top:8px">
-          <button class="btn" id="muni-run" type="button">🔗 בצע התאמה וסמן</button>
-          <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="muni-file" accept=".csv,.txt" hidden></label>
-        </div>
+    <div class="${descClass||"sub"}">מעלים את קובץ העירייה כמו שהוא — על כל העמודות שבו. אחרי הטעינה נפתחת <b>טבלת מיפוי עמודות</b>: מסמנים אילו עמודות לקלוט ולאיזה שדה בתוכנה כל אחת נכנסת; כל השאר נזרק. ההתאמה נעשית לפי מספר זהות: כל ת"ז שנמצאת בתוכנה מסומנת "קלוט בעירייה" והפרטים החסרים בתיק מושלמים מהקובץ. פרט שכבר קיים בתוכנה אינו נדרס, ומספר טלפון שכבר מופיע באחד משדות הטלפון של אותה ילדה לא נכתב שוב לשדה אחר. ת"ז שאינה בתוכנה — נפתח לה תיק חדש.</div>
+    <div class="row" style="margin-top:10px;gap:10px;align-items:end;flex-wrap:wrap">
+      <div class="field"><label>סוג החינוך של הרשימה</label>
+        <select id="muni-edu">${EDU_TYPES.map(t=>`<option ${t===edu?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="muni-file" accept=".csv,.txt" hidden></label>
+      <button class="btn ghost sm" id="muni-template" type="button">⬇️ הורדת תבנית לאקסל</button>
+    </div>
+    <div class="checks" style="margin-top:8px">
+      <label class="check"><input type="checkbox" id="muni-create" checked> פתיחת תיק חדש לכל ת"ז שאינה בתוכנה</label>
+      <label class="check"><input type="checkbox" id="muni-assign"> שיבוץ התיקים החדשים לגן לפי סמל המוסד שבקובץ</label>
+    </div>
+    <div class="hint" style="margin-top:6px">סוג החינוך נקבע לתיקים החדשים שייפתחו (אם לא מופתה עמודת "סוג חינוך"). ההשלמה עצמה נעשית לפי ת"ז בכל התוכנה, בלי תלות בסוג החינוך. שיבוץ של תיקים קיימים אינו משתנה לעולם — הפרשי הסמלים מדווחים בלבד.</div>
+    <div style="margin-top:10px">
+      <label>הדבקה ישירה מאקסל — שורת כותרות ואחריה שורה לכל ילדה (או רשימת ת"ז בלבד, שורה לכל אחת)</label>
+      <textarea id="muni-text" rows="6" placeholder='מספר זהות,שם משפחה,שם פרטי,תאריך לידה,שם האם,שם האב,טלפון בית,נייד אב,נייד אם,סמל מוסד&#10;123456789,ישראלי,שרה,01/09/2021,רבקה,יעקב,03-1234567,050-1234567,052-7654321,123456'>${stored.join("\n")}</textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn ghost" id="muni-detect" type="button">🔎 זיהוי עמודות</button>
+        <button class="btn" id="muni-run" type="button">🔗 בצע התאמה, סמן והשלם פרטים</button>
       </div>
-      <div id="muni-result"><div class="hint">התוצאה תופיע כאן לאחר ההתאמה.</div></div>
-    </div>`;
+    </div>
+    <div id="muni-map" style="margin-top:12px"></div>
+    <div id="muni-result" style="margin-top:12px"><div class="hint">התוצאה תופיע כאן לאחר ההתאמה.</div></div>`;
 }
 /* חיווט המקטע. root — הלשונית או החלון שבו הוא יושב (שניהם לעולם לא פתוחים
    יחד, אבל החיפוש תחום כדי שלא יסתמך על כך). inModal — כשהמקטע יושב בחלון,
    סימון תיקים משנה את הרשימה שמאחוריו, ולכן היא מתרעננת עם סגירת החלון. */
 function wireMuniSection(root, inModal){
   const q = s => (root||document).querySelector(s);
-  q("#muni-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return; readFileSmart(f, txt=>{ q("#muni-text").value=txt; toast('הקובץ נטען — לחצ/י "בצע התאמה"'); }); };
+  /* הורדת טבלה שמוצגת בסיכום כקובץ אקסל (CSV עם BOM לעברית תקינה) */
+  const wireDownload = (id, name, headers, rows) => {
+    const b=q("#"+id); if(!b) return;
+    b.onclick=()=>{ const csv=[headers.map(csvCell).join(","), ...rows.map(r=>r.map(csvCell).join(","))].join("\r\n");
+      downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), name); };
+  };
+
+  /* ---- טבלת מיפוי העמודות ---- */
+  const mapHost = () => q("#muni-map");
+  let mappedText=null;   // הטקסט שממנו נבנתה טבלת המיפוי המוצגת כרגע
+  function renderMap(){
+    const host=mapHost(); if(!host) return;
+    mappedText=q("#muni-text").value;
+    const rows=parseTable(mappedText);
+    if(!muniLooksTabular(rows)){
+      host.innerHTML=`<div class="hint">אין עדיין טבלה למפות. טען/י קובץ או הדבק/י שורת כותרות ואחריה שורות נתונים. רשימת ת"ז בלבד עובדת גם היא — בלי מיפוי ובלי השלמת פרטים.</div>`;
+      return;
+    }
+    const cols=muniDetectColumns(rows);
+    const known=cols.filter(c=>c.guess).length;
+    host.innerHTML=`
+      <fieldset><legend>מיפוי עמודות הקובץ (${cols.length} עמודות · ${known} זוהו לבד)</legend>
+        <div class="hint">כל שורה כאן היא עמודה בקובץ שהעלית. <b>רק עמודה מסומנת נקלטת</b> — השאר נזרק, גם אם יש בקובץ עוד הרבה עמודות שאינן מעניינות אותנו. כותרת שכתובה בדיוק כשם השדה בתוכנה מזוהה ומסומנת לבד; לכל השאר אפשר לבחור שדה ידנית. עמודת מספר הזהות היא חובה — היא מפתח ההתאמה.</div>
+        <div class="row" style="margin:8px 0;gap:8px">
+          <button class="btn ghost sm" id="muni-map-all" type="button">✔️ סמן את כל המזוהות</button>
+          <button class="btn ghost sm" id="muni-map-none" type="button">✖️ נקה הכל</button>
+        </div>
+        <div class="table-wrap" style="max-height:320px;overflow:auto"><table><thead><tr>
+          <th style="width:64px">לקלוט</th><th>הכותרת בקובץ</th><th>דוגמה מהשורה הראשונה</th><th>לאיזה שדה בתוכנה</th></tr></thead><tbody>
+          ${cols.map(c=>`<tr>
+            <td style="text-align:center"><input type="checkbox" class="muni-col-on" data-col="${c.i}" ${c.guess?'checked':''}></td>
+            <td>${esc(c.header)||'<span class="hint">(ללא כותרת)</span>'}</td>
+            <td class="hint">${esc(c.sample)||'—'}</td>
+            <td><select class="muni-col-field" data-col="${c.i}">
+              <option value="">— לא לעדכן —</option>
+              ${MUNI_FIELD_OPTIONS.map(f=>`<option value="${f.key}" ${c.guess===f.key?'selected':''}>${esc(f.label)}</option>`).join("")}
+            </select></td></tr>`).join("")}
+        </tbody></table></div>
+      </fieldset>`;
+    /* בחירת שדה מדליקה את הסימון מאליה — אחרת קל למפות ולשכוח לסמן */
+    host.querySelectorAll(".muni-col-field").forEach(sel=>{
+      sel.onchange=()=>{ const on=host.querySelector('.muni-col-on[data-col="'+sel.dataset.col+'"]');
+        if(on) on.checked=!!sel.value; };
+    });
+    const setAll=v=>host.querySelectorAll(".muni-col-on").forEach(cb=>{
+      const sel=host.querySelector('.muni-col-field[data-col="'+cb.dataset.col+'"]');
+      cb.checked = v && !!(sel && sel.value);
+    });
+    q("#muni-map-all").onclick=()=>setAll(true);
+    q("#muni-map-none").onclick=()=>setAll(false);
+  }
+  /* המיפוי כפי שהוא מסומן כרגע: { fieldKey: columnIndex }. עמודת ת"ז
+     נכללת תמיד — בלעדיה אין לפי מה להתאים. */
+  function readMap(){
+    const host=mapHost(); if(!host) return null;
+    const sels=host.querySelectorAll(".muni-col-field"); if(!sels.length) return null;
+    const m={};
+    sels.forEach(sel=>{
+      const i=+sel.dataset.col, k=sel.value; if(!k) return;
+      if(k==="tz"){ if(m.tz==null) m.tz=i; return; }
+      const on=host.querySelector('.muni-col-on[data-col="'+i+'"]');
+      if(on && !on.checked) return;
+      if(m[k]==null) m[k]=i;
+    });
+    return m;
+  }
+
+  q("#muni-file").onchange=e=>{ const f=e.target.files[0]; if(!f)return;
+    readFileSmart(f, txt=>{ q("#muni-text").value=txt; renderMap(); toast("הקובץ נטען — סמן/י אילו עמודות לקלוט"); }); };
+  q("#muni-text").onchange=renderMap;
+  q("#muni-detect").onclick=renderMap;
+  q("#muni-template").onclick=muniTemplateCSV;
+
   q("#muni-run").onclick=()=>{
-    const { nums, parents, structured } = parseMuniInput(q("#muni-text").value);
+    const out=q("#muni-result");
+    /* הטבלה חייבת להתאים לטקסט שבתיבה — אחרת המיפוי מצביע על עמודות של
+       קובץ קודם. אם הטקסט השתנה מאז, היא נבנית מחדש לפני ההרצה. */
+    if(q("#muni-text").value!==mappedText) renderMap();
+    const chosen=readMap();
+    const rowsIn=parseTable(q("#muni-text").value);
+    if(chosen && muniLooksTabular(rowsIn) && chosen.tz==null){
+      out.innerHTML=`<div class="empty">לא נבחרה עמודת <b>מספר זהות</b>. בטבלת המיפוי יש לבחור לעמודת הת"ז את השדה "מספר זהות" — היא מפתח ההתאמה.</div>`;
+      return;
+    }
+    const { nums, recs, structured } = parseMuniInput(q("#muni-text").value, chosen);
+    if(!nums.length){ out.innerHTML=`<div class="empty">לא זוהו מספרי זהות בקלט. ודא/י שיש עמודת מספר זהות בטבלת המיפוי, או הדבק/י רשימת מספרים.</div>`; return; }
     DB.municipality[DB.activeYear]=nums;
-    const set=new Set(nums);
-    let matched=0, already=0, filled=0;
-    const rows=studentsOfYear();
-    rows.forEach(s=>{ const tz=digits(s.tz); if(!tz || !set.has(tz)) return;
-      if(!s.absorbedMunicipality)matched++; else already++; s.absorbedMunicipality=true;
-      const pm=parents.get(tz);
-      if(pm){ let did=false;
-        if(pm.father && !String(s.fatherName||"").trim()){ s.fatherName=pm.father; did=true; }
-        if(pm.mother && !String(s.motherName||"").trim()){ s.motherName=pm.mother; did=true; }
-        if(did) filled++;
+    const edu=q("#muni-edu").value, doCreate=q("#muni-create").checked, doAssign=q("#muni-assign").checked;
+
+    const byTz=new Map(); studentsOfYear().forEach(s=>{ const d=digits(s.tz); if(d && !byTz.has(d)) byTz.set(d,s); });
+    let marked=0, already=0, updated=0, phoneDup=0;
+    const fieldCount={};       // תווית שדה -> בכמה תיקים הושלם
+    const created=[];          // תיקים חדשים שנפתחו
+    const notFound=[];         // ת"ז שאינן בתוכנה, כשפתיחת תיק חדש כבויה
+    const muniBySym=new Map(); // סמל מוסד -> כמה ילדות ברשימת העירייה
+    const symsSeen=new Set();  // הסמלים הרלוונטיים להעלאה הזאת
+    const diffs=[];            // אי-התאמות סמל בין העירייה לתוכנה
+
+    nums.forEach(tz=>{
+      const rec=recs.get(tz)||{tz};
+      const sym=String(rec.symbol||"").trim();
+      if(sym){ muniBySym.set(sym,(muniBySym.get(sym)||0)+1); symsSeen.add(sym); }
+      let s=byTz.get(tz);
+      if(!s){
+        if(!doCreate){ notFound.push(tz); return; }
+        s=muniNewStudent(rec, edu, doAssign);
+        DB.students.push(s); byTz.set(tz,s); created.push(s);
+        return;   // תיק חדש — הפרטים כבר בפנים, ואין מול מה להשוות סמל
       }
+      if(!s.absorbedMunicipality) marked++; else already++;
+      s.absorbedMunicipality=true;
+      const r=applyMuniRec(s, rec);
+      phoneDup+=r.phoneDup;
+      if(r.filled.length){ updated++; r.filled.forEach(l=>fieldCount[l]=(fieldCount[l]||0)+1); }
+      const ourSym=ganSymbolText(ganById(s.ganId));
+      if(ourSym) symsSeen.add(ourSym);
+      if(sym && ourSym!==sym) diffs.push({ s, muniSym:sym, ourSym });
     });
     save();
     if(inModal) pendingRender=true;   // רענון הרשימה שמאחורי החלון עם סגירתו
-    const inSystem=new Set(rows.map(s=>digits(s.tz)).filter(Boolean));
-    const notFound=nums.filter(n=>!inSystem.has(n));
-    q("#muni-result").innerHTML=`
+
+    /* סיכום לפי סמל מוסד — נספר אחרי פתיחת התיקים החדשים */
+    const ourBySym=new Map();
+    studentsOfYear().forEach(x=>{ if(x.finished) return; const sy=ganSymbolText(ganById(x.ganId)); if(sy) ourBySym.set(sy,(ourBySym.get(sy)||0)+1); });
+    const symRows=[...symsSeen].sort((a,b)=>String(a).localeCompare(String(b),"he")).map(sym=>{
+      const g=ganByMuniSymbol(sym);
+      return { sym, gan:g?ganName(g.id):"", muni:muniBySym.get(sym)||0, ours:ourBySym.get(sym)||0 };
+    });
+
+    const fl=Object.keys(fieldCount);
+    const fieldLine = fl.length
+      ? `<div class="hint" style="margin-top:8px">פרטים שהושלמו: ${fl.map(k=>esc(k)+" — "+fieldCount[k]).join(" · ")}</div>`
+      : (structured ? `<div class="hint" style="margin-top:8px">לא נמצאו פרטים חסרים להשלמה בתיקים הקיימים.</div>`
+                    : `<div class="hint" style="margin-top:8px">הקלט היה רשימת ת"ז בלבד, ולכן לא הושלמו פרטים. להשלמת פרטים העלה/י את קובץ העירייה עם הכותרות ומפ/י את העמודות.</div>`);
+
+    const tbl = (inner, max) => `<div class="table-wrap" style="margin-top:8px;max-height:${max||280}px;overflow:auto"><table>${inner}</table></div>`;
+
+    const createdBlock = created.length ? `
+      <div style="margin-top:14px">
+        <b>${created.length} תעודות זהות לא הופיעו בתוכנה — ונפתח להן תיק חדש</b>
+        <button class="btn ghost sm" id="muni-dl-new" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button>
+        ${tbl(`<thead><tr><th>#</th><th>ת"ז</th><th>שם משפחה</th><th>שם פרטי</th><th>תאריך לידה</th><th>חינוך</th><th>סמל בעירייה</th><th>גן</th></tr></thead><tbody>
+          ${created.map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.tz)}</td><td>${esc(s.lastName)||'—'}</td><td>${esc(s.firstName)||'—'}</td><td>${esc(s.dob?fmtDate(s.dob):"")||'—'}</td><td>${eduBadge(s)}</td><td>${esc(String((recs.get(digits(s.tz))||{}).symbol||""))||'—'}</td><td>${s.ganId?esc(ganName(s.ganId)):'—'}</td></tr>`).join("")}
+        </tbody>`)}
+      </div>` : '';
+
+    const notFoundBlock = (!doCreate && notFound.length) ? `
+      <div class="note" style="margin-top:12px">${notFound.length} ת"ז מופיעות ברשימת העירייה אך אינן בתוכנה (הסימון "פתיחת תיק חדש" כבוי):<br>${notFound.slice(0,40).map(esc).join(", ")}${notFound.length>40?' …':''}
+        <div style="margin-top:6px"><button class="btn ghost sm" id="muni-dl-nf" type="button">⬇️ הורדת הרשימה</button></div>
+      </div>` : '';
+
+    const symBlock = symRows.length ? `
+      <div style="margin-top:14px">
+        <b>סיכום לפי סמל מוסד</b>
+        <button class="btn ghost sm" id="muni-dl-sym" type="button" style="margin-inline-start:8px">⬇️ הורדת הטבלה</button>
+        ${tbl(`<thead><tr><th>סמל מוסד</th><th>הגן אצלנו</th><th>ברשימת העירייה</th><th>בתוכנה</th><th>הפרש</th></tr></thead><tbody>
+          ${symRows.map(r=>`<tr><td>${esc(r.sym)}</td><td>${r.gan?esc(r.gan):'<span class="pill warn">סמל לא מוכר</span>'}</td><td>${r.muni}</td><td>${r.ours}</td>
+            <td style="font-weight:700;color:${r.ours===r.muni?'var(--good)':'var(--bad)'}">${r.ours-r.muni>0?'+':''}${r.ours-r.muni}</td></tr>`).join("")}
+        </tbody>`)}
+        <div class="hint">"בתוכנה" — כל התלמידות הפעילות בשנת ${esc(DB.activeYear)} המשובצות לגן בעל אותו סמל, גם אם אינן בקובץ הנוכחי. "ברשימת העירייה" — כמה שורות בקובץ נושאות את הסמל.</div>
+      </div>` : '';
+
+    const diffBlock = diffs.length ? `
+      <div style="margin-top:14px">
+        <b style="color:var(--bad)">${diffs.length} תלמידות מופיעות בעירייה בסמל אחד ואצלנו בסמל אחר</b>
+        <button class="btn ghost sm" id="muni-dl-diff" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button>
+        ${tbl(`<thead><tr><th>שם</th><th>ת"ז</th><th>סמל בעירייה</th><th>הגן בעירייה</th><th>סמל אצלנו</th><th>הגן אצלנו</th></tr></thead><tbody>
+          ${diffs.map(d=>{ const mg=ganByMuniSymbol(d.muniSym);
+            return `<tr><td>${esc([d.s.lastName,d.s.firstName].filter(Boolean).join(" "))||'—'}</td><td>${esc(d.s.tz)}</td>
+              <td>${esc(d.muniSym)}</td><td>${mg?esc(ganName(mg.id)):'<span class="pill warn">סמל לא מוכר</span>'}</td>
+              <td>${esc(d.ourSym)||'—'}</td><td>${d.s.ganId?esc(ganName(d.s.ganId)):'<span class="pill warn">ללא שיבוץ</span>'}</td></tr>`; }).join("")}
+        </tbody>`)}
+        <div class="hint">התיקים החדשים שנפתחו זה עתה אינם בטבלה הזאת — הם מופיעים ברשימה שלמעלה.</div>
+      </div>` : '';
+
+    out.innerHTML=`
       <div class="stats">
-        <div class="stat hero"><div class="k">סומנו כקלוטות עכשיו</div><div class="v">${matched}</div></div>
+        <div class="stat hero"><div class="k">סומנו כקלוטות עכשיו</div><div class="v">${marked}</div></div>
+        <div class="stat"><div class="k">תיקים שעודכנו בהם פרטים</div><div class="v">${updated}</div></div>
+        <div class="stat"><div class="k">תיקים חדשים שנפתחו</div><div class="v">${created.length}</div></div>
         <div class="stat"><div class="k">כבר היו מסומנות</div><div class="v">${already}</div></div>
-        ${structured?`<div class="stat"><div class="k">הושלמו שמות הורים</div><div class="v">${filled}</div></div>`:''}
         <div class="stat"><div class="k">ברשימת העירייה</div><div class="v">${nums.length}</div></div>
-        <div class="stat"><div class="k">בעירייה ולא במערכת</div><div class="v">${notFound.length}</div></div>
+        ${phoneDup?`<div class="stat"><div class="k">טלפונים שדולגו (כבר קיימים)</div><div class="v">${phoneDup}</div></div>`:''}
       </div>
-      ${notFound.length?`<div class="note" style="margin-top:10px">${notFound.length} ת"ז מופיעות ברשימת העירייה אך אינן במערכת (ייתכן שטרם נרשמו אצלנו):<br>${notFound.slice(0,40).map(esc).join(", ")}${notFound.length>40?' …':''}</div>`:''}`;
-    toast("ההתאמה בוצעה");
+      ${fieldLine}${createdBlock}${notFoundBlock}${symBlock}${diffBlock}`;
+
+    wireDownload("muni-dl-new", "תיקים חדשים מרשימת העירייה.csv",
+      ['ת"ז',"שם משפחה","שם פרטי","תאריך לידה","שם האם","שם האב","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","מספר בניין","עיר","חינוך","סמל בעירייה","גן"],
+      created.map(s=>[s.tz,s.lastName,s.firstName,s.dob?fmtDate(s.dob):"",s.motherName,s.fatherName,s.phone,s.dadMobile,s.momMobile,s.email,s.street,s.building,s.city,eduLabel(s),String((recs.get(digits(s.tz))||{}).symbol||""),s.ganId?ganName(s.ganId):""]));
+    wireDownload("muni-dl-nf", "ת-ז מהעירייה שאינן בתוכנה.csv", ['ת"ז'], notFound.map(t=>[t]));
+    wireDownload("muni-dl-sym", "סיכום לפי סמל מוסד.csv",
+      ["סמל מוסד","הגן אצלנו","ברשימת העירייה","בתוכנה","הפרש"],
+      symRows.map(r=>[r.sym,r.gan,r.muni,r.ours,r.ours-r.muni]));
+    wireDownload("muni-dl-diff", "הפרשי סמל מוסד.csv",
+      ["שם משפחה","שם פרטי",'ת"ז',"סמל בעירייה","הגן בעירייה","סמל אצלנו","הגן אצלנו"],
+      diffs.map(d=>{ const mg=ganByMuniSymbol(d.muniSym);
+        return [d.s.lastName,d.s.firstName,d.s.tz,d.muniSym,mg?ganName(mg.id):"",d.ourSym,d.s.ganId?ganName(d.s.ganId):""]; }));
+
+    toast(`ההתאמה בוצעה · ${updated} עודכנו · ${created.length} תיקים חדשים`);
   };
+
+  renderMap();   // אם כבר יש טקסט בתיבה (רשימה שמורה משנה קודמת) — הטבלה נבנית מיד
 }
 function viewMunicipality(root){
   root.innerHTML=`
