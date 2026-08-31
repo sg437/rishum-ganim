@@ -10443,9 +10443,10 @@ function muniTemplateCSV(){
    הלשונית בוטלה. ראה docs/UI_LAB.md. אין כאן שני עותקים של הלוגיקה. */
 function muniSectionHTML(descClass){
   const stored = DB.municipality[DB.activeYear]||[];
-  /* כמה לא-קלוטות בתצוגה הנוכחית — נכנס לתווית הכפתור, כדי שהמספר שעליו
-     יהיה בדיוק המספר שמטריד במסך התלמידות ולא מספר מופשט. */
-  const notAbsN = eduScope(studentsOfYear().filter(x=>!x.finished)).filter(x=>!x.absorbedMunicipality).length;
+  /* כמה לא-קלוטות בשנה — בכל סוגי החינוך, כמו הבדיקה עצמה. רשימת העירייה
+     אינה מפרידה לפי חינוך, ומספר מסונן על הכפתור היה מזמין בדיוק את החיסור
+     השגוי שאנחנו מנסים למנוע. */
+  const notAbsN = studentsOfYear().filter(x=>!x.finished && !x.absorbedMunicipality).length;
   const edu = activeEdu || "רגיל";
   return `
     <div class="${descClass||"sub"}">מעלים את קובץ העירייה כמו שהוא — על כל העמודות שבו. אחרי הטעינה נפתחת <b>טבלת מיפוי עמודות</b>: מסמנים אילו עמודות לקלוט ולאיזה שדה בתוכנה כל אחת נכנסת; כל השאר נזרק. ההתאמה נעשית לפי מספר זהות.</div>
@@ -10470,7 +10471,7 @@ function muniSectionHTML(descClass){
       <div class="row" style="margin-top:8px">
         <button class="btn ghost" id="muni-detect" type="button">🔎 זיהוי עמודות</button>
         <button class="btn" id="muni-run" type="button">🔗 בצע התאמה, סמן והשלם פרטים</button>
-        <button class="btn ghost" id="muni-why" type="button" ${stored.length?'':'disabled'}>🔍 למה ${notAbsN} לא קלוטות?</button>
+        <button class="btn ghost" id="muni-why" type="button" ${stored.length?'':'disabled'}>🔍 למה ${notAbsN} לא קלוטות? (כל החינוך)</button>
       </div>
       ${stored.length?`<div class="hint" style="margin-top:4px">"למה לא קלוטות" מצליב את התיקים שאינם מסומנים מול <b>${stored.length}</b> מספרי הזהות של ההעלאה האחרונה — בלי להעלות שוב ובלי לשנות דבר.</div>`:''}
     </div>
@@ -10664,12 +10665,22 @@ function wireMuniSection(root, inModal){
     const out=q("#muni-result");
     const listTz=new Set((DB.municipality[DB.activeYear]||[]).map(t=>tzKey(t)));
     if(!listTz.size){ out.innerHTML=`<div class="empty">אין רשימת עירייה שמורה לשנה זו. יש להעלות קובץ ולבצע התאמה.</div>`; return; }
-    const scope=eduScope(studentsOfYear().filter(x=>!x.finished));
+    /* ⚠️ הבדיקה הזו רצה על *כל* סוגי החינוך, בכוונה ובלי eduScope.
+       רשימת העירייה אינה מפרידה לפי חינוך, ולכן בדיקה שמסתכלת רק על החינוך
+       שנבחר במסך יכולה להחזיר "0 חריגות" בזמן שהחריגות יושבות בחינוך השני —
+       תשובה מרגיעה ושגויה. הפילוח לפי חינוך מוצג בטבלה. */
+    const scope=studentsOfYear().filter(x=>!x.finished);
     const notAbs=scope.filter(x=>!x.absorbedMunicipality);
     const noTzUs=notAbs.filter(x=>!digits(x.tz));
     const inList=notAbs.filter(x=>digits(x.tz) && listTz.has(tzKey(x.tz)));   // ← החריגה
     const outList=notAbs.filter(x=>digits(x.tz) && !listTz.has(tzKey(x.tz)));
-    const eduTxt=activeEdu?`חינוך ${activeEdu}`:"כל סוגי החינוך";
+    const eduTxt="כל סוגי החינוך";
+    /* תמיד מציינים באיזה חינוך הן יושבות — גם כשכולן באותו אחד. דווקא אז זה
+       המידע החשוב ביותר: קבוצה שכולה בחינוך שאינו מוצג במסך היא בדיוק המקרה
+       שנעלם מהעין. */
+    const byEdu=l=>{ if(!l.length) return ""; const m={}; l.forEach(x=>{ const e=eduLabel(x); m[e]=(m[e]||0)+1; });
+      return "לפי חינוך — "+Object.keys(m).map(e=>`${e}: ${m[e]}`).join(" · "); };
+    const shownEdu=activeEdu ? notAbs.filter(x=>eduLabel(x)===activeEdu).length : notAbs.length;
     const row=(t,n,cls,d)=>`<tr><td>${t}</td><td><b class="${cls||''}">${n}</b></td><td class="hint">${d}</td></tr>`;
     out.innerHTML=`
       <div class="stats">
@@ -10678,16 +10689,17 @@ function wireMuniSection(root, inModal){
         <div class="stat ${inList.length?'bad':''}"><div class="k">ברשימה ולא מסומנות</div><div class="v">${inList.length}</div></div>
         <div class="stat"><div class="k">אינן ברשימה</div><div class="v">${outList.length}</div></div>
       </div>
-      <div class="hint" style="margin-top:8px">${noTzUs.length} + ${inList.length} + ${outList.length} = <b>${notAbs.length}</b> — כל תיק לא-קלוט נמצא באחת הקבוצות בדיוק.</div>
+      <div class="hint" style="margin-top:8px">${noTzUs.length} + ${inList.length} + ${outList.length} = <b>${notAbs.length}</b> — כל תיק לא-קלוט נמצא באחת הקבוצות בדיוק.
+        ${activeEdu?`<br>הבדיקה רצה על <b>כל</b> סוגי החינוך בכוונה — רשימת העירייה אינה מפרידה ביניהם. במסך התלמידות, בחינוך ${esc(activeEdu)}, מוצגות מתוכן <b>${shownEdu}</b>.`:''}</div>
       ${tbl(`<thead><tr><th>קבוצה</th><th>כמה</th><th>מה זה אומר</th></tr></thead><tbody>
-        ${row('בלי מספר זהות', noTzUs.length, '', 'אין לפי מה להתאים — ההתאמה היא לפי ת"ז בלבד. אלה גם התיקים שנפתחות להם כפילויות.')}
-        ${row('מופיעות ברשימה שהועלתה, ולא מסומנות', inList.length, inList.length?'bad':'', inList.length?'חריגה — הסימון לא נשמר (למשל כתיבה שנכשלה). ניתן לסמן אותן עכשיו.':'אין חריגות — כל מי שברשימה אכן מסומנת.')}
-        ${row('אינן ברשימה שהועלתה', outList.length, '', 'לא קלוטות באמת — אינן מופיעות בקובץ העירייה.')}
+        ${row('בלי מספר זהות', noTzUs.length, '', 'אין לפי מה להתאים — ההתאמה היא לפי ת"ז בלבד. אלה גם התיקים שנפתחות להם כפילויות. '+byEdu(noTzUs))}
+        ${row('מופיעות ברשימה שהועלתה, ולא מסומנות', inList.length, inList.length?'bad':'', inList.length?('חריגה — הן ברשימה ואינן מסומנות. ניתן לסמן אותן עכשיו. '+byEdu(inList)):'אין חריגות — כל מי שברשימה אכן מסומנת, בכל סוגי החינוך.')}
+        ${row('אינן ברשימה שהועלתה', outList.length, '', 'לא קלוטות באמת — אינן מופיעות בקובץ העירייה. '+byEdu(outList))}
       </tbody>`)}
       ${inList.length?`<div class="note" style="margin-top:10px">
         <b>${inList.length} תיקים מופיעים ברשימת העירייה אך אינם מסומנים כקלוטים.</b>
         ${tbl(`<thead><tr><th>#</th><th>ת"ז</th><th>שם משפחה</th><th>שם פרטי</th><th>חינוך</th></tr></thead><tbody>
-          ${inList.slice(0,60).map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.tz)}</td><td>${esc(x.lastName)||'—'}</td><td>${esc(x.firstName)||'—'}</td><td>${eduBadge(x)}</td></tr>`).join("")}
+          ${inList.slice(0,80).map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.tz)}</td><td>${esc(x.lastName)||'—'}</td><td>${esc(x.firstName)||'—'}</td><td>${eduBadge(x)}</td></tr>`).join("")}
         </tbody>`)}
         <div class="row" style="margin-top:8px;gap:8px">
           <button class="btn" id="muni-fix" type="button">✔️ סמן את ${inList.length} התיקים האלה כקלוטים</button>
@@ -10731,13 +10743,16 @@ function wireMuniSection(root, inModal){
     if(compare){
       const muniBySym=new Map(), symsSeen=new Set(), diffs=[], missing=[];
       let found=0, noSym=0, leftCmp=0;
+      /* פילוח לפי סוג חינוך — מסך התלמידות מציג סוג אחד בכל פעם, והקובץ כולל
+         את כולם. בלי הפילוח הזה הפער בין המספרים נשאר בלתי ניתן לפענוח. */
+      const cmpEdu={}, bumpC=(o,k)=>{ o[k]=(o[k]||0)+1; };
       nums.forEach(tz=>{
         const rec=recs.get(tz)||{tz};
         const sym=String(rec.symbol||"").trim();
         if(sym){ muniBySym.set(sym,(muniBySym.get(sym)||0)+1); symsSeen.add(sym); } else noSym++;
         const s=byTz.get(tzKey(tz));
         if(!s){ missing.push(tz); return; }
-        if(s.finished) leftCmp++;
+        if(s.finished) leftCmp++; else bumpC(cmpEdu, eduLabel(s));
         found++;
         const ourSym=ganSymbolText(ganById(s.ganId));
         if(ourSym) symsSeen.add(ourSym);
@@ -10756,6 +10771,27 @@ function wireMuniSection(root, inModal){
         </div>
         ${noSym?`<div class="hint" style="margin-top:8px">${noSym} שורות בקובץ בלי סמל מוסד — הן נספרות ב"ברשימת העירייה" אך לא בטבלת הסמלים. ודא/י שמופתה עמודת "סמל מוסד".</div>`:''}
         ${(noTz&&noTz.length)?`<div class="note" style="margin-top:8px">${noTz.length} שורות בקובץ בלי מספר זהות — לא נספרו כלל. ההתאמה היא לפי ת"ז בלבד.</div>`:''}
+        ${(()=>{
+          /* המאזן המלא של הקובץ — כל שורה מקבלת מקום, והסכום חייב להיות
+             מספר השורות בקובץ. זה המסך שעונה על "איפה נעלמו לי כמה". */
+          const rows=EDU_TYPES.filter(t=>cmpEdu[t]).map(t=>[`חינוך ${t} — פעילות`, cmpEdu[t], `נספרות במסך רק כשנבחר חינוך ${t}`]);
+          Object.keys(cmpEdu).forEach(t=>{ if(!EDU_TYPES.includes(t)) rows.push([`חינוך ${t} — פעילות`, cmpEdu[t], ""]); });
+          if(leftCmp)        rows.push(["סיימו ועזבו אצלנו", leftCmp, "אינן נספרות באף משבצת"]);
+          if(missing.length) rows.push(["אינן בתוכנה כלל", missing.length, "אין להן תיק"]);
+          const sum=rows.reduce((a,r)=>a+r[1],0);
+          const dup=Math.max(0,(rowsWithTz||0)-nums.length);
+          const fileRows=nums.length+dup+((noTz&&noTz.length)||0);
+          return `<div style="margin-top:14px"><b>מאזן מלא — איפה נמצאת כל שורה בקובץ</b>
+            ${tbl(`<thead><tr><th>קבוצה</th><th>כמה</th><th>הערה</th></tr></thead><tbody>
+              ${rows.map(r=>`<tr><td>${esc(r[0])}</td><td><b>${r[1]}</b></td><td class="hint">${esc(r[2])}</td></tr>`).join("")}
+              <tr style="border-top:2px solid var(--border)"><td><b>סה״כ מספרי זהות שונים</b></td><td><b>${sum}</b></td><td class="hint">${sum===nums.length?"תואם":`⚠️ מול ${nums.length}`}</td></tr>
+              ${dup?`<tr><td>שורות כפולות (אותה ת"ז)</td><td><b>${dup}</b></td><td class="hint">נספרות פעם אחת</td></tr>`:''}
+              ${(noTz&&noTz.length)?`<tr><td>שורות בלי ת"ז</td><td><b>${noTz.length}</b></td><td class="hint">לא ניתנות להתאמה</td></tr>`:''}
+              <tr style="border-top:2px solid var(--border)"><td><b>סה״כ שורות בקובץ</b></td><td><b>${fileRows}</b></td><td class="hint">כולל כפולות ושורות בלי ת"ז</td></tr>
+            </tbody>`)}
+            <div class="note" style="margin-top:8px">אם המספר שאת/ה סופר/ת באקסל גדול מ-<b>${nums.length}</b>, ההפרש הוא <b>שורות כפולות או שורות בלי ת"ז</b> — הן נספרות באקסל פעם אחת כל אחת, ובתוכנה לא.</div>
+          </div>`;
+        })()}
         ${symBlockHTML(symRows)}
         ${diffBlockHTML(diffs, "כל שורה: איפה הילדה רשומה אצלנו מול איפה היא רשומה בעירייה.")}
         ${missing.length?`<div class="note" style="margin-top:14px">${missing.length} ת"ז מופיעות ברשימת העירייה ואינן בתוכנה כלל:<br>${missing.slice(0,40).map(esc).join(", ")}${missing.length>40?' …':''}

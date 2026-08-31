@@ -1072,6 +1072,121 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   all === 8 ? ok('ביטול המסנן מחזיר את כל 8 התיקים') : bad('הביטול לא עבד', [String(all)]);
   await p.evaluate(() => closeModal());
 
+  console.log('\n28. מאזן מלא במצב השוואה — בלי לגעת בנתונים');
+  /* שחזור מוקטן של המצב בשטח: הקובץ נראה כאילו יש בו 8 קלוטות, אבל בפועל
+     6 ת"ז שונות (שורה כפולה + שורה בלי ת"ז). בתוכנה: 3 רגיל, 1 ח"מ,
+     1 שסיימה, 1 שאינה בתוכנה. המאזן חייב להראות את כל אלה ולסגור. */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'e1',tz:'300000001',firstName:'א',lastName:'רגילה',ganId:'g1'}),
+      mk({id:'e2',tz:'300000002',firstName:'ב',lastName:'רגילה',ganId:'g1'}),
+      mk({id:'e3',tz:'300000003',firstName:'ג',lastName:'רגילה',ganId:'g1'}),
+      mk({id:'e4',tz:'300000004',firstName:'ד',lastName:'מיוחדת',education:'ח"מ'}),
+      mk({id:'e5',tz:'300000005',firstName:'ה',lastName:'עזבה',ganId:'g1',finished:true})];
+    DB.municipality={};
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('municipality'));
+  await p.waitForTimeout(300);
+  await load(p, [
+    'מספר זהות,שם משפחה,שם פרטי,סמל מוסד',
+    '300000001,רגילה,א,111111',
+    '300000002,רגילה,ב,111111',
+    '300000003,רגילה,ג,111111',
+    '300000003,רגילה,ג,111111',      /* שורה כפולה */
+    '300000004,מיוחדת,ד,111111',
+    '300000005,עזבה,ה,111111',
+    '300000077,חיצונית,ו,111111',    /* אינה בתוכנה */
+    ',בליתז,ז,111111'                /* שורה בלי ת"ז */
+  ].join('\n'));
+  /* מצב השוואה — קריאה בלבד */
+  await p.evaluate(() => { const m = document.querySelector('#muni-mode'); m.value = 'compare'; m.dispatchEvent(new Event('change')); });
+  await p.waitForTimeout(250);
+  const absBefore = await p.evaluate(() => DB.students.filter(x => x.absorbedMunicipality).length);
+  await run(p);
+  const absAfter = await p.evaluate(() => DB.students.filter(x => x.absorbedMunicipality).length);
+  const bal = await p.evaluate(() => document.querySelector('#muni-result').textContent.replace(/\s+/g, ' '));
+
+  (absBefore === 0 && absAfter === 0) ? ok('מצב השוואה לא שינה שום נתון') : bad('נתונים שונו במצב השוואה', [absBefore + '→' + absAfter]);
+  /מאזן מלא — איפה נמצאת כל שורה בקובץ/.test(bal) ? ok('מוצג המאזן המלא') : bad('אין מאזן מלא', [bal.slice(0, 300)]);
+  /חינוך רגיל — פעילות3/.test(bal) ? ok('חינוך רגיל — 3') : bad('פילוח רגיל שגוי', [bal.slice(0, 500)]);
+  /חינוך ח"מ — פעילות1/.test(bal) ? ok('חינוך מיוחד — 1') : bad('פילוח ח"מ שגוי', [bal.slice(0, 500)]);
+  /סיימו ועזבו אצלנו1/.test(bal) ? ok('סיימו ועזבו — 1') : bad('פילוח עוזבות שגוי');
+  /אינן בתוכנה כלל1/.test(bal) ? ok('אינה בתוכנה — 1') : bad('פילוח "אינן בתוכנה" שגוי');
+  /סה״כ מספרי זהות שונים6תואם/.test(bal)
+    ? ok('הסכום סוגר: 3+1+1+1 = 6 ת"ז שונות') : bad('הסכום אינו סוגר', [bal.slice(0, 800)]);
+  /שורות כפולות \(אותה ת"ז\)1/.test(bal) ? ok('שורה כפולה זוהתה ונספרה בנפרד') : bad('הכפולה לא דווחה');
+  /שורות בלי ת"ז1/.test(bal) ? ok('שורה בלי ת"ז זוהתה ונספרה בנפרד') : bad('השורה בלי ת"ז לא דווחה');
+  /סה״כ שורות בקובץ8/.test(bal)
+    ? ok('סה״כ שורות בקובץ = 8 — בדיוק מה שנספר באקסל') : bad('ספירת השורות שגויה', [bal.slice(0, 800)]);
+  /ההפרש הוא שורות כפולות או שורות בלי ת"ז/.test(bal)
+    ? ok('מוסבר למה הספירה באקסל גדולה מהספירה בתוכנה') : bad('אין ההסבר על ההפרש');
+
+  console.log('\n29. הבדיקה אינה מתעלמת מחריגות בחינוך השני (רגרסיה)');
+  /* הבאג: הבדיקה רצה דרך eduScope, ולכן כשבמסך נבחר "חינוך רגיל" היא לא
+     הסתכלה כלל על חינוך מיוחד — והחזירה "0 חריגות" בזמן שהחריגות ישבו שם.
+     תשובה מרגיעה ושגויה, שהיא הגרועה מכולן. רשימת העירייה אינה מפרידה לפי
+     חינוך, ולכן גם הבדיקה לא צריכה. */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'f1',tz:'300000001',firstName:'א',lastName:'רגילהקלוטה',ganId:'g1',absorbedMunicipality:true}),
+      /* שלוש חריגות — ברשימה, לא מסומנות, וכולן בחינוך מיוחד */
+      mk({id:'f2',tz:'300000002',firstName:'ב',lastName:'מיוחדתחריגה',education:'ח"מ'}),
+      mk({id:'f3',tz:'300000003',firstName:'ג',lastName:'מיוחדתחריגה',education:'ח"מ'}),
+      mk({id:'f4',tz:'300000004',firstName:'ד',lastName:'מיוחדתחריגה',education:'ח"מ'})];
+    DB.municipality={'תשפ"ז':['300000001','300000002','300000003','300000004']};
+    __set('activeEdu','רגיל');           /* המסך מציג חינוך רגיל בלבד */
+    return 'ok';
+  })()`);
+  /* מעבר דרך מסך אחר — כדי לכפות בנייה מחדש של מקטע העירייה עם הנתונים החדשים */
+  await p.evaluate(() => navToTab('students'));
+  await p.waitForTimeout(250);
+  await p.evaluate(() => navToTab('municipality'));
+  await p.waitForTimeout(450);
+  await p.evaluate(() => { const m = document.querySelector('#muni-mode'); if (m) { m.value = 'update'; m.dispatchEvent(new Event('change')); } });
+  await p.waitForTimeout(200);
+  const lbl = await p.evaluate(() => (document.querySelector('#muni-why') || {}).textContent || '');
+  /למה 3 לא קלוטות\? \(כל החינוך\)/.test(lbl)
+    ? ok('הכפתור סופר את כל סוגי החינוך, ומצהיר על כך') : bad('תווית הכפתור עדיין מסוננת', [lbl]);
+
+  await p.evaluate(() => document.querySelector('#muni-why').click());
+  await p.waitForTimeout(400);
+  const d = await p.evaluate(() => Object.fromEntries(
+    [...document.querySelectorAll('#muni-result .stat')].map(c =>
+      [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)])));
+  const dTxt = await p.evaluate(() => document.querySelector('#muni-result').textContent.replace(/\s+/g, ' '));
+
+  d['ברשימה ולא מסומנות'] === 3
+    ? ok('שלוש החריגות שבחינוך מיוחד נמצאו — למרות שהמסך על "רגיל"')
+    : bad('החריגות פוספסו — הבאג חזר', [JSON.stringify(d)]);
+  /ח"מ: 3/.test(dTxt) ? ok('מצוין באיזה חינוך הן יושבות') : bad('אין פילוח חינוך', [dTxt.slice(0, 400)]);
+  /במסך התלמידות, בחינוך רגיל, מוצגות מתוכן 0/.test(dTxt)
+    ? ok('נאמר במפורש שבמסך הנוכחי לא רואים אף אחת מהן')
+    : bad('אין הבהרה על הפער מול המסך', [dTxt.slice(0, 500)]);
+  /300000002/.test(dTxt) && /300000004/.test(dTxt)
+    ? ok('החריגות מפורטות בת"ז') : bad('אין פירוט');
+
+  /* התיקון חוצה חינוכים גם הוא */
+  p.once('dialog', dlg => dlg.accept());
+  await p.evaluate(() => document.querySelector('#muni-fix').click());
+  await p.waitForTimeout(500);
+  const fixed = await p.evaluate(() => ['300000002','300000003','300000004']
+    .map(t => !!(DB.students.find(x => x.tz === t) || {}).absorbedMunicipality));
+  fixed.every(Boolean) ? ok('התיקון סימן גם את מי שבחינוך מיוחד') : bad('התיקון פספס', [JSON.stringify(fixed)]);
+  await p.evaluate(() => { __set('activeEdu', null); });
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
