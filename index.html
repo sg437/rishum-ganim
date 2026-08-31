@@ -12457,14 +12457,37 @@ function xlsToRows(buf){
     for(let i=0;i<streams.length;i++){ const b=tryRead(streams[i]); if(isBiffStart(b)){ bytes=b; break; } }
   }
   if(!bytes){
-    /* אין גיליון — מדווחים אילו זרמים כן נמצאו, כדי שאפשר יהיה לדעת מהו הקובץ */
+    /* אין גיליון — מזהים מה כן יש בקובץ, כדי לומר למשתמש מה הבעיה */
     const names=ole.list.filter(e=>e.type===2)
       .map(e=>String(e.name||"").replace(/[\u0000-\u001f]/g,"").trim()).filter(Boolean);
+    /* קובץ אקסל מוצפן (סיסמה או הגנת מסמכים) אינו קובץ פגום — התוכן שלו
+       ארוז בזרם EncryptedPackage ואי אפשר לקרוא אותו בלי המפתח. */
+    if(names.some(n=>/^encryptedpackage$/i.test(n)||/encryptioninfo/i.test(n))) throw new Error("ENCRYPTED");
     if(names.some(n=>/worddocument/i.test(n))) throw new Error("זהו קובץ וורד, לא אקסל");
     if(names.some(n=>/powerpoint/i.test(n))) throw new Error("זהו קובץ פאוורפוינט, לא אקסל");
     throw new Error("אין גיליון בקובץ — נמצאו: "+(names.slice(0,5).join(" · ")||"אין זרמים"));
   }
   return biffToRows(bytes);
+}
+/* קובץ אקסל מוצפן — הסבר וצעדים. זו הוראה שצריך לקרוא ולבצע, ולכן חלון
+   ולא הודעה חולפת. ההצפנה אינה תקלה בקובץ: התוכן ארוז ומוגן במפתח, ואין
+   דרך לקרוא אותו בלי לפתוח את ההגנה באקסל. */
+function showEncryptedFileHelp(){
+  modal(`
+  <h3>🔒 הקובץ מוגן בהצפנה</h3>
+  <div class="note">הקובץ שהעלית הוא קובץ אקסל <b>מוצפן</b> — בסיסמה או בהגנת מסמכים. התוכן שלו ארוז ונעול, ולכן התוכנה אינה יכולה לקרוא ממנו את הנתונים. זו אינה תקלה בקובץ ואינה תקלה בתוכנה.</div>
+  <fieldset style="margin-top:12px"><legend>איך פותרים — פעם אחת, באקסל</legend>
+    <ol style="margin:0;padding-inline-start:20px;line-height:1.9">
+      <li>פותחים את הקובץ ב<b>אקסל</b> (אם הוא מבקש סיסמה — מקלידים אותה).</li>
+      <li><b>קובץ → מידע → הגנה על חוברת עבודה → הצפנה באמצעות סיסמה</b>, מוחקים את הסיסמה ומאשרים.</li>
+      <li><b>קובץ → שמירה בשם</b>, ושומרים עותק חדש — <b>‎.xlsx‎</b> או <b>CSV UTF-8</b>.</li>
+      <li>מעלים לכאן את העותק החדש.</li>
+    </ol>
+    <div class="hint" style="margin-top:8px">אפשר גם פשוט לפתוח באקסל ולעשות "שמירה בשם" ל-CSV — גם זה מסיר את ההגנה מהעותק.</div>
+  </fieldset>
+  <div class="hint" style="margin-top:10px">אם הקובץ מגיע מהעירייה מוצפן בכל פעם, שווה לבקש מהם לשלוח אותו בלי הגנה — או להעביר אותו דרך "שמירה בשם" כשגרה קבועה.</div>
+  <div class="foot"><button class="btn" id="enc-ok" type="button">הבנתי</button></div>`);
+  $("#enc-ok").onclick=closeModal;
 }
 /* קריאת קובץ שהמשתמש העלה, כטקסט טבלאי אחד. קובץ .xlsx מפוענח כאן לטבלה
    ומוחזר כ-CSV, כך שכל מסכי הייבוא ממשיכים לעבוד על אותו טקסט בדיוק כמו
@@ -12499,6 +12522,7 @@ function readFileSmart(file,cb){
           ? ('נקרא הגיליון "'+res.sheetName+'"'+(res.sheetCount>1?" (הראשון מבין "+res.sheetCount+")":"")+" · "+(res.rows.length-1)+" שורות")
           : "הקובץ נקרא");
       }catch(err){
+        if(err && err.message==="ENCRYPTED"){ showEncryptedFileHelp(); return; }
         const why=(err && err.message) ? " ("+err.message+")" : "";
         toast("לא הצלחתי לקרוא את קובץ ה-xls"+why+". שמור/י אותו באקסל כ-xlsx או כ-CSV ונסה/י שוב");
       }

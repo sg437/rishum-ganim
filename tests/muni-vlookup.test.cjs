@@ -22,6 +22,7 @@
     17. xls בפורמט BIFF5 (אקסל 95) — עברית בדף קוד 1255, בלי טבלת מחרוזות.
     18. זרם הגיליון מאותר לפי תוכן גם כששמו אינו "Workbook".
     19. קובץ OLE בלי גיליון — ההודעה מונה אילו זרמים כן נמצאו.
+    20. קובץ אקסל מוצפן — מזוהה ככזה, ונפתח חלון הסבר במקום הודעת שגיאה.
 
    הרצה:  NODE_PATH=$(npm root -g) node tests/muni-vlookup.test.cjs
    ============================================================================ */
@@ -718,6 +719,34 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   }, NAMED_XLS_B64);
   /אין גיליון בקובץ/.test(noSheet) ? ok('ההודעה אומרת שאין גיליון') : bad('הודעה שגויה', [noSheet]);
   /Gilayon/.test(noSheet) ? ok('ההודעה מונה את הזרמים שנמצאו') : bad('הזרמים לא נמנו', [noSheet]);
+
+  console.log('\n20. קובץ אקסל מוצפן');
+  /* אותו מיכל, כששם הזרם הוא EncryptedPackage והתוכן אינו BIFF — כלומר
+     קובץ אקסל שהוצפן בסיסמה או בהגנת מסמכים. */
+  const enc = await p.evaluate(b64 => {
+    const bin = atob(b64), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    u8[1024] = 0x11; u8[1025] = 0x22;                    // התוכן כבר לא נראה כחוברת אקסל
+    const E = 5120 + 128;                                 // רשומת הספרייה של הזרם
+    const nm = 'EncryptedPackage';
+    for (let i = 0; i < 64; i++) u8[E + i] = 0;
+    for (let i = 0; i < nm.length; i++) { u8[E + 2 * i] = nm.charCodeAt(i); u8[E + 2 * i + 1] = 0; }
+    u8[E + 64] = (nm.length + 1) * 2; u8[E + 65] = 0;     // אורך השם כולל הסיום
+    let thrown = '';
+    try { xlsToRows(u8.buffer.slice(0)); } catch (e) { thrown = e.message; }
+    /* המסלול המלא: readFileSmart אמור לפתוח את חלון ההסבר */
+    return new Promise(res => {
+      const f = new File([u8], 'muni.xls');
+      let called = false;
+      readFileSmart(f, () => { called = true; });
+      setTimeout(() => res({ thrown, called, modal: (document.querySelector('#modal') || {}).textContent || '' }), 400);
+    });
+  }, NAMED_XLS_B64);
+  enc.thrown === 'ENCRYPTED' ? ok('ההצפנה זוהתה') : bad('ההצפנה לא זוהתה', [enc.thrown]);
+  !enc.called ? ok('לא הוזרם תוכן מוצפן לתיבת הטקסט') : bad('תוכן מוצפן נכנס לתיבה');
+  /מוגן בהצפנה/.test(enc.modal) ? ok('נפתח חלון הסבר') : bad('חלון ההסבר לא נפתח', [enc.modal.slice(0, 80)]);
+  /שמירה בשם/.test(enc.modal) ? ok('החלון מסביר איך להסיר את ההגנה') : bad('אין הוראות בחלון');
+  await p.evaluate(() => closeModal());
 
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
