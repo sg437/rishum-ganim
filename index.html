@@ -12429,6 +12429,7 @@ function viewExport(root){
       <div class="field"><label>חינוך</label><select id="x-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div>
       <div class="field"><label>קלוט בעירייה</label><select id="x-muni"><option value="">הכל</option><option value="yes">רק קלוטות</option><option value="no">רק לא קלוטות</option></select></div>
       <div class="field"><label>כולל שסיימו</label><select id="x-fin"><option value="no">לא</option><option value="yes">כן</option></select></div>
+      <div class="field"><label>מאפיין</label><select id="x-flag"><option value="">הכל</option>${Object.entries(STU_FLAGS).map(([k,d])=>`<option value="${k}">${esc(d.label)}</option>`).join("")}</select></div>
       <div class="field"><label>מיון</label><select id="x-sort"><option value="gan" selected>לפי גן (שם→גיל, ובגן א־ב)</option><option value="name">שם משפחה (א־ב)</option></select></div>
     </div>
     <fieldset><legend>שדות לייצוא</legend>
@@ -12456,6 +12457,7 @@ function viewExport(root){
     if(ev) parts.push("חינוך "+(ev==='ח"מ'?'מיוחד':'רגיל')); if(av) parts.push("גיל "+av); if(pv) parts.push(pv); return parts.join(" · "); };
   const gather=()=>{
     const gv=$("#x-gan").value, av=$("#x-age").value, pv=$("#x-period").value, ev=(activeEdu||$("#x-edu").value), mv=$("#x-muni").value, fv=$("#x-fin").value;
+    const flv=$("#x-flag")?$("#x-flag").value:"";   // מאפיין — אותה הגדרה בדיוק של מסך התלמידות (STU_FLAGS)
     const sortMode=$("#x-sort")?$("#x-sort").value:"gan";
     const byName=(a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he") || (a.firstName||"").localeCompare(b.firstName||"","he");
     const list=studentsOfYear().filter(s=>{
@@ -12466,6 +12468,7 @@ function viewExport(root){
       if(ev && eduLabel(s)!==ev) return false;
       if(mv==='yes' && !s.absorbedMunicipality) return false;
       if(mv==='no' && s.absorbedMunicipality) return false;
+      if(flv && STU_FLAGS[flv] && !STU_FLAGS[flv].test(s)) return false;
       return true;
     });
     // מיון: לפי גן (שם הגן ואז גיל, למשל אבני נזר 3/4/5) או לפי שם משפחה
@@ -12493,6 +12496,7 @@ function viewExport(root){
   $("#x-def").onclick=()=>{ exportSel=new Set(EXPORT_DEFAULT); rerenderCols(); };
   $("#x-preview").onclick=preview;
   const xsort=$("#x-sort"); if(xsort) xsort.onchange=preview;
+  const xflag=$("#x-flag"); if(xflag) xflag.onchange=preview;
   $("#x-xls").onclick=()=>{
     const rows=gather(), C=cols();
     if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
