@@ -5503,6 +5503,17 @@ function renderStuSummary(){
   const leftNote = leftShown
     ? `<div class="hint" style="margin-top:6px">בטבלה מוצגות גם <b>${leftShown}</b> שסיימו/יצאו — הן אינן נספרות במשבצות שלמעלה.</div>`
     : "";
+  /* המשבצות מציגות סוג חינוך אחד בכל פעם, וקובץ העירייה כולל את כל הסוגים יחד.
+     בלי השורה הזו נראה כאילו "סה״כ פחות מספר הקובץ" אמור לצאת מספר הלא-קלוטות,
+     והוא לעולם לא ייצא — כי אלה שתי אוכלוסיות שונות. מוצג רק כשאין סינון נוסף,
+     כדי שהמספר שמוצג כאן יהיה בר-השוואה באמת. */
+  let eduNote="";
+  if(activeEdu && stuActiveFilterCount()===0 && !stuFilter.q.trim()){
+    const all=studentsOfYear().filter(x=>!x.finished);
+    const allAbs=all.filter(x=>x.absorbedMunicipality).length;
+    if(all.length!==total)
+      eduNote=`<div class="hint" style="margin-top:6px">המשבצות מציגות <b>חינוך ${esc(activeEdu)}</b> בלבד. בשנה זו, ב<b>כל</b> סוגי החינוך: <b>${all.length}</b> תלמידות · <b>${allAbs}</b> קלוטות · <b>${all.length-allAbs}</b> לא קלוטות — <span title="קובץ העירייה אינו מפריד לפי סוג חינוך">אלה המספרים להשוואה מול קובץ העירייה</span>.</div>`;
+  }
   el.innerHTML=`<div class="stats">
     ${tile("רשומות"+(g?" בגן":""), total+capTxt, regColor)}
     ${tile("משובצות", placed, "var(--good)", "שיבוץ סופי בגן")}
@@ -5510,7 +5521,7 @@ function renderStuSummary(){
     ${tile("קלוט בעירייה", absorbed, absorbed===total&&total?'var(--good)':'')}
     ${tile("לא קלוט", notAbsorbed, notAbsorbed>0?'var(--bad)':'var(--good)')}
     ${flagTile}
-  </div>${leftNote}`;
+  </div>${eduNote}${leftNote}`;
   /* גובה הפס הנעוץ — "תקרה" לתיק המקוצר שנעוץ אף הוא */
   try{ document.documentElement.style.setProperty("--stu-sum-h", Math.round(el.getBoundingClientRect().height)+"px"); }catch(e){}
 }
@@ -10698,6 +10709,11 @@ function wireMuniSection(root, inModal){
     const edu=q("#muni-edu").value, doCreate=q("#muni-create").checked;
     let marked=0, already=0, updated=0, phoneDup=0;
     const left=[];             // קלוטות בעירייה שאצלנו מסומנות "סיימה" — עזבו אך עדיין ברשימה
+    /* פילוח הקלוטות לפי סוג חינוך — מסך התלמידות מסנן לפי חינוך, והקובץ אינו.
+       בלי הפילוח הזה אי-אפשר להסביר למה "917 פחות 871" אינו יוצא 46. */
+    const eduActive={};        // חינוך -> כמה קלוטות פעילות (קיימות + חדשות)
+    const eduNew={};           // מתוכן, כמה נפתחו עכשיו
+    const bump=(o,k)=>{ o[k]=(o[k]||0)+1; };
     const fieldCount={};       // תווית שדה -> בכמה תיקים הושלם
     const created=[];          // תיקים חדשים שנפתחו — {s, sym} (שורת הקובץ נשמרת לצד התיק)
     const notFound=[];         // ת"ז שאינן בתוכנה, כשפתיחת תיק חדש כבויה
@@ -10714,13 +10730,14 @@ function wireMuniSection(root, inModal){
         if(!doCreate){ notFound.push(tz); return; }
         s=muniNewStudent(rec, edu);
         DB.students.push(s); byTz.set(tzKey(tz),s); created.push({ s, sym });
+        bump(eduActive, eduLabel(s)); bump(eduNew, eduLabel(s));
         return;   // תיק חדש — הפרטים כבר בפנים, ואין מול מה להשוות סמל
       }
       if(!s.absorbedMunicipality) marked++; else already++;
       /* היא ברשימת הקלוטות של העירייה, אבל אצלנו כבר סומנה כמי שסיימה ועזבה.
          מסך התלמידות מסתיר "סיימו" כברירת מחדל, ולכן היא נעלמת מהספירה שעל
          המסך — וזה בדיוק מקור הפער מול המספר שבקובץ. כאן היא נספרת בנפרד. */
-      if(s.finished) left.push({ s, sym });
+      if(s.finished) left.push({ s, sym }); else bump(eduActive, eduLabel(s));
       s.absorbedMunicipality=true;
       const r=applyMuniRec(s, rec);
       phoneDup+=r.phoneDup;
@@ -10779,6 +10796,33 @@ function wireMuniSection(root, inModal){
         <div class="hint" style="margin-top:4px">תיק בלי ת"ז אינו ניתן להתאמה, ולכן שורת העירייה שלו <b>פותחת תיק חדש כפול</b>. כדאי להשלים להם ת"ז לפני ההעלאה הבאה — במסך התלמידות, במסנן <b>"מאפיין → בלי מספר זהות"</b>.</div>
       </div>` : '';
 
+    /* ------------------------------------------------------------------
+       "איפה נמצאות הקלוטות שבקובץ" — הטבלה שסוגרת את החשבון.
+       מסך התלמידות מסנן לפי *סוג חינוך* ומסתיר מי שסיימה; קובץ העירייה אינו
+       עושה לא את זה ולא את זה. לכן חיסור ישיר בין המספר שבקובץ למספר שעל
+       המסך תמיד ייתן תוצאה שגויה, וכאן מוצג הפילוק שמסביר בדיוק את ההפרש.
+       ------------------------------------------------------------------ */
+    const eduRows = EDU_TYPES.filter(t=>eduActive[t]).map(t=>({ t, n:eduActive[t], nw:eduNew[t]||0 }));
+    Object.keys(eduActive).forEach(t=>{ if(!EDU_TYPES.includes(t)) eduRows.push({ t, n:eduActive[t], nw:eduNew[t]||0 }); });
+    const sumActive = eduRows.reduce((a,r)=>a+r.n, 0);
+    const whereBlock = structured || nums.length ? `
+      <div style="margin-top:14px">
+        <b>איפה נמצאות ${nums.length} הקלוטות שבקובץ</b>
+        ${tbl(`<thead><tr><th>קבוצה</th><th>כמה</th><th>נספרות במסך התלמידות?</th></tr></thead><tbody>
+          ${eduRows.map(r=>`<tr><td>חינוך ${esc(r.t)} — פעילות${r.nw?` <span class="hint">(מהן ${r.nw} תיקים חדשים)</span>`:''}</td><td><b>${r.n}</b></td><td>כן — רק כאשר נבחר <b>חינוך ${esc(r.t)}</b></td></tr>`).join("")}
+          ${left.length?`<tr><td>סיימו ועזבו אצלנו</td><td><b>${left.length}</b></td><td>לא — אינן נספרות באף משבצת</td></tr>`:''}
+          ${notFound.length?`<tr><td>אינן בתוכנה (לא נפתח תיק)</td><td><b>${notFound.length}</b></td><td>לא — אין להן תיק</td></tr>`:''}
+        </tbody>`)}
+        <div class="hint" style="margin-top:6px">
+          ${eduRows.map(r=>`חינוך ${esc(r.t)}: ${r.n}`).join(" · ")}${left.length?` · סיימו: ${left.length}`:''}${notFound.length?` · ללא תיק: ${notFound.length}`:''} = <b>${sumActive+left.length+notFound.length}</b> מתוך ${nums.length}.
+        </div>
+        <div class="note" style="margin-top:8px">
+          <b>למה "סה״כ תלמידות פחות מספר הקובץ" לא יוצא נכון:</b> מסך התלמידות מציג סוג חינוך אחד בכל פעם ומסתיר מי שסיימה, וקובץ העירייה כולל את כולם יחד.
+          ${eduRows.length>1?`בקובץ הזה יש קלוטות ב-${eduRows.length} סוגי חינוך, ולכן במסך של כל סוג ייספרו רק אלה שלו.`:''}
+          כדי להשוות נכון: בחר/י <b>"הכל"</b> בבורר החינוך, ואז מספר הקלוטות שעל המסך יהיה <b>${sumActive}</b>.
+        </div>
+      </div>` : '';
+
     /* מאזן: כל שורה בקובץ מקבלת הסבר, כדי שהפער מול הספירה שעל המסך לא יישאר עלום */
     const dupRows = Math.max(0, (rowsWithTz||0) - nums.length);
     const reconLine = structured ? `
@@ -10802,7 +10846,7 @@ function wireMuniSection(root, inModal){
         <div class="stat"><div class="k">ברשימת העירייה</div><div class="v">${nums.length}</div></div>
         ${phoneDup?`<div class="stat"><div class="k">טלפונים שדולגו (כבר קיימים)</div><div class="v">${phoneDup}</div></div>`:''}
       </div>
-      ${reconLine}${fieldLine}${leftBlock}${noTzBlock}${ourNoTzBlock}${createdBlock}${notFoundBlock}
+      ${reconLine}${fieldLine}${whereBlock}${leftBlock}${noTzBlock}${ourNoTzBlock}${createdBlock}${notFoundBlock}
       ${symBlockHTML(symRows)}
       ${diffBlockHTML(diffs, "הסמל שבקובץ לא שינה שום שיבוץ — ההפרש מדווח בלבד. התיקים החדשים שנפתחו זה עתה אינם בטבלה הזאת.")}`;
 

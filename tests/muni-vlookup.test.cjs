@@ -899,6 +899,68 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     : bad('העוזבות נספרו בסינון "שסיימו"', [JSON.stringify(v)]);
   await setStatus('active');
 
+  console.log('\n24. למה "סה״כ פחות מספר הקובץ" אינו מספר הלא-קלוטות');
+  /* התרחיש שדווח: 917 תלמידות בחינוך רגיל, 70 לא קלוטות, ובקובץ 871 קלוטות —
+     "היה צריך לצאת 46". החיסור אינו תקף: המסך מסנן לסוג חינוך אחד ומסתיר את
+     מי שסיימה, והקובץ כולל את כולם יחד. כאן נבדק שהתוכנה אומרת את זה במפורש.
+     בתרחיש: 6 בקובץ — 3 רגיל פעילות, 2 ח"מ פעילות, 1 שסיימה. */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'c1',tz:'300000001',firstName:'א',lastName:'רגילה',ganId:'g1'}),
+      mk({id:'c2',tz:'300000002',firstName:'ב',lastName:'רגילה',ganId:'g1'}),
+      mk({id:'c3',tz:'300000003',firstName:'ג',lastName:'רגילה',ganId:'g1'}),
+      mk({id:'c4',tz:'300000004',firstName:'ד',lastName:'מיוחדת',education:'ח"מ'}),
+      mk({id:'c5',tz:'300000005',firstName:'ה',lastName:'מיוחדת',education:'ח"מ'}),
+      mk({id:'c6',tz:'300000006',firstName:'ו',lastName:'עזבה',ganId:'g1',finished:true}),
+      mk({id:'c7',tz:'300000007',firstName:'ז',lastName:'לאבקובץ',ganId:'g1'})];
+    DB.municipality={};
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('municipality'));
+  await p.waitForTimeout(300);
+  await load(p, [
+    'מספר זהות,שם משפחה,שם פרטי,סמל מוסד',
+    '300000001,רגילה,א,111111', '300000002,רגילה,ב,111111', '300000003,רגילה,ג,111111',
+    '300000004,מיוחדת,ד,111111', '300000005,מיוחדת,ה,111111', '300000006,עזבה,ו,111111'
+  ].join('\n'));
+  await run(p);
+  const w = await p.evaluate(() => document.querySelector('#muni-result').textContent.replace(/\s+/g, ' '));
+  /איפה נמצאות 6 הקלוטות שבקובץ/.test(w)
+    ? ok('מוצגת טבלת "איפה נמצאות הקלוטות שבקובץ"') : bad('אין טבלת פילוח');
+  /חינוך רגיל — פעילות3כן/.test(w) ? ok('חינוך רגיל — 3') : bad('פילוח "רגיל" שגוי', [w.slice(0, 400)]);
+  /חינוך ח"מ — פעילות2כן/.test(w) ? ok('חינוך מיוחד — 2') : bad('פילוח ח"מ שגוי', [w.slice(0, 400)]);
+  /סיימו ועזבו אצלנו1לא — אינן נספרות/.test(w) ? ok('סיימו ועזבו — 1') : bad('פילוח העוזבות שגוי');
+  /= 6 מתוך 6/.test(w) ? ok('הפילוח סוגר את החשבון — 6 מתוך 6') : bad('החשבון אינו נסגר', [w.slice(0, 600)]);
+  /יהיה 5/.test(w) ? ok('נאמר שב"הכל" ייספרו 5 קלוטות') : bad('חסר המספר להשוואה');
+  /מסך התלמידות מציג סוג חינוך אחד בכל פעם/.test(w)
+    ? ok('מוסבר במפורש למה החיסור הישיר אינו תקף') : bad('אין הסבר על החיסור');
+
+  console.log('\n25. שורת ההשוואה במסך התלמידות עצמו');
+  await p.evaluate(() => { __set('activeEdu', 'רגיל'); navToTab('students'); });
+  await p.waitForTimeout(400);
+  const note = await p.evaluate(() => {
+    const h = [...document.querySelectorAll('#stuSummary .hint')].map(x => x.textContent.replace(/\s+/g, ' '));
+    const t = Object.fromEntries([...document.querySelectorAll('#stuSummary .stat')].map(c =>
+      [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)]));
+    return { h, t };
+  });
+  /* בחינוך רגיל פעילות: c1,c2,c3 (קלוטות) + c7 (לא קלוטה) = 4 */
+  (note.t['רשומות'] === 4 && note.t['לא קלוט'] === 1)
+    ? ok('המשבצות מציגות חינוך רגיל בלבד') : bad('המשבצות שגויות', [JSON.stringify(note.t)]);
+  const line = note.h.join(' | ');
+  /בכל סוגי החינוך/.test(line)
+    ? ok('שורת השוואה: המספרים בכל סוגי החינוך') : bad('אין שורת השוואה', [line]);
+  /6 תלמידות/.test(line) ? ok('סה"כ בשנה בכל החינוכים — 6 פעילות') : bad('סה"כ שגוי', [line]);
+  /5 קלוטות/.test(line) ? ok('5 קלוטות — המספר שמושווה לקובץ') : bad('מספר הקלוטות שגוי', [line]);
+  /1 לא קלוטות/.test(line) ? ok('1 לא קלוטה — ולא 70 מדומים') : bad('מספר הלא-קלוטות שגוי', [line]);
+  await p.evaluate(() => { __set('activeEdu', null); });
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
