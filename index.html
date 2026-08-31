@@ -10076,12 +10076,12 @@ function muniNewStudent(rec, edu){
    שוב, כדי ששתי עמודות לא ייקלטו לאותו שדה בלי בחירה מפורשת. */
 function muniDetectColumns(rows){
   if(!rows.length) return [];
-  const sample=rows[1]||[], used=new Set();
-  return rows[0].map((h,i)=>{
-    let guess=MUNI_HEADER_MAP[normHeader(h)]||"";
-    if(guess && used.has(guess)) guess=""; else if(guess) used.add(guess);
-    return { i, header:String(h??"").trim(), guess, sample:String(sample[i]??"").trim() };
-  });
+  const sample=rows[1]||[];
+  return rows[0].map((h,i)=>({
+    i, header:String(h??"").trim(),
+    guess: MUNI_HEADER_MAP[normHeader(h)]||"",
+    sample: String(sample[i]??"").trim()
+  }));
 }
 /* האם הקלט הוא טבלה בכלל. שורה ראשונה עם יותר מעמודה אחת, או עמודה
    בודדת שכותרתה מוכרת — טבלה. רשימת ת"ז נטו (עמודה אחת של מספרים) אינה
@@ -10091,20 +10091,28 @@ function muniLooksTabular(rows){
   const head=rows[0];
   return head.length>1 || !!MUNI_HEADER_MAP[normHeader(head[0])];
 }
-/* מיפוי אוטומטי מלא: { fieldKey: columnIndex } */
+/* מיפוי עמודות: { fieldKey: [columnIndex, ...] }.
+   לשדה אחד יכולות להצביע כמה עמודות — בקובץ העירייה יש למשל שתי עמודות
+   דוא"ל, ואצלנו שדה אחד. שתיהן נבחרות, ונלקח מהן הערך הראשון שאינו ריק. */
+function muniMapHas(map, key){ return !!(map && map[key] && map[key].length); }
 function muniAutoMap(rows){
-  const m={}; muniDetectColumns(rows).forEach(c=>{ if(c.guess && m[c.guess]==null) m[c.guess]=c.i; });
+  const m={}; muniDetectColumns(rows).forEach(c=>{ if(c.guess) (m[c.guess]=m[c.guess]||[]).push(c.i); });
   return m;
+}
+/* הערך הראשון שאינו ריק מבין העמודות שמופו לשדה */
+function muniCellValue(cells, cols){
+  for(let i=0;i<cols.length;i++){ const v=String(cells[cols[i]]??"").trim(); if(v) return v; }
+  return "";
 }
 /* בניית הרשומות לפי מיפוי עמודות מפורש — רק השדות שבמיפוי נקלטים */
 function muniRowsToRecs(rows, map){
   const recs=new Map(), tzList=[];
-  const tzCol=map.tz; if(tzCol==null) return { nums:[], recs };
-  const keys=Object.keys(map).filter(k=>k!=="tz");
+  if(!muniMapHas(map,"tz")) return { nums:[], recs };
+  const keys=Object.keys(map).filter(k=>k!=="tz" && map[k] && map[k].length);
   for(let r=1;r<rows.length;r++){ const c=rows[r];
-    const tz=digits(c[tzCol]||""); if(!tz) continue; tzList.push(tz);
+    const tz=digits(muniCellValue(c, map.tz)); if(!tz) continue; tzList.push(tz);
     const rec=recs.get(tz)||{tz};
-    keys.forEach(k=>{ const v=String(c[map[k]]??"").trim(); if(v && !rec[k]) rec[k]=v; }); // שתי שורות לאותה ת"ז — הערך הראשון שנמצא
+    keys.forEach(k=>{ const v=muniCellValue(c, map[k]); if(v && !rec[k]) rec[k]=v; }); // שתי שורות לאותה ת"ז — הערך הראשון שנמצא
     recs.set(tz,rec);
   }
   return { nums:[...new Set(tzList)], recs };
@@ -10116,8 +10124,8 @@ function parseMuniInput(text, map){
   const rows=parseTable(text);
   let structured=false, nums=[], recs=new Map();
   if(muniLooksTabular(rows)){
-    const m = (map && map.tz!=null) ? map : muniAutoMap(rows);
-    if(m.tz!=null){ structured=true; const built=muniRowsToRecs(rows,m); nums=built.nums; recs=built.recs; }
+    const m = muniMapHas(map,"tz") ? map : muniAutoMap(rows);
+    if(muniMapHas(m,"tz")){ structured=true; const built=muniRowsToRecs(rows,m); nums=built.nums; recs=built.recs; }
   }
   if(!structured) nums=[...new Set(String(text||"").match(/\d{5,}/g)||[])];
   /* parents — לתאימות עם קריאות שביקשו רק את שמות ההורים */
@@ -10204,7 +10212,8 @@ function wireMuniSection(root, inModal){
     const known=cols.filter(c=>c.guess).length;
     host.innerHTML=`
       <fieldset><legend>מיפוי עמודות הקובץ (${cols.length} עמודות · ${known} זוהו לבד)</legend>
-        <div class="hint">כל שורה כאן היא עמודה בקובץ שהעלית. <b>רק עמודה מסומנת נקלטת</b> — השאר נזרק, גם אם יש בקובץ עוד הרבה עמודות שאינן מעניינות אותנו. כותרת שכתובה בדיוק כשם השדה בתוכנה מזוהה ומסומנת לבד; לכל השאר אפשר לבחור שדה ידנית. עמודת מספר הזהות היא חובה — היא מפתח ההתאמה.</div>
+        <div class="hint">כל שורה כאן היא עמודה בקובץ שהעלית. <b>רק עמודה מסומנת נקלטת</b> — השאר נזרק, גם אם יש בקובץ עוד הרבה עמודות שאינן מעניינות אותנו. כותרת שכתובה בדיוק כשם השדה בתוכנה מזוהה ומסומנת לבד; לכל השאר אפשר לבחור שדה ידנית. עמודת מספר הזהות היא חובה — היא מפתח ההתאמה.<br><b>אפשר לכוון כמה עמודות לאותו שדה</b> — למשל שתי עמודות דוא"ל בקובץ מול שדה דוא"ל אחד בתוכנה. הן מתמזגות, ונלקח מהן הערך הראשון שאינו ריק.</div>
+        <div id="muni-merge-note"></div>
         <div class="row" style="margin:8px 0;gap:8px">
           <button class="btn ghost sm" id="muni-map-all" type="button">✔️ סמן את כל המזוהות</button>
           <button class="btn ghost sm" id="muni-map-none" type="button">✖️ נקה הכל</button>
@@ -10221,17 +10230,30 @@ function wireMuniSection(root, inModal){
             </select></td></tr>`).join("")}
         </tbody></table></div>
       </fieldset>`;
+    /* חיווי על שדות שכמה עמודות נכנסות אליהם — מיזוג שקט הוא מיזוג
+       שקשה לשים לב אליו, ולכן הוא נאמר במפורש ומתעדכן עם כל שינוי. */
+    const showMerges=()=>{
+      const note=host.querySelector("#muni-merge-note"); if(!note) return;
+      const m=readMap()||{};
+      const label=k=>(MUNI_FIELD_OPTIONS.find(f=>f.key===k)||{}).label||k;
+      const dups=Object.keys(m).filter(k=>m[k].length>1);
+      note.innerHTML = dups.length
+        ? `<div class="note" style="margin:8px 0">${dups.map(k=>`<b>${esc(label(k))}</b> — ${m[k].length} עמודות מתמזגות לשדה אחד`).join("<br>")}<br><span class="hint">מכל שורה נלקח הערך הראשון שאינו ריק, לפי סדר העמודות בקובץ.</span></div>`
+        : "";
+    };
     /* בחירת שדה מדליקה את הסימון מאליה — אחרת קל למפות ולשכוח לסמן */
     host.querySelectorAll(".muni-col-field").forEach(sel=>{
       sel.onchange=()=>{ const on=host.querySelector('.muni-col-on[data-col="'+sel.dataset.col+'"]');
-        if(on) on.checked=!!sel.value; };
+        if(on) on.checked=!!sel.value; showMerges(); };
     });
+    host.querySelectorAll(".muni-col-on").forEach(cb=>{ cb.onchange=showMerges; });
     const setAll=v=>host.querySelectorAll(".muni-col-on").forEach(cb=>{
       const sel=host.querySelector('.muni-col-field[data-col="'+cb.dataset.col+'"]');
       cb.checked = v && !!(sel && sel.value);
     });
-    q("#muni-map-all").onclick=()=>setAll(true);
-    q("#muni-map-none").onclick=()=>setAll(false);
+    q("#muni-map-all").onclick=()=>{ setAll(true); showMerges(); };
+    q("#muni-map-none").onclick=()=>{ setAll(false); showMerges(); };
+    showMerges();
   }
   /* המיפוי כפי שהוא מסומן כרגע: { fieldKey: columnIndex }. עמודת ת"ז
      נכללת תמיד — בלעדיה אין לפי מה להתאים. */
@@ -10241,10 +10263,9 @@ function wireMuniSection(root, inModal){
     const m={};
     sels.forEach(sel=>{
       const i=+sel.dataset.col, k=sel.value; if(!k) return;
-      if(k==="tz"){ if(m.tz==null) m.tz=i; return; }
       const on=host.querySelector('.muni-col-on[data-col="'+i+'"]');
-      if(on && !on.checked) return;
-      if(m[k]==null) m[k]=i;
+      if(k!=="tz" && on && !on.checked) return;   // עמודת הת"ז נכללת תמיד — היא מפתח ההתאמה
+      (m[k]=m[k]||[]).push(i);
     });
     return m;
   }
@@ -10338,7 +10359,7 @@ function wireMuniSection(root, inModal){
     if(q("#muni-text").value!==mappedText) renderMap();
     const chosen=readMap();
     const rowsIn=parseTable(q("#muni-text").value);
-    if(chosen && muniLooksTabular(rowsIn) && chosen.tz==null){
+    if(chosen && muniLooksTabular(rowsIn) && !muniMapHas(chosen,"tz")){
       out.innerHTML=`<div class="empty">לא נבחרה עמודת <b>מספר זהות</b>. בטבלת המיפוי יש לבחור לעמודת הת"ז את השדה "מספר זהות" — היא מפתח ההתאמה.</div>`;
       return;
     }
