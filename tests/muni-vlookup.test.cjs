@@ -18,6 +18,7 @@
     13. קובץ בינארי שאינו גיליון נעצר בהודעה, בלי לזהם את התיבה.
     14. קובץ xls ישן (BIFF8 אמיתי) נקרא כטבלה.
     15. מחרוזת שנחתכת בין רשומות CONTINUE נקראת שלמה.
+    16. שתי עמודות דוא"ל בקובץ מתמזגות לשדה אחד — הראשון שאינו ריק.
 
    הרצה:  NODE_PATH=$(npm root -g) node tests/muni-vlookup.test.cjs
    ============================================================================ */
@@ -538,6 +539,29 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     ? ok('מחרוזת עברית חצויה חוברה שלמה') : bad('חיבור ה-CONTINUE שגוי', [JSON.stringify(split.heb)]);
   split.mixed === 'שלוםabc'
     ? ok('שינוי קידוד באמצע המחרוזת טופל נכון') : bad('שינוי הקידוד שגוי', [JSON.stringify(split.mixed)]);
+
+  console.log('\n16. שתי עמודות דוא"ל מתמזגות');
+  /* כמו בקובץ העירייה: שתי עמודות דוא"ל. אצל רחל השנייה מלאה והראשונה
+     ריקה; אצל לאה שתיהן מלאות — ואז גוברת הראשונה. */
+  await p.evaluate(() => { DB.students.forEach(s => { s.email = ''; }); });
+  const TWO_MAILS = [
+    'מספר זהות,דוא"ל,מייל',
+    '300000001,,rachel@example.com',
+    '300000003,first@example.com,second@example.com',
+  ].join('\n');
+  await load(p, TWO_MAILS);
+  const mailCols = await mapRows(p);
+  (mailCols.length === 3 && mailCols[1].field === 'email' && mailCols[1].on
+                         && mailCols[2].field === 'email' && mailCols[2].on)
+    ? ok('שתי העמודות זוהו כדוא"ל ושתיהן מסומנות') : bad('הזיהוי הכפול נכשל', [JSON.stringify(mailCols)]);
+  const mergeNote = await p.evaluate(() => (document.querySelector('#muni-merge-note') || {}).textContent || '');
+  /2 עמודות מתמזגות/.test(mergeNote) ? ok('המסך מודיע שהעמודות מתמזגות') : bad('אין חיווי מיזוג', [mergeNote]);
+  await run(p);
+  const m1 = await stu(p, '300000001'), m3 = await stu(p, '300000003');
+  m1.email === 'rachel@example.com' ? ok('עמודה ריקה דולגה — נלקח הערך מהשנייה')
+                                    : bad('המיזוג לא לקח את הערך הקיים: ' + m1.email);
+  m3.email === 'first@example.com' ? ok('כששתיהן מלאות — גוברת הראשונה')
+                                   : bad('סדר העדיפות שגוי: ' + m3.email);
 
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
