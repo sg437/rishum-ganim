@@ -3,7 +3,7 @@
    ----------------------------------------------------------------------------
      1. מיפוי עמודות — כותרת מוכרת מזוהה ומסומנת לבד, כותרת זרה נשארת כבויה.
      2. עמודה שלא סומנה אינה נקלטת, גם כשהכותרת שלה מוכרת.
-     3. השלמת הפרטים החסרים בתיק — ומה שכבר קיים בתוכנה אינו נדרס.
+     3. השלמת הפרטים החסרים בתיק (כולל שם משפחה) — ומה שקיים אינו נדרס.
      4. טלפון שכבר מופיע בשדה אחר של אותה ילדה לא נכתב שוב.
      5. ת"ז שאינה בתוכנה — נפתח לה תיק חדש, בלי שיבוץ לגן לפי הסמל.
      6. כיבוי "פתיחת תיק חדש" — הת"ז מדווחת ולא נפתח תיק.
@@ -94,7 +94,7 @@ const SEED = `(() => {
   DB.students=[
     mk({id:'s1',tz:'300000001',firstName:'רחל',lastName:'כהן',ganId:'g1'}),
     mk({id:'s2',tz:'300000002',firstName:'שרה',lastName:'לוי',ganId:'g1',motherName:'מרים קיימת',phone:'0522222222',absorbedMunicipality:true}),
-    mk({id:'s3',tz:'300000003',firstName:'לאה',lastName:'פרץ',ganId:'g2'}),
+    mk({id:'s3',tz:'300000003',firstName:'לאה',lastName:'',ganId:'g2'}),
     mk({id:'s4',tz:'300000004',firstName:'חנה',lastName:'דוד',ganId:'g1'}),
     mk({id:'s5',tz:'012345678',firstName:'מרים',lastName:'גולד',ganId:'g2'})];
   DB.staff=[]; DB.management=[]; DB.assignments={}; DB.tzGroups={}; DB.municipality={};
@@ -240,6 +240,9 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     ? ok('"מספר זהות" זוהה ומסומן') : bad('עמודת הת"ז לא זוהתה', [JSON.stringify(byHead['מספר זהות'])]);
   (byHead['נייד אב'].field === 'dadMobile' && byHead['נייד אם'].field === 'momMobile')
     ? ok('נייד אב / נייד אם הופרדו נכון') : bad('הפרדת הניידים נכשלה');
+  const opts = await p.evaluate(() => [...document.querySelector('#muni-map .muni-col-field').options].map(o => o.textContent.trim()));
+  (opts.indexOf('שם משפחה') > opts.indexOf('שם האב') && opts.indexOf('שם האב') > opts.indexOf('שם האם'))
+    ? ok('"שם משפחה" יושב אחרי שמות ההורים') : bad('סדר השדות שגוי', [JSON.stringify(opts)]);
   (!byHead['מספר תיק'].on && byHead['מספר תיק'].field === ''
    && !byHead['סטטוס תשלום'].on && byHead['סטטוס תשלום'].field === '')
     ? ok('עמודות זרות נשארו כבויות') : bad('עמודה זרה סומנה בטעות');
@@ -263,6 +266,11 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     ? ok('שלושת הטלפונים נכנסו לשדות הנכונים')
     : bad('הטלפונים שגויים', [JSON.stringify({p:s1.phone,d:s1.dadMobile,m:s1.momMobile})]);
   s1.absorbedMunicipality ? ok('סומנה קלוט בעירייה') : bad('לא סומנה קלוט');
+
+  const s3 = await stu(p, '300000003');
+  s3.lastName === 'פרץ' ? ok('שם משפחה חסר הושלם מהרשימה') : bad('שם המשפחה לא הושלם: ' + s3.lastName);
+  const s1keep = await stu(p, '300000001');
+  s1keep.lastName === 'כהן' ? ok('שם משפחה קיים נשאר כשהיה') : bad('שם המשפחה נדרס: ' + s1keep.lastName);
 
   const s2 = await stu(p, '300000002');
   (s2.motherName === 'מרים קיימת' && s2.phone === '0522222222')

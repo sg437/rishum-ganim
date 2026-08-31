@@ -9955,11 +9955,11 @@ function renderProjection(host){
    לבד — כותרת שכתובה בדיוק כשם השדה תזוהה אוטומטית. */
 const MUNI_FIELD_OPTIONS = [
   { key:"tz",         label:"מספר זהות" },
-  { key:"lastName",   label:"שם משפחה" },
   { key:"firstName",  label:"שם פרטי" },
   { key:"dob",        label:"תאריך לידה" },
   { key:"motherName", label:"שם האם" },
   { key:"fatherName", label:"שם האב" },
+  { key:"lastName",   label:"שם משפחה" },
   { key:"phone",      label:"טלפון בית" },
   { key:"dadMobile",  label:"נייד אב" },
   { key:"momMobile",  label:"נייד אם" },
@@ -9997,6 +9997,7 @@ const MUNI_FILL_FIELDS = [
   { key:"dob",        label:"תאריך לידה", norm:v=>normDateVal(v) },
   { key:"motherName", label:"שם האם" },
   { key:"fatherName", label:"שם האב" },
+  { key:"lastName",   label:"שם משפחה" },
   { key:"phone",      label:"טלפון בית", phone:true },
   { key:"dadMobile",  label:"נייד אב",   phone:true },
   { key:"momMobile",  label:"נייד אם",   phone:true },
@@ -10060,10 +10061,9 @@ function applyMuniRec(s, rec){
 function muniNewStudent(rec, edu){
   const st=makeStudent();
   st.tz=tzKey(rec.tz);
-  st.lastName=String(rec.lastName||"").trim();
-  st.firstName=String(rec.firstName||"").trim();
+  st.firstName=String(rec.firstName||"").trim();   // שם פרטי נכנס רק בתיק חדש
   st.education=rec.education ? normEduVal(rec.education) : (edu||"רגיל");
-  applyMuniRec(st, rec);
+  applyMuniRec(st, rec);                            // שם המשפחה ושאר הפרטים משם
   st.absorbedMunicipality=true;
   st.registeredByUs=false;
   st.placed=false;
@@ -10162,7 +10162,7 @@ function muniSectionHTML(descClass){
     <div class="hint" style="margin-top:6px" id="muni-mode-hint"></div>
     <div style="margin-top:10px">
       <label>הדבקה ישירה מאקסל — שורת כותרות ואחריה שורה לכל ילדה (או רשימת ת"ז בלבד, שורה לכל אחת)</label>
-      <textarea id="muni-text" rows="6" placeholder='מספר זהות,שם משפחה,שם פרטי,תאריך לידה,שם האם,שם האב,טלפון בית,נייד אב,נייד אם,סמל מוסד&#10;123456789,ישראלי,שרה,01/09/2021,רבקה,יעקב,03-1234567,050-1234567,052-7654321,123456'>${stored.join("\n")}</textarea>
+      <textarea id="muni-text" rows="6" placeholder='מספר זהות,שם פרטי,תאריך לידה,שם האם,שם האב,שם משפחה,טלפון בית,נייד אב,נייד אם,סמל מוסד&#10;123456789,שרה,01/09/2021,רבקה,יעקב,ישראלי,03-1234567,050-1234567,052-7654321,123456'>${stored.join("\n")}</textarea>
       <div class="row" style="margin-top:8px">
         <button class="btn ghost" id="muni-detect" type="button">🔎 זיהוי עמודות</button>
         <button class="btn" id="muni-run" type="button">🔗 בצע התאמה, סמן והשלם פרטים</button>
