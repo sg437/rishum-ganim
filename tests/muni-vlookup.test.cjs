@@ -1373,6 +1373,69 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   rv2['מסומנות ואינן ברשימה'] === 0 ? ok('אחרי הניקוי — שני הצדדים תואמים') : bad('נשארו עודפות', [JSON.stringify(rv2)]);
   await p.evaluate(() => { __set('activeEdu', null); });
 
+  console.log('\n33. הזרימה לעתיד: העלאה אחת — וכל התמונה על המסך');
+  /* הבדיקה שסוגרת את כל מה שנבנה: אחרי העלאה רגילה אחת, בלי שום לחיצה
+     נוספת, הסיכום חייב להראות את ארבעת הדברים — הסימון בוצע · פילוח לפי
+     סוג חינוך · מי שעזבה מחוץ לחשבון · ומי שמסומנת אצלנו ואינה בקובץ. */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'n1',tz:'300000001',firstName:'א',lastName:'רגילה',ganId:'g1'}),
+      mk({id:'n2',tz:'300000002',firstName:'ב',lastName:'רגילה',ganId:'g1'}),
+      mk({id:'n3',tz:'300000003',firstName:'ג',lastName:'מיוחדת',education:'ח"מ'}),
+      mk({id:'n4',tz:'300000004',firstName:'ד',lastName:'עזבה',ganId:'g1',finished:true}),
+      /* מסומנת מהעלאה קודמת, וירדה מהרשימה */
+      mk({id:'n5',tz:'300000090',firstName:'ה',lastName:'עודפתישנה',ganId:'g1',absorbedMunicipality:true})];
+    DB.municipality={};
+    __set('activeEdu',null);
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('students'));
+  await p.waitForTimeout(250);
+  await p.evaluate(() => navToTab('municipality'));
+  await p.waitForTimeout(450);
+  await p.evaluate(() => { const m = document.querySelector('#muni-mode'); m.value = 'update'; m.dispatchEvent(new Event('change')); });
+  await p.waitForTimeout(200);
+  await load(p, [
+    'מספר זהות,שם משפחה,שם פרטי,סמל מוסד',
+    '300000001,רגילה,א,111111',
+    '300000002,רגילה,ב,111111',
+    '300000003,מיוחדת,ג,111111',
+    '300000004,עזבה,ד,111111'
+  ].join('\n'));
+  await run(p);
+  const flow = await p.evaluate(() => document.querySelector('#muni-result').textContent.replace(/\s+/g, ' '));
+
+  /* 1 — הסימון בוצע */
+  const marks = await p.evaluate(() => ['300000001','300000002','300000003']
+    .map(t => !!(DB.students.find(x => x.tz === t) || {}).absorbedMunicipality));
+  marks.every(Boolean) ? ok('1. כולן סומנו קלוטות — כולל זו שבחינוך מיוחד') : bad('הסימון לא בוצע', [JSON.stringify(marks)]);
+
+  /* 2 — פילוח לפי סוג חינוך */
+  /חינוך רגיל — פעילות2/.test(flow) && /חינוך ח"מ — פעילות1/.test(flow)
+    ? ok('2. הפילוח מראה כמה מהרשימה בכל סוג חינוך') : bad('אין פילוח חינוך', [flow.slice(0, 500)]);
+
+  /* 3 — מי שעזבה מחוץ לחשבון */
+  /המספר להשוואה: 3/.test(flow)
+    ? ok('3. מי שעזבה מנוכה — המספר להשוואה הוא 3 מתוך 4') : bad('העוזבת לא נוכתה', [flow.slice(0, 700)]);
+
+  /* 4 — מסומנת אצלנו ואינה בקובץ, אוטומטית */
+  /1 תיקים מסומנים אצלנו כ"קלוט בעירייה" — ואינם בקובץ שהועלה עכשיו/.test(flow)
+    ? ok('4. העודפת עלתה לבד בסיכום, בלי שום לחיצה נוספת') : bad('הכיוון ההפוך לא הופיע', [flow.slice(0, 900)]);
+  /300000090/.test(flow) ? ok('   ...ומופיעה בת"ז ובשם') : bad('אין פירוט של העודפת');
+  /ההחלטה שלך/.test(flow) ? ok('   ...ומוצגת כהחלטה, לא כפעולה אוטומטית') : bad('לא ברור שזו החלטה');
+
+  /* ההסרה זמינה, ולא בוצעה מעצמה */
+  const stillMarked = await p.evaluate(() => !!(DB.students.find(x => x.tz === '300000090') || {}).absorbedMunicipality);
+  stillMarked ? ok('   ...ולא הוסרה מעצמה') : bad('הסימון הוסר בלי אישור');
+  const hasBtn = await p.evaluate(() => !!document.querySelector('#muni-unmark2'));
+  hasBtn ? ok('   ...עם כפתור להסרה בלחיצה') : bad('אין כפתור הסרה');
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
