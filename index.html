@@ -12219,9 +12219,11 @@ function rowsToCsv(rows){ return rows.map(r=>r.map(csvCell).join(",")).join("\r\
 /* שלב 1: המיכל. מאתר זרם אחד לפי שם ומחזיר את הבייטים שלו. קוראים רק את
    הזרם שצריך — קובץ אמיתי נושא גם זרמי מטא-דאטה קטנים, ואין סיבה שתקלה
    באחד מהם תפיל את קריאת הגיליון. */
-function oleReadStream(buf, names){
+/* שלב 1: המיכל. מחזיר את רשימת הזרמים ופונקציית קריאה לכל אחד — קוראים
+   רק את הזרם שצריך, כי קובץ אמיתי נושא גם זרמי מטא-דאטה קטנים. */
+function oleEntries(buf){
   const dv=new DataView(buf), u8=new Uint8Array(buf);
-  if(dv.getUint32(0,true)!==0xE011CFD0 || dv.getUint32(4,true)!==0xE11AB1A1) throw new Error("ole");
+  if(dv.getUint32(0,true)!==0xE011CFD0 || dv.getUint32(4,true)!==0xE11AB1A1) throw new Error("אינו קובץ אקסל");
   const ssz=1<<dv.getUint16(30,true), msz=1<<dv.getUint16(32,true);
   const dirStart=dv.getUint32(48,true), miniCut=dv.getUint32(56,true);
   const miniFatStart=dv.getUint32(60,true);
@@ -12237,23 +12239,22 @@ function oleReadStream(buf, names){
     difSect=dv.getUint32(base+4*per,true);
   }
   const fat=[];
-  fatSectors.forEach(s=>{ const base=secOff(s); for(let i=0;i<ssz/4;i++) fat.push(dv.getUint32(base+4*i,true)); });
+  fatSectors.forEach(s=>{ const base=secOff(s);
+    for(let i=0;i<ssz/4 && base+4*i+4<=u8.length;i++) fat.push(dv.getUint32(base+4*i,true)); });
   const chain=(start,table)=>{ const out=[]; let s=start, guard=0;
     while(s<END && guard++<table.length+8){ out.push(s); s=table[s]; if(s==null) break; } return out; };
   const readChain=(start,size)=>{ const parts=chain(start,fat).map(s=>u8.subarray(secOff(s),secOff(s)+ssz));
     const total=parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0;
     parts.forEach(pt=>{ out.set(pt,o); o+=pt.length; }); return size!=null?out.subarray(0,size):out; };
-  /* ספריית הקבצים */
+  /* ספריית הקבצים — נסרקת שטוח, ולכן זרם בתוך תיקייה פנימית נמצא גם הוא */
   const dir=readChain(dirStart);
   const ddv=new DataView(dir.buffer, dir.byteOffset, dir.byteLength);
   const entries=[];
-  for(let i=0;i+128<=dir.length;i++){
-    const o=i*128; if(o+128>dir.length) break;
+  for(let o=0;o+128<=dir.length;o+=128){
     const nameLen=ddv.getUint16(o+64,true), type=dir[o+66];
     if(!type) continue;
     let name=""; for(let c=0;c+1<Math.max(0,nameLen-2);c+=2) name+=String.fromCharCode(ddv.getUint16(o+c,true));
     entries.push({ name, type, start:ddv.getUint32(o+116,true), size:ddv.getUint32(o+120,true) });
-    if((i+1)*128>=dir.length) break;
   }
   /* זרמים קטנים יושבים בתוך "המיני-זרם" של הרשומה הראשית, עם FAT משלהם */
   const root=entries.find(e=>e.type===5);
@@ -12265,15 +12266,22 @@ function oleReadStream(buf, names){
     const mdv=new DataView(mf.buffer, mf.byteOffset, mf.byteLength);
     for(let i=0;i+4<=mf.length;i+=4) miniFat.push(mdv.getUint32(i,true));
   };
-  const e=entries.find(x=>x.type===2 && names.some(n=>n.toLowerCase()===x.name.toLowerCase()));
-  if(!e) return null;
-  if(e.size>=miniCut || !root) return readChain(e.start,e.size);
-  /* זרם קטן — יושב בתוך המיני-זרם של הרשומה הראשית, עם FAT משלו */
-  getMini();
-  const parts=chain(e.start,miniFat).map(s=>mini.subarray(s*msz,(s+1)*msz));
-  const total=parts.reduce((a,b)=>a+b.length,0); const b=new Uint8Array(total); let o=0;
-  parts.forEach(pt=>{ b.set(pt,o); o+=pt.length; });
-  return b.subarray(0,e.size);
+  const read=e=>{
+    if(e.size>=miniCut || !root) return readChain(e.start,e.size);
+    getMini();
+    const parts=chain(e.start,miniFat).map(s=>mini.subarray(s*msz,(s+1)*msz));
+    const total=parts.reduce((a,b)=>a+b.length,0); const b=new Uint8Array(total); let o=0;
+    parts.forEach(pt=>{ b.set(pt,o); o+=pt.length; });
+    return b.subarray(0,e.size);
+  };
+  return { list:entries, read };
+}
+/* האם הזרם פותח ברשומת BOF של חוברת אקסל. לפי זה מאתרים את הגיליון גם
+   כשהזרם אינו נקרא "Workbook" — יש מערכות שנותנות לו שם משלהן. */
+function isBiffStart(b){
+  if(!b || b.length<4) return false;
+  const t=b[0]|(b[1]<<8);
+  return t===0x0809||t===0x0409||t===0x0209||t===0x0009;
 }
 /* ערך RK: 30 ביט של מספר שלם, או 30 הביטים העליונים של double; ביט 0 = חלוקה ב-100 */
 function biffRk(rk){
@@ -12437,9 +12445,26 @@ function biffToRows(wbBytes){
 }
 /* שלב 2: רשומות BIFF8/BIFF5. מחזיר את הטבלה שבגיליון הראשון. */
 function xlsToRows(buf){
-  const wbBytes=oleReadStream(buf, ["Workbook","Book"]);
-  if(!wbBytes) throw new Error("אין גיליון אקסל בקובץ");
-  return biffToRows(wbBytes);
+  const ole=oleEntries(buf);
+  const streams=ole.list.filter(e=>e.type===2 && e.size>=8);
+  const tryRead=e=>{ try{ return ole.read(e); }catch(_){ return null; } };
+  let bytes=null;
+  const named=streams.find(e=>/^(workbook|book)$/i.test(e.name));
+  if(named) bytes=tryRead(named);
+  /* שם לא צפוי אינו עוצר: מחפשים את הזרם שפותח ברשומת BOF */
+  if(!isBiffStart(bytes)){
+    bytes=null;
+    for(let i=0;i<streams.length;i++){ const b=tryRead(streams[i]); if(isBiffStart(b)){ bytes=b; break; } }
+  }
+  if(!bytes){
+    /* אין גיליון — מדווחים אילו זרמים כן נמצאו, כדי שאפשר יהיה לדעת מהו הקובץ */
+    const names=ole.list.filter(e=>e.type===2)
+      .map(e=>String(e.name||"").replace(/[\u0000-\u001f]/g,"").trim()).filter(Boolean);
+    if(names.some(n=>/worddocument/i.test(n))) throw new Error("זהו קובץ וורד, לא אקסל");
+    if(names.some(n=>/powerpoint/i.test(n))) throw new Error("זהו קובץ פאוורפוינט, לא אקסל");
+    throw new Error("אין גיליון בקובץ — נמצאו: "+(names.slice(0,5).join(" · ")||"אין זרמים"));
+  }
+  return biffToRows(bytes);
 }
 /* קריאת קובץ שהמשתמש העלה, כטקסט טבלאי אחד. קובץ .xlsx מפוענח כאן לטבלה
    ומוחזר כ-CSV, כך שכל מסכי הייבוא ממשיכים לעבוד על אותו טקסט בדיוק כמו
