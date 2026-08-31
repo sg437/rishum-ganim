@@ -10749,20 +10749,25 @@ function wireMuniSection(root, inModal){
       /* ביקורת שורה-לשורה: לכל ת"ז בקובץ — מה בדיוק מצבה אצלנו. זה המסמך
          שסוגר כל ויכוח על מספרים, כי אפשר לפתוח אותו באקסל ולסנן בעצמך. */
       const audit=[];
-      let unmarked=0;   // בקובץ, קיימת אצלנו, ואינה מסומנת קלוטה
+      /* מי שסיימה ועזבה יוצאת מהחשבון — משני צדדיו. היא אינה נספרת במסך
+         התלמידות, ולכן אסור לה להיספר גם בצד הקובץ: אחרת משווים 871 שכולל
+         עוזבות מול מספר שאינו כולל אותן, וההפרש נראה כמו רשומות חסרות.
+         היא מדווחת בנפרד, כדי שתהיה גלויה — אבל לא בתוך המאזן. */
+      let unmarked=0;       // בקובץ, פעילה אצלנו, ואינה מסומנת קלוטה  ← החריגה
+      let activeMarked=0;   // בקובץ, פעילה אצלנו, ומסומנת קלוטה       ← התקין
       nums.forEach(tz=>{
         const rec=recs.get(tz)||{tz};
         const sym=String(rec.symbol||"").trim();
         if(sym){ muniBySym.set(sym,(muniBySym.get(sym)||0)+1); symsSeen.add(sym); } else noSym++;
         const s=byTz.get(tzKey(tz));
-        if(!s){ missing.push(tz); audit.push([tz,"","","","אינה בתוכנה כלל",sym]); return; }
-        if(s.finished) leftCmp++; else bumpC(cmpEdu, eduLabel(s));
+        if(!s){ missing.push(tz); audit.push([tz,"","","","אינה בתוכנה כלל","כן",sym]); return; }
+        if(s.finished) leftCmp++;
+        else { bumpC(cmpEdu, eduLabel(s)); if(s.absorbedMunicipality) activeMarked++; else unmarked++; }
         found++;
-        const st = !s.absorbedMunicipality ? "בתוכנה — אינה מסומנת קלוטה"
-                 : s.finished              ? "מסומנת קלוטה — אך סיימה ועזבה"
+        const st = s.finished             ? "סיימה ועזבה — מחוץ לחשבון"
+                 : !s.absorbedMunicipality ? "בתוכנה — אינה מסומנת קלוטה"
                  :                           "מסומנת קלוטה";
-        if(!s.absorbedMunicipality) unmarked++;
-        audit.push([tz, s.lastName||"", s.firstName||"", eduLabel(s), st, sym]);
+        audit.push([tz, s.lastName||"", s.firstName||"", eduLabel(s), st, s.finished?"לא":"כן", sym]);
         const ourSym=ganSymbolText(ganById(s.ganId));
         if(ourSym) symsSeen.add(ourSym);
         if(sym && ourSym!==sym) diffs.push({ s, muniSym:sym, ourSym });
@@ -10776,11 +10781,31 @@ function wireMuniSection(root, inModal){
           <div class="stat"><div class="k">נמצאו בתוכנה</div><div class="v">${found}</div></div>
           <div class="stat"><div class="k">אינן בתוכנה כלל</div><div class="v">${missing.length}</div></div>
           <div class="stat ${diffs.length?'bad':''}"><div class="k">בסמל שונה</div><div class="v">${diffs.length}</div></div>
-          <div class="stat"><div class="k">סיימו ועזבו אצלנו</div><div class="v">${leftCmp}</div></div>
+          <div class="stat"><div class="k">סיימו ועזבו — מחוץ לחשבון</div><div class="v">${leftCmp}</div></div>
           <div class="stat ${unmarked?'bad':''}"><div class="k">בתוכנה ולא מסומנות</div><div class="v">${unmarked}</div></div>
         </div>
         ${noSym?`<div class="hint" style="margin-top:8px">${noSym} שורות בקובץ בלי סמל מוסד — הן נספרות ב"ברשימת העירייה" אך לא בטבלת הסמלים. ודא/י שמופתה עמודת "סמל מוסד".</div>`:''}
         ${(noTz&&noTz.length)?`<div class="note" style="margin-top:8px">${noTz.length} שורות בקובץ בלי מספר זהות — לא נספרו כלל. ההתאמה היא לפי ת"ז בלבד.</div>`:''}
+        ${(()=>{
+          /* ---- החשבון שאפשר להשוות: בלי עוזבות, משני הצדדים ----
+             זה המספר שמותר להשוות למסך התלמידות, כי שניהם על אותה אוכלוסייה. */
+          const inScope = nums.length - leftCmp;
+          const eduTxt  = EDU_TYPES.filter(t=>cmpEdu[t]).map(t=>`${t}: ${cmpEdu[t]}`).join(" · ");
+          const balanced = inScope === (activeMarked + unmarked + missing.length);
+          return `<div class="note" style="margin-top:12px;border-inline-start:4px solid var(--good);padding-inline-start:10px">
+            <b>החשבון להשוואה — בלי מי שסיימה ועזבה</b>
+            ${tbl(`<tbody>
+              <tr><td>מספרי זהות בקובץ</td><td><b>${nums.length}</b></td></tr>
+              <tr><td>מהן — סיימו ועזבו אצלנו</td><td><b>−${leftCmp}</b></td></tr>
+              <tr style="border-top:2px solid var(--border)"><td><b>נשארות בחשבון</b></td><td><b>${inScope}</b></td></tr>
+              <tr><td>מסומנות קלוטות אצלנו, פעילות${eduTxt?` <span class="hint">(${esc(eduTxt)})</span>`:''}</td><td><b>${activeMarked}</b></td></tr>
+              <tr><td>בתוכנה, פעילות, ואינן מסומנות</td><td><b class="${unmarked?'bad':''}">${unmarked}</b></td></tr>
+              <tr><td>אינן בתוכנה כלל</td><td><b>${missing.length}</b></td></tr>
+              <tr style="border-top:2px solid var(--border)"><td><b>סה״כ</b></td><td><b>${activeMarked+unmarked+missing.length}</b> ${balanced?'✓':'⚠️'}</td></tr>
+            </tbody>`)}
+            <div class="hint" style="margin-top:6px">מי שסיימה ועזבה אינה נספרת במסך התלמידות, ולכן היא יוצאת גם מצד הקובץ — אחרת משווים שתי אוכלוסיות שונות וההפרש נראה כמו רשומות חסרות. ${leftCmp?`הן מפורטות בקובץ המאזן, בעמודת "בחשבון" עם הערך <b>לא</b>.`:''}</div>
+          </div>`;
+        })()}
         ${(()=>{
           /* המאזן המלא של הקובץ — כל שורה מקבלת מקום, והסכום חייב להיות
              מספר השורות בקובץ. זה המסך שעונה על "איפה נעלמו לי כמה". */
@@ -10814,7 +10839,7 @@ function wireMuniSection(root, inModal){
       wireSymDownloads(symRows, diffs);
       wireDownload("muni-dl-nf", "ת-ז מהעירייה שאינן בתוכנה.csv", ['ת"ז'], missing.map(t=>[t]));
       wireDownload("muni-dl-audit", "מאזן רשימת העירייה — שורה לכל ת-ז.csv",
-        ['ת"ז',"שם משפחה","שם פרטי","חינוך","מצב","סמל בעירייה"], audit);
+        ['ת"ז',"שם משפחה","שם פרטי","חינוך","מצב","בחשבון","סמל בעירייה"], audit);
       if(leftCmp) toast(`הופק סיכום ל-${symRows.length} סמלים · ${diffs.length} בסמל שונה · ${leftCmp} סיימו אצלנו`);
       else toast(`הופק סיכום ל-${symRows.length} סמלים · ${diffs.length} בסמל שונה`);
       return;
@@ -10904,7 +10929,7 @@ function wireMuniSection(root, inModal){
       </div>` : '';
 
     /* תיקים אצלנו בלי ת"ז — הם שגורמים לכפילויות: שורת העירייה לא מוצאת אותם ופותחת תיק חדש */
-    const ourNoTz = studentsOfYear().filter(x=>!digits(x.tz));
+    const ourNoTz = studentsOfYear().filter(x=>!x.finished && !digits(x.tz)); // עוזבות אינן בחשבון
     const ourNoTzBlock = ourNoTz.length ? `
       <div class="note" style="margin-top:12px">
         <b>⚠️ ${ourNoTz.length} תיקים אצלנו בשנה זו בלי מספר זהות</b>
@@ -10931,6 +10956,10 @@ function wireMuniSection(root, inModal){
         </tbody>`)}
         <div class="hint" style="margin-top:6px">
           ${eduRows.map(r=>`חינוך ${esc(r.t)}: ${r.n}`).join(" · ")}${left.length?` · סיימו: ${left.length}`:''}${notFound.length?` · ללא תיק: ${notFound.length}`:''} = <b>${sumActive+left.length+notFound.length}</b> מתוך ${nums.length}.
+        </div>
+        <div class="note" style="margin-top:8px;border-inline-start:4px solid var(--good);padding-inline-start:10px">
+          <b>המספר להשוואה: ${nums.length - left.length}</b> — ${nums.length} מספרי זהות בקובץ, פחות ${left.length} של מי שסיימה ועזבה.
+          <div class="hint" style="margin-top:4px">מי שעזבה אינה נספרת במסך התלמידות, ולכן היא יוצאת גם מצד הקובץ. השוואה בלי זה מעמידה שתי אוכלוסיות שונות זו מול זו, וההפרש נראה כמו רשומות חסרות.</div>
         </div>
         <div class="note" style="margin-top:8px">
           <b>למה "סה״כ תלמידות פחות מספר הקובץ" לא יוצא נכון:</b> מסך התלמידות מציג סוג חינוך אחד בכל פעם ומסתיר מי שסיימה, וקובץ העירייה כולל את כולם יחד.
