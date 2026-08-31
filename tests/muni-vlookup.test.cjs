@@ -1436,6 +1436,63 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   const hasBtn = await p.evaluate(() => !!document.querySelector('#muni-unmark2'));
   hasBtn ? ok('   ...עם כפתור להסרה בלחיצה') : bad('אין כפתור הסרה');
 
+  console.log('\n34. ייבוא תלמידות אינו מסמן "קלוט בעירייה" מעצמו');
+  /* רק רשימת העירייה קובעת מי קלוטה. כשהייבוא סימן את כולן כברירת מחדל,
+     כל ייבוא ייצר קלוטות שאינן בקובץ העירייה — עודף שצץ כחריגה בהעלאה
+     הבאה, וזה בדיוק מקור אחד מההפרשים שנחקרו כאן. */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    DB.students=[]; DB.municipality={}; __set('activeEdu',null);
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('students'));
+  await p.waitForTimeout(400);
+  /* #importStu הוא כפתור "ייבוא מקובץ" שבמסך התלמידות (openBulkImport הוא
+     חלון אחר — עדכון לפי ת"ז — ולכן אינו מתאים כאן) */
+  await p.evaluate(() => document.querySelector('#importStu').click());
+  await p.waitForTimeout(500);
+  const defOff = await p.evaluate(() => {
+    const c = document.querySelector('#imp-absorbed');
+    return c ? c.checked : null;
+  });
+  defOff === false ? ok('התיבה כבויה כברירת מחדל') : bad('התיבה עדיין דלוקה', [String(defOff)]);
+
+  /* ייבוא רגיל — אף אחת לא תסומן קלוטה */
+  await p.evaluate(() => {
+    document.querySelector('#imp-text').value =
+      'שם משפחה,שם פרטי,ת"ז\nכהן,רחל,300000201\nלוי,שרה,300000202';
+    document.querySelector('#imp-preview').click();
+  });
+  await p.waitForTimeout(350);
+  await p.evaluate(() => document.querySelector('#imp-do').click());
+  await p.waitForTimeout(500);
+  const after34 = await p.evaluate(() => DB.students.map(x => ({ tz: x.tz, a: !!x.absorbedMunicipality })));
+  (after34.length === 2 && after34.every(x => x.a === false))
+    ? ok('שתי התלמידות יובאו — ואף אחת לא סומנה קלוטה')
+    : bad('הייבוא סימן קלוט מעצמו', [JSON.stringify(after34)]);
+
+  /* עמודה מפורשת בקובץ עדיין גוברת — נתון אמיתי לא נדרס */
+  await p.evaluate(() => { DB.students = []; });
+  await p.evaluate(() => navToTab('students'));
+  await p.waitForTimeout(300);
+  await p.evaluate(() => document.querySelector('#importStu').click());
+  await p.waitForTimeout(400);
+  await p.evaluate(() => {
+    document.querySelector('#imp-text').value =
+      'שם משפחה,שם פרטי,ת"ז,קלוט בעירייה\nכהן,רחל,300000301,כן\nלוי,שרה,300000302,לא';
+    document.querySelector('#imp-preview').click();
+  });
+  await p.waitForTimeout(350);
+  await p.evaluate(() => document.querySelector('#imp-do').click());
+  await p.waitForTimeout(500);
+  const col = await p.evaluate(() => Object.fromEntries(
+    DB.students.map(x => [x.tz, !!x.absorbedMunicipality])));
+  (col['300000301'] === true && col['300000302'] === false)
+    ? ok('עמודת "קלוט בעירייה" שבקובץ עדיין גוברת, לכל שורה בנפרד')
+    : bad('העמודה שבקובץ לא נקלטה', [JSON.stringify(col)]);
+  await p.evaluate(() => closeModal());
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
