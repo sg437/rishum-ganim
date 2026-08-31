@@ -5,10 +5,12 @@
      2. עמודה שלא סומנה אינה נקלטת, גם כשהכותרת שלה מוכרת.
      3. השלמת הפרטים החסרים בתיק — ומה שכבר קיים בתוכנה אינו נדרס.
      4. טלפון שכבר מופיע בשדה אחר של אותה ילדה לא נכתב שוב.
-     5. ת"ז שאינה בתוכנה — נפתח לה תיק חדש, והיא מדווחת בנפרד.
+     5. ת"ז שאינה בתוכנה — נפתח לה תיק חדש, בלי שיבוץ לגן לפי הסמל.
      6. כיבוי "פתיחת תיק חדש" — הת"ז מדווחת ולא נפתח תיק.
      7. סוג החינוך של ההעלאה נקבע לתיקים החדשים.
      8. סיכום לפי סמל מוסד + רשימת מי שבסמל אחר בעירייה ואצלנו.
+     8ב. מצב "השוואה בלבד" — סיכום הסמלים בלי לגעת בנתונים.
+     8ג. הורדות: אצלנו+בעירייה · רק אצלנו · שיתוף.
      9. רשימת ת"ז נטו (בלי כותרות) ממשיכה לעבוד — סימון "קלוט" בלבד.
     10. אותו מקטע בדיוק עובד גם בעיצוב החדש (חלון "עדכון לפי מ.ז.").
     11. קובץ xlsx אמיתי נקרא כטבלה — ולא נשפך כג'יבריש לתיבה.
@@ -205,7 +207,9 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     return [...tbl.querySelectorAll('tr')].map(tr => tr.children[1].textContent.trim()); });
   (newList && newList.length === 1 && newList[0] === '300000009')
     ? ok('הרשימה הנפרדת של החדשות מוצגת') : bad('רשימת החדשות שגויה', [JSON.stringify(newList)]);
-  s9.ganId === '' ? ok('התיק החדש לא שובץ לגן (הסימון כבוי)') : bad('שובץ בטעות לגן ' + s9.ganId);
+  s9.ganId === '' ? ok('התיק החדש לא שובץ לגן — הסמל אינו משבץ') : bad('שובץ בטעות לגן ' + s9.ganId);
+  const noAssignBox = await p.evaluate(() => !!document.querySelector('#muni-assign'));
+  !noAssignBox ? ok('אין בכלל אפשרות לשבץ לפי סמל מהעירייה') : bad('נשארה אפשרות שיבוץ לפי סמל');
 
   console.log('\n6. כיבוי "פתיחת תיק חדש"');
   await p.evaluate(() => { DB.students = DB.students.filter(s => s.tz !== '300000009'); });
@@ -232,16 +236,51 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   const row111 = sym && sym.find(r => r[0] === '111111');
   const row222 = sym && sym.find(r => r[0] === '222222');
   (row111 && row111[1] === 'גן הדקל' && row111[2] === '3' && row111[3] === '3')
-    ? ok('סמל 111111: 3 בעירייה · 3 בתוכנה') : bad('שורת 111111 שגויה', [JSON.stringify(row111)]);
-  /* בעירייה: מלכה בלבד (התיק החדש לא שובץ). בתוכנה: לאה ומרים, שתיהן בגן הרימון. */
-  (row222 && row222[2] === '1' && row222[3] === '2' && row222[4] === '+1')
-    ? ok('סמל 222222: 1 בעירייה · 2 בתוכנה · הפרש +1') : bad('שורת 222222 שגויה', [JSON.stringify(row222)]);
+    ? ok('סמל 111111: 3 בתוכנה · 3 בעירייה') : bad('שורת 111111 שגויה', [JSON.stringify(row111)]);
+  /* בתוכנה: לאה ומרים, שתיהן בגן הרימון. בעירייה: מלכה בלבד. */
+  (row222 && row222[2] === '2' && row222[3] === '1' && row222[4] === '+1')
+    ? ok('סמל 222222: 2 בתוכנה · 1 בעירייה · הפרש +1') : bad('שורת 222222 שגויה', [JSON.stringify(row222)]);
   const diff = await p.evaluate(() => {
     const b = document.querySelector('#muni-dl-diff'); if (!b) return null;
-    return [...b.parentElement.querySelectorAll('tbody tr')].map(tr =>
+    return [...b.closest('div[style]').parentElement.querySelectorAll('tbody tr')].map(tr =>
       [...tr.children].map(td => td.textContent.trim())); });
-  (diff && diff.length === 1 && diff[0][1] === '300000003' && diff[0][2] === '111111' && diff[0][4] === '222222')
-    ? ok('לאה פרץ: בעירייה 111111, אצלנו 222222') : bad('רשימת ההפרשים שגויה', [JSON.stringify(diff)]);
+  (diff && diff.length === 1 && diff[0][1] === '300000003' && diff[0][2] === '222222' && diff[0][4] === '111111')
+    ? ok('לאה פרץ: אצלנו 222222, בעירייה 111111') : bad('רשימת ההפרשים שגויה', [JSON.stringify(diff)]);
+  const dlBtns = await p.evaluate(() => ['muni-dl-diff','muni-dl-diff-ours','muni-share-diff','muni-dl-sym','muni-share-sym']
+    .filter(id => !!document.querySelector('#' + id)));
+  dlBtns.length === 5 ? ok('הורדה מלאה · הורדה "רק אצלנו" · שיתוף — לשתי הטבלאות')
+                      : bad('חסרים כפתורי הורדה/שיתוף', [JSON.stringify(dlBtns)]);
+
+  console.log('\n8ב. מצב "השוואה בלבד"');
+  const snap = () => p.evaluate(() => JSON.stringify(DB.students.map(s =>
+    [s.tz, s.ganId, s.motherName, s.phone, s.absorbedMunicipality]).sort()));
+  const beforeCmp = await snap();
+  await p.evaluate(() => { const m = document.querySelector('#muni-mode'); m.value = 'compare'; m.dispatchEvent(new Event('change')); });
+  const hidden = await p.evaluate(() => ({
+    edu: document.querySelector('#muni-edu-wrap').style.display,
+    create: document.querySelector('#muni-create-wrap').style.display,
+    btn: document.querySelector('#muni-run').textContent.trim() }));
+  (hidden.edu === 'none' && hidden.create === 'none' && /סיכום לפי סמל/.test(hidden.btn))
+    ? ok('בהשוואה: בורר החינוך ופתיחת התיקים יורדים, והכפתור משתנה')
+    : bad('הפקדים לא הוסתרו', [JSON.stringify(hidden)]);
+  /* קובץ ובו ת"ז + סמל בלבד — בדיוק מה שנדרש להשוואה */
+  await load(p, ['מספר זהות,סמל מוסד', '300000001,111111', '300000003,111111', '300000004,222222'].join('\n'));
+  await run(p);
+  const afterCmp = await snap();
+  afterCmp === beforeCmp ? ok('שום דבר בתוכנה לא השתנה') : bad('ההשוואה שינתה נתונים');
+  const cmpSym = await p.evaluate(() => {
+    const b = document.querySelector('#muni-dl-sym'); if (!b) return null;
+    return [...b.parentElement.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim())); });
+  const c111 = cmpSym && cmpSym.find(r => r[0] === '111111');
+  (c111 && c111[1] === 'גן הדקל' && c111[2] === '3' && c111[3] === '2')
+    ? ok('סמל 111111: 3 בתוכנה · 2 בעירייה') : bad('סיכום ההשוואה שגוי', [JSON.stringify(cmpSym)]);
+  const cmpDiff = await p.evaluate(() => {
+    const b = document.querySelector('#muni-dl-diff'); if (!b) return null;
+    return [...b.closest('div[style]').parentElement.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim())); });
+  /* לאה: אצלנו 222222, בעירייה 111111 · חנה: אצלנו 111111, בעירייה 222222 */
+  (cmpDiff && cmpDiff.length === 2)
+    ? ok('שתי אי-התאמות סמל אותרו') : bad('רשימת ההפרשים בהשוואה שגויה', [JSON.stringify(cmpDiff)]);
+  await p.evaluate(() => { const m = document.querySelector('#muni-mode'); m.value = 'update'; m.dispatchEvent(new Event('change')); });
 
   console.log('\n9. רשימת ת"ז נטו — בלי כותרות');
   await load(p, '300000001\n300000003');
