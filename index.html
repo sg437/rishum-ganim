@@ -12265,7 +12265,7 @@ function oleReadStream(buf, names){
     const mdv=new DataView(mf.buffer, mf.byteOffset, mf.byteLength);
     for(let i=0;i+4<=mf.length;i+=4) miniFat.push(mdv.getUint32(i,true));
   };
-  const e=entries.find(x=>x.type===2 && names.includes(x.name));
+  const e=entries.find(x=>x.type===2 && names.some(n=>n.toLowerCase()===x.name.toLowerCase()));
   if(!e) return null;
   if(e.size>=miniCut || !root) return readChain(e.start,e.size);
   /* זרם קטן — יושב בתוך המיני-זרם של הרשומה הראשית, עם FAT משלו */
@@ -12326,31 +12326,57 @@ function biffStrReader(blocks){
   };
   return st;
 }
-/* שלב 2: רשומות BIFF8. מחזיר את הטבלה שבגיליון הראשון. */
-function xlsToRows(buf){
-  const wbBytes=oleReadStream(buf, ["Workbook","Book"]);
-  if(!wbBytes) throw new Error("nowb");
+/* פענוח דף קוד לקובצי BIFF5/7, שבהם מחרוזת היא בייטים בדף קוד ולא יוניקוד.
+   קובץ ישראלי הוא כמעט תמיד 1255; לכן זו גם ברירת המחדל כשאין רשומת CODEPAGE. */
+function biffDecoder(cp){
+  const name = cp===1252?"windows-1252" : cp===1256?"windows-1256" : cp===65001?"utf-8"
+             : cp===1250?"windows-1250" : "windows-1255";
+  let td=null;
+  try{ td=new TextDecoder(name); }catch(_){ try{ td=new TextDecoder("windows-1255"); }catch(__){ td=null; } }
+  return bytes => td ? td.decode(bytes) : Array.from(bytes).map(b=>String.fromCharCode(b)).join("");
+}
+/* רשומות BIFF של זרם ה-Workbook → טבלה. מופרד מהמיכל כדי שאפשר יהיה
+   לבדוק אותו על זרם רשומות בלבד, בלי לבנות קובץ OLE שלם. */
+function biffToRows(wbBytes){
   const dv=new DataView(wbBytes.buffer, wbBytes.byteOffset, wbBytes.byteLength);
-  const rec=[];                       // כל הרשומות: [סוג, היסט הנתונים, אורך, היסט הרשומה]
+  const rec=[];                       // [סוג, היסט הנתונים, אורך, היסט הרשומה]
   for(let p=0;p+4<=wbBytes.length;){
     const t=dv.getUint16(p,true), l=dv.getUint16(p+2,true);
     if(t===0 && l===0) break;
     if(p+4+l>wbBytes.length) break;
     rec.push([t,p+4,l,p]); p+=4+l;
   }
-  const byOffset=new Map(); rec.forEach((r,i)=>byOffset.set(r[3],i));
+  if(!rec.length) throw new Error("אין רשומות בקובץ");
+  /* גרסת הפורמט. BIFF8 (אקסל 97 ומעלה) הוא יוניקוד עם טבלת מחרוזות
+     משותפת; BIFF5/7 (אקסל 5/95) הוא בייטים בדף קוד, בלי טבלה — ומבנה
+     רשומות שונה. קריאת BIFF5 ככה"נ BIFF8 חורגת מגבולות הנתונים. */
+  const bof=rec.find(r=>r[0]===0x0809||r[0]===0x0409||r[0]===0x0209||r[0]===0x0009);
+  if(!bof) throw new Error("לא נמצאה רשומת פתיחה");
+  if(bof[0]!==0x0809) throw new Error("פורמט אקסל ישן מאוד (אקסל 4 ומטה)");
+  const vers = bof[2]>=2 ? dv.getUint16(bof[1],true) : 0x0600;
+  const biff8 = vers>=0x0600;
+  if(rec.some(r=>r[0]===0x002F)) throw new Error("הקובץ מוגן בסיסמה");
+  let cp=1255; const cpRec=rec.find(r=>r[0]===0x0042);
+  if(cpRec && cpRec[2]>=2) cp=dv.getUint16(cpRec[1],true);
+  const dec=biffDecoder(cp);
+  /* מחרוזת בייטים בתוך גבולות הרשומה */
+  const bstr=(o,n,end)=>dec(wbBytes.subarray(o, Math.min(o+n, end)));
   /* שמות הגיליונות ומיקומם בזרם */
   const sheets=[];
   rec.forEach(([t,o,l])=>{
-    if(t!==0x0085) return;
-    const pos=dv.getUint32(o,true), cch=wbBytes[o+6], grbit=wbBytes[o+7];
+    if(t!==0x0085 || l<7) return;
+    const end=o+l, pos=dv.getUint32(o,true);
     let name="";
-    for(let i=0;i<cch;i++) name += String.fromCharCode((grbit&1) ? dv.getUint16(o+8+2*i,true) : wbBytes[o+8+i]);
+    if(biff8){
+      const cch=wbBytes[o+6], grbit=wbBytes[o+7];
+      if(grbit&1){ for(let i=0;i<cch && o+8+2*i+2<=end;i++) name+=String.fromCharCode(dv.getUint16(o+8+2*i,true)); }
+      else name=bstr(o+8, cch, end);
+    } else name=bstr(o+7, wbBytes[o+6], end);   // BIFF5: אין בייט דגלים
     sheets.push({ name, pos });
   });
-  /* טבלת המחרוזות המשותפת — SST ורשומות ה-CONTINUE שאחריה */
+  /* טבלת המחרוזות המשותפת — BIFF8 בלבד. SST והרשומות שממשיכות אותו. */
   const shared=[];
-  const sstIdx=rec.findIndex(r=>r[0]===0x00FC);
+  const sstIdx=biff8 ? rec.findIndex(r=>r[0]===0x00FC) : -1;
   if(sstIdx>=0){
     const blocks=[wbBytes.subarray(rec[sstIdx][1], rec[sstIdx][1]+rec[sstIdx][2])];
     for(let i=sstIdx+1;i<rec.length && rec[i][0]===0x003C;i++) blocks.push(wbBytes.subarray(rec[i][1], rec[i][1]+rec[i][2]));
@@ -12359,29 +12385,45 @@ function xlsToRows(buf){
     const uniq=rd.u32();
     for(let i=0;i<uniq && !rd.ended();i++) shared.push(rd.str());
   }
-  /* התאים של הגיליון הראשון */
+  /* תחילת הגיליון הראשון. אם ההיסט שברשומת הגיליון אינו מצביע על רשומה
+     אמיתית (יש כותבים שרושמים אותו שגוי) — נופלים ל-BOF השני בזרם, שהוא
+     תחילת הגיליון הראשון אחרי הגלובליים. */
+  const byOffset=new Map(); rec.forEach((r,i)=>byOffset.set(r[3],i));
+  const first=sheets[0];
+  let i=-1;
+  if(first && byOffset.has(first.pos)) i=byOffset.get(first.pos)+1;
+  else { const bofs=[]; rec.forEach((r,idx)=>{ if(r[0]===0x0809) bofs.push(idx); });
+         if(bofs.length>1) i=bofs[1]+1; }
+  if(i<0) throw new Error("לא נמצא גיליון בקובץ");
   const grid=[];
   const put=(r,c,v)=>{ if(r<0||c<0) return; (grid[r]||(grid[r]=[]))[c]=v; };
-  const first=sheets[0];
-  let i = first && byOffset.has(first.pos) ? byOffset.get(first.pos) : rec.findIndex(r=>r[0]===0x0809);
-  if(first && byOffset.has(first.pos)) i++;      // אחרי ה-BOF של הגיליון
-  else i = rec.length;                            // בלי BOUNDSHEET אין מה לקרוא
   for(; i<rec.length; i++){
-    const [t,o,l]=rec[i];
-    if(t===0x000A) break;                         // EOF של הגיליון
-    if(t===0x00FD){ put(dv.getUint16(o,true), dv.getUint16(o+2,true), shared[dv.getUint32(o+6,true)]??""); continue; }
-    if(t===0x0204){ const r=dv.getUint16(o,true), c=dv.getUint16(o+2,true);
-      put(r,c,biffStrReader([wbBytes.subarray(o+6,o+l)]).str()); continue; }
-    if(t===0x027E){ put(dv.getUint16(o,true), dv.getUint16(o+2,true), biffNum(biffRk(dv.getInt32(o+6,true)))); continue; }
-    if(t===0x0203){ put(dv.getUint16(o,true), dv.getUint16(o+2,true), biffNum(dv.getFloat64(o+6,true))); continue; }
-    if(t===0x00BD){ const r=dv.getUint16(o,true), c0=dv.getUint16(o+2,true);
-      for(let k=0; o+4+6*k+6<=o+l; k++) put(r, c0+k, biffNum(biffRk(dv.getInt32(o+4+6*k+2,true))));
+    const [t,o,l]=rec[i], end=o+l;
+    if(t===0x000A) break;                                            // EOF של הגיליון
+    if(t===0x00FD && l>=10 && biff8){                                // LABELSST
+      put(dv.getUint16(o,true), dv.getUint16(o+2,true), shared[dv.getUint32(o+6,true)]??""); continue; }
+    if((t===0x0204 || t===0x00D6) && l>=8){                          // LABEL / RSTRING
+      const r=dv.getUint16(o,true), c=dv.getUint16(o+2,true);
+      if(biff8) put(r,c, biffStrReader([wbBytes.subarray(o+6,end)]).str());
+      else put(r,c, bstr(o+8, dv.getUint16(o+6,true), end));          // BIFF5: אורך בשני בייטים ואז בייטים
       continue; }
-    if(t===0x0006){ const r=dv.getUint16(o,true), c=dv.getUint16(o+2,true);
+    if(t===0x027E && l>=10){                                         // RK
+      put(dv.getUint16(o,true), dv.getUint16(o+2,true), biffNum(biffRk(dv.getInt32(o+6,true)))); continue; }
+    if(t===0x0203 && l>=14){                                         // NUMBER
+      put(dv.getUint16(o,true), dv.getUint16(o+2,true), biffNum(dv.getFloat64(o+6,true))); continue; }
+    if(t===0x00BD && l>=6){                                          // MULRK
+      const r=dv.getUint16(o,true), c0=dv.getUint16(o+2,true);
+      for(let k=0; o+4+6*k+6<=end; k++) put(r, c0+k, biffNum(biffRk(dv.getInt32(o+4+6*k+2,true))));
+      continue; }
+    if(t===0x0006 && l>=16){                                         // FORMULA
+      const r=dv.getUint16(o,true), c=dv.getUint16(o+2,true);
       /* תוצאת נוסחה: מחרוזת מגיעה ברשומת STRING שאחריה, מספר יושב כאן */
       if(wbBytes[o+12]===0xFF && wbBytes[o+13]===0xFF){
         const nx=rec[i+1];
-        if(nx && nx[0]===0x0207) put(r,c, biffStrReader([wbBytes.subarray(nx[1], nx[1]+nx[2])]).str());
+        if(nx && nx[0]===0x0207){
+          const no=nx[1], ne=nx[1]+nx[2];
+          put(r,c, biff8 ? biffStrReader([wbBytes.subarray(no,ne)]).str() : bstr(no+2, dv.getUint16(no,true), ne));
+        }
       } else put(r,c, biffNum(dv.getFloat64(o+6,true)));
       continue; }
   }
@@ -12391,7 +12433,13 @@ function xlsToRows(buf){
     for(let c=0;c<g.length;c++) line.push(g[c]==null?"":String(g[c]));
     if(line.some(x=>x.trim()!=="")) rows.push(line);
   }
-  return { rows, sheetName:first?first.name:"", sheetCount:sheets.length };
+  return { rows, sheetName:first?first.name:"", sheetCount:sheets.length, biff:biff8?8:5 };
+}
+/* שלב 2: רשומות BIFF8/BIFF5. מחזיר את הטבלה שבגיליון הראשון. */
+function xlsToRows(buf){
+  const wbBytes=oleReadStream(buf, ["Workbook","Book"]);
+  if(!wbBytes) throw new Error("אין גיליון אקסל בקובץ");
+  return biffToRows(wbBytes);
 }
 /* קריאת קובץ שהמשתמש העלה, כטקסט טבלאי אחד. קובץ .xlsx מפוענח כאן לטבלה
    ומוחזר כ-CSV, כך שכל מסכי הייבוא ממשיכים לעבוד על אותו טקסט בדיוק כמו
@@ -12426,7 +12474,8 @@ function readFileSmart(file,cb){
           ? ('נקרא הגיליון "'+res.sheetName+'"'+(res.sheetCount>1?" (הראשון מבין "+res.sheetCount+")":"")+" · "+(res.rows.length-1)+" שורות")
           : "הקובץ נקרא");
       }catch(err){
-        toast("לא הצלחתי לקרוא את קובץ ה-xls. שמור/י אותו באקסל כ-xlsx או כ-CSV ונסה/י שוב");
+        const why=(err && err.message) ? " ("+err.message+")" : "";
+        toast("לא הצלחתי לקרוא את קובץ ה-xls"+why+". שמור/י אותו באקסל כ-xlsx או כ-CSV ונסה/י שוב");
       }
       return;
     }

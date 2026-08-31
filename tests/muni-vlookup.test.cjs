@@ -19,6 +19,7 @@
     14. קובץ xls ישן (BIFF8 אמיתי) נקרא כטבלה.
     15. מחרוזת שנחתכת בין רשומות CONTINUE נקראת שלמה.
     16. שתי עמודות דוא"ל בקובץ מתמזגות לשדה אחד — הראשון שאינו ריק.
+    17. xls בפורמט BIFF5 (אקסל 95) — עברית בדף קוד 1255, בלי טבלת מחרוזות.
 
    הרצה:  NODE_PATH=$(npm root -g) node tests/muni-vlookup.test.cjs
    ============================================================================ */
@@ -40,7 +41,7 @@ function buildApp() {
   const expose = `
 window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; else if(k==='currentUser')currentUser=v; else if(k==='db')db=v; };
 Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
-Object.assign(window,{ route, navToTab, openBulkImport, closeModal, parseMuniInput, muniDetectColumns, phoneKey, tzKey, xlsxToRows, xlsToRows, biffStrReader, readFileSmart });
+Object.assign(window,{ route, navToTab, openBulkImport, closeModal, parseMuniInput, muniDetectColumns, phoneKey, tzKey, xlsxToRows, xlsToRows, biffToRows, biffStrReader, readFileSmart });
 window.__ready=true;
 `;
   const i = html.lastIndexOf('</script>');
@@ -562,6 +563,53 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
                                     : bad('המיזוג לא לקח את הערך הקיים: ' + m1.email);
   m3.email === 'first@example.com' ? ok('כששתיהן מלאות — גוברת הראשונה')
                                    : bad('סדר העדיפות שגוי: ' + m3.email);
+
+  console.log('\n17. xls בפורמט BIFF5 (אקסל 95)');
+  /* מערכות ותיקות מייצאות עדיין BIFF5: אין בו טבלת מחרוזות, המחרוזות הן
+     בייטים בדף קוד 1255, ורשומת שם הגיליון בנויה אחרת מ-BIFF8. קוראים
+     אותו כ-BIFF8 — וחורגים מגבולות הנתונים. כאן נבנה זרם רשומות BIFF5
+     ביד ונקרא, בלי לבנות מיכל OLE שלם. */
+  const b5 = await p.evaluate(() => {
+    const HEB = 'אבגדהוזחטיךכלםמןנסעףפץצקרשת';   // ברצף מ-0xE0 בדף קוד 1255
+    const cp = s => [...s].map(c => { const i = HEB.indexOf(c); return i >= 0 ? 0xE0 + i : c.charCodeAt(0); });
+    const parts = [];
+    const R = (t, d) => parts.push(t & 0xFF, t >> 8, d.length & 0xFF, d.length >> 8, ...d);
+    const u16 = v => [v & 0xFF, (v >> 8) & 0xFF];
+    const u32 = v => [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
+    R(0x0809, [...u16(0x0500), ...u16(5), ...u16(0), ...u16(0)]);      // BOF, גרסה 0x0500
+    R(0x0042, u16(1255));                                              // CODEPAGE
+    const nm = cp('רשימת העירייה'), at = parts.length;
+    R(0x0085, [...u32(0), ...u16(0), nm.length, ...nm]);               // BOUNDSHEET
+    R(0x000A, []);
+    const start = parts.length;
+    for (let k = 0; k < 4; k++) parts[at + 4 + k] = u32(start)[k];
+    R(0x0809, [...u16(0x0500), ...u16(0x0010), ...u16(0), ...u16(0)]);
+    const a = cp('שם משפחה'); R(0x0204, [...u16(0), ...u16(0), ...u16(0), ...u16(a.length), ...a]);
+    const b = cp('כהן');      R(0x0204, [...u16(1), ...u16(0), ...u16(0), ...u16(b.length), ...b]);
+    R(0x027E, [...u16(1), ...u16(1), ...u16(0), ...u32(((300000001 << 2) | 2) >>> 0)]);
+    R(0x000A, []);
+    const r = biffToRows(new Uint8Array(parts));
+    return { biff: r.biff, sheet: r.sheetName, rows: r.rows };
+  });
+  b5.biff === 5 ? ok('הגרסה זוהתה כ-BIFF5') : bad('זיהוי הגרסה שגוי: BIFF' + b5.biff);
+  b5.sheet === 'רשימת העירייה' ? ok('שם גיליון בעברית פוענח מדף קוד 1255') : bad('שם הגיליון שגוי: ' + b5.sheet);
+  JSON.stringify(b5.rows) === JSON.stringify([['שם משפחה'], ['כהן', '300000001']])
+    ? ok('מחרוזות ומספרים נקראו נכון') : bad('התאים שגויים', [JSON.stringify(b5.rows)]);
+
+  /* פורמטים שאי אפשר לקרוא — הודעה שאומרת למה, ולא כשל אילם */
+  const why = await p.evaluate(() => {
+    const out = {};
+    const mk = arr => new Uint8Array(arr);
+    const u16 = v => [v & 0xFF, (v >> 8) & 0xFF];
+    try { biffToRows(mk([0x09, 0x00, 0x04, 0x00, ...u16(0x0200), ...u16(5)])); }   // BIFF2
+    catch (e) { out.old = e.message; }
+    try { biffToRows(mk([0x09, 0x08, 0x08, 0x00, ...u16(0x0600), ...u16(5), ...u16(0), ...u16(0),
+                         0x2F, 0x00, 0x02, 0x00, 0, 0])); }                        // FILEPASS
+    catch (e) { out.locked = e.message; }
+    return out;
+  });
+  /אקסל 4/.test(why.old || '') ? ok('פורמט עתיק מדווח בשמו') : bad('הודעת הפורמט הישן חסרה', [why.old]);
+  /סיסמה/.test(why.locked || '') ? ok('קובץ מוגן בסיסמה מדווח ככזה') : bad('הודעת ההגנה חסרה', [why.locked]);
 
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
