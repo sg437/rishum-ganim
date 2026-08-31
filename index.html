@@ -5103,7 +5103,11 @@ const STU_FLAGS = {
   campEndYear:  { label:"קייטנת סוף שנה", test:s=>!!(s.programs && s.programs.campEndYear) },
   insurancePaid:{ label:"ביטוח שולם",     test:s=>!!s.insurancePaid },
   insuranceUnpaid:{ label:"ביטוח לא שולם", test:s=>!s.insurancePaid },
-  retentionNext:{ label:"השארות לשנה הבאה", test:s=>!!s.retentionNext }
+  retentionNext:{ label:"השארות לשנה הבאה", test:s=>!!s.retentionNext },
+  /* תיק בלי מספר זהות אינו ניתן להתאמה מול רשימת העירייה (ההתאמה היא לפי ת"ז
+     בלבד), ולכן שורת העירייה שלו פותחת לו תיק חדש — כפילות. המסנן הזה נועד
+     לאתר אותם ולהשלים את הת"ז לפני ההעלאה הבאה. */
+  noTz:         { label:'בלי מספר זהות',   test:s=>!digits(s.tz) }
 };
 let stuSort = { key:"name", dir:1 }; // מיון לפי עמודה (סעיף 10)
 /* עמודות נוספות בטבלת התלמידות (מסמכים · עירייה · סימונים · סטטוס · מועד · חינוך · גיל).
@@ -10363,32 +10367,42 @@ function muniCellValue(cells, cols){
 }
 /* בניית הרשומות לפי מיפוי עמודות מפורש — רק השדות שבמיפוי נקלטים */
 function muniRowsToRecs(rows, map){
-  const recs=new Map(), tzList=[];
-  if(!muniMapHas(map,"tz")) return { nums:[], recs };
+  const recs=new Map(), tzList=[], noTz=[];
+  if(!muniMapHas(map,"tz")) return { nums:[], recs, noTz, rowsWithTz:0 };
   const keys=Object.keys(map).filter(k=>k!=="tz" && map[k] && map[k].length);
+  const nameOf=c=>[muniCellValue(c, map.lastName||[]), muniCellValue(c, map.firstName||[])].filter(Boolean).join(" ");
   for(let r=1;r<rows.length;r++){ const c=rows[r];
-    const tz=digits(muniCellValue(c, map.tz)); if(!tz) continue; tzList.push(tz);
+    const tz=digits(muniCellValue(c, map.tz));
+    if(!tz){
+      /* שורה בקובץ בלי מספר זהות. ההתאמה כולה נשענת על ת"ז, ולכן אין מה לעשות
+         איתה — אבל עד כה היא נשמטה *בשקט*, וכך נוצר פער בלתי-מוסבר בין מספר
+         השורות בקובץ העירייה למספר הקלוטות בתוכנה. מעכשיו היא נספרת ומדווחת. */
+      if(c.some(x=>String(x??"").trim()!=="")) noTz.push({ row:r+1, name:nameOf(c) });
+      continue;
+    }
+    tzList.push(tz);
     const rec=recs.get(tz)||{tz};
     keys.forEach(k=>{ const v=muniCellValue(c, map[k]); if(v && !rec[k]) rec[k]=v; }); // שתי שורות לאותה ת"ז — הערך הראשון שנמצא
     recs.set(tz,rec);
   }
-  return { nums:[...new Set(tzList)], recs };
+  return { nums:[...new Set(tzList)], recs, noTz, rowsWithTz:tzList.length };
 }
 /* פענוח קלט העירייה. map — מיפוי העמודות שנבחר בטבלת המיפוי; בלעדיו
    מזוהה מיפוי אוטומטי לפי הכותרות. בלי עמודת ת"ז — הקלט נקרא כרשימת
    מספרי זהות חופשית. */
 function parseMuniInput(text, map){
   const rows=parseTable(text);
-  let structured=false, nums=[], recs=new Map();
+  let structured=false, nums=[], recs=new Map(), noTz=[], rowsWithTz=0;
   if(muniLooksTabular(rows)){
     const m = muniMapHas(map,"tz") ? map : muniAutoMap(rows);
-    if(muniMapHas(m,"tz")){ structured=true; const built=muniRowsToRecs(rows,m); nums=built.nums; recs=built.recs; }
+    if(muniMapHas(m,"tz")){ structured=true; const built=muniRowsToRecs(rows,m);
+      nums=built.nums; recs=built.recs; noTz=built.noTz; rowsWithTz=built.rowsWithTz; }
   }
   if(!structured) nums=[...new Set(String(text||"").match(/\d{5,}/g)||[])];
   /* parents — לתאימות עם קריאות שביקשו רק את שמות ההורים */
   const parents=new Map();
   recs.forEach((r,tz)=>{ if(r.fatherName||r.motherName) parents.set(tz,{father:r.fatherName||"",mother:r.motherName||""}); });
-  return { nums, recs, parents, structured, rows };
+  return { nums, recs, parents, structured, rows, noTz, rowsWithTz };
 }
 /* תבנית לאקסל להורדה ומילוי — הכותרות הן בדיוק שמות השדות שבתוכנה,
    ולכן קובץ שנבנה עליה מזוהה במלואו לבד. */
@@ -10620,7 +10634,7 @@ function wireMuniSection(root, inModal){
       out.innerHTML=`<div class="empty">לא נבחרה עמודת <b>מספר זהות</b>. בטבלת המיפוי יש לבחור לעמודת הת"ז את השדה "מספר זהות" — היא מפתח ההתאמה.</div>`;
       return;
     }
-    const { nums, recs, structured } = parseMuniInput(q("#muni-text").value, chosen);
+    const { nums, recs, structured, noTz, rowsWithTz } = parseMuniInput(q("#muni-text").value, chosen);
     if(!nums.length){ out.innerHTML=`<div class="empty">לא זוהו מספרי זהות בקלט. ודא/י שיש עמודת מספר זהות בטבלת המיפוי, או הדבק/י רשימת מספרים.</div>`; return; }
     const compare = q("#muni-mode").value==="compare";
     const byTz=new Map(); studentsOfYear().forEach(s=>{ const d=tzKey(s.tz); if(d && !byTz.has(d)) byTz.set(d,s); });
@@ -10630,13 +10644,14 @@ function wireMuniSection(root, inModal){
        תיקים ולא שומרים את הרשימה. רק סופרים ומדווחים. */
     if(compare){
       const muniBySym=new Map(), symsSeen=new Set(), diffs=[], missing=[];
-      let found=0, noSym=0;
+      let found=0, noSym=0, leftCmp=0;
       nums.forEach(tz=>{
         const rec=recs.get(tz)||{tz};
         const sym=String(rec.symbol||"").trim();
         if(sym){ muniBySym.set(sym,(muniBySym.get(sym)||0)+1); symsSeen.add(sym); } else noSym++;
         const s=byTz.get(tzKey(tz));
         if(!s){ missing.push(tz); return; }
+        if(s.finished) leftCmp++;
         found++;
         const ourSym=ganSymbolText(ganById(s.ganId));
         if(ourSym) symsSeen.add(ourSym);
@@ -10651,8 +10666,10 @@ function wireMuniSection(root, inModal){
           <div class="stat"><div class="k">נמצאו בתוכנה</div><div class="v">${found}</div></div>
           <div class="stat"><div class="k">אינן בתוכנה כלל</div><div class="v">${missing.length}</div></div>
           <div class="stat ${diffs.length?'bad':''}"><div class="k">בסמל שונה</div><div class="v">${diffs.length}</div></div>
+          <div class="stat"><div class="k">סיימו ועזבו אצלנו</div><div class="v">${leftCmp}</div></div>
         </div>
         ${noSym?`<div class="hint" style="margin-top:8px">${noSym} שורות בקובץ בלי סמל מוסד — הן נספרות ב"ברשימת העירייה" אך לא בטבלת הסמלים. ודא/י שמופתה עמודת "סמל מוסד".</div>`:''}
+        ${(noTz&&noTz.length)?`<div class="note" style="margin-top:8px">${noTz.length} שורות בקובץ בלי מספר זהות — לא נספרו כלל. ההתאמה היא לפי ת"ז בלבד.</div>`:''}
         ${symBlockHTML(symRows)}
         ${diffBlockHTML(diffs, "כל שורה: איפה הילדה רשומה אצלנו מול איפה היא רשומה בעירייה.")}
         ${missing.length?`<div class="note" style="margin-top:14px">${missing.length} ת"ז מופיעות ברשימת העירייה ואינן בתוכנה כלל:<br>${missing.slice(0,40).map(esc).join(", ")}${missing.length>40?' …':''}
@@ -10660,7 +10677,8 @@ function wireMuniSection(root, inModal){
         ${!symRows.length?`<div class="empty" style="margin-top:12px">לא נמצא סמל מוסד בקובץ ולא בשיבוצים שלנו. כדי לקבל את הסיכום צריך שבקובץ תהיה עמודה שממופה ל"סמל מוסד", ושבכרטיסי הגנים יהיה מלא "סמל הגן".</div>`:''}`;
       wireSymDownloads(symRows, diffs);
       wireDownload("muni-dl-nf", "ת-ז מהעירייה שאינן בתוכנה.csv", ['ת"ז'], missing.map(t=>[t]));
-      toast(`הופק סיכום ל-${symRows.length} סמלים · ${diffs.length} בסמל שונה`);
+      if(leftCmp) toast(`הופק סיכום ל-${symRows.length} סמלים · ${diffs.length} בסמל שונה · ${leftCmp} סיימו אצלנו`);
+      else toast(`הופק סיכום ל-${symRows.length} סמלים · ${diffs.length} בסמל שונה`);
       return;
     }
 
@@ -10668,6 +10686,7 @@ function wireMuniSection(root, inModal){
     DB.municipality[DB.activeYear]=nums;
     const edu=q("#muni-edu").value, doCreate=q("#muni-create").checked;
     let marked=0, already=0, updated=0, phoneDup=0;
+    const left=[];             // קלוטות בעירייה שאצלנו מסומנות "סיימה" — עזבו אך עדיין ברשימה
     const fieldCount={};       // תווית שדה -> בכמה תיקים הושלם
     const created=[];          // תיקים חדשים שנפתחו — {s, sym} (שורת הקובץ נשמרת לצד התיק)
     const notFound=[];         // ת"ז שאינן בתוכנה, כשפתיחת תיק חדש כבויה
@@ -10687,6 +10706,10 @@ function wireMuniSection(root, inModal){
         return;   // תיק חדש — הפרטים כבר בפנים, ואין מול מה להשוות סמל
       }
       if(!s.absorbedMunicipality) marked++; else already++;
+      /* היא ברשימת הקלוטות של העירייה, אבל אצלנו כבר סומנה כמי שסיימה ועזבה.
+         מסך התלמידות מסתיר "סיימו" כברירת מחדל, ולכן היא נעלמת מהספירה שעל
+         המסך — וזה בדיוק מקור הפער מול המספר שבקובץ. כאן היא נספרת בנפרד. */
+      if(s.finished) left.push({ s, sym });
       s.absorbedMunicipality=true;
       const r=applyMuniRec(s, rec);
       phoneDup+=r.phoneDup;
@@ -10716,6 +10739,43 @@ function wireMuniSection(root, inModal){
         <div class="hint">התיקים נפתחו ללא שיבוץ לגן — סמל המוסד שבקובץ אינו משבץ, הוא לדיווח בלבד.</div>
       </div>` : '';
 
+    /* קלוטות בעירייה שאצלנו סיימו ועזבו — חלון נפרד עם רשימה להורדה */
+    const leftBlock = left.length ? `
+      <div class="note" style="margin-top:14px">
+        <b>${left.length} מהקלוטות בעירייה מסומנות אצלנו כ"סיימה ועזבה"</b>
+        <button class="btn ghost sm" id="muni-dl-left" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button>
+        <div class="hint" style="margin-top:4px">הן עדיין ברשימת העירייה אף שאינן אצלנו — כדאי לבדוק מול העירייה אם יש להסירן. הן אינן נספרות במסך התלמידות, שמסתיר "סיימו" כברירת מחדל.</div>
+        ${tbl(`<thead><tr><th>#</th><th>ת"ז</th><th>שם משפחה</th><th>שם פרטי</th><th>חינוך</th><th>סמל בעירייה</th></tr></thead><tbody>
+          ${left.map((c,i)=>`<tr><td>${i+1}</td><td>${esc(c.s.tz)}</td><td>${esc(c.s.lastName)||'—'}</td><td>${esc(c.s.firstName)||'—'}</td><td>${eduBadge(c.s)}</td><td>${esc(c.sym)||'—'}</td></tr>`).join("")}
+        </tbody>`)}
+      </div>` : '';
+
+    /* שורות בקובץ בלי ת"ז — אין לפי מה להתאים, והן נספרות כאן כדי שהמספרים יסתדרו */
+    const noTzBlock = (noTz && noTz.length) ? `
+      <div class="note" style="margin-top:12px">
+        <b>${noTz.length} שורות בקובץ העירייה בלי מספר זהות — לא נקלטו</b>
+        <button class="btn ghost sm" id="muni-dl-notz" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button>
+        <div class="hint" style="margin-top:4px">ההתאמה נעשית לפי מספר זהות בלבד. יש להשלים את הת"ז בקובץ ולהעלות שוב — בלעדיה אי-אפשר לדעת לאיזה תיק הן שייכות.</div>
+        <div style="margin-top:6px">${noTz.slice(0,25).map(n=>esc(`שורה ${n.row}${n.name?" · "+n.name:""}`)).join(" · ")}${noTz.length>25?' …':''}</div>
+      </div>` : '';
+
+    /* תיקים אצלנו בלי ת"ז — הם שגורמים לכפילויות: שורת העירייה לא מוצאת אותם ופותחת תיק חדש */
+    const ourNoTz = studentsOfYear().filter(x=>!digits(x.tz));
+    const ourNoTzBlock = ourNoTz.length ? `
+      <div class="note" style="margin-top:12px">
+        <b>⚠️ ${ourNoTz.length} תיקים אצלנו בשנה זו בלי מספר זהות</b>
+        <button class="btn ghost sm" id="muni-dl-ourtz" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button>
+        <div class="hint" style="margin-top:4px">תיק בלי ת"ז אינו ניתן להתאמה, ולכן שורת העירייה שלו <b>פותחת תיק חדש כפול</b>. כדאי להשלים להם ת"ז לפני ההעלאה הבאה — במסך התלמידות, במסנן <b>"מאפיין → בלי מספר זהות"</b>.</div>
+      </div>` : '';
+
+    /* מאזן: כל שורה בקובץ מקבלת הסבר, כדי שהפער מול הספירה שעל המסך לא יישאר עלום */
+    const dupRows = Math.max(0, (rowsWithTz||0) - nums.length);
+    const reconLine = structured ? `
+      <div class="hint" style="margin-top:8px">
+        <b>מאזן הקובץ:</b> ${nums.length} מספרי זהות שונים${dupRows?` · ${dupRows} שורות כפולות (אותה ת"ז)`:''}${noTz&&noTz.length?` · ${noTz.length} שורות בלי ת"ז`:''}
+        ${left.length?` · מתוך המותאמות, ${left.length} מסומנות אצלנו "סיימה ועזבה" ולכן אינן מופיעות במסך התלמידות`:''}.
+      </div>` : '';
+
     const notFoundBlock = (!doCreate && notFound.length) ? `
       <div class="note" style="margin-top:12px">${notFound.length} ת"ז מופיעות ברשימת העירייה אך אינן בתוכנה (הסימון "פתיחת תיק חדש" כבוי):<br>${notFound.slice(0,40).map(esc).join(", ")}${notFound.length>40?' …':''}
         <div style="margin-top:6px"><button class="btn ghost sm" id="muni-dl-nf" type="button">⬇️ הורדת הרשימה</button></div>
@@ -10727,10 +10787,11 @@ function wireMuniSection(root, inModal){
         <div class="stat"><div class="k">תיקים שעודכנו בהם פרטים</div><div class="v">${updated}</div></div>
         <div class="stat"><div class="k">תיקים חדשים שנפתחו</div><div class="v">${created.length}</div></div>
         <div class="stat"><div class="k">כבר היו מסומנות</div><div class="v">${already}</div></div>
+        <div class="stat"><div class="k">סיימו ועזבו אצלנו</div><div class="v">${left.length}</div></div>
         <div class="stat"><div class="k">ברשימת העירייה</div><div class="v">${nums.length}</div></div>
         ${phoneDup?`<div class="stat"><div class="k">טלפונים שדולגו (כבר קיימים)</div><div class="v">${phoneDup}</div></div>`:''}
       </div>
-      ${fieldLine}${createdBlock}${notFoundBlock}
+      ${reconLine}${fieldLine}${leftBlock}${noTzBlock}${ourNoTzBlock}${createdBlock}${notFoundBlock}
       ${symBlockHTML(symRows)}
       ${diffBlockHTML(diffs, "הסמל שבקובץ לא שינה שום שיבוץ — ההפרש מדווח בלבד. התיקים החדשים שנפתחו זה עתה אינם בטבלה הזאת.")}`;
 
@@ -10738,6 +10799,14 @@ function wireMuniSection(root, inModal){
       ['ת"ז',"שם משפחה","שם פרטי","תאריך לידה","שם האם","שם האב","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","מספר בניין","עיר","חינוך","סמל בעירייה"],
       created.map(c=>[c.s.tz,c.s.lastName,c.s.firstName,c.s.dob?fmtDate(c.s.dob):"",c.s.motherName,c.s.fatherName,c.s.phone,c.s.dadMobile,c.s.momMobile,c.s.email,c.s.street,c.s.building,c.s.city,eduLabel(c.s),c.sym]));
     wireDownload("muni-dl-nf", "ת-ז מהעירייה שאינן בתוכנה.csv", ['ת"ז'], notFound.map(t=>[t]));
+    wireDownload("muni-dl-left", "קלוטות בעירייה שסיימו אצלנו.csv",
+      ['ת"ז',"שם משפחה","שם פרטי","חינוך","גן","סמל בעירייה"],
+      left.map(c=>[c.s.tz,c.s.lastName,c.s.firstName,eduLabel(c.s),c.s.ganId?ganName(c.s.ganId):"",c.sym]));
+    wireDownload("muni-dl-notz", "שורות בקובץ העירייה בלי ת-ז.csv",
+      ["שורה בקובץ","שם"], (noTz||[]).map(n=>[n.row,n.name]));
+    wireDownload("muni-dl-ourtz", "תיקים אצלנו בלי ת-ז.csv",
+      ["שם משפחה","שם פרטי","תאריך לידה","גן","חינוך","קלוט בעירייה"],
+      ourNoTz.map(x=>[x.lastName,x.firstName,x.dob?fmtDate(x.dob):"",x.ganId?ganName(x.ganId):"",eduLabel(x),x.absorbedMunicipality?"כן":"לא"]));
     wireSymDownloads(symRows, diffs);
 
     toast(`ההתאמה בוצעה · ${updated} עודכנו · ${created.length} תיקים חדשים`);
