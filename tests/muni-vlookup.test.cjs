@@ -1243,13 +1243,76 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   /מצב/.test(lines[0]) ? ok('יש עמודת "מצב" לסינון באקסל') : bad('אין עמודת מצב', [lines[0]]);
   (csv.match(/בתוכנה — אינה מסומנת קלוטה/g) || []).length === 2
     ? ok('שתי השורות הלא-מסומנות מסומנות ככאלה בקובץ') : bad('סימון המצב שגוי', [csv]);
-  /מסומנת קלוטה — אך סיימה ועזבה/.test(csv)
-    ? ok('מי שסיימה מקבלת מצב נפרד משלה') : bad('אין מצב נפרד למי שסיימה');
+  /סיימה ועזבה — מחוץ לחשבון/.test(csv)
+    ? ok('מי שסיימה מקבלת מצב נפרד, ומסומנת כמחוץ לחשבון') : bad('אין מצב נפרד למי שסיימה', [csv]);
   /300000055.*אינה בתוכנה כלל/.test(csv)
     ? ok('מי שאינה בתוכנה מופיעה אף היא, כדי שהסכום ייסגר') : bad('חסרה מי שאינה בתוכנה');
   /* csvCell עוטף מרכאות בעברית ככפולות — לכן מחפשים את הצורה שבקובץ עצמו */
   /ח""מ|ח"מ/.test(csv) ? ok('עמודת החינוך מאפשרת לפצל רגיל מול ח"מ באקסל')
     : bad('אין עמודת חינוך', [csv.split(/\r?\n/).slice(0,6).join(' | ')]);
+
+  console.log('\n31. מי שעזבה יוצאת מהחשבון — משני צדדיו');
+  /* המצב שדווח מהשטח בהקטנה: בקובץ 2 ת"ז של מי שעזבה, ואצלנו יש עוד עוזבת
+     שאינה בקובץ כלל. אם העוזבות נספרות בצד הקובץ אך לא בצד המסך — ההפרש
+     נראה כמו רשומות חסרות, וזו בדיוק הטעות שהחזיקה את החקירה תקועה.
+     בקובץ: 5 ת"ז — 2 קלוטות פעילות, 2 עוזבות, 1 שאינה בתוכנה.
+     אצלנו בנוסף: עוזבת שאינה בקובץ, ופעילה לא-מסומנת שאינה בקובץ. */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'k1',tz:'300000001',firstName:'א',lastName:'פעילהקלוטה',ganId:'g1',absorbedMunicipality:true}),
+      mk({id:'k2',tz:'300000002',firstName:'ב',lastName:'פעילהקלוטה',ganId:'g1',absorbedMunicipality:true}),
+      mk({id:'k3',tz:'300000003',firstName:'ג',lastName:'עזבהבקובץ',ganId:'g1',absorbedMunicipality:true,finished:true}),
+      mk({id:'k4',tz:'300000004',firstName:'ד',lastName:'עזבהבקובץ',ganId:'g1',absorbedMunicipality:true,finished:true}),
+      mk({id:'k5',tz:'300000005',firstName:'ה',lastName:'עזבהלאבקובץ',ganId:'g1',finished:true}),
+      mk({id:'k6',tz:'300000006',firstName:'ו',lastName:'פעילהלאבקובץ',ganId:'g1'})];
+    DB.municipality={};
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('students'));
+  await p.waitForTimeout(250);
+  await p.evaluate(() => navToTab('municipality'));
+  await p.waitForTimeout(450);
+  await load(p, [
+    'מספר זהות,שם משפחה,שם פרטי,סמל מוסד',
+    '300000001,פעילהקלוטה,א,111111',
+    '300000002,פעילהקלוטה,ב,111111',
+    '300000003,עזבהבקובץ,ג,111111',
+    '300000004,עזבהבקובץ,ד,111111',
+    '300000077,חיצונית,ה,111111'
+  ].join('\n'));
+  await p.evaluate(() => { const m = document.querySelector('#muni-mode'); m.value = 'compare'; m.dispatchEvent(new Event('change')); });
+  await p.waitForTimeout(250);
+  await run(p);
+  const sc = await p.evaluate(() => document.querySelector('#muni-result').textContent.replace(/\s+/g, ' '));
+
+  /מספרי זהות בקובץ5/.test(sc) ? ok('5 ת"ז בקובץ') : bad('ספירת הקובץ שגויה', [sc.slice(0, 400)]);
+  /מהן — סיימו ועזבו אצלנו−2/.test(sc)
+    ? ok('2 עוזבות מנוכות מצד הקובץ') : bad('העוזבות לא נוכו', [sc.slice(0, 600)]);
+  /נשארות בחשבון3/.test(sc) ? ok('המספר להשוואה הוא 3 — ולא 5') : bad('המספר להשוואה שגוי', [sc.slice(0, 600)]);
+  /מסומנות קלוטות אצלנו, פעילות.*2/.test(sc) ? ok('2 מסומנות ופעילות') : bad('ספירת המסומנות שגויה');
+  /אינן בתוכנה כלל1/.test(sc) ? ok('1 אינה בתוכנה') : bad('ספירת "אינן בתוכנה" שגויה');
+  /סה״כ3 ✓/.test(sc) ? ok('החשבון נסגר: 2 + 0 + 1 = 3 ✓') : bad('החשבון אינו נסגר', [sc.slice(0, 800)]);
+  /העוזבת שאצלנו ואינה בקובץ אינה מוזכרת כלל בחשבון — היא לא בשני הצדדים */
+  !/300000005/.test(sc) ? ok('עוזבת שאינה בקובץ אינה נכנסת לחשבון כלל') : bad('עוזבת חיצונית נכנסה לחשבון');
+
+  /* עמודת "בחשבון" בקובץ ההורדה */
+  const csv2 = await p.evaluate(() => new Promise(r => {
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = b => { b.text().then(t => { URL.createObjectURL = orig; r(t); }); return 'blob:x'; };
+    document.querySelector('#muni-dl-audit').click();
+    setTimeout(() => { URL.createObjectURL = orig; r(''); }, 1500);
+  }));
+  /בחשבון/.test(csv2.split(/\r?\n/)[0]) ? ok('נוספה עמודת "בחשבון" לקובץ') : bad('אין עמודת בחשבון', [csv2.split(/\r?\n/)[0]]);
+  (csv2.match(/סיימה ועזבה — מחוץ לחשבון/g) || []).length === 2
+    ? ok('שתי העוזבות מסומנות "מחוץ לחשבון"') : bad('סימון העוזבות שגוי', [csv2]);
+  (csv2.match(/,לא,/g) || []).length === 2
+    ? ok('ערך "לא" בעמודת בחשבון — לסינון מהיר באקסל') : bad('ערך העמודה שגוי', [csv2]);
 
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
