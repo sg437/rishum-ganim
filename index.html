@@ -10443,6 +10443,9 @@ function muniTemplateCSV(){
    הלשונית בוטלה. ראה docs/UI_LAB.md. אין כאן שני עותקים של הלוגיקה. */
 function muniSectionHTML(descClass){
   const stored = DB.municipality[DB.activeYear]||[];
+  /* כמה לא-קלוטות בתצוגה הנוכחית — נכנס לתווית הכפתור, כדי שהמספר שעליו
+     יהיה בדיוק המספר שמטריד במסך התלמידות ולא מספר מופשט. */
+  const notAbsN = eduScope(studentsOfYear().filter(x=>!x.finished)).filter(x=>!x.absorbedMunicipality).length;
   const edu = activeEdu || "רגיל";
   return `
     <div class="${descClass||"sub"}">מעלים את קובץ העירייה כמו שהוא — על כל העמודות שבו. אחרי הטעינה נפתחת <b>טבלת מיפוי עמודות</b>: מסמנים אילו עמודות לקלוט ולאיזה שדה בתוכנה כל אחת נכנסת; כל השאר נזרק. ההתאמה נעשית לפי מספר זהות.</div>
@@ -10467,7 +10470,9 @@ function muniSectionHTML(descClass){
       <div class="row" style="margin-top:8px">
         <button class="btn ghost" id="muni-detect" type="button">🔎 זיהוי עמודות</button>
         <button class="btn" id="muni-run" type="button">🔗 בצע התאמה, סמן והשלם פרטים</button>
+        <button class="btn ghost" id="muni-why" type="button" ${stored.length?'':'disabled'}>🔍 למה ${notAbsN} לא קלוטות?</button>
       </div>
+      ${stored.length?`<div class="hint" style="margin-top:4px">"למה לא קלוטות" מצליב את התיקים שאינם מסומנים מול <b>${stored.length}</b> מספרי הזהות של ההעלאה האחרונה — בלי להעלות שוב ובלי לשנות דבר.</div>`:''}
     </div>
     <div id="muni-map" style="margin-top:12px"></div>
     <div id="muni-result" style="margin-top:12px"><div class="hint">התוצאה תופיע כאן לאחר ההתאמה.</div></div>`;
@@ -10645,6 +10650,65 @@ function wireMuniSection(root, inModal){
       headers:DIFF_HEADERS, rows:diffRowsOut(diffs), fileName:"הפרשי סמל מוסד" });
   };
 
+  /* ------------------------------------------------------------------
+     "למה N לא קלוטות" — הצלבה של התיקים שאינם מסומנים מול רשימת הת"ז של
+     ההעלאה האחרונה (נשמרת ב-DB.municipality). התשובה מחולקת לשלוש קבוצות
+     שסכומן בדיוק N, כך שאין יותר מה לנחש:
+       • בלי ת"ז          — לא ניתנות להתאמה בשום אופן
+       • ברשימה ולא מסומנות — חריגה אמיתית, וניתנת לתיקון בלחיצה
+       • אינן ברשימה       — לא קלוטות באמת
+     אינו משנה נתונים; הסימון הוא פעולה נפרדת ומפורשת.
+     ------------------------------------------------------------------ */
+  const whyBtn=q("#muni-why");
+  if(whyBtn) whyBtn.onclick=()=>{
+    const out=q("#muni-result");
+    const listTz=new Set((DB.municipality[DB.activeYear]||[]).map(t=>tzKey(t)));
+    if(!listTz.size){ out.innerHTML=`<div class="empty">אין רשימת עירייה שמורה לשנה זו. יש להעלות קובץ ולבצע התאמה.</div>`; return; }
+    const scope=eduScope(studentsOfYear().filter(x=>!x.finished));
+    const notAbs=scope.filter(x=>!x.absorbedMunicipality);
+    const noTzUs=notAbs.filter(x=>!digits(x.tz));
+    const inList=notAbs.filter(x=>digits(x.tz) && listTz.has(tzKey(x.tz)));   // ← החריגה
+    const outList=notAbs.filter(x=>digits(x.tz) && !listTz.has(tzKey(x.tz)));
+    const eduTxt=activeEdu?`חינוך ${activeEdu}`:"כל סוגי החינוך";
+    const row=(t,n,cls,d)=>`<tr><td>${t}</td><td><b class="${cls||''}">${n}</b></td><td class="hint">${d}</td></tr>`;
+    out.innerHTML=`
+      <div class="stats">
+        <div class="stat hero"><div class="k">לא קלוטות (${esc(eduTxt)})</div><div class="v">${notAbs.length}</div></div>
+        <div class="stat"><div class="k">בלי ת"ז</div><div class="v">${noTzUs.length}</div></div>
+        <div class="stat ${inList.length?'bad':''}"><div class="k">ברשימה ולא מסומנות</div><div class="v">${inList.length}</div></div>
+        <div class="stat"><div class="k">אינן ברשימה</div><div class="v">${outList.length}</div></div>
+      </div>
+      <div class="hint" style="margin-top:8px">${noTzUs.length} + ${inList.length} + ${outList.length} = <b>${notAbs.length}</b> — כל תיק לא-קלוט נמצא באחת הקבוצות בדיוק.</div>
+      ${tbl(`<thead><tr><th>קבוצה</th><th>כמה</th><th>מה זה אומר</th></tr></thead><tbody>
+        ${row('בלי מספר זהות', noTzUs.length, '', 'אין לפי מה להתאים — ההתאמה היא לפי ת"ז בלבד. אלה גם התיקים שנפתחות להם כפילויות.')}
+        ${row('מופיעות ברשימה שהועלתה, ולא מסומנות', inList.length, inList.length?'bad':'', inList.length?'חריגה — הסימון לא נשמר (למשל כתיבה שנכשלה). ניתן לסמן אותן עכשיו.':'אין חריגות — כל מי שברשימה אכן מסומנת.')}
+        ${row('אינן ברשימה שהועלתה', outList.length, '', 'לא קלוטות באמת — אינן מופיעות בקובץ העירייה.')}
+      </tbody>`)}
+      ${inList.length?`<div class="note" style="margin-top:10px">
+        <b>${inList.length} תיקים מופיעים ברשימת העירייה אך אינם מסומנים כקלוטים.</b>
+        ${tbl(`<thead><tr><th>#</th><th>ת"ז</th><th>שם משפחה</th><th>שם פרטי</th><th>חינוך</th></tr></thead><tbody>
+          ${inList.slice(0,60).map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.tz)}</td><td>${esc(x.lastName)||'—'}</td><td>${esc(x.firstName)||'—'}</td><td>${eduBadge(x)}</td></tr>`).join("")}
+        </tbody>`)}
+        <div class="row" style="margin-top:8px;gap:8px">
+          <button class="btn" id="muni-fix" type="button">✔️ סמן את ${inList.length} התיקים האלה כקלוטים</button>
+          <button class="btn ghost sm" id="muni-dl-gap" type="button">⬇️ הורדת הרשימה</button>
+        </div>
+      </div>`:''}
+      ${noTzUs.length?`<div class="note" style="margin-top:10px">${noTzUs.length} תיקים בלי ת"ז — במסך התלמידות, מסנן <b>"מאפיין → בלי מספר זהות"</b>. השלמת הת"ז תפתור גם את הכפילויות.
+        <button class="btn ghost sm" id="muni-dl-notz2" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button></div>`:''}`;
+    wireDownload("muni-dl-gap", "ברשימה אך לא מסומנות.csv", ['ת"ז',"שם משפחה","שם פרטי","חינוך"],
+      inList.map(x=>[x.tz,x.lastName,x.firstName,eduLabel(x)]));
+    wireDownload("muni-dl-notz2", "תיקים בלי ת-ז.csv", ["שם משפחה","שם פרטי","גן","חינוך"],
+      noTzUs.map(x=>[x.lastName,x.firstName,x.ganId?ganName(x.ganId):"",eduLabel(x)]));
+    const fix=q("#muni-fix");
+    if(fix) fix.onclick=()=>{
+      if(!confirm(`לסמן ${inList.length} תיקים כ"קלוט בעירייה"?\n\nהם מופיעים ברשימה שהועלתה לשנה זו.`)) return;
+      inList.forEach(x=>{ x.absorbedMunicipality=true; });
+      save(); if(inModal) pendingRender=true; else route();
+      toast(`${inList.length} תיקים סומנו כקלוטים`);
+      whyBtn.click();   // רענון התצוגה — הקבוצה אמורה להתרוקן
+    };
+  };
   q("#muni-run").onclick=()=>{
     const out=q("#muni-result");
     /* הטבלה חייבת להתאים לטקסט שבתיבה — אחרת המיפוי מצביע על עמודות של

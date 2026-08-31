@@ -961,6 +961,69 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   /1 לא קלוטות/.test(line) ? ok('1 לא קלוטה — ולא 70 מדומים') : bad('מספר הלא-קלוטות שגוי', [line]);
   await p.evaluate(() => { __set('activeEdu', null); });
 
+  console.log('\n26. "למה N לא קלוטות" — פירוק הפער מול הרשימה השמורה');
+  /* שחזור החשבון שדווח מהשטח, בקנה מידה קטן: 7 לא-קלוטות שהן
+     2 בלי ת"ז + 3 שברשימה ולא סומנו (החריגה) + 2 שאינן ברשימה כלל.
+     הבדיקה מוודאת שהפירוק סוגר בדיוק, שהחריגה מזוהה, ושהתיקון עובד. */
+  await p.evaluate(`(() => {
+    DB.activeYear='תשפ"ז'; DB.years=['תשפ"ז'];
+    DB.gans=[{id:'g1',ganName:'גן הדקל',ganSymbol:'111111',education:'רגיל',age:'4',active:true}];
+    const mk=(o)=>Object.assign({ year:'תשפ"ז', finished:false, education:'רגיל', placed:true,
+      docs:{}, docFiles:{}, programs:{}, programsPaid:{}, special:{}, support:{},
+      dob:'', motherName:'', fatherName:'', phone:'', mobile:'', dadMobile:'', momMobile:'', email:'',
+      street:'', building:'', city:'', absorbedMunicipality:false }, o);
+    DB.students=[
+      mk({id:'d0',tz:'300000010',firstName:'קלוטה',lastName:'תקינה',ganId:'g1',absorbedMunicipality:true}),
+      mk({id:'d1',tz:'',firstName:'א',lastName:'בליתז',ganId:'g1'}),
+      mk({id:'d2',tz:'',firstName:'ב',lastName:'בליתז',ganId:'g1'}),
+      mk({id:'d3',tz:'300000001',firstName:'ג',lastName:'ברשימה',ganId:'g1'}),
+      mk({id:'d4',tz:'300000002',firstName:'ד',lastName:'ברשימה',ganId:'g1'}),
+      mk({id:'d5',tz:'300000003',firstName:'ה',lastName:'ברשימה',ganId:'g1'}),
+      mk({id:'d6',tz:'300000098',firstName:'ו',lastName:'לאברשימה',ganId:'g1'}),
+      mk({id:'d7',tz:'300000099',firstName:'ז',lastName:'לאברשימה',ganId:'g1'})];
+    /* הרשימה השמורה מההעלאה האחרונה — כוללת את d3/d4/d5 שלא סומנו */
+    DB.municipality={'תשפ"ז':['300000010','300000001','300000002','300000003']};
+    return 'ok';
+  })()`);
+  await p.evaluate(() => navToTab('municipality'));
+  await p.waitForTimeout(400);
+  const btnTxt = await p.evaluate(() => {
+    const b = document.querySelector('#muni-why'); return b ? b.textContent.trim() : '';
+  });
+  /למה 7 לא קלוטות/.test(btnTxt)
+    ? ok('הכפתור נושא את המספר האמיתי שמטריד (7)') : bad('תווית הכפתור שגויה', [btnTxt]);
+
+  await p.evaluate(() => document.querySelector('#muni-why').click());
+  await p.waitForTimeout(400);
+  const g = await p.evaluate(() => Object.fromEntries(
+    [...document.querySelectorAll('#muni-result .stat')].map(c =>
+      [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)])));
+  const gTxt = await p.evaluate(() => document.querySelector('#muni-result').textContent.replace(/\s+/g, ' '));
+
+  g['בלי ת"ז'] === 2 ? ok('בלי ת"ז — 2') : bad('ספירת "בלי ת\"ז" שגויה', [JSON.stringify(g)]);
+  g['ברשימה ולא מסומנות'] === 3
+    ? ok('ברשימה ולא מסומנות — 3 (החריגה האמיתית)') : bad('החריגה לא זוהתה', [JSON.stringify(g)]);
+  g['אינן ברשימה'] === 2 ? ok('אינן ברשימה — 2') : bad('ספירת "אינן ברשימה" שגויה', [JSON.stringify(g)]);
+  /2 \+ 3 \+ 2 = 7/.test(gTxt) ? ok('הפירוק סוגר בדיוק: 2+3+2=7') : bad('הפירוק אינו סוגר', [gTxt.slice(0, 300)]);
+  /300000001/.test(gTxt) && /300000003/.test(gTxt)
+    ? ok('החריגות מפורטות בשמן ובת"ז') : bad('אין פירוט של החריגות');
+
+  /* התיקון בלחיצה */
+  p.once('dialog', d => d.accept());
+  await p.evaluate(() => document.querySelector('#muni-fix').click());
+  await p.waitForTimeout(500);
+  const after = await p.evaluate(() => ({
+    marked: ['300000001','300000002','300000003'].map(t =>
+      !!(DB.students.find(x => x.tz === t) || {}).absorbedMunicipality),
+    untouched: !!(DB.students.find(x => x.tz === '300000098') || {}).absorbedMunicipality }));
+  after.marked.every(Boolean) ? ok('הכפתור סימן את שלושת התיקים') : bad('הסימון לא בוצע', [JSON.stringify(after)]);
+  !after.untouched ? ok('מי שאינה ברשימה לא נגעו בה') : bad('סומנה בטעות מי שאינה ברשימה');
+  const g2 = await p.evaluate(() => Object.fromEntries(
+    [...document.querySelectorAll('#muni-result .stat')].map(c =>
+      [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)])));
+  g2['ברשימה ולא מסומנות'] === 0
+    ? ok('אחרי התיקון — אין יותר חריגות') : bad('נשארו חריגות', [JSON.stringify(g2)]);
+
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
   console.log('\n' + '─'.repeat(52));
