@@ -6327,7 +6327,7 @@ function openImport(){
   <div class="note">מעלים קובץ CSV (או מדביקים ישירות מאקסל) והמערכת פותחת תיק נפרד לכל שורה, לפי הכותרות. הכותרות המזוהות: שם משפחה, שם פרטי, ת"ז, תאריך לידה, שם האם, שם האב, טלפון, נייד, רחוב, בניין, עיר, קמפוס, גן, גיל, מועד, חינוך, קלוט בעירייה, הערות. עמודות שלא זוהו — יידלגו. נייד שמתחיל ב-5 (ללא 0 מוביל) יתוקן אוטומטית, וכפילויות ת"ז בתוך הקובץ יושמטו.</div>
   <fieldset style="margin-top:12px"><legend>קובץ / הדבקה</legend>
     <div class="row" style="margin-bottom:8px">
-      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="imp-file" accept=".csv,.txt" hidden></label>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="imp-file" accept=".csv,.txt,.xlsx" hidden></label>
       <button class="btn ghost sm" id="imp-template" type="button">⬇️ הורדת תבנית</button>
     </div>
     <label>או הדבקה ישירה (שורת כותרות ואז שורה לכל תלמידה)</label>
@@ -8067,7 +8067,7 @@ function openTzImport(){
       או <b>קובץ CSV</b> עם עמודת ת"ז. ההתאמה לתיקים היא לפי ת"ז בלבד.</div>
     <fieldset style="margin-top:12px"><legend>הרשימה</legend>
       <div class="row" style="margin-bottom:8px">
-        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ<input type="file" id="tzi-file" accept=".csv,.txt" hidden></label>
+        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ<input type="file" id="tzi-file" accept=".csv,.txt,.xlsx" hidden></label>
       </div>
       <textarea id="tzi-text" rows="7" placeholder='123456789&#10;987654321&#10;…&#10;— או —&#10;ת"ז,שם&#10;123456789,כהן שרה'></textarea>
     </fieldset>
@@ -8962,7 +8962,7 @@ function openGanImport(){
   <div class="note">מעלים קובץ CSV (או מדביקים ישירות מאקסל) והמערכת מוסיפה גן לכל שורה, לפי הכותרות. הכותרות המזוהות: שם הגן, סמל פנימי, סמל הגן, שם הגננת, גיל, חינוך, כתובת, מספר, אזור, טלפון בגן, נייד גננת, שם סייעת, נייד סייעת, קיבולת, פעיל. עמודות שלא זוהו — יידלגו. הקובץ נקרא עם זיהוי מפריד אוטומטי (, / ; / טאב) וזיהוי קידוד (UTF-8 או Windows-1255) — בדיוק כמו בייבוא התלמידות, כך שקבצי אקסל בעברית נקראים כראוי.</div>
   <fieldset style="margin-top:12px"><legend>קובץ / הדבקה</legend>
     <div class="row" style="margin-bottom:8px">
-      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="gimp-file" accept=".csv,.txt" hidden></label>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="gimp-file" accept=".csv,.txt,.xlsx" hidden></label>
       <button class="btn ghost sm" id="gimp-template" type="button">⬇️ הורדת תבנית</button>
     </div>
     <label>או הדבקה ישירה (שורת כותרות ואז שורה לכל גן)</label>
@@ -10005,6 +10005,10 @@ const MUNI_FILL_FIELDS = [
   { key:"building",   label:"מספר בניין" },
   { key:"city",       label:"עיר" }
 ];
+/* מפתח השוואה לת"ז. מספר זהות ישראלי הוא בן 9 ספרות, ואקסל מוריד אפסים
+   מובילים מכל תא שנשמר כמספר — ולכן "012345678" שבתוכנה מגיע מהקובץ כ-
+   "12345678". משלימים אפסים בשני הצדדים, כדי שהשניים ייחשבו לאותה ילדה. */
+function tzKey(v){ const d=digits(v); return (d.length>=5 && d.length<9) ? d.padStart(9,"0") : d; }
 /* שדות הטלפון של התיק. mobile הוא שדה ישן שהטופס עדיין מציג כ"נייד אם"
    כשאין ניידים מפורשים, ולכן הוא נספר גם הוא בבדיקת הכפילות. */
 const STU_PHONE_KEYS = ["phone","dadMobile","momMobile","mobile"];
@@ -10053,9 +10057,9 @@ function applyMuniRec(s, rec){
 /* פתיחת תיק חדש לת"ז שברשימת העירייה ואינה בתוכנה. התיק נפתח כ"קלוט
    בעירייה" וכ"לא נרשמה על ידינו" — היא הגיעה מרשימת העירייה ולא מרישום
    אצלנו — וללא שיבוץ סופי. */
-function muniNewStudent(rec, edu, assignBySymbol){
+function muniNewStudent(rec, edu){
   const st=makeStudent();
-  st.tz=rec.tz;
+  st.tz=tzKey(rec.tz);
   st.lastName=String(rec.lastName||"").trim();
   st.firstName=String(rec.firstName||"").trim();
   st.education=rec.education ? normEduVal(rec.education) : (edu||"רגיל");
@@ -10063,8 +10067,8 @@ function muniNewStudent(rec, edu, assignBySymbol){
   st.absorbedMunicipality=true;
   st.registeredByUs=false;
   st.placed=false;
-  if(assignBySymbol){ const g=ganByMuniSymbol(rec.symbol);
-    if(g){ st.ganId=g.id; if(ganCampus(g.id)) st.campus=ganCampus(g.id); } }
+  /* סמל המוסד שבקובץ אינו נכנס לתיק ואינו משבץ לגן — הוא משמש להשוואה
+     ולדיווח בלבד. השיבוץ נקבע אצלנו, לא ברשימת העירייה. */
   return st;
 }
 /* זיהוי העמודות שבקובץ: לכל עמודה — הכותרת כפי שהיא, דוגמה מהשורה
@@ -10140,18 +10144,22 @@ function muniSectionHTML(descClass){
   const stored = DB.municipality[DB.activeYear]||[];
   const edu = activeEdu || "רגיל";
   return `
-    <div class="${descClass||"sub"}">מעלים את קובץ העירייה כמו שהוא — על כל העמודות שבו. אחרי הטעינה נפתחת <b>טבלת מיפוי עמודות</b>: מסמנים אילו עמודות לקלוט ולאיזה שדה בתוכנה כל אחת נכנסת; כל השאר נזרק. ההתאמה נעשית לפי מספר זהות: כל ת"ז שנמצאת בתוכנה מסומנת "קלוט בעירייה" והפרטים החסרים בתיק מושלמים מהקובץ. פרט שכבר קיים בתוכנה אינו נדרס, ומספר טלפון שכבר מופיע באחד משדות הטלפון של אותה ילדה לא נכתב שוב לשדה אחר. ת"ז שאינה בתוכנה — נפתח לה תיק חדש.</div>
+    <div class="${descClass||"sub"}">מעלים את קובץ העירייה כמו שהוא — על כל העמודות שבו. אחרי הטעינה נפתחת <b>טבלת מיפוי עמודות</b>: מסמנים אילו עמודות לקלוט ולאיזה שדה בתוכנה כל אחת נכנסת; כל השאר נזרק. ההתאמה נעשית לפי מספר זהות.</div>
     <div class="row" style="margin-top:10px;gap:10px;align-items:end;flex-wrap:wrap">
-      <div class="field"><label>סוג החינוך של הרשימה</label>
+      <div class="field" style="min-width:280px"><label>מה לעשות עם הרשימה</label>
+        <select id="muni-mode">
+          <option value="update">עדכון — סימון "קלוט בעירייה" והשלמת פרטים חסרים</option>
+          <option value="compare">השוואת סמלי מוסד בלבד — בלי לשנות דבר בתוכנה</option>
+        </select></div>
+      <div class="field" id="muni-edu-wrap"><label>סוג החינוך של הרשימה</label>
         <select id="muni-edu">${EDU_TYPES.map(t=>`<option ${t===edu?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
-      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="muni-file" accept=".csv,.txt" hidden></label>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="muni-file" accept=".csv,.txt,.xlsx" hidden></label>
       <button class="btn ghost sm" id="muni-template" type="button">⬇️ הורדת תבנית לאקסל</button>
     </div>
-    <div class="checks" style="margin-top:8px">
+    <div class="checks" style="margin-top:8px" id="muni-create-wrap">
       <label class="check"><input type="checkbox" id="muni-create" checked> פתיחת תיק חדש לכל ת"ז שאינה בתוכנה</label>
-      <label class="check"><input type="checkbox" id="muni-assign"> שיבוץ התיקים החדשים לגן לפי סמל המוסד שבקובץ</label>
     </div>
-    <div class="hint" style="margin-top:6px">סוג החינוך נקבע לתיקים החדשים שייפתחו (אם לא מופתה עמודת "סוג חינוך"). ההשלמה עצמה נעשית לפי ת"ז בכל התוכנה, בלי תלות בסוג החינוך. שיבוץ של תיקים קיימים אינו משתנה לעולם — הפרשי הסמלים מדווחים בלבד.</div>
+    <div class="hint" style="margin-top:6px" id="muni-mode-hint"></div>
     <div style="margin-top:10px">
       <label>הדבקה ישירה מאקסל — שורת כותרות ואחריה שורה לכל ילדה (או רשימת ת"ז בלבד, שורה לכל אחת)</label>
       <textarea id="muni-text" rows="6" placeholder='מספר זהות,שם משפחה,שם פרטי,תאריך לידה,שם האם,שם האב,טלפון בית,נייד אב,נייד אם,סמל מוסד&#10;123456789,ישראלי,שרה,01/09/2021,רבקה,יעקב,03-1234567,050-1234567,052-7654321,123456'>${stored.join("\n")}</textarea>
@@ -10173,6 +10181,12 @@ function wireMuniSection(root, inModal){
     const b=q("#"+id); if(!b) return;
     b.onclick=()=>{ const csv=[headers.map(csvCell).join(","), ...rows.map(r=>r.map(csvCell).join(","))].join("\r\n");
       downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), name); };
+  };
+  /* שיתוף הטבלה כמסמך ממותג — אותו מנגנון של כל "שיתוף מסמך" בתוכנה
+     (PDF שנשלח ישירות למייל, שיתוף במכשיר, או הורדה). */
+  const wireShare = (id, rep) => {
+    const b=q("#"+id); if(!b) return;
+    b.onclick=()=>{ if(!rep.rows.length){ toast("אין מה לשתף"); return; } shareReportDoc(rep); };
   };
 
   /* ---- טבלת מיפוי העמודות ---- */
@@ -10241,6 +10255,82 @@ function wireMuniSection(root, inModal){
   q("#muni-detect").onclick=renderMap;
   q("#muni-template").onclick=muniTemplateCSV;
 
+  /* ---- בורר המצב: עדכון מלא מול השוואת סמלים בלבד ----
+     בהשוואה אין מה לבחור סוג חינוך ואין מה לפתוח תיקים, ולכן שני הפקדים
+     האלה יורדים מהמסך — והכפתור אומר במפורש מה הוא עומד לעשות. */
+  function syncMode(){
+    const cmp = q("#muni-mode").value === "compare";
+    const eduW=q("#muni-edu-wrap"), crW=q("#muni-create-wrap"), run=q("#muni-run"), hint=q("#muni-mode-hint");
+    if(eduW) eduW.style.display = cmp ? "none" : "";
+    if(crW)  crW.style.display  = cmp ? "none" : "";
+    if(run)  run.textContent    = cmp ? "📊 הפק סיכום לפי סמל מוסד" : "🔗 בצע התאמה, סמן והשלם פרטים";
+    if(hint) hint.innerHTML = cmp
+      ? 'מעלים מספרי זהות עם עמודת <b>סמל מוסד</b> ומקבלים סיכום בלבד: כמה תלמידות בכל סמל אצלנו בתוכנה מול כמה ברשימת העירייה, ופירוט מי רשומה אצל מי בסמל אחר. <b>שום דבר בתוכנה לא משתנה</b> — לא סימון "קלוט", לא השלמת פרטים ולא פתיחת תיקים.'
+      : 'סוג החינוך נקבע לתיקים החדשים שייפתחו (אם לא מופתה עמודת "סוג חינוך"). ההשלמה נעשית לפי ת"ז בכל התוכנה, בלי תלות בסוג החינוך. <b>סמל המוסד שבקובץ אינו נכנס לתיקים ואינו משנה שיבוץ</b> — הוא משמש להשוואה ולדיווח בלבד.';
+  }
+  q("#muni-mode").onchange=syncMode;
+  syncMode();
+
+  /* ---- הסיכום לפי סמל מוסד — משותף לשני המצבים ----
+     muniBySym: כמה שורות בקובץ נושאות כל סמל. symsSeen: הסמלים הרלוונטיים
+     להעלאה (מהקובץ ומהגנים שבהם התלמידות שבקובץ יושבות אצלנו). */
+  const symSummaryRows = (muniBySym, symsSeen) => {
+    const ourBySym=new Map();
+    studentsOfYear().forEach(x=>{ if(x.finished) return; const sy=ganSymbolText(ganById(x.ganId)); if(sy) ourBySym.set(sy,(ourBySym.get(sy)||0)+1); });
+    return [...symsSeen].sort((a,b)=>String(a).localeCompare(String(b),"he")).map(sym=>{
+      const g=ganByMuniSymbol(sym);
+      return { sym, gan:g?ganName(g.id):"", muni:muniBySym.get(sym)||0, ours:ourBySym.get(sym)||0 };
+    });
+  };
+  const tbl = (inner, max) => `<div class="table-wrap" style="margin-top:8px;max-height:${max||280}px;overflow:auto"><table>${inner}</table></div>`;
+  const symBlockHTML = symRows => symRows.length ? `
+      <div style="margin-top:14px">
+        <b>סיכום לפי סמל מוסד</b>
+        <button class="btn ghost sm" id="muni-dl-sym" type="button" style="margin-inline-start:8px">⬇️ הורדה לאקסל</button>
+        <button class="btn ghost sm" id="muni-share-sym" type="button">📎 שיתוף / הדפסה</button>
+        ${tbl(`<thead><tr><th>סמל מוסד</th><th>שם הגן</th><th>בתוכנה</th><th>ברשימת העירייה</th><th>הפרש</th></tr></thead><tbody>
+          ${symRows.map(r=>`<tr><td>${esc(r.sym)}</td><td>${r.gan?esc(r.gan):'<span class="pill warn">סמל שאינו מוכר לנו</span>'}</td><td>${r.ours}</td><td>${r.muni}</td>
+            <td style="font-weight:700;color:${r.ours===r.muni?'var(--good)':'var(--bad)'}">${r.ours-r.muni>0?'+':''}${r.ours-r.muni}</td></tr>`).join("")}
+        </tbody>`)}
+        <div class="hint">"בתוכנה" — כל התלמידות הפעילות בשנת ${esc(DB.activeYear)} המשובצות לגן בעל אותו סמל. "ברשימת העירייה" — כמה שורות בקובץ נושאות את הסמל.</div>
+      </div>` : '';
+  const diffBlockHTML = (diffs, note) => diffs.length ? `
+      <div style="margin-top:14px">
+        <b style="color:var(--bad)">${diffs.length} תלמידות רשומות אצלנו בסמל אחד ובעירייה בסמל אחר</b>
+        <div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost sm" id="muni-dl-diff" type="button">⬇️ אקסל — אצלנו ובעירייה</button>
+          <button class="btn ghost sm" id="muni-dl-diff-ours" type="button">⬇️ אקסל — רק איפה שרשומות אצלנו</button>
+          <button class="btn ghost sm" id="muni-share-diff" type="button">📎 שיתוף / הדפסה</button>
+        </div>
+        ${tbl(`<thead><tr><th>שם</th><th>ת"ז</th><th>סמל אצלנו</th><th>הגן אצלנו</th><th>סמל בעירייה</th><th>הגן בעירייה</th></tr></thead><tbody>
+          ${diffs.map(d=>{ const mg=ganByMuniSymbol(d.muniSym);
+            return `<tr><td>${esc([d.s.lastName,d.s.firstName].filter(Boolean).join(" "))||'—'}</td><td>${esc(d.s.tz)}</td>
+              <td>${esc(d.ourSym)||'—'}</td><td>${d.s.ganId?esc(ganName(d.s.ganId)):'<span class="pill warn">ללא שיבוץ</span>'}</td>
+              <td>${esc(d.muniSym)}</td><td>${mg?esc(ganName(mg.id)):'<span class="pill warn">סמל שאינו מוכר לנו</span>'}</td></tr>`; }).join("")}
+        </tbody>`)}
+        ${note?`<div class="hint">${note}</div>`:''}
+      </div>` : '';
+  const SYM_HEADERS  = ["סמל מוסד","שם הגן","בתוכנה","ברשימת העירייה","הפרש"];
+  const DIFF_HEADERS = ["שם משפחה","שם פרטי",'ת"ז',"סמל אצלנו","הגן אצלנו","סמל בעירייה","הגן בעירייה"];
+  const OURS_HEADERS = ["שם משפחה","שם פרטי",'ת"ז',"סמל אצלנו","הגן אצלנו"];
+  const symRowsOut  = symRows => symRows.map(r=>[r.sym,r.gan,r.ours,r.muni,r.ours-r.muni]);
+  const diffRowsOut = diffs => diffs.map(d=>{ const mg=ganByMuniSymbol(d.muniSym);
+    return [d.s.lastName,d.s.firstName,d.s.tz,d.ourSym,d.s.ganId?ganName(d.s.ganId):"",d.muniSym,mg?ganName(mg.id):""]; });
+  /* "רק אצלנו" — אותה רשימת ילדות, בלי עמודות העירייה. שימושי כשרוצים
+     לשלוח הלאה איפה הן רשומות אצלנו, בלי לחשוף את נתוני העירייה. */
+  const oursRowsOut = diffs => diffs.map(d=>[d.s.lastName,d.s.firstName,d.s.tz,d.ourSym,d.s.ganId?ganName(d.s.ganId):""]);
+  const wireSymDownloads = (symRows, diffs) => {
+    const year="שנת "+DB.activeYear;
+    wireDownload("muni-dl-sym", "סיכום לפי סמל מוסד.csv", SYM_HEADERS, symRowsOut(symRows));
+    wireShare("muni-share-sym", { title:"סיכום לפי סמל מוסד", subtitle:[year, symRows.length+" סמלים"].join(" · "),
+      headers:SYM_HEADERS, rows:symRowsOut(symRows), fileName:"סיכום לפי סמל מוסד" });
+    wireDownload("muni-dl-diff", "הפרשי סמל מוסד — אצלנו ובעירייה.csv", DIFF_HEADERS, diffRowsOut(diffs));
+    wireDownload("muni-dl-diff-ours", "הפרשי סמל מוסד — רק אצלנו.csv", OURS_HEADERS, oursRowsOut(diffs));
+    wireShare("muni-share-diff", { title:"תלמידות בסמל שונה — אצלנו מול העירייה",
+      subtitle:[year, diffs.length+" תלמידות"].join(" · "),
+      headers:DIFF_HEADERS, rows:diffRowsOut(diffs), fileName:"הפרשי סמל מוסד" });
+  };
+
   q("#muni-run").onclick=()=>{
     const out=q("#muni-result");
     /* הטבלה חייבת להתאים לטקסט שבתיבה — אחרת המיפוי מצביע על עמודות של
@@ -10254,13 +10344,54 @@ function wireMuniSection(root, inModal){
     }
     const { nums, recs, structured } = parseMuniInput(q("#muni-text").value, chosen);
     if(!nums.length){ out.innerHTML=`<div class="empty">לא זוהו מספרי זהות בקלט. ודא/י שיש עמודת מספר זהות בטבלת המיפוי, או הדבק/י רשימת מספרים.</div>`; return; }
-    DB.municipality[DB.activeYear]=nums;
-    const edu=q("#muni-edu").value, doCreate=q("#muni-create").checked, doAssign=q("#muni-assign").checked;
+    const compare = q("#muni-mode").value==="compare";
+    const byTz=new Map(); studentsOfYear().forEach(s=>{ const d=tzKey(s.tz); if(d && !byTz.has(d)) byTz.set(d,s); });
 
-    const byTz=new Map(); studentsOfYear().forEach(s=>{ const d=digits(s.tz); if(d && !byTz.has(d)) byTz.set(d,s); });
+    /* ============ מצב השוואה בלבד ============
+       לא נוגעים בנתונים: לא מסמנים "קלוט", לא משלימים פרטים, לא פותחים
+       תיקים ולא שומרים את הרשימה. רק סופרים ומדווחים. */
+    if(compare){
+      const muniBySym=new Map(), symsSeen=new Set(), diffs=[], missing=[];
+      let found=0, noSym=0;
+      nums.forEach(tz=>{
+        const rec=recs.get(tz)||{tz};
+        const sym=String(rec.symbol||"").trim();
+        if(sym){ muniBySym.set(sym,(muniBySym.get(sym)||0)+1); symsSeen.add(sym); } else noSym++;
+        const s=byTz.get(tzKey(tz));
+        if(!s){ missing.push(tz); return; }
+        found++;
+        const ourSym=ganSymbolText(ganById(s.ganId));
+        if(ourSym) symsSeen.add(ourSym);
+        if(sym && ourSym!==sym) diffs.push({ s, muniSym:sym, ourSym });
+      });
+      const symRows=symSummaryRows(muniBySym, symsSeen);
+      out.innerHTML=`
+        <div class="note">מצב <b>השוואה בלבד</b> — שום דבר בתוכנה לא שונה.</div>
+        <div class="stats" style="margin-top:10px">
+          <div class="stat hero"><div class="k">סמלי מוסד בהשוואה</div><div class="v">${symRows.length}</div></div>
+          <div class="stat"><div class="k">ברשימת העירייה</div><div class="v">${nums.length}</div></div>
+          <div class="stat"><div class="k">נמצאו בתוכנה</div><div class="v">${found}</div></div>
+          <div class="stat"><div class="k">אינן בתוכנה כלל</div><div class="v">${missing.length}</div></div>
+          <div class="stat ${diffs.length?'bad':''}"><div class="k">בסמל שונה</div><div class="v">${diffs.length}</div></div>
+        </div>
+        ${noSym?`<div class="hint" style="margin-top:8px">${noSym} שורות בקובץ בלי סמל מוסד — הן נספרות ב"ברשימת העירייה" אך לא בטבלת הסמלים. ודא/י שמופתה עמודת "סמל מוסד".</div>`:''}
+        ${symBlockHTML(symRows)}
+        ${diffBlockHTML(diffs, "כל שורה: איפה הילדה רשומה אצלנו מול איפה היא רשומה בעירייה.")}
+        ${missing.length?`<div class="note" style="margin-top:14px">${missing.length} ת"ז מופיעות ברשימת העירייה ואינן בתוכנה כלל:<br>${missing.slice(0,40).map(esc).join(", ")}${missing.length>40?' …':''}
+          <div style="margin-top:6px"><button class="btn ghost sm" id="muni-dl-nf" type="button">⬇️ הורדת הרשימה</button></div></div>`:''}
+        ${!symRows.length?`<div class="empty" style="margin-top:12px">לא נמצא סמל מוסד בקובץ ולא בשיבוצים שלנו. כדי לקבל את הסיכום צריך שבקובץ תהיה עמודה שממופה ל"סמל מוסד", ושבכרטיסי הגנים יהיה מלא "סמל הגן".</div>`:''}`;
+      wireSymDownloads(symRows, diffs);
+      wireDownload("muni-dl-nf", "ת-ז מהעירייה שאינן בתוכנה.csv", ['ת"ז'], missing.map(t=>[t]));
+      toast(`הופק סיכום ל-${symRows.length} סמלים · ${diffs.length} בסמל שונה`);
+      return;
+    }
+
+    /* ============ מצב עדכון ============ */
+    DB.municipality[DB.activeYear]=nums;
+    const edu=q("#muni-edu").value, doCreate=q("#muni-create").checked;
     let marked=0, already=0, updated=0, phoneDup=0;
     const fieldCount={};       // תווית שדה -> בכמה תיקים הושלם
-    const created=[];          // תיקים חדשים שנפתחו
+    const created=[];          // תיקים חדשים שנפתחו — {s, sym} (שורת הקובץ נשמרת לצד התיק)
     const notFound=[];         // ת"ז שאינן בתוכנה, כשפתיחת תיק חדש כבויה
     const muniBySym=new Map(); // סמל מוסד -> כמה ילדות ברשימת העירייה
     const symsSeen=new Set();  // הסמלים הרלוונטיים להעלאה הזאת
@@ -10270,11 +10401,11 @@ function wireMuniSection(root, inModal){
       const rec=recs.get(tz)||{tz};
       const sym=String(rec.symbol||"").trim();
       if(sym){ muniBySym.set(sym,(muniBySym.get(sym)||0)+1); symsSeen.add(sym); }
-      let s=byTz.get(tz);
+      let s=byTz.get(tzKey(tz));
       if(!s){
         if(!doCreate){ notFound.push(tz); return; }
-        s=muniNewStudent(rec, edu, doAssign);
-        DB.students.push(s); byTz.set(tz,s); created.push(s);
+        s=muniNewStudent(rec, edu);
+        DB.students.push(s); byTz.set(tzKey(tz),s); created.push({ s, sym });
         return;   // תיק חדש — הפרטים כבר בפנים, ואין מול מה להשוות סמל
       }
       if(!s.absorbedMunicipality) marked++; else already++;
@@ -10289,13 +10420,7 @@ function wireMuniSection(root, inModal){
     save();
     if(inModal) pendingRender=true;   // רענון הרשימה שמאחורי החלון עם סגירתו
 
-    /* סיכום לפי סמל מוסד — נספר אחרי פתיחת התיקים החדשים */
-    const ourBySym=new Map();
-    studentsOfYear().forEach(x=>{ if(x.finished) return; const sy=ganSymbolText(ganById(x.ganId)); if(sy) ourBySym.set(sy,(ourBySym.get(sy)||0)+1); });
-    const symRows=[...symsSeen].sort((a,b)=>String(a).localeCompare(String(b),"he")).map(sym=>{
-      const g=ganByMuniSymbol(sym);
-      return { sym, gan:g?ganName(g.id):"", muni:muniBySym.get(sym)||0, ours:ourBySym.get(sym)||0 };
-    });
+    const symRows=symSummaryRows(muniBySym, symsSeen);   // נספר אחרי פתיחת התיקים החדשים
 
     const fl=Object.keys(fieldCount);
     const fieldLine = fl.length
@@ -10303,44 +10428,19 @@ function wireMuniSection(root, inModal){
       : (structured ? `<div class="hint" style="margin-top:8px">לא נמצאו פרטים חסרים להשלמה בתיקים הקיימים.</div>`
                     : `<div class="hint" style="margin-top:8px">הקלט היה רשימת ת"ז בלבד, ולכן לא הושלמו פרטים. להשלמת פרטים העלה/י את קובץ העירייה עם הכותרות ומפ/י את העמודות.</div>`);
 
-    const tbl = (inner, max) => `<div class="table-wrap" style="margin-top:8px;max-height:${max||280}px;overflow:auto"><table>${inner}</table></div>`;
-
     const createdBlock = created.length ? `
       <div style="margin-top:14px">
         <b>${created.length} תעודות זהות לא הופיעו בתוכנה — ונפתח להן תיק חדש</b>
         <button class="btn ghost sm" id="muni-dl-new" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button>
-        ${tbl(`<thead><tr><th>#</th><th>ת"ז</th><th>שם משפחה</th><th>שם פרטי</th><th>תאריך לידה</th><th>חינוך</th><th>סמל בעירייה</th><th>גן</th></tr></thead><tbody>
-          ${created.map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.tz)}</td><td>${esc(s.lastName)||'—'}</td><td>${esc(s.firstName)||'—'}</td><td>${esc(s.dob?fmtDate(s.dob):"")||'—'}</td><td>${eduBadge(s)}</td><td>${esc(String((recs.get(digits(s.tz))||{}).symbol||""))||'—'}</td><td>${s.ganId?esc(ganName(s.ganId)):'—'}</td></tr>`).join("")}
+        ${tbl(`<thead><tr><th>#</th><th>ת"ז</th><th>שם משפחה</th><th>שם פרטי</th><th>תאריך לידה</th><th>חינוך</th><th>סמל בעירייה</th></tr></thead><tbody>
+          ${created.map((c,i)=>`<tr><td>${i+1}</td><td>${esc(c.s.tz)}</td><td>${esc(c.s.lastName)||'—'}</td><td>${esc(c.s.firstName)||'—'}</td><td>${esc(c.s.dob?fmtDate(c.s.dob):"")||'—'}</td><td>${eduBadge(c.s)}</td><td>${esc(c.sym)||'—'}</td></tr>`).join("")}
         </tbody>`)}
+        <div class="hint">התיקים נפתחו ללא שיבוץ לגן — סמל המוסד שבקובץ אינו משבץ, הוא לדיווח בלבד.</div>
       </div>` : '';
 
     const notFoundBlock = (!doCreate && notFound.length) ? `
       <div class="note" style="margin-top:12px">${notFound.length} ת"ז מופיעות ברשימת העירייה אך אינן בתוכנה (הסימון "פתיחת תיק חדש" כבוי):<br>${notFound.slice(0,40).map(esc).join(", ")}${notFound.length>40?' …':''}
         <div style="margin-top:6px"><button class="btn ghost sm" id="muni-dl-nf" type="button">⬇️ הורדת הרשימה</button></div>
-      </div>` : '';
-
-    const symBlock = symRows.length ? `
-      <div style="margin-top:14px">
-        <b>סיכום לפי סמל מוסד</b>
-        <button class="btn ghost sm" id="muni-dl-sym" type="button" style="margin-inline-start:8px">⬇️ הורדת הטבלה</button>
-        ${tbl(`<thead><tr><th>סמל מוסד</th><th>הגן אצלנו</th><th>ברשימת העירייה</th><th>בתוכנה</th><th>הפרש</th></tr></thead><tbody>
-          ${symRows.map(r=>`<tr><td>${esc(r.sym)}</td><td>${r.gan?esc(r.gan):'<span class="pill warn">סמל לא מוכר</span>'}</td><td>${r.muni}</td><td>${r.ours}</td>
-            <td style="font-weight:700;color:${r.ours===r.muni?'var(--good)':'var(--bad)'}">${r.ours-r.muni>0?'+':''}${r.ours-r.muni}</td></tr>`).join("")}
-        </tbody>`)}
-        <div class="hint">"בתוכנה" — כל התלמידות הפעילות בשנת ${esc(DB.activeYear)} המשובצות לגן בעל אותו סמל, גם אם אינן בקובץ הנוכחי. "ברשימת העירייה" — כמה שורות בקובץ נושאות את הסמל.</div>
-      </div>` : '';
-
-    const diffBlock = diffs.length ? `
-      <div style="margin-top:14px">
-        <b style="color:var(--bad)">${diffs.length} תלמידות מופיעות בעירייה בסמל אחד ואצלנו בסמל אחר</b>
-        <button class="btn ghost sm" id="muni-dl-diff" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button>
-        ${tbl(`<thead><tr><th>שם</th><th>ת"ז</th><th>סמל בעירייה</th><th>הגן בעירייה</th><th>סמל אצלנו</th><th>הגן אצלנו</th></tr></thead><tbody>
-          ${diffs.map(d=>{ const mg=ganByMuniSymbol(d.muniSym);
-            return `<tr><td>${esc([d.s.lastName,d.s.firstName].filter(Boolean).join(" "))||'—'}</td><td>${esc(d.s.tz)}</td>
-              <td>${esc(d.muniSym)}</td><td>${mg?esc(ganName(mg.id)):'<span class="pill warn">סמל לא מוכר</span>'}</td>
-              <td>${esc(d.ourSym)||'—'}</td><td>${d.s.ganId?esc(ganName(d.s.ganId)):'<span class="pill warn">ללא שיבוץ</span>'}</td></tr>`; }).join("")}
-        </tbody>`)}
-        <div class="hint">התיקים החדשים שנפתחו זה עתה אינם בטבלה הזאת — הם מופיעים ברשימה שלמעלה.</div>
       </div>` : '';
 
     out.innerHTML=`
@@ -10352,19 +10452,15 @@ function wireMuniSection(root, inModal){
         <div class="stat"><div class="k">ברשימת העירייה</div><div class="v">${nums.length}</div></div>
         ${phoneDup?`<div class="stat"><div class="k">טלפונים שדולגו (כבר קיימים)</div><div class="v">${phoneDup}</div></div>`:''}
       </div>
-      ${fieldLine}${createdBlock}${notFoundBlock}${symBlock}${diffBlock}`;
+      ${fieldLine}${createdBlock}${notFoundBlock}
+      ${symBlockHTML(symRows)}
+      ${diffBlockHTML(diffs, "הסמל שבקובץ לא שינה שום שיבוץ — ההפרש מדווח בלבד. התיקים החדשים שנפתחו זה עתה אינם בטבלה הזאת.")}`;
 
     wireDownload("muni-dl-new", "תיקים חדשים מרשימת העירייה.csv",
-      ['ת"ז',"שם משפחה","שם פרטי","תאריך לידה","שם האם","שם האב","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","מספר בניין","עיר","חינוך","סמל בעירייה","גן"],
-      created.map(s=>[s.tz,s.lastName,s.firstName,s.dob?fmtDate(s.dob):"",s.motherName,s.fatherName,s.phone,s.dadMobile,s.momMobile,s.email,s.street,s.building,s.city,eduLabel(s),String((recs.get(digits(s.tz))||{}).symbol||""),s.ganId?ganName(s.ganId):""]));
+      ['ת"ז',"שם משפחה","שם פרטי","תאריך לידה","שם האם","שם האב","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","מספר בניין","עיר","חינוך","סמל בעירייה"],
+      created.map(c=>[c.s.tz,c.s.lastName,c.s.firstName,c.s.dob?fmtDate(c.s.dob):"",c.s.motherName,c.s.fatherName,c.s.phone,c.s.dadMobile,c.s.momMobile,c.s.email,c.s.street,c.s.building,c.s.city,eduLabel(c.s),c.sym]));
     wireDownload("muni-dl-nf", "ת-ז מהעירייה שאינן בתוכנה.csv", ['ת"ז'], notFound.map(t=>[t]));
-    wireDownload("muni-dl-sym", "סיכום לפי סמל מוסד.csv",
-      ["סמל מוסד","הגן אצלנו","ברשימת העירייה","בתוכנה","הפרש"],
-      symRows.map(r=>[r.sym,r.gan,r.muni,r.ours,r.ours-r.muni]));
-    wireDownload("muni-dl-diff", "הפרשי סמל מוסד.csv",
-      ["שם משפחה","שם פרטי",'ת"ז',"סמל בעירייה","הגן בעירייה","סמל אצלנו","הגן אצלנו"],
-      diffs.map(d=>{ const mg=ganByMuniSymbol(d.muniSym);
-        return [d.s.lastName,d.s.firstName,d.s.tz,d.muniSym,mg?ganName(mg.id):"",d.ourSym,d.s.ganId?ganName(d.s.ganId):""]; }));
+    wireSymDownloads(symRows, diffs);
 
     toast(`ההתאמה בוצעה · ${updated} עודכנו · ${created.length} תיקים חדשים`);
   };
@@ -10755,7 +10851,7 @@ function labStaffTzUpdate(){
     <div class="note">מדביקים/מעלים קובץ שבו עמודת ת"ז, ולצידה כל עמודה שרוצים לעדכן — למשל רשימת ת"ז ומספרי טלפון. כל תיק שה-ת"ז שלו נמצא במאגר יתעדכן, וערך קיים יוחלף בערך שבקובץ. ת"ז שאינה במאגר תיפתח כתיק חדש.</div>
     <fieldset style="margin-top:10px"><legend>קובץ / הדבקה</legend>
       <div class="row" style="margin-bottom:8px">
-        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="stu-file" accept=".csv,.txt" hidden></label>
+        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="stu-file" accept=".csv,.txt,.xlsx" hidden></label>
         <button class="btn ghost sm" id="stu-template" type="button">⬇️ הורדת תבנית</button>
       </div>
       <textarea id="stu-text" rows="6" placeholder="ת&quot;ז,נייד&#10;123456789,050-1234567&#10;987654321,052-7654321"></textarea>
@@ -10975,7 +11071,7 @@ function openStaffImport(){
     <div class="note">מדביקים/מעלים קובץ עם כותרות. עמודות מזוהות: שם משפחה, שם פרטי (או "שם" מלא), ת"ז, מייל, תפקיד, טלפון, נייד, עיר, הערות. תפקיד שאינו מזוהה יסומן כ"סייעת". הקובץ נקרא עם זיהוי מפריד וקידוד אוטומטי (כמו בייבוא התלמידות).</div>
     <fieldset style="margin-top:10px"><legend>קובץ / הדבקה</legend>
       <div class="row" style="margin-bottom:8px">
-        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ CSV<input type="file" id="sti-file" accept=".csv,.txt" hidden></label>
+        <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 טעינת קובץ (אקסל / CSV)<input type="file" id="sti-file" accept=".csv,.txt,.xlsx" hidden></label>
         <button class="btn ghost sm" id="sti-template" type="button">⬇️ הורדת תבנית</button>
       </div>
       <textarea id="sti-text" rows="6" placeholder="שם משפחה,שם פרטי,ת&quot;ז,מייל,תפקיד,טלפון,נייד,עיר&#10;כהן,מרים,123456789,mk@mail.com,גננת,02-1234567,050-1234567,ירושלים"></textarea>
@@ -11998,7 +12094,137 @@ function decodeFileText(buf){
   catch(_){ try{ return new TextDecoder("windows-1255").decode(bytes); } // נפילה לעברית ANSI (אקסל)
             catch(__){ return new TextDecoder("utf-8").decode(bytes); } }
 }
-function readFileSmart(file,cb){ const r=new FileReader(); r.onload=()=>cb(decodeFileText(r.result)); r.readAsArrayBuffer(file); }
+/* ---------- קריאת קובץ אקסל (.xlsx) בדפדפן, בלי ספרייה חיצונית ----------
+   xlsx אינו קובץ טקסט אלא ארכיון ZIP של קובצי XML. עד היום העלאה שלו
+   פורקה כטקסט והתקבל ג'יבריש; כאן הוא נפרק כמו שצריך: קוראים את הארכיון,
+   מפענחים את הגיליון הראשון ואת טבלת המחרוזות המשותפת, ומחזירים טבלה.
+   הפריקה נעשית ב-DecompressionStream שבדפדפן עצמו — אין תלות חיצונית,
+   אין קריאת רשת, והכול עובד גם במצב לא מקוון. */
+function zipEntries(buf){
+  const u8=new Uint8Array(buf), dv=new DataView(buf);
+  /* End of Central Directory — נסרק מסוף הקובץ, כי אחריו יכולה לשבת הערה */
+  let eocd=-1;
+  for(let i=u8.length-22; i>=0 && i>=u8.length-22-65535; i--)
+    if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; }
+  if(eocd<0) throw new Error("zip");
+  const count=dv.getUint16(eocd+10,true);
+  let p=dv.getUint32(eocd+16,true);
+  const out={}, dec=new TextDecoder("utf-8");
+  for(let n=0;n<count;n++){
+    if(dv.getUint32(p,true)!==0x02014b50) throw new Error("zip");
+    const method=dv.getUint16(p+10,true), csize=dv.getUint32(p+20,true);
+    const nameLen=dv.getUint16(p+28,true), extraLen=dv.getUint16(p+30,true), cmtLen=dv.getUint16(p+32,true);
+    const lho=dv.getUint32(p+42,true);
+    const name=dec.decode(u8.subarray(p+46,p+46+nameLen));
+    /* אורכי השם וה-extra בכותרת המקומית שונים לפעמים מאלה שבאינדקס,
+       ולכן תחילת הנתונים נקראת משם ולא מכאן. */
+    const lnLen=dv.getUint16(lho+26,true), leLen=dv.getUint16(lho+28,true);
+    const start=lho+30+lnLen+leLen;
+    out[name]={ method, bytes:u8.subarray(start,start+csize) };
+    p+=46+nameLen+extraLen+cmtLen;
+  }
+  return out;
+}
+async function zipText(entry){
+  if(!entry) return "";
+  if(entry.method===0) return new TextDecoder("utf-8").decode(entry.bytes);   // מאוחסן בלי דחיסה
+  if(entry.method!==8) throw new Error("method");
+  if(typeof DecompressionStream!=="function") throw new Error("nostream");
+  const stream=new Blob([entry.bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new TextDecoder("utf-8").decode(await new Response(stream).arrayBuffer());
+}
+/* "A1" → 0, "B1" → 1, "AA1" → 26 */
+function xlsxColIndex(ref){
+  let n=0;
+  for(let i=0;i<ref.length;i++){ const c=ref.charCodeAt(i); if(c<65||c>90) break; n=n*26+(c-64); }
+  return n-1;
+}
+/* הטבלה שבגיליון הראשון של קובץ xlsx, כמערך שורות של מחרוזות.
+   ערכי תאריך חוזרים כמספר הסידורי של אקסל — normDateVal יודע לפענח אותו. */
+async function xlsxToRows(buf){
+  const z=zipEntries(buf);
+  if(!z["xl/workbook.xml"]) throw new Error("notxlsx");
+  const P=new DOMParser();
+  const wb=P.parseFromString(await zipText(z["xl/workbook.xml"]),"application/xml");
+  const sheetEl=wb.getElementsByTagName("sheet")[0];
+  const sheetName=sheetEl ? (sheetEl.getAttribute("name")||"") : "";
+  const sheetCount=wb.getElementsByTagName("sheet").length;
+  let target="worksheets/sheet1.xml";
+  const rid=sheetEl && (sheetEl.getAttribute("r:id")||sheetEl.getAttribute("id"));
+  if(rid && z["xl/_rels/workbook.xml.rels"]){
+    const rels=P.parseFromString(await zipText(z["xl/_rels/workbook.xml.rels"]),"application/xml");
+    const rel=[...rels.getElementsByTagName("Relationship")].find(r=>r.getAttribute("Id")===rid);
+    if(rel) target=String(rel.getAttribute("Target")||"").replace(/^\/?xl\//,"");
+  }
+  const sheet=z["xl/"+target] || z["xl/worksheets/sheet1.xml"];
+  if(!sheet) throw new Error("nosheet");
+  /* טבלת המחרוזות המשותפת — באקסל כל טקסט יושב בה, והתא מפנה אליה במספר */
+  const shared=[];
+  if(z["xl/sharedStrings.xml"]){
+    const ss=P.parseFromString(await zipText(z["xl/sharedStrings.xml"]),"application/xml");
+    [...ss.getElementsByTagName("si")].forEach(si=>
+      shared.push([...si.getElementsByTagName("t")].map(t=>t.textContent).join("")));
+  }
+  const doc=P.parseFromString(await zipText(sheet),"application/xml");
+  const grid=[];
+  [...doc.getElementsByTagName("row")].forEach((rowEl,seq)=>{
+    const ri=(+rowEl.getAttribute("r")||seq+1)-1;
+    const cells=grid[ri]||(grid[ri]=[]);
+    [...rowEl.getElementsByTagName("c")].forEach(c=>{
+      const ref=c.getAttribute("r")||"", t=c.getAttribute("t");
+      const ci=ref?xlsxColIndex(ref):cells.length;
+      let v="";
+      if(t==="inlineStr") v=[...c.getElementsByTagName("t")].map(x=>x.textContent).join("");
+      else {
+        const ve=c.getElementsByTagName("v")[0], raw=ve?ve.textContent:"";
+        v = t==="s" ? (shared[+raw]??"") : (t==="e" ? "" : raw);   // t="e" = שגיאת נוסחה
+      }
+      if(ci>=0) cells[ci]=String(v);
+    });
+  });
+  const rows=[];
+  for(let i=0;i<grid.length;i++){
+    const r=grid[i]||[], line=[];
+    for(let j=0;j<r.length;j++) line.push(r[j]==null?"":r[j]);
+    if(line.some(x=>String(x).trim()!=="")) rows.push(line);   // שורות ריקות יורדות, כמו ב-parseTable
+  }
+  return { rows, sheetName, sheetCount };
+}
+function rowsToCsv(rows){ return rows.map(r=>r.map(csvCell).join(",")).join("\r\n"); }
+/* קריאת קובץ שהמשתמש העלה, כטקסט טבלאי אחד. קובץ .xlsx מפוענח כאן לטבלה
+   ומוחזר כ-CSV, כך שכל מסכי הייבוא ממשיכים לעבוד על אותו טקסט בדיוק כמו
+   קודם. קובץ בינארי שאינו xlsx (למשל xls ישן) נעצר בהודעה ברורה, במקום
+   להישפך כג'יבריש לתיבת הטקסט. */
+function readFileSmart(file,cb){
+  const r=new FileReader();
+  r.onerror=()=>toast("לא ניתן לקרוא את הקובץ");
+  r.onload=()=>{
+    const buf=r.result, u8=new Uint8Array(buf);
+    const sig=(a,b,c,d)=>u8[0]===a&&u8[1]===b&&u8[2]===c&&u8[3]===d;
+    if(sig(0x50,0x4B,0x03,0x04)){          // חתימת ZIP — כלומר xlsx
+      xlsxToRows(buf).then(res=>{
+        if(!res.rows.length){ toast("הגיליון בקובץ ריק"); return; }
+        cb(rowsToCsv(res.rows));
+        toast(res.sheetName
+          ? ('נקרא הגיליון "'+res.sheetName+'"'+(res.sheetCount>1?" (הראשון מבין "+res.sheetCount+")":"")+" · "+(res.rows.length-1)+" שורות")
+          : "הקובץ נקרא");
+      }).catch(err=>{
+        toast((err && err.message==="nostream")
+          ? "הדפדפן הזה אינו יודע לפתוח xlsx — שמור/י את הקובץ כ-CSV"
+          : "לא הצלחתי לקרוא את קובץ האקסל. שמור/י אותו מחדש (קובץ → שמירה בשם → Excel Workbook ‎.xlsx‎ או CSV UTF-8)");
+      });
+      return;
+    }
+    if(sig(0xD0,0xCF,0x11,0xE0)){          // xls ישן (OLE) — פורמט בינארי שאינו נתמך
+      toast("זהו קובץ xls ישן. שמור/י אותו באקסל כ-xlsx או כ-CSV ונסה/י שוב"); return;
+    }
+    if(u8.subarray(0,2000).indexOf(0)>=0){ // בייט אפס = קובץ בינארי, לא טקסט
+      toast("הקובץ אינו קובץ אקסל או טקסט שאפשר לקרוא"); return;
+    }
+    cb(decodeFileText(buf));
+  };
+  r.readAsArrayBuffer(file);
+}
 
 /* ============================================================
    טאב הנהלה
@@ -12125,7 +12351,7 @@ function renderHistGans(host, admin){
     ${editable?`
     <div class="row" style="margin-top:12px">
       <button class="btn ghost" id="hg-add">➕ הוספת גן</button>
-      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 ייבוא CSV<input type="file" id="hg-file" accept=".csv,.txt" hidden></label>
+      <label class="btn ghost sm" style="display:inline-flex;align-items:center;gap:6px">📄 ייבוא CSV<input type="file" id="hg-file" accept=".csv,.txt,.xlsx" hidden></label>
     </div>
     <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;color:var(--accent-strong)">📋 ייבוא בהדבקה (מאקסל / טבלה)</summary>
       <div class="hint" style="margin:8px 0">הדביקו טבלה עם כותרות. עמודות מזוהות: <b>גן</b> (חובה), כתובת, קמפוס, גיל, מועד א׳, מועד ב׳, מועד ג׳, סופי. הייבוא מוסיף/מעדכן את השנה הנבחרת (${esc(y)}).</div>

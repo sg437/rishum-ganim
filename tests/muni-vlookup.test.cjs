@@ -5,12 +5,17 @@
      2. עמודה שלא סומנה אינה נקלטת, גם כשהכותרת שלה מוכרת.
      3. השלמת הפרטים החסרים בתיק — ומה שכבר קיים בתוכנה אינו נדרס.
      4. טלפון שכבר מופיע בשדה אחר של אותה ילדה לא נכתב שוב.
-     5. ת"ז שאינה בתוכנה — נפתח לה תיק חדש, והיא מדווחת בנפרד.
+     5. ת"ז שאינה בתוכנה — נפתח לה תיק חדש, בלי שיבוץ לגן לפי הסמל.
      6. כיבוי "פתיחת תיק חדש" — הת"ז מדווחת ולא נפתח תיק.
      7. סוג החינוך של ההעלאה נקבע לתיקים החדשים.
      8. סיכום לפי סמל מוסד + רשימת מי שבסמל אחר בעירייה ואצלנו.
+     8ב. מצב "השוואה בלבד" — סיכום הסמלים בלי לגעת בנתונים.
+     8ג. הורדות: אצלנו+בעירייה · רק אצלנו · שיתוף.
      9. רשימת ת"ז נטו (בלי כותרות) ממשיכה לעבוד — סימון "קלוט" בלבד.
     10. אותו מקטע בדיוק עובד גם בעיצוב החדש (חלון "עדכון לפי מ.ז.").
+    11. קובץ xlsx אמיתי נקרא כטבלה — ולא נשפך כג'יבריש לתיבה.
+    12. ת"ז שאיבדה אפס מוביל באקסל עדיין מתאימה לתיק שבתוכנה.
+    13. קובץ בינארי שאינו xlsx נעצר בהודעה, בלי לזהם את התיבה.
 
    הרצה:  NODE_PATH=$(npm root -g) node tests/muni-vlookup.test.cjs
    ============================================================================ */
@@ -32,7 +37,7 @@ function buildApp() {
   const expose = `
 window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; else if(k==='currentUser')currentUser=v; else if(k==='db')db=v; };
 Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
-Object.assign(window,{ route, navToTab, openBulkImport, closeModal, parseMuniInput, muniDetectColumns, phoneKey });
+Object.assign(window,{ route, navToTab, openBulkImport, closeModal, parseMuniInput, muniDetectColumns, phoneKey, tzKey, xlsxToRows, readFileSmart });
 window.__ready=true;
 `;
   const i = html.lastIndexOf('</script>');
@@ -88,7 +93,8 @@ const SEED = `(() => {
     mk({id:'s1',tz:'300000001',firstName:'רחל',lastName:'כהן',ganId:'g1'}),
     mk({id:'s2',tz:'300000002',firstName:'שרה',lastName:'לוי',ganId:'g1',motherName:'מרים קיימת',phone:'0522222222',absorbedMunicipality:true}),
     mk({id:'s3',tz:'300000003',firstName:'לאה',lastName:'פרץ',ganId:'g2'}),
-    mk({id:'s4',tz:'300000004',firstName:'חנה',lastName:'דוד',ganId:'g1'})];
+    mk({id:'s4',tz:'300000004',firstName:'חנה',lastName:'דוד',ganId:'g1'}),
+    mk({id:'s5',tz:'012345678',firstName:'מרים',lastName:'גולד',ganId:'g2'})];
   DB.staff=[]; DB.management=[]; DB.assignments={}; DB.tzGroups={}; DB.municipality={};
   DB.settings={ admins:['admin@test.org'] };
   __set('currentUser',{ email:'admin@test.org', uid:'u1' });
@@ -201,7 +207,9 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     return [...tbl.querySelectorAll('tr')].map(tr => tr.children[1].textContent.trim()); });
   (newList && newList.length === 1 && newList[0] === '300000009')
     ? ok('הרשימה הנפרדת של החדשות מוצגת') : bad('רשימת החדשות שגויה', [JSON.stringify(newList)]);
-  s9.ganId === '' ? ok('התיק החדש לא שובץ לגן (הסימון כבוי)') : bad('שובץ בטעות לגן ' + s9.ganId);
+  s9.ganId === '' ? ok('התיק החדש לא שובץ לגן — הסמל אינו משבץ') : bad('שובץ בטעות לגן ' + s9.ganId);
+  const noAssignBox = await p.evaluate(() => !!document.querySelector('#muni-assign'));
+  !noAssignBox ? ok('אין בכלל אפשרות לשבץ לפי סמל מהעירייה') : bad('נשארה אפשרות שיבוץ לפי סמל');
 
   console.log('\n6. כיבוי "פתיחת תיק חדש"');
   await p.evaluate(() => { DB.students = DB.students.filter(s => s.tz !== '300000009'); });
@@ -228,15 +236,51 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   const row111 = sym && sym.find(r => r[0] === '111111');
   const row222 = sym && sym.find(r => r[0] === '222222');
   (row111 && row111[1] === 'גן הדקל' && row111[2] === '3' && row111[3] === '3')
-    ? ok('סמל 111111: 3 בעירייה · 3 בתוכנה') : bad('שורת 111111 שגויה', [JSON.stringify(row111)]);
-  (row222 && row222[2] === '1' && row222[3] === '1')
-    ? ok('סמל 222222: 1 בעירייה · 1 בתוכנה') : bad('שורת 222222 שגויה', [JSON.stringify(row222)]);
+    ? ok('סמל 111111: 3 בתוכנה · 3 בעירייה') : bad('שורת 111111 שגויה', [JSON.stringify(row111)]);
+  /* בתוכנה: לאה ומרים, שתיהן בגן הרימון. בעירייה: מלכה בלבד. */
+  (row222 && row222[2] === '2' && row222[3] === '1' && row222[4] === '+1')
+    ? ok('סמל 222222: 2 בתוכנה · 1 בעירייה · הפרש +1') : bad('שורת 222222 שגויה', [JSON.stringify(row222)]);
   const diff = await p.evaluate(() => {
     const b = document.querySelector('#muni-dl-diff'); if (!b) return null;
-    return [...b.parentElement.querySelectorAll('tbody tr')].map(tr =>
+    return [...b.closest('div[style]').parentElement.querySelectorAll('tbody tr')].map(tr =>
       [...tr.children].map(td => td.textContent.trim())); });
-  (diff && diff.length === 1 && diff[0][1] === '300000003' && diff[0][2] === '111111' && diff[0][4] === '222222')
-    ? ok('לאה פרץ: בעירייה 111111, אצלנו 222222') : bad('רשימת ההפרשים שגויה', [JSON.stringify(diff)]);
+  (diff && diff.length === 1 && diff[0][1] === '300000003' && diff[0][2] === '222222' && diff[0][4] === '111111')
+    ? ok('לאה פרץ: אצלנו 222222, בעירייה 111111') : bad('רשימת ההפרשים שגויה', [JSON.stringify(diff)]);
+  const dlBtns = await p.evaluate(() => ['muni-dl-diff','muni-dl-diff-ours','muni-share-diff','muni-dl-sym','muni-share-sym']
+    .filter(id => !!document.querySelector('#' + id)));
+  dlBtns.length === 5 ? ok('הורדה מלאה · הורדה "רק אצלנו" · שיתוף — לשתי הטבלאות')
+                      : bad('חסרים כפתורי הורדה/שיתוף', [JSON.stringify(dlBtns)]);
+
+  console.log('\n8ב. מצב "השוואה בלבד"');
+  const snap = () => p.evaluate(() => JSON.stringify(DB.students.map(s =>
+    [s.tz, s.ganId, s.motherName, s.phone, s.absorbedMunicipality]).sort()));
+  const beforeCmp = await snap();
+  await p.evaluate(() => { const m = document.querySelector('#muni-mode'); m.value = 'compare'; m.dispatchEvent(new Event('change')); });
+  const hidden = await p.evaluate(() => ({
+    edu: document.querySelector('#muni-edu-wrap').style.display,
+    create: document.querySelector('#muni-create-wrap').style.display,
+    btn: document.querySelector('#muni-run').textContent.trim() }));
+  (hidden.edu === 'none' && hidden.create === 'none' && /סיכום לפי סמל/.test(hidden.btn))
+    ? ok('בהשוואה: בורר החינוך ופתיחת התיקים יורדים, והכפתור משתנה')
+    : bad('הפקדים לא הוסתרו', [JSON.stringify(hidden)]);
+  /* קובץ ובו ת"ז + סמל בלבד — בדיוק מה שנדרש להשוואה */
+  await load(p, ['מספר זהות,סמל מוסד', '300000001,111111', '300000003,111111', '300000004,222222'].join('\n'));
+  await run(p);
+  const afterCmp = await snap();
+  afterCmp === beforeCmp ? ok('שום דבר בתוכנה לא השתנה') : bad('ההשוואה שינתה נתונים');
+  const cmpSym = await p.evaluate(() => {
+    const b = document.querySelector('#muni-dl-sym'); if (!b) return null;
+    return [...b.parentElement.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim())); });
+  const c111 = cmpSym && cmpSym.find(r => r[0] === '111111');
+  (c111 && c111[1] === 'גן הדקל' && c111[2] === '3' && c111[3] === '2')
+    ? ok('סמל 111111: 3 בתוכנה · 2 בעירייה') : bad('סיכום ההשוואה שגוי', [JSON.stringify(cmpSym)]);
+  const cmpDiff = await p.evaluate(() => {
+    const b = document.querySelector('#muni-dl-diff'); if (!b) return null;
+    return [...b.closest('div[style]').parentElement.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim())); });
+  /* לאה: אצלנו 222222, בעירייה 111111 · חנה: אצלנו 111111, בעירייה 222222 */
+  (cmpDiff && cmpDiff.length === 2)
+    ? ok('שתי אי-התאמות סמל אותרו') : bad('רשימת ההפרשים בהשוואה שגויה', [JSON.stringify(cmpDiff)]);
+  await p.evaluate(() => { const m = document.querySelector('#muni-mode'); m.value = 'update'; m.dispatchEvent(new Event('change')); });
 
   console.log('\n9. רשימת ת"ז נטו — בלי כותרות');
   await load(p, '300000001\n300000003');
@@ -268,6 +312,93 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
       ? ok('ההשלמה עובדת גם בעיצוב החדש') : bad('ההשלמה נכשלה בעיצוב החדש', [JSON.stringify(labS1)]);
   }
   errs2.length ? bad('שגיאות בעמוד העיצוב החדש', errs2) : ok('אין שגיאות JavaScript בעיצוב החדש');
+
+  console.log('\n11. קובץ xlsx אמיתי');
+  /* בונים xlsx מינימלי בזיכרון (ZIP + XML) ומזינים אותו ל-readFileSmart
+     כמו שהדפדפן מזין קובץ שנבחר. הת"ז של מרים נשמרת כמספר — ולכן היא
+     מגיעה בלי האפס המוביל, בדיוק כמו באקסל אמיתי. */
+  const XROWS = [
+    ['מספר תיק','מספר זהות','שם משפחה','שם פרטי','שם האם','נייד אם','סמל מוסד'],
+    ['9001','300000001','כהן','רחל','ברכה','052-1111111','111111'],
+    ['9005','12345678','גולד','מרים','זהבה','054-5555555','222222'],
+  ];
+  await p.evaluate(() => { DB.students.forEach(s => { s.motherName=''; s.momMobile=''; s.absorbedMunicipality=false; }); });
+  const xlsxText = await p.evaluate(async rows => {
+    /* --- בניית xlsx: ZIP בלי דחיסה (method 0), עם CRC32 אמיתי --- */
+    const enc = new TextEncoder();
+    const tbl = (() => { const t = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+    const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = tbl[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const col = i => { let s = '', n = i + 1; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - m - 1) / 26; } return s; };
+    const strings = []; const sidx = new Map();
+    const sheetRows = rows.map((r, ri) => '<row r="' + (ri + 1) + '">' + r.map((v, ci) => {
+      const ref = col(ci) + (ri + 1);
+      if (/^\d+$/.test(v)) return '<c r="' + ref + '"><v>' + v + '</v></c>';   // מספר — כך אקסל מאבד אפס מוביל
+      if (!sidx.has(v)) { sidx.set(v, strings.length); strings.push(v); }
+      return '<c r="' + ref + '" t="s"><v>' + sidx.get(v) + '</v></c>';
+    }).join('') + '</row>').join('');
+    const files = {
+      '[Content_Types].xml': '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>',
+      'xl/workbook.xml': '<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="רשימת העירייה" sheetId="1" r:id="rId1"/></sheets></workbook>',
+      'xl/_rels/workbook.xml.rels': '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+      'xl/sharedStrings.xml': '<?xml version="1.0"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + strings.length + '" uniqueCount="' + strings.length + '">' + strings.map(t => '<si><t>' + esc(t) + '</t></si>').join('') + '</sst>',
+      'xl/worksheets/sheet1.xml': '<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>' + sheetRows + '</sheetData></worksheet>',
+    };
+    const locals = [], central = []; let off = 0;
+    for (const name of Object.keys(files)) {
+      const nb = enc.encode(name), db = enc.encode(files[name]), crc = crc32(db);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(8, 0, true);
+      lh.setUint32(14, crc, true); lh.setUint32(18, db.length, true); lh.setUint32(22, db.length, true);
+      lh.setUint16(26, nb.length, true);
+      locals.push(new Uint8Array(lh.buffer), nb, db);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(6, 20, true); ch.setUint16(10, 0, true);
+      ch.setUint32(16, crc, true); ch.setUint32(20, db.length, true); ch.setUint32(24, db.length, true);
+      ch.setUint16(28, nb.length, true); ch.setUint32(42, off, true);
+      central.push(new Uint8Array(ch.buffer), nb);
+      off += 30 + nb.length + db.length;
+    }
+    const cdSize = central.reduce((a, b) => a + b.length, 0);
+    const eo = new DataView(new ArrayBuffer(22));
+    eo.setUint32(0, 0x06054b50, true);
+    eo.setUint16(8, Object.keys(files).length, true); eo.setUint16(10, Object.keys(files).length, true);
+    eo.setUint32(12, cdSize, true); eo.setUint32(16, off, true);
+    const blob = new Blob([...locals, ...central, new Uint8Array(eo.buffer)]);
+    const file = new File([blob], 'muni.xlsx');
+    return await new Promise(res => readFileSmart(file, txt => res(txt)));
+  }, XROWS);
+  /\uFFFD|PK/.test(xlsxText.slice(0, 40))
+    ? bad('ה-xlsx עדיין נקרא כטקסט', [JSON.stringify(xlsxText.slice(0, 60))])
+    : ok('ה-xlsx נקרא כטבלה, לא כג׳יבריש');
+  xlsxText.split(/\r?\n/)[0] === 'מספר תיק,מספר זהות,שם משפחה,שם פרטי,שם האם,נייד אם,סמל מוסד'
+    ? ok('שורת הכותרות נקראה מהגיליון') : bad('הכותרות שגויות', [xlsxText.split(/\r?\n/)[0]]);
+
+  await load(p, xlsxText);
+  const xcols = await mapRows(p);
+  (xcols.length === 7 && xcols.filter(c => c.on).length === 6 && !xcols[0].on)
+    ? ok('6 מתוך 7 עמודות זוהו; "מספר תיק" נשאר כבוי') : bad('המיפוי מה-xlsx שגוי', [JSON.stringify(xcols)]);
+  await run(p);
+
+  console.log('\n12. ת"ז שאיבדה אפס מוביל');
+  const s5 = await stu(p, '012345678');
+  (s5 && s5.motherName === 'זהבה' && s5.momMobile === '054-5555555' && s5.absorbedMunicipality)
+    ? ok('"12345678" שבקובץ התאים ל-"012345678" שבתוכנה') : bad('ההתאמה לפי אפס מוביל נכשלה', [JSON.stringify(s5)]);
+  const xst = await stats(p);
+  xst['תיקים חדשים שנפתחו'] === 0 ? ok('לא נפתח תיק כפול למרים') : bad('נפתח תיק כפול', [JSON.stringify(xst)]);
+
+  console.log('\n13. קובץ בינארי שאינו xlsx');
+  const beforeTxt = await p.evaluate(() => document.querySelector('#muni-text').value);
+  const kept = await p.evaluate(async () => {
+    const f = new File([new Uint8Array([0xD0, 0xCF, 0x11, 0xE0, 0, 1, 2, 3])], 'old.xls');
+    let called = false;
+    readFileSmart(f, () => { called = true; document.querySelector('#muni-text').value = 'זוהם'; });
+    await new Promise(r => setTimeout(r, 300));
+    return { called, text: document.querySelector('#muni-text').value };
+  });
+  (!kept.called && kept.text === beforeTxt)
+    ? ok('xls ישן נעצר בהודעה, והתיבה לא זוהמה') : bad('הקובץ הבינארי נכנס לתיבה', [JSON.stringify(kept.called)]);
 
   if (!errs.length) ok('אין שגיאות JavaScript'); else bad('שגיאות בעמוד', errs);
   await browser.close(); server.close();
