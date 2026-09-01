@@ -182,8 +182,12 @@ const bad=(m,d)=>{ fail++; console.log('❌ '+m); (d||[]).forEach(x=>console.log
     else                      ok(file+' — '+writes.length+' חלונות הדפסה/PDF מקבלים את גופני העיצוב וסדר המשפחות הנכון');
   }
 
-  /* --- 6. מעבדה כבויה = אפס השפעה -------------------------------------- */
-  for(const page of ['register.html','management.html','app-artifact.html','test.html']){
+  /* --- 6. העיצוב הקודם = אפס השפעה --------------------------------------
+     עד השחרור זה היה "בלי דגל". עכשיו העיצוב החדש הוא ברירת המחדל, ולכן
+     הבדיקה נכנסת במפורש עם ‎?ui=old‎ — וממשיכה לוודא את אותו הדבר: מי
+     שביקשה את הקודם אינה מקבלת ממנו מחלקה, קובץ או גופן. */
+  for(const page of ['register.html?ui=old','management.html?ui=old',
+                     'app-artifact.html?ui=old','test.html?ui=old']){
     const ctx=await browser.newContext();
     const q=await ctx.newPage();
     const extra=[];
@@ -191,9 +195,9 @@ const bad=(m,d)=>{ fail++; console.log('❌ '+m); (d||[]).forEach(x=>console.log
     await q.goto(base+page,{waitUntil:'load'});
     await q.waitForTimeout(700);
     const cls=await q.evaluate(()=>document.documentElement.className);
-    if(cls.includes('ui-lab')) bad(page+' (מעבדה כבויה) — המחלקה ui-lab נוספה בכל זאת');
-    else if(extra.length)      bad(page+' (מעבדה כבויה) — נטענו קבצים של המעבדה', extra);
-    else                       ok(page+' (מעבדה כבויה) — אין מחלקה, אין CSS, אין גופן. אפס השפעה');
+    if(cls.includes('ui-lab')) bad(page+' (העיצוב הקודם) — המחלקה ui-lab נוספה בכל זאת');
+    else if(extra.length)      bad(page+' (העיצוב הקודם) — נטענו קבצים של העיצוב החדש', extra);
+    else                       ok(page+' (העיצוב הקודם) — אין מחלקה, אין CSS, אין גופן. אפס השפעה');
     await ctx.close();
   }
 

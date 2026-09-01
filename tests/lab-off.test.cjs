@@ -1,18 +1,18 @@
 /* ============================================================================
-   העיצוב הקיים — בדיקת אי-השפעה (Playwright + Chromium)
+   העיצוב הקודם — בדיקת דרך היציאה (Playwright + Chromium)
    ----------------------------------------------------------------------------
-   טוענת את index.html האמיתי **בלי דגל המעבדה**, כלומר בדיוק כמו שמשתמש
-   רגיל רואה אותו, ומוודאת שמה שנבנה למעבדה אינו דולף אליו:
+   ⚠️ הבדיקה הזאת התהפכה עם שחרור העיצוב החדש לכולם. עד השחרור היא טענה את
+   index.html **בלי דגל** — וזה היה מה שכל משתמש רואה — וּודאה שהמעבדה אינה
+   דולפת אליו. עכשיו "בלי דגל" הוא העיצוב החדש, והעיצוב הקודם הוא בחירה
+   מפורשת: ‎?ui=old‎. לכן הבדיקה נכנסת דרכה, ושואלת שתי שאלות במקום אחת:
 
-     1. אין מחלקת ui-lab, אין ui-lab.css, אין ui-lab.js ואין וו __uiLab.
-     2. מסך הצוות נשאר כפי שהיה — הכותרת "רשימת צוות הגנים", תשע עמודות
-        בטבלה ושלושת הכפתורים המקוריים. אף אלמנט של המעבדה אינו נכנס.
-     3. חלון ייבוא הצוות נשאר בלי מצב "עדכון לפי ת"ז" ובלי שינוי כותרת.
-     4. העמודות הנוספות בטבלת התלמידות נשארות "הכל או כלום", בכפתור אחד —
-        בורר העמודות שנבנה למעבדה אינו מופיע כאן.
+     א. שהיציאה באמת יוצאת — אין מחלקת ui-lab, אין ui-lab.css, אין ui-lab.js
+        ואין וו __uiLab, ושבורר העיצוב מוצע בחזרה פנימה.
+     ב. ⭐ שהיציאה אינה עולה ביכולת. מה שנבנה בתקופת המעבדה — ייצוא הצוות,
+        "עדכון לפי ת"ז" — קיים גם כאן. זה הלב של השחרור: העיצוב הקודם הוא
+        מראה אחר לאותה תוכנה, לא גרסה מקוצצת שלה.
 
-   למה זו בדיקה נפרדת: כל שאר הבדיקות רצות עם המעבדה דלוקה, ולכן אף אחת
-   מהן לא הייתה מגלה דליפה לעיצוב שכל המשתמשים רואים.
+   ומה שנשאר שייך לעיצוב החדש בלבד (בורר העמודות) — נבדק שאינו דולף לכאן.
 
    הרצה:  NODE_PATH=$(npm root) node tests/lab-off.test.cjs
    ============================================================================ */
@@ -79,10 +79,10 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
   await new Promise(r=>server.listen(PORT,'127.0.0.1',r));
   const b=await chromium.launch({executablePath:process.env.PW_CHROME||'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',args:['--no-sandbox']});
   const ctx=await b.newContext({viewport:{width:1440,height:900}});
-  /* ⚠️ בלי addInitScript — כלומר בלי דגל המעבדה. זה בדיוק מה שרואה משתמש רגיל. */
+  /* ⚠️ ‎?ui=old‎ — בחירה מפורשת בעיצוב הקודם. "בלי דגל" כבר אינו הכיבוי. */
   const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  await p.goto('http://127.0.0.1:'+PORT+'/app.html',{waitUntil:'load'});
+  await p.goto('http://127.0.0.1:'+PORT+'/app.html?ui=old',{waitUntil:'load'});
   await p.waitForTimeout(1200);
   await p.evaluate(SEED);
 
@@ -92,9 +92,20 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
     labJs:    !!document.querySelector('script[src*="ui-lab.js"]'),
     hook:     typeof window.__uiLab
   }));
-  if(shell.labClass||shell.labCss||shell.labJs) bad('המעבדה נדלקה בלי הדגל',[JSON.stringify(shell)]);
-  else if(shell.hook!=='undefined') bad('וו __uiLab נחשף למשתמש רגיל',['typeof = '+shell.hook]);
-  else ok('בלי הדגל: אין מחלקה, אין CSS, אין JS ואין וו __uiLab');
+  if(shell.labClass||shell.labCss||shell.labJs) bad('העיצוב החדש נטען למרות ?ui=old',[JSON.stringify(shell)]);
+  else if(shell.hook!=='undefined') bad('וו __uiLab נחשף בעיצוב הקודם',['typeof = '+shell.hook]);
+  else ok('?ui=old: אין מחלקה, אין CSS, אין JS ואין וו __uiLab');
+
+  /* --- 0ב. הדרך חזרה — השבב בפינה והבורר שבהגדרות ---------------------- */
+  const sw=await p.evaluate(()=>{
+    const a=document.querySelector('.skin-switch');
+    return a ? { txt:a.textContent.trim(), q:new URL(a.href,location.href).searchParams.get('ui'),
+                 pos:getComputedStyle(a).position } : null;
+  });
+  if(!sw)             bad('אין שבב בורר עיצוב — מי שיצאה לעיצוב הקודם אינה יכולה לחזור');
+  else if(sw.q!=='new') bad('השבב אינו מחזיר לעיצוב החדש',[JSON.stringify(sw)]);
+  else if(sw.pos!=='fixed') bad('השבב אינו מעוצב — ui-lab.css אינו נטען כאן, והעיצוב חייב להיות מקומי',[sw.pos]);
+  else ok('שבב בורר העיצוב קיים, מעוצב, ומחזיר ל-?ui=new: '+sw.txt);
 
   await p.evaluate(t=>{ __set('active',t); route(); },'staff'); await p.waitForTimeout(700);
   const st=await p.evaluate(()=>({
@@ -109,26 +120,49 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
     stage:!!document.querySelector('.lab-ststage'),
     hidden: !!(document.querySelector('#staffTable')||{}).classList.contains('lab-hidden')
   }));
-  if(st.h2!=='רשימת צוות הגנים') bad('הכותרת בעיצוב הקיים השתנתה',['התקבל: '+st.h2]);
+  if(st.h2!=='רשימת צוות הגנים') bad('הכותרת בעיצוב הקודם השתנתה',['התקבל: '+st.h2]);
   else if(st.cols.join('|')!=='שם משפחה|שם פרטי|ת"ז|תפקיד|חינוך|טלפון|נייד|מייל|עיר')
-    bad('עמודות הטבלה בעיצוב הקיים השתנו',[st.cols.join(' · ')]);
-  else if(st.btns.join(',')!=='impStaff') bad('כפתורי המסך השתנו',[st.btns.join(' · ')])
+    bad('עמודות הטבלה בעיצוב הקודם השתנו',[st.cols.join(' · ')]);
+  /* ⭐ ייצוא הצוות נבנה בתקופת המעבדה ורץ בה בלבד. עם השחרור הוא נולד
+     ב-index.html עצמו, ולכן הוא חייב להיות כאן — אחרת החזרה לעיצוב הקודם
+     גובה יכולת. */
+  else if(st.btns.join(',')!=='impStaff,labStaffExp')
+    bad('כפתורי המסך אינם ייבוא + ייצוא',[st.btns.join(' · ')])
   else if(!st.fabOn || st.fabLbl!=='הוספת איש/אשת צוות')
     bad('הכפתור המרחף אינו מציע "הוספת איש/אשת צוות"',[JSON.stringify(st)]);
-  else if(st.lab||st.stage||st.hidden) bad('אלמנטים של המעבדה נכנסו לעיצוב הקיים',[JSON.stringify(st)]);
+  else if(st.stage||st.hidden) bad('אלמנטים של העיצוב החדש נכנסו לעיצוב הקודם',[JSON.stringify(st)]);
   else if(st.rows!==1) bad('הרשימה אינה מציגה את הרשומה',['שורות: '+st.rows]);
-  else ok('מסך הצוות בעיצוב הקיים: כותרת, 9 עמודות, "ייבוא" בסרגל וההוספה בכפתור המרחף');
+  else ok('מסך הצוות בעיצוב הקודם: כותרת, 9 עמודות, ייבוא *וייצוא* בסרגל, וההוספה בכפתור המרחף');
 
+  /* חלון הייצוא עצמו נפתח — לא רק הכפתור קיים */
+  await p.evaluate(()=>{ document.querySelector('#labStaffExp').click(); }); await p.waitForTimeout(500);
+  const xp=await p.evaluate(()=>({
+    h3:(document.querySelector('#modal h3')||{}).textContent||'',
+    cols:document.querySelectorAll('#modal .sx-col').length }));
+  if(!/ייצוא/.test(xp.h3)||!xp.cols) bad('חלון ייצוא הצוות לא נפתח בעיצוב הקודם',[JSON.stringify(xp)]);
+  else ok('ייצוא הצוות עובד בעיצוב הקודם: '+xp.cols+' שדות לבחירה');
+  await p.evaluate(()=>closeModal()); await p.waitForTimeout(400);
+  await p.evaluate(()=>{ __set('active','staff'); route(); }); await p.waitForTimeout(700);
+
+  /* ⭐ "עדכון לפי ת"ז" — גם הוא נבנה במעבדה, וגם הוא חייב להיות כאן.
+     שתי המחלקות lab-modes/lab-mode נשארו בשמן, ולכן צריך גם לוודא שיש
+     להן עיצוב: ui-lab.css אינו נטען כאן, וכללי הבסיס יושבים ב-<style>
+     של העמוד. בלעדיהם הבורר היה שתי מילים ערומות. */
   await p.evaluate(()=>{ document.querySelector('#impStaff').click(); }); await p.waitForTimeout(600);
-  const im=await p.evaluate(()=>({
-    h3:(document.querySelector('#modal h3')||{}).textContent,
-    modes:document.querySelectorAll('#modal .lab-mode').length,
-    tzPane:!!document.querySelector('#modal #stu-pane-tz'),
-    fields:document.querySelectorAll('#modal fieldset').length
-  }));
-  if(im.h3!=='ייבוא אנשי צוות מקובץ') bad('כותרת חלון הייבוא השתנתה',['התקבל: '+im.h3]);
-  else if(im.modes||im.tzPane) bad('מצב "עדכון לפי ת"ז" דלף לעיצוב הקיים',[JSON.stringify(im)]);
-  else ok('חלון ייבוא הצוות בעיצוב הקיים: אותה כותרת, בלי מצבים ובלי מקטע ת"ז');
+  const im=await p.evaluate(()=>{
+    const b=document.querySelector('#modal .lab-mode');
+    return { h3:(document.querySelector('#modal h3')||{}).textContent,
+      modes:document.querySelectorAll('#modal .lab-mode').length,
+      tzPane:!!document.querySelector('#modal #stu-pane-tz'),
+      wrap:!!document.querySelector('#modal .lab-modes'),
+      styled:b?getComputedStyle(b).borderRadius:'',
+      fields:document.querySelectorAll('#modal fieldset').length };
+  });
+  if(im.h3!=='ייבוא ועדכון אנשי צוות') bad('כותרת חלון הייבוא אינה מדברת בעד שני המצבים',['התקבל: '+im.h3]);
+  else if(im.modes!==2||!im.tzPane) bad('מצב "עדכון לפי ת"ז" חסר בעיצוב הקודם',[JSON.stringify(im)]);
+  else if(!im.wrap||im.styled==='0px') bad('בורר המצבים אינו מעוצב — חסרים כללי הבסיס ב-<style>',[JSON.stringify(im)]);
+  else ok('חלון ייבוא הצוות בעיצוב הקודם: שני מצבים, מקטע ת"ז, ובורר מעוצב');
+  await p.evaluate(()=>closeModal()); await p.waitForTimeout(300);
 
   /* --- מקטעי ההגדרות בסרגל הניווט ------------------------------------- */
   await p.evaluate(()=>{ DB.settings.admins=['x@y.z']; __set('active','settings'); route(); });
@@ -151,6 +185,18 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
   else if(nv.dead.length)   bad('מקטעים בסרגל שאין להם יעד במסך',[nv.dead.join(' · ')]);
   else if(nv.admOnly.length) bad('מקטעי מנהל־בלבד הוצגו למי שאינו מנהל',[nv.admOnly.join(' · ')]);
   else ok('סרגל הניווט: '+nv.groups+' קבוצות ו-'+nv.items.length+' מקטעי הגדרות, כולם מובילים לפאנל');
+
+  /* --- בורר העיצוב שבהגדרות — המקום הקבוע שלו, בשני העיצובים ---------- */
+  const sk=await p.evaluate(()=>{
+    const pan=document.querySelector('#view [data-set="skin"]');
+    if(!pan) return null;
+    const b=id=>{ const e=pan.querySelector('#'+id); return e?{txt:e.textContent.trim(),ghost:e.classList.contains('ghost')}:null; };
+    return { nw:b('skin-new'), od:b('skin-old') };
+  });
+  if(!sk||!sk.nw||!sk.od) bad('אין בורר עיצוב במסך ההגדרות');
+  else if(sk.od.ghost||!sk.nw.ghost)
+    bad('הבורר אינו מסמן שהעיצוב הקודם הוא הנבחר',[JSON.stringify(sk)]);
+  else ok('בורר העיצוב בהגדרות מסמן את הנבחר: '+sk.od.txt);
 
   const jump=await p.evaluate(async()=>{
     document.querySelector('.drawer-nav [data-setnav]').click();
@@ -183,8 +229,8 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
   const c1=await snap();
   await p.evaluate(()=>document.querySelector('#stuColsBtn').click()); await p.waitForTimeout(500);
   const c2=await snap();
-  if(c0.menu||c1.menu)      bad('בורר העמודות של המעבדה הופיע בעיצוב הקיים');
-  else if(c0.xoff||c1.xoff) bad('מחלקות lab-xoff נכתבו על <html> בלי המעבדה');
+  if(c0.menu||c1.menu)      bad('בורר העמודות של העיצוב החדש הופיע בעיצוב הקודם');
+  else if(c0.xoff||c1.xoff) bad('מחלקות lab-xoff נכתבו על <html> בעיצוב הקודם');
   else if(!c0.btnVisible)   bad('כפתור "עמודות נוספות" נעלם');
   else if(c0.cols!==6||c0.cells!==6) bad('ברירת המחדל אינה שש עמודות',[JSON.stringify(c0)]);
   else if(c1.cols!==13||c1.cells!==13) bad('הכפתור לא פתח את כל שבע הנוספות',[JSON.stringify(c1)]);
@@ -195,6 +241,6 @@ const ok=m=>console.log('✅ '+m), bad=(m,d)=>{fail++;console.log('❌ '+m);(d||
   const real=errs.filter(e=>!/Failed to load resource|net::ERR_/.test(e));
   if(real.length) bad('נזרקו שגיאות JS',real.slice(0,5)); else ok('אף שגיאת JS לא נזרקה');
   console.log('============================================');
-  console.log(fail? 'תוצאה: '+fail+' נכשלו' : 'תוצאה: העיצוב הקיים לא השתנה בכלל ✅');
+  console.log(fail? 'תוצאה: '+fail+' נכשלו' : 'תוצאה: העיצוב הקודם שלם — יוצא באמת, ולא גובה אף יכולת ✅');
   await b.close(); server.close(); process.exit(fail?1:0);
 })();

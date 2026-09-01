@@ -38,19 +38,51 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="רשת הגנים">
-<!-- מעבדת עיצוב (UI Lab) — שכבת עיצוב חלופית על אותה תוכנה ואותם נתונים חיים.
-     כבויה כברירת מחדל: בלי הדגל הקוד הזה אינו עושה דבר ואף משתמש אינו מושפע.
-     הפעלה ‎?ui=new‎ · כיבוי ‎?ui=off‎ · הבחירה נזכרת במכשיר (localStorage).
+<!-- עיצוב התוכנה — העיצוב החדש, לכל המשתמשים. עד היום הוא ישב מאחורי דגל
+     ("מעבדת עיצוב") והיה כבוי כברירת מחדל; עכשיו הוא ברירת המחדל, והדגל
+     שנשאר הוא בורר זמני לימי המעבר בלבד:
+       ‎?ui=old‎ — חזרה לעיצוב הקודם · ‎?ui=new‎ — חזרה לחדש.
+     הבחירה נזכרת במכשיר (localStorage, מפתח uiLab) ולפי דפדפן, לא לפי משתמש.
+     שני העיצובים מריצים את אותה תוכנה ואת אותן היכולות — מה שנבנה בתקופת
+     המעבדה עובד בשניהם. ההבדל הוא בעיצוב בלבד. ראה docs/UI_LAB.md.
      העיצוב עצמו יושב כולו ב-ui-lab.css, תחום ל-html.ui-lab. -->
 <script>(function(){try{
   var p=new URLSearchParams(location.search).get('ui');
-  /* רשימה לבנה, לא רשימה שחורה: רק ?ui=new מדליק. כל ערך אחר מכבה.
-     קודם כל ערך שאינו off/0/ריק הדליק ונשמר — כך ש-?ui=1 או שגיאת הקלדה
-     בלינק היו מעבירים משתמש אמיתי לעיצוב שטרם שוחרר, על נתונים חיים. */
-  if(p!==null){ if(p==='new'){ localStorage.setItem('uiLab','new'); } else { localStorage.removeItem('uiLab'); } }
-  /* גם ערך ישן שנשמר במכשיר לפני השינוי מנוקה כאן. */
-  if(localStorage.getItem('uiLab') && localStorage.getItem('uiLab')!=='new'){ localStorage.removeItem('uiLab'); }
-  if(!localStorage.getItem('uiLab')) return;
+  /* הרשימה הלבנה התהפכה. קודם רק ‎?ui=new‎ הדליק, כי העיצוב טרם שוחרר וכל
+     ערך אחר היה חייב לכבות. עכשיו החדש הוא ברירת המחדל, ורק ‎?ui=old‎ מחזיר
+     לקודם — ‎?ui=off‎ מקובל אף הוא, כי זו הייתה כתובת הכיבוי והיא עדיין
+     מסתובבת בקישורים ישנים. כל ערך אחר, שגיאת הקלדה בכלל זה, נשאר על
+     החדש: הנפילה היא שוב אל הצד הבטוח, רק שהצד הבטוח התחלף. */
+  if(p!==null){ localStorage.setItem('uiLab',(p==='old'||p==='off')?'old':'new'); }
+  var oldSkin = localStorage.getItem('uiLab')==='old';
+
+  /* ── בורר העיצוב — שבב בפינה, בשני העיצובים ─────────────────────────
+     ⚠️ זמני, לימי המעבר בלבד. הכל כאן ניתן למחיקה בבת אחת: העיצוב עצמו
+     אינו תלוי בו, והבורר שבמסך ההגדרות ימשיך לעבוד גם בלעדיו.
+     העיצוב שלו נכתב כאן ולא ב-ui-lab.css, כי הוא נדרש דווקא גם בעיצוב
+     הקודם — ושם ui-lab.css אינו נטען כלל. */
+  var s=document.createElement('style');
+  s.textContent='.skin-switch{position:fixed;inset-block-end:12px;inset-inline-start:12px;z-index:9999;'
+   +'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;'
+   +'font-size:.78rem;font-weight:700;line-height:1;text-decoration:none;color:#fff;'
+   +'background:rgba(23,36,29,.72);box-shadow:0 4px 14px rgba(0,0,0,.28);opacity:.72;'
+   +'transition:opacity .15s}'
+   +'.skin-switch:hover{opacity:1}'
+   +'.skin-switch.back{background:#2c6a4c;opacity:.95}'
+   +'@media print{.skin-switch{display:none}}';
+  document.head.appendChild(s);
+  document.addEventListener('DOMContentLoaded',function(){
+    if(document.querySelector('.skin-switch')) return;
+    var u=new URL(location.href); u.searchParams.set('ui', oldSkin?'new':'old');
+    var a=document.createElement('a');
+    a.className='skin-switch'+(oldSkin?' back':'');
+    a.href=u.pathname+u.search+u.hash;
+    a.textContent=oldSkin?'\u21A9 חזרה לעיצוב החדש':'\u21A9 לעיצוב הקודם';
+    a.title=oldSkin?'העיצוב החדש':'חזרה לעיצוב שהיה עד היום — הכל ממשיך לעבוד בשניהם';
+    document.body.appendChild(a);
+  });
+
+  if(oldSkin) return;
   document.documentElement.classList.add('ui-lab');
   /* גופני העיצוב מוקדמים לקובץ ה-CSS: בלי זה הדפדפן מגלה אותם רק אחרי
      ניתוח ui-lab.css, והעמוד מהבהב לרגע בגופן המערכת (FOUT). רק תת-הקבוצה
@@ -61,24 +93,14 @@
     pl.rel='preload'; pl.as='font'; pl.type='font/woff2'; pl.crossOrigin='anonymous'; pl.href=f;
     document.head.appendChild(pl);
   });
-  /* התג נוסף רק אחרי ש-ui-lab.css באמת נטען. app-artifact.html משמש גם
-     כארטיפקט עצמאי, ושם הקובץ אינו לצידו והבקשה נכשלת בשקט — ואז התג היה
-     נשאר קישור בלי עיצוב בתחתית עמוד שכולו בעיצוב הרגיל. */
-  var cssOk=false, domOk=false, badged=false;
-  function badge(){
-    if(!cssOk||!domOk||badged) return; badged=true;
-    var u=new URL(location.href); u.searchParams.set('ui','off');
-    var a=document.createElement('a');
-    a.className='ui-lab-badge'; a.href=u.pathname+u.search+u.hash;
-    a.textContent='\u{1F9EA} מעבדת עיצוב — יציאה';
-    a.title='חזרה לעיצוב הרגיל';
-    document.body.appendChild(a);
-  }
   var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css';
-  l.onload=function(){ cssOk=true; badge(); };
+  /* ⚠️ רשת ביטחון שלא נדרשה כשהעיצוב היה מאחורי דגל: המחלקה נוספת עכשיו
+     לכל משתמש, לפני שידוע אם הקובץ בכלל הגיע. אם לא הגיע (ארטיפקט עצמאי,
+     מטמון חסר) — המחלקה יורדת, והעמוד נשאר שלם בעיצוב הקודם במקום להיתקע
+     בין השניים. */
+  l.onerror=function(){ document.documentElement.classList.remove('ui-lab'); };
   document.head.appendChild(l);
   var j=document.createElement('script'); j.src='ui-lab.js'; j.async=false; document.head.appendChild(j);
-  document.addEventListener('DOMContentLoaded',function(){ domOk=true; badge(); });
 }catch(e){}})();</script>
 <style>
 :root{--rg-build:"rg-b05ea2eb";
@@ -97,6 +119,16 @@ input,select,textarea{font:inherit;color:var(--ink);background:var(--surface-2);
 input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);border-color:var(--accent)}
 label{font-size:.82rem;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:4px}
 a{color:var(--accent)}
+
+/* בורר שני המצבים שבחלון ייבוא הצוות (ייבוא חדשים · עדכון לפי ת"ז). נבנה
+   בתקופת המעבדה, ולכן שמות המחלקות פותחים ב-lab; מרגע שהיכולת קיימת בשני
+   העיצובים הוא זקוק לכללי בסיס גם כאן, ולא רק ב-ui-lab.css. שם הכללים
+   תחומים ל-html.ui-lab, ולכן גוברים על אלה בעיצוב החדש. */
+.lab-modes{display:inline-flex;gap:2px;padding:3px;margin:10px 0 14px;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:12px}
+.lab-mode{background:none;border:0;border-radius:9px;padding:8px 16px;
+  font:inherit;font-size:.85rem;font-weight:600;color:var(--ink-soft);cursor:pointer}
+.lab-mode.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
 
 /* header */
 header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bottom:1px solid var(--border);
@@ -2793,6 +2825,7 @@ const SETTINGS_SECTIONS = [
   { k:"auth",          label:"חשבון והתחברות" },
   { k:"feedback",      label:"פניות והצעות שיפור", admin:true },
   { g:"מראה והתקנה" },
+  { k:"skin",          label:"עיצוב התוכנה" },
   { k:"branding",      label:"מיתוג והתקנה" }
 ];
 let setNavOpen=false;          // האם רשימת מקטעי ההגדרות פרושה בסרגל
@@ -2929,8 +2962,9 @@ function renderFab(){
 document.addEventListener("click", e=>{ if(_fabOpen && !e.target.closest("#fabWrap")) fabToggle(false); });
 document.addEventListener("keydown", e=>{ if(_fabOpen && e.key==="Escape"){ fabToggle(false); const b=$("#fabBtn"); if(b) b.focus(); } });
 
-/* מעבדת עיצוב — הוו שסרגל הצד והמסכים צריכים (יעד, מונים, משתמש, ניווט).
-   פעיל רק כשהמעבדה דלוקה; בתוכנה הרגילה השורה הזו לא עושה דבר. ראה docs/UI_LAB.md.
+/* הוו שסרגל הצד והמסכים של העיצוב החדש צריכים (יעד, מונים, משתמש, ניווט).
+   נבנה רק כשהעיצוב החדש דלוק — כלומר כברירת מחדל; מי שבחרה בעיצוב הקודם
+   (‎?ui=old‎) אינה מקבלת אותו כלל, ואין לו שם צרכן. ראה docs/UI_LAB.md.
 
    ⚠️ הוו אינו קריאה־בלבד עוד. stats() ו-go() אכן קוראים בלבד, אבל שלוש
    פונקציות כותבות למסד: saveAges · saveCampuses · saveRoles — כולן חסומות
@@ -4136,6 +4170,18 @@ function guideContent(){
     </ol>`;
 
   const sections = [
+    /* ⚠️ פרק זמני, לימי המעבר. אחרי שהעיצוב הקודם יימחק — הפרק יורד איתו. */
+    { icon:"✨", title:"העיצוב החדש — ומה קורה למי שמעדיפה את הקודם", html:
+      `<div class="gd-tip">✨ <b>מהיום התוכנה נראית אחרת.</b> אותה תוכנה בדיוק, אותם נתונים, אותן פעולות — מראה חדש. אין מה להגדיר ואין מה ללמוד מחדש: כל מה שידעת לעשות אתמול נמצא במקום שהגיוני לחפש אותו.</div>
+      <ul>
+        <li><b>מה השתנה</b> — סרגל הניווט עבר לצד המסך וגלוי כל הזמן (בטלפון הוא סרגל תחתון), מסך הבית מרכז את המספרים החשובים, וההגדרות מקובצות לכרטיסים במקום רשימה ארוכה.</li>
+        <li><b>רוצה את העיצוב הקודם?</b> <span class="gd-pill warn">לימי המעבר</span> — בפינה התחתונה של המסך יש שבב <b>"↩ לעיצוב הקודם"</b>. לחיצה עליו מחזירה מיד. גם בכיוון ההפוך: בעיצוב הקודם יופיע שבב ירוק <b>"↩ חזרה לעיצוב החדש"</b>.</li>
+        <li><b>המקום הקבוע לבחירה</b> — <b>הגדרות → עיצוב התוכנה</b>. שם אפשר לעבור בין השניים בכל רגע, גם אחרי שהשבב שבפינה יוסר.</li>
+        <li><b>הבחירה היא שלך ושל המכשיר הזה</b> — היא נשמרת בדפדפן שאת עובדת בו, ואינה משנה דבר לאף אחת אחרת. אפשר להשאיר את הטלפון על החדש ואת המחשב על הקודם.</li>
+        <li><b>שום יכולת אינה הולכת לאיבוד</b> <span class="gd-pill ok">✔</span> — כל מה שנוסף לתוכנה בזמן שהעיצוב החדש נבנה (ייצוא רשימת הצוות, עדכון צוות לפי ת"ז, בחירת הגנים בשיבוץ האוטומטי) עובד <b>בשני העיצובים</b>. החזרה לקודם היא החלפת מראה בלבד.</li>
+        <li><b>העיצוב הקודם זמין לימי המעבר.</b> אין צורך למהר — אבל בסופו של דבר הוא ייסגר, וכל הפיתוח ממשיך בחדש.</li>
+      </ul>` },
+
     { icon:"🗂️", title:"מבט כללי והתמצאות", html:
       illHeader+`<ul>
         <li><b>הכותרת</b> — בצד ימין שם המערכת: "מערכת ניהול · רשת הגנים מודיעין עילית". בצד שמאל מוצגים <b>השנה</b> וה<b>חינוך</b> הפעילים (לתצוגה בלבד).</li>
@@ -6705,9 +6751,10 @@ function openBulkImport(){
       +(notFound.length?`<div class="hint" style="color:var(--warn);margin-top:6px">לא נמצאו ${notFound.length} ת"ז: ${notFound.slice(0,30).map(esc).join(", ")}${notFound.length>30?'…':''}</div>`:'');
   };
 }
-/* מעבדת עיצוב בלבד — בעיצוב החדש אין לשונית "עירייה", ולכן רשימת העירייה
-   יושבת כאן: מקטע נוסף בתחתית חלון "עדכון לפי ת"ז", אחרי העדכון לפי שדה.
-   בעיצוב הקיים הלשונית במקומה, הפונקציה יוצאת מיד והחלון אינו משתנה כלל.
+/* העיצוב החדש בלבד — שם אין לשונית "עירייה", ולכן רשימת העירייה יושבת
+   כאן: מקטע נוסף בתחתית חלון "עדכון לפי ת"ז", אחרי העדכון לפי שדה.
+   בעיצוב הקודם הלשונית במקומה, הפונקציה יוצאת מיד והחלון אינו משתנה —
+   כלומר היכולת קיימת בשני העיצובים, כל אחד במקום שיש לו.
    ראה docs/UI_LAB.md. */
 function labMuniInBulk(){
   if(!document.documentElement.classList.contains("ui-lab")) return;
@@ -7451,7 +7498,7 @@ function viewMap(root){
   const cities=mapCityOptions();
   if(!_mapState.inited){ _mapState.inited=true; _mapState.edu=activeEdu||null; _mapState.ganIds=null; _mapState.allStudents=false;
     _mapState.city=cities[0]||null; }   // ברירת מחדל: העיר הנפוצה ביותר (מצמצם בלבול מערים אחרות)
-  /* מעבדת עיצוב: בורר החינוך של המפה יורד מהמסך — בורר החינוך הכללי
+  /* העיצוב החדש: בורר החינוך של המפה יורד מהמסך — בורר החינוך הכללי
      (הכל · רגיל · ח"מ) כבר קובע את כל התוכנה, ושני בוררים לאותו דבר סותרים
      זה את זה. כאן המפה פשוט הולכת אחרי הבורר הכללי. */
   if(document.documentElement.classList.contains("ui-lab") && (_mapState.edu||"")!==(activeEdu||"")){
@@ -7737,8 +7784,9 @@ function mapMarker(L, pt, opts){
 /* אייקון גן — דגל טיפה עם לוגו הרשת (מהמיתוג), בצבע הייחודי של הגן */
 function mapGanIcon(L, color, g){
   color=color||"#6f42c1";
-  /* מעבדת עיצוב (לוח 04): הדגל נושא את שם הגן ואת התפוסה, ומאדים כשהגן מלא.
-     פעיל רק כשהמעבדה דלוקה — אחרת נשאר דגל הטיפה המקורי.
+  /* העיצוב החדש (לוח 04): הדגל נושא את שם הגן ואת התפוסה, ומאדים כשהגן מלא.
+     עיצוב טהור, שנשען כולו על ui-lab.css — ולכן נשאר בעיצוב החדש בלבד;
+     בקודם נשאר דגל הטיפה המקורי.
      גודל האייקון 0×0 והמיקום נעשה ב-transform על העטיפה הפנימית, כי Leaflet
      כותב transform משלו על אלמנט האייקון עצמו. */
   if(g && document.documentElement.classList.contains("ui-lab")){
@@ -8219,46 +8267,41 @@ function autoAssignPlan(students, gans, opts){
   return { plan, skipped, caps };
 }
 /* מאגר התלמידות לשיבוץ אוטומטי — לפי הגנים שנבחרו בחלון ולפי ההיקף.
-   במעבדה נכנסות לתמונה הרשומות לאותם גנים *וגם* מי שאין לה גן כלל: בתחילת
-   השנה רוב הרשומות עדיין בלי שיבוץ, ובלעדיהן החלון היה מחזיר רשימה ריקה.
+   נכנסות לתמונה הרשומות לאותם גנים *וגם* מי שאין לה גן כלל: בתחילת השנה
+   רוב הרשומות עדיין בלי שיבוץ, ובלעדיהן החלון היה מחזיר רשימה ריקה.
    סימון "כל התלמידות" שבמפה מרחיב, כמקודם, לכלל התלמידות המוצגות.
 
-   ⚠️ בלי דגל המעבדה המאגר נשאר בדיוק כפי שהיה — mapShownStudents(), כלומר
-   רק תלמידות שכבר משובצות לגנים המסומנים. זהו נתיב כתיבה: שינוי המאגר
-   משנה את מי שהשיבוץ האוטומטי נוגע בה, ולכן אינו מגיע למשתמש בלי הדגל. */
+   ⚠️ זהו נתיב כתיבה, ולכן הוא ישב מאחורי דגל המעבדה כל עוד העיצוב החדש
+   לא שוחרר: המאגר קובע במי השיבוץ האוטומטי נוגע. מרגע השחרור הוא זהה
+   בשני העיצובים — מי שחוזרת לעיצוב הקודם מקבלת את אותו חלון ואת אותה
+   התנהגות, ולא גרסה מקוצצת שלו. הנוסח הקודם (mapShownStudents, כלומר רק
+   מי שכבר משובצת לגנים המסומנים) ירד. */
 function autoAssignPool(scope, gans){
-  let list;
-  if(document.documentElement.classList.contains("ui-lab")){
-    const ids=new Set((gans&&gans.length?gans:mapSelectedGans()).map(g=>g.id));
-    list=studentsOfYear().filter(s=>!s.finished);
-    if(_mapState.edu)  list=list.filter(s=>eduLabel(s)===_mapState.edu);
-    if(_mapState.city) list=list.filter(s=>(s.city||"").trim()===_mapState.city);
-    if(!_mapState.allStudents) list=list.filter(s=>!s.ganId || ids.has(s.ganId));
-  } else {
-    list=mapShownStudents();
-  }
+  const ids=new Set((gans&&gans.length?gans:mapSelectedGans()).map(g=>g.id));
+  let list=studentsOfYear().filter(s=>!s.finished);
+  if(_mapState.edu)  list=list.filter(s=>eduLabel(s)===_mapState.edu);
+  if(_mapState.city) list=list.filter(s=>(s.city||"").trim()===_mapState.city);
+  if(!_mapState.allStudents) list=list.filter(s=>!s.ganId || ids.has(s.ganId));
   if(scope==="unassigned") list=list.filter(s=>!s.ganId);
   else if(scope==="waiting") list=list.filter(s=>!s.ganId || s.placed===false);
   return list.filter(s=>canEditRec(s));
 }
 /* חלון השיבוץ האוטומטי */
 function openAutoAssign(){
-  /* במעבדה: הגנים שאפשר לשבץ אליהם הם אלה שמוצגים על המפה — והבחירה ביניהם
-     נעשית *כאן*, בחלון עצמו, ולא רק בסימון שבמפה: בתחילת השנה משבצים כמה
-     גנים יחד בלי לשנות את תצוגת המפה. ברירת המחדל היא מה שמסומן במפה.
+  /* הגנים שאפשר לשבץ אליהם הם אלה שמוצגים על המפה — והבחירה ביניהם נעשית
+     *כאן*, בחלון עצמו, ולא רק בסימון שבמפה: בתחילת השנה משבצים כמה גנים
+     יחד בלי לשנות את תצוגת המפה. ברירת המחדל היא מה שמסומן במפה.
 
-     ⚠️ בלי הדגל החלון נשאר כפי שהיה: הגנים הם בדיוק מה שסומן על המפה, אין
-     בורר גנים ואין ברירת מחדל של "כל הגנים". בורר שמסמן הכול כברירת מחדל
-     מרחיב את היקף השיבוץ, ולכן אינו מגיע למשתמש בלי הדגל. */
-  const LAB=document.documentElement.classList.contains("ui-lab");
-  const all=LAB ? mapGansForEdu().filter(mapGanShown) : mapSelectedGans().filter(mapGanShown);
+     ⚠️ גם זה נתיב כתיבה — בורר שמסמן הכול כברירת מחדל מרחיב את היקף
+     השיבוץ — ולכן הוא ישב מאחורי הדגל עד השחרור. עכשיו החלון זהה בשני
+     העיצובים. */
+  const all=mapGansForEdu().filter(mapGanShown);
   if(all.length<2){
-    toast(LAB ? "צריך שני גנים לפחות עם מיקום תקין על המפה — הצג/י גנים ואז נסה/י שוב"
-              : "בחר/י לפחות שני גנים על המפה (עם מיקום תקין) לשיבוץ אוטומטי");
+    toast("צריך שני גנים לפחות עם מיקום תקין על המפה — הצג/י גנים ואז נסה/י שוב");
     return;
   }
-  const pick=new Set(LAB ? mapSelectedGans().filter(mapGanShown).map(g=>g.id) : all.map(g=>g.id));
-  if(LAB && pick.size<2) all.forEach(g=>pick.add(g.id));
+  const pick=new Set(mapSelectedGans().filter(mapGanShown).map(g=>g.id));
+  if(pick.size<2) all.forEach(g=>pick.add(g.id));
   const groups={}; all.forEach(g=>{ const c=(g.campus&&g.campus.trim())||"— ללא קמפוס —"; (groups[c]=groups[c]||[]).push(g); });
   const camps=Object.keys(groups).sort((a,b)=>a.localeCompare(b,"he"));
   const ganListHtml=()=>camps.map(c=>{
@@ -8271,11 +8314,8 @@ function openAutoAssign(){
   }).join("");
   const st={ scope:"unassigned", siblings:true, respectCap:true, markPlaced:true, matchAge:true, result:null };
   const opt=(v,l,cur)=>`<option value="${v}" ${cur===v?'selected':''}>${esc(l)}</option>`;
-  const subHtml = LAB
-    ? `<div class="sub">כל תלמידה תשובץ ל<b>גן הקרוב אליה</b> מבין הגנים שנבחרו כאן — אפשר לבחור כמה גנים יחד.</div>`
-    : `<div class="sub">כל תלמידה תשובץ ל<b>גן הקרוב אליה</b> מבין <b>${all.length}</b> הגנים שנבחרו על המפה:
-      ${all.map(g=>esc(ganName(g.id))).join(" · ")}</div>`;
-  const ganBoxHtml = !LAB ? "" : `
+  const subHtml = `<div class="sub">כל תלמידה תשובץ ל<b>גן הקרוב אליה</b> מבין הגנים שנבחרו כאן — אפשר לבחור כמה גנים יחד.</div>`;
+  const ganBoxHtml = `
     <div id="aa-ganbox" class="aa-ganbox" style="margin-top:10px;border:1px solid var(--border);border-radius:10px;padding:8px">
       <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
         <b>גנים לשיבוץ</b><span class="hint" id="aa-gancnt"></span>
@@ -8330,11 +8370,9 @@ function openAutoAssign(){
     if(cnt) cnt.textContent = pick.size ? (pick.size+" נבחרו מתוך "+all.length) : "לא נבחרו גנים";
   }
   function ganPaint(){ const box=$("#aa-ganlist"); if(box) box.innerHTML=ganListHtml(); ganWire(); }
-  if(LAB){
-    ganWire();
-    $("#aa-gan-all").onclick=()=>{ all.forEach(g=>pick.add(g.id)); ganPaint(); reset(); };
-    $("#aa-gan-none").onclick=()=>{ pick.clear(); ganPaint(); reset(); };
-  }
+  ganWire();
+  $("#aa-gan-all").onclick=()=>{ all.forEach(g=>pick.add(g.id)); ganPaint(); reset(); };
+  $("#aa-gan-none").onclick=()=>{ pick.clear(); ganPaint(); reset(); };
   function calc(){
     const gans=all.filter(g=>pick.has(g.id));
     if(gans.length<2){
@@ -11296,11 +11334,17 @@ function viewStaff(root){
     </div>
     <div class="row" style="gap:8px;margin-bottom:12px">
       <button class="btn ghost" id="impStaff">⬆️ ייבוא מקובץ</button>
+      <button class="btn ghost" id="labStaffExp">⬇️ ייצוא</button>
     </div>
     <div id="staffTable"></div>
   </div>`;
   /* ➕ הוספת איש/אשת צוות — בכפתור המרחף */
   $("#impStaff").onclick=openStaffImport;
+  /* ייצוא הצוות נבנה בתקופת המעבדה, ועד השחרור ui-lab.js הוא שיצר את
+     הכפתור. עכשיו הוא נולד כאן, כדי שהיכולת תהיה בשני העיצובים; בעיצוב
+     החדש ‎orderInto‎ מעביר אותו לכותרת המסך ומשנה את התווית ל"ייצוא".
+     המזהה נשאר labStaffExp — זה שם הכפתור שגם ui-lab.js וגם הדמו מכירים. */
+  $("#labStaffExp").onclick=()=>labStaffExport(null);
   $("#staffFilterToggle").onclick=()=>{ staffFiltersOpen=$("#staffFilterPanel").hasAttribute("hidden"); viewStaff(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ staffFilter[key]=e.value; renderStaffTable(); }; };
   bind("#fs-q","q"); bind("#fs-role","role"); bind("#fs-status","status");
@@ -11576,18 +11620,20 @@ function staffBoolVal(v){
 }
 
 /* ===========================================================================
-   מעבדת עיצוב בלבד — עדכון תיקי צוות לפי מספר זהות
+   עדכון תיקי צוות לפי מספר זהות
    ---------------------------------------------------------------------------
    מצב שני בתוך חלון הייבוא: מדביקים קובץ שבו עמודת ת"ז ולצידה כל עמודה
    שרוצים לעדכן (טלפון, תפקיד, עיר…), והמערכת מעדכנת את התיקים הקיימים.
    ת"ז שאינה במאגר נפתחת כתיק חדש (ניתן לכבות), ותא ריק אינו מוחק ערך
    קיים אלא אם ביקשו זאת במפורש.
 
-   בעיצוב הקיים הפונקציה יוצאת מיד וחלון הייבוא אינו משתנה כלל.
+   נבנה בתקופת המעבדה ורץ עד השחרור רק בעיצוב החדש. עכשיו הוא בשני
+   העיצובים — יכולת אינה אמורה להיעלם ממי שבוחרת לחזור לעיצוב הקודם.
+   שתי המחלקות ‎lab-modes‎ ו-‎lab-mode‎ נשארו בשמן, ובגללן יש להן עכשיו גם
+   כללי בסיס ב-<style> של העמוד; ui-lab.css גובר עליהם בעיצוב החדש.
    ראה docs/UI_LAB.md.
    =========================================================================== */
 function labStaffTzUpdate(){
-  if(!document.documentElement.classList.contains("ui-lab")) return;
   const m=$("#modal"); if(!m || m.querySelector("#stu-modes")) return;
 
   /* כל מה שהחלון כבר מכיל הופך למצב א' — האלמנטים מועברים ולא נבנים
@@ -11743,15 +11789,17 @@ function labStaffTzUpdate(){
 }
 
 /* ===========================================================================
-   מעבדת עיצוב בלבד — ייצוא רשימת הצוות
+   ייצוא רשימת הצוות
    ---------------------------------------------------------------------------
    ללשונית הצוות לא היה ייצוא (מסך הייצוא הקיים הוא של התלמידות בלבד).
    כאן אותו רכיב בדיוק — בחירת שדות, תצוגה מקדימה, אקסל / CSV / PDF —
    מעל רשימת הצוות המסוננת שעל המסך. ids: הגבלה לבחירה מהפס התחתון.
+
+   בעיצוב החדש הכניסה היא מהפס התחתון, דרך ‎__uiLab.staffExport‎; בעיצוב
+   הקודם היא כפתור "ייצוא" שליד "ייבוא מקובץ" שבראש המסך.
    =========================================================================== */
 let staffExportSel = null;
 function labStaffExport(ids){
-  if(!document.documentElement.classList.contains("ui-lab")) return;
   const idx=staffAsgIndex("activity", null);
   const COLS=[
     ["name",  "שם מלא",   m=>staffName(m)],
@@ -14957,14 +15005,32 @@ function viewTools(root){
   };
 }
 
+/* ===========================================================================
+   בורר העיצוב
+   ---------------------------------------------------------------------------
+   קורא וכותב את אותו דגל שהטוען שב-<head> קורא — מפתח uiLab ב-localStorage,
+   לפי מכשיר ולפי דפדפן. הכתיבה נעשית כאן *וגם* דרך פרמטר הכתובת: הכתיבה
+   מספיקה לעמוד הזה, והפרמטר דואג שגם עמוד שנפתח מהיסטוריית הדפדפן (bfcache)
+   יגיע עם ההחלטה הנכונה.
+
+   ⚠️ המחלקה ui-lab אינה מקור אמת כאן: היא יורדת גם כש-ui-lab.css לא הגיע
+   (ראה l.onerror בטוען). הדגל הוא מה שהמשתמשת ביקשה, ולכן הוא הנקרא.
+   =========================================================================== */
+function skinIsOld(){ try{ return localStorage.getItem("uiLab")==="old"; }catch(e){ return false; } }
+function skinGo(v){
+  if(skinIsOld() === (v==="old")) return;
+  try{ localStorage.setItem("uiLab", v); }catch(e){}
+  const u=new URL(location.href); u.searchParams.set("ui", v);
+  location.href=u.pathname+u.search+u.hash;
+}
+
 function viewSettings(root){
   const admin=isAdmin();
   const dis = admin? "" : "disabled";
-  /* שני פקדים שנולדו במעבדה ואינם קיימים בעיצוב הקיים: סימון "לא להעביר את
-     גיל 5 המסיימות" שבמעבר שנה, ושדה "כותרת משנה" שבמיתוג. הראשון משנה מה
-     קורה במעבר שנה, ולכן אינו מגיע למשתמש בלי הדגל; הקוד שקורא אותם כבר
-     בודק קיום, ולכן ההתנהגות בלעדיהם היא בדיוק זו שהייתה לפני המעבדה. */
-  const LAB=document.documentElement.classList.contains("ui-lab");
+  /* שני פקדים שנולדו בתקופת המעבדה: סימון "לא להעביר את גיל 5 המסיימות"
+     שבמעבר שנה, ושדה "כותרת משנה" שבמיתוג. הראשון משנה מה קורה במעבר שנה,
+     ולכן ישב מאחורי הדגל עד השחרור. עכשיו שניהם קיימים בשני העיצובים —
+     הקוד שקורא אותם בודק קיום ממילא. */
   root.innerHTML=`
   ${admin?"":`<div class="panel"><div class="note">🔒 חלק מההגדרות (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, ניהול מנהלים) פתוחות לעריכה רק למנהל מערכת. אפשר לצפות אך לא לשנות. פנה/י למנהל להוספתך.</div></div>`}
 
@@ -14987,7 +15053,7 @@ function viewSettings(root){
       ${DRIVE_READY?`<label class="check" style="align-self:end"><input type="checkbox" id="pr-copyId" checked ${dis}> העתק פיזית את קובץ ת"ז לתיקיית השנה החדשה (איטי יותר)</label>`:""}
       <button class="btn" id="doPromote" style="align-self:end" ${dis}>בצע מעבר שנה</button>
     </div>
-    ${LAB?`<label class="check" id="pr-skipgrad-wrap" style="margin-top:8px"><input type="checkbox" id="pr-skipgrad" checked ${dis}> לא להעביר את גיל 5 המסיימות (פרט לילדות השארות)</label>`:""}
+    <label class="check" id="pr-skipgrad-wrap" style="margin-top:8px"><input type="checkbox" id="pr-skipgrad" checked ${dis}> לא להעביר את גיל 5 המסיימות (פרט לילדות השארות)</label>
     <div id="pr-status" class="hint" style="margin-top:6px"></div>
     <div class="note" style="margin-top:8px">
       <b>מה עובר:</b> פרטים אישיים (כולל ת"ז), הורים וכתובת · <b>צילום ת"ז</b> (סימון + קובץ פיזי לדרייב החדש). <b>מתאפס:</b> נספח/תקנון, תוכניות/מועדונים, סיוע והעשרה, קלוט בעירייה, ביטוח, שיבוץ סופי (לא משובצת) והערות.<br>
@@ -15136,7 +15202,7 @@ function viewSettings(root){
     <div class="sub">שינוי הכותרת הראשית והלוגו של המערכת (מופיעים בראש כל מסך ובכותרת הדפדפן). ללוגו אפשר <b>להעלות קובץ תמונה</b> (מומלץ), או להזין אימוג'י (למשל 🎒).</div>
     <div class="grid g2">
       <div><label>כותרת ראשית</label><input id="br-title" value="${esc(appTitle())}" ${dis}></div>
-      ${LAB?`<div><label>כותרת משנה</label><input id="br-sub" value="${esc(appSubtitle())}" ${dis}></div>`:""}
+      <div><label>כותרת משנה</label><input id="br-sub" value="${esc(appSubtitle())}" ${dis}></div>
       <div><label>לוגו — אימוג'י או קישור לתמונה</label><input id="br-logo" value="${esc(appLogo())}" ${dis}></div>
     </div>
     <div class="row" style="margin-top:10px;align-items:center;gap:10px">
@@ -15150,6 +15216,16 @@ function viewSettings(root){
     </div>
   </div>
 
+  <div class="panel" data-set="skin">
+    <h2>עיצוב התוכנה</h2>
+    <div class="sub">שני העיצובים מריצים את אותה תוכנה בדיוק, על אותם נתונים ועם אותן היכולות — ההבדל הוא במראה בלבד. הבחירה נשמרת במכשיר ובדפדפן הזה בלבד, ואינה משנה דבר למשתמשות אחרות.</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn${skinIsOld()?" ghost":""}" id="skin-new" type="button">✨ העיצוב החדש${skinIsOld()?"":" · נבחר"}</button>
+      <button class="btn${skinIsOld()?"":" ghost"}" id="skin-old" type="button">העיצוב הקודם${skinIsOld()?" · נבחר":""}</button>
+    </div>
+    <div class="hint" style="margin-top:8px">העיצוב הקודם נשאר זמין לימי המעבר בלבד, כדי שלא ייעצר אף אחת באמצע עבודה. אין צורך למהר — שום יכולת אינה הולכת לאיבוד בשני הכיוונים.</div>
+  </div>
+
   <div class="panel" data-set="install">
     <h2>התקנה כאפליקציה — טלפון או מחשב</h2>
     <div class="sub">אפשר להתקין את המערכת כאפליקציה עצמאית — על המחשב (חלון נפרד עם אייקון בשולחן העבודה) או במסך הבית של הטלפון — עם אייקון שהוא הלוגו שהגדרת ב"מיתוג". כניסה ישירה לתוכנה בלי לפתוח דפדפן.</div>
@@ -15160,6 +15236,8 @@ function viewSettings(root){
 
   renderAuthBox();
   renderInstallBox();
+  $("#skin-new").onclick=()=>skinGo("new");
+  $("#skin-old").onclick=()=>skinGo("old");
   writePresence(); refreshPresenceWidget(); renderActivityPanel(); // "מי מחובר עכשיו" + "יומן פעילות"
 
   // ניהול משתמשים (למנהל בלבד) — אישור כתובות Google מורשות (allowedEmails)

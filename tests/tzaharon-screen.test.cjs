@@ -120,7 +120,9 @@ async function run(labOn) {
     args: ['--no-sandbox'] });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   await ctx.addInitScript(on => {
-    try { on ? localStorage.setItem('uiLab','new') : localStorage.removeItem('uiLab'); } catch(e){}
+    /* ⚠️ מאז שהעיצוב החדש שוחרר לכולם, *מחיקת* הדגל אינה מכבה אותו אלא
+       נופלת לברירת המחדל — כלומר לעיצוב החדש. הכיבוי הוא ערך מפורש. */
+    try { localStorage.setItem('uiLab', on ? 'new' : 'old'); } catch(e){}
   }, labOn);
   const p = await ctx.newPage();
   const errs = [];

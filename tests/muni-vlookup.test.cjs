@@ -861,11 +861,16 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     const c = document.querySelector('#f-clear'); if (c) c.click();
   });
   await p.waitForTimeout(400);
-  const tiles = () => p.evaluate(() => ({
+  /* ⚠️ שתי מערכות תוויות לאותן משבצות: התוכנה כותבת "רשומות" ו"לא קלוט",
+     והעיצוב החדש מאריך ל"סה״כ רשומות" ו"לא קלוט בעירייה". הבדיקה כאן היא
+     על הספירה ולא על הניסוח, ולכן היא מכווצת את השם ובודקת את המספר —
+     וכך היא תופסת שינוי בספירה בשני העיצובים, ולא רק בזה שרץ כרגע. */
+  const TILE_KEY = `k => ({ 'סה״כ רשומות':'רשומות', 'לא קלוט בעירייה':'לא קלוט' }[k] || k)`;
+  const tiles = () => p.evaluate(`(() => { const norm = ${TILE_KEY}; return {
     t: Object.fromEntries([...document.querySelectorAll('#stuSummary .stat')].map(c =>
-         [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)])),
+         [norm(c.querySelector('.k').textContent.trim()), parseInt(c.querySelector('.v').textContent, 10)])),
     rows: document.querySelectorAll('#stuTable tbody tr').length,
-    note: (document.querySelector('#stuSummary .hint') || {}).textContent || '' }));
+    note: (document.querySelector('#stuSummary .hint') || {}).textContent || '' }; })()`);
   const setStatus = async v => {
     await p.evaluate(val => {
       const t = document.querySelector('#stuFilterToggle');
@@ -944,12 +949,13 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   console.log('\n25. שורת ההשוואה במסך התלמידות עצמו');
   await p.evaluate(() => { __set('activeEdu', 'רגיל'); navToTab('students'); });
   await p.waitForTimeout(400);
-  const note = await p.evaluate(() => {
-    const h = [...document.querySelectorAll('#stuSummary .hint')].map(x => x.textContent.replace(/\s+/g, ' '));
+  const note = await p.evaluate(`(() => {
+    const norm = ${TILE_KEY};
+    const h = [...document.querySelectorAll('#stuSummary .hint')].map(x => x.textContent.replace(/\\s+/g, ' '));
     const t = Object.fromEntries([...document.querySelectorAll('#stuSummary .stat')].map(c =>
-      [c.querySelector('.k').textContent.trim(), parseInt(c.querySelector('.v').textContent, 10)]));
+      [norm(c.querySelector('.k').textContent.trim()), parseInt(c.querySelector('.v').textContent, 10)]));
     return { h, t };
-  });
+  })()`);
   /* בחינוך רגיל פעילות: c1,c2,c3 (קלוטות) + c7 (לא קלוטה) = 4 */
   (note.t['רשומות'] === 4 && note.t['לא קלוט'] === 1)
     ? ok('המשבצות מציגות חינוך רגיל בלבד') : bad('המשבצות שגויות', [JSON.stringify(note.t)]);

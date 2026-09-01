@@ -1694,9 +1694,9 @@ html.ui-lab .lab-bottom{ display:none }
     box-shadow:0 8px 18px rgba(21,52,42,.32); cursor:pointer;
   }
 
-  /* מקום לסרגל, ולתג המעבדה שלא יסתתר מאחוריו */
+  /* מקום לסרגל, ולשבב בורר העיצוב שלא יסתתר מאחוריו */
   html.ui-lab body{ padding-bottom:82px }
-  html.ui-lab .ui-lab-badge{ inset-block-end:calc(86px + env(safe-area-inset-bottom, 0px)) }
+  html.ui-lab .skin-switch{ inset-block-end:calc(86px + env(safe-area-inset-bottom, 0px)) }
   /* סרגל הבחירה של התלמידות נעוץ מעל סרגל הניווט */
   html.ui-lab .selbar{ bottom:86px }
   /* הכפתור המרחף של התוכנה — מעל הסרגל, שלא ייחתך */
@@ -1772,21 +1772,23 @@ html.ui-lab .lab-bottom{ display:none }
 /* ── 13. תג המעבדה ─────────────────────────────────────────────────────────
    סימון קבוע שלא מאפשר לבלבל בין המעבדה לתוכנה הרגילה. לחיצה יוצאת.          */
 
-/* ⚠️ באג שתוקן: inset-inline-start ב-RTL הוא *ימין*, כלומר התג ישב בדיוק
-   מעל תחתית סרגל הצד וחסם את כרטיס היעד ואת שורת המשתמש. הוא עובר לצד
-   הנגדי. בנייד הסרגל הוא מגירה סגורה, ולכן שם אין התנגשות. */
-/* הפינה השמאלית התחתונה שייכת לכפתור המרחף של התוכנה — התג עבר לצד השני */
-html.ui-lab .ui-lab-badge{
-  position:fixed; inset-block-end:12px; inset-inline-start:12px; z-index:9999;
-  display:inline-flex; align-items:center; gap:6px;
-  padding:6px 12px; border-radius:999px;
-  background:#7a2e2e; color:#fff;
-  font:700 .78rem/1 var(--lab-font);
-  text-decoration:none; box-shadow:0 4px 14px rgba(0,0,0,.28);
-  opacity:.85; transition:opacity .15s;
+/* שבב בורר העיצוב — כל מה שהוא צריך כדי להיראות נכתב בטוען שב-<head>,
+   כי הוא נדרש גם בעיצוב הקודם, שם הקובץ הזה אינו נטען כלל. כאן נשארות רק
+   שתי התאמות שאי אפשר לדעת עליהן משם: הגופן של העיצוב, ומיקומו בנייד
+   (למעלה, בכלל @media של הסרגל התחתון).
+
+   ⚠️ באג שתוקן בתג שקדם לו: inset-inline-start ב-RTL הוא *ימין*, כלומר
+   הוא ישב בדיוק מעל תחתית סרגל הצד וחסם את כרטיס היעד ואת שורת המשתמש.
+   הפינה השמאלית התחתונה שייכת לכפתור המרחף של התוכנה, ולכן הוא יושב
+   בימנית. בנייד הסרגל הוא מגירה סגורה, ולכן שם אין התנגשות. */
+html.ui-lab .skin-switch{ font-family:var(--lab-font) }
+/* מעל 900px סרגל הצד נעוץ פתוח ברוחב 236px בצד ה-inline-start (בעברית:
+   ימין) — בדיוק הפינה שהשבב תופס. בלי ההזזה הזאת הוא היה יושב על שורת
+   המשתמש שבתחתית הסרגל. בעיצוב הקודם הסרגל הוא מגירה סגורה, ולכן שם
+   הפינה פנויה והכלל הזה אינו נחוץ. */
+@media(min-width:900px){
+  html.ui-lab .skin-switch{ inset-inline-start:248px }
 }
-html.ui-lab .ui-lab-badge:hover{ opacity:1 }
-@media print{ html.ui-lab .ui-lab-badge{ display:none } }
 
 /* ===========================================================================
    14 · המסכים הנותרים — דוחות, עירייה, הנהלה, הודעות, ייצוא, הגדרות, כלים
