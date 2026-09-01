@@ -65,7 +65,7 @@ const out = `<!doctype html>
    ========================================================================== -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#15342a">
+<meta name="theme-color" content="#1d4739">
 <title>רשת הגנים · דמו עיצוב</title>
 <!-- גופני העיצוב מוקדמים ל-ui-lab.css כדי שהעמוד לא יהבהב בגופן המערכת
      לפני שהם מגיעים. ההגדרות עצמן (@font-face) יושבות בתוך ui-lab.css. -->

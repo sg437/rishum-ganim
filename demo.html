@@ -12,7 +12,7 @@
    ========================================================================== -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#15342a">
+<meta name="theme-color" content="#1d4739">
 <title>רשת הגנים · דמו עיצוב</title>
 <!-- גופני העיצוב מוקדמים ל-ui-lab.css כדי שהעמוד לא יהבהב בגופן המערכת
      לפני שהם מגיעים. ההגדרות עצמן (@font-face) יושבות בתוך ui-lab.css. -->
@@ -35,6 +35,16 @@ input,select,textarea{font:inherit;color:var(--ink);background:var(--surface-2);
 input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);border-color:var(--accent)}
 label{font-size:.82rem;font-weight:700;color:var(--ink-soft);display:block;margin-bottom:4px}
 a{color:var(--accent)}
+
+/* בורר שני המצבים שבחלון ייבוא הצוות (ייבוא חדשים · עדכון לפי ת"ז). נבנה
+   בתקופת המעבדה, ולכן שמות המחלקות פותחים ב-lab; מרגע שהיכולת קיימת בשני
+   העיצובים הוא זקוק לכללי בסיס גם כאן, ולא רק ב-ui-lab.css. שם הכללים
+   תחומים ל-html.ui-lab, ולכן גוברים על אלה בעיצוב החדש. */
+.lab-modes{display:inline-flex;gap:2px;padding:3px;margin:10px 0 14px;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:12px}
+.lab-mode{background:none;border:0;border-radius:9px;padding:8px 16px;
+  font:inherit;font-size:.85rem;font-weight:600;color:var(--ink-soft);cursor:pointer}
+.lab-mode.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
 
 /* header */
 header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bottom:1px solid var(--border);
