@@ -72,7 +72,7 @@ html.ui-lab[data-theme="light"]{
   --radius:16px;
 
   /* טוקנים חדשים שאינם בפלטה הקיימת (מקטע "צבעים נוספים" ב-HANDOFF.md) */
-  --lab-deep:#15342a;      /* סרגל הצד וכרטיסי KPI כהים */
+  --lab-deep:#1d4739;      /* סרגל הצד וכרטיסי KPI כהים — היה #15342a */
   --lab-gold:#a97f2e;      /* מבטא הטבעת וההתקדמות */
   --lab-gold-on-deep:#d3ab5c; /* טקסט מבטא על רקע כהה */
   --lab-rule-head:#f0ebde; /* קו כותרת טבלה */
@@ -91,7 +91,7 @@ html.ui-lab[data-theme="light"]{
 
 /* מצב לילה.
    ⚠️ אינו מופיע בחבילת ה-handoff — העיצוב סיפק פלטה בהירה בלבד.
-   הפלטה כאן נגזרה מהכיוון החם: הבסיס הוא ירוק-כהה של הסרגל (#15342a)
+   הפלטה כאן נגזרה מהכיוון החם: הבסיס הוא ירוק-כהה של הסרגל (#1d4739)
    והמבטא הוא הפליז הבהיר (#d3ab5c). ניתן להחלפה כשתגיע החלטת עיצוב.        */
 @media(prefers-color-scheme:dark){
   html.ui-lab:not([data-theme="light"]){
@@ -105,7 +105,7 @@ html.ui-lab[data-theme="light"]{
     --over1:#b09ad8; --over1-soft:#241f30;
     --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.42);
     --shadow-lg:0 12px 30px rgba(0,0,0,.5),0 40px 80px rgba(0,0,0,.62);
-    --lab-deep:#12271f; --lab-gold:#d3ab5c; --lab-gold-on-deep:#d3ab5c;
+    --lab-deep:#19362b; --lab-gold:#d3ab5c; --lab-gold-on-deep:#d3ab5c;
     --lab-rule-head:#2c3830; --lab-rule-row:#26302a;
     --lab-surface-warm:#1b241e; --lab-border-strong:#38463c;
   }
@@ -121,7 +121,7 @@ html.ui-lab[data-theme="dark"]{
   --over1:#b09ad8; --over1-soft:#241f30;
   --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.42);
   --shadow-lg:0 12px 30px rgba(0,0,0,.5),0 40px 80px rgba(0,0,0,.62);
-  --lab-deep:#12271f; --lab-gold:#d3ab5c; --lab-gold-on-deep:#d3ab5c;
+  --lab-deep:#19362b; --lab-gold:#d3ab5c; --lab-gold-on-deep:#d3ab5c;
   --lab-rule-head:#2c3830; --lab-rule-row:#26302a;
   --lab-surface-warm:#1b241e; --lab-border-strong:#38463c;
 }
@@ -328,7 +328,7 @@ html.ui-lab .drawer{
   --border:color-mix(in srgb, var(--lab-deep) 82%, #fff);
   --ink:#eef2ec;
   --ink-soft:#c6d2c6;
-  --muted:#8ba392;
+  --muted:#9db4a5;         /* הובהר עם --lab-deep, כדי שהטקסט המשני על הירוק יישאר קריא */
   --accent-soft:color-mix(in srgb, var(--lab-deep) 88%, #fff);
   --accent-strong:var(--lab-gold-on-deep);
 
