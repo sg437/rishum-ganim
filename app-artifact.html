@@ -30,47 +30,70 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="רשת הגנים">
-<!-- ⚠️ קובץ זה משמש גם כארטיפקט עצמאי. אז ui-lab.css ו-fonts/ אינם לצידו,
-     הבקשה נכשלת בשקט והעמוד נשאר בעיצוב הרגיל — בדיוק כמו היום.
-     מהאתר עצמו (GitHub Pages) הם שכנים, ולכן שם המעבדה עובדת במלואה. -->
-<!-- מעבדת עיצוב (UI Lab) — אותה שכבת עיצוב חלופית שרצה ב-index.html.
-     כבויה כברירת מחדל: בלי הדגל הקוד הזה אינו עושה דבר.
-     הפעלה ‎?ui=new‎ · כיבוי ‎?ui=off‎ · הבחירה נזכרת במכשיר (localStorage).
+<!-- ⚠️ קובץ זה משמש גם כארטיפקט עצמאי. אז ui-lab.css ו-fonts/ אינם לצידו
+     והבקשה נכשלת בשקט. כל עוד העיצוב החדש היה מאחורי דגל כבוי זה לא הזיק;
+     עכשיו הוא ברירת המחדל, ולכן ‎l.onerror‎ שבטוען מוריד את המחלקה כשהקובץ
+     אינו מגיע, והעמוד נשאר שלם בעיצוב הקודם. מהאתר עצמו (GitHub Pages)
+     הקבצים שכנים, ולכן שם העיצוב החדש עולה במלואו. -->
+<!-- עיצוב התוכנה — אותו טוען שרץ ב-index.html: העיצוב החדש הוא ברירת
+     המחדל, ו-‎?ui=old‎ מחזיר לעיצוב הקודם (‎?ui=new‎ חוזר לחדש). הבחירה
+     נזכרת במכשיר. ראה docs/UI_LAB.md.
      העיצוב עצמו יושב כולו ב-ui-lab.css, תחום ל-html.ui-lab. -->
 <script>(function(){try{
   var p=new URLSearchParams(location.search).get('ui');
-  /* רשימה לבנה, לא רשימה שחורה: רק ?ui=new מדליק. כל ערך אחר מכבה.
-     קודם כל ערך שאינו off/0/ריק הדליק ונשמר — כך ש-?ui=1 או שגיאת הקלדה
-     בלינק היו מעבירים משתמש אמיתי לעיצוב שטרם שוחרר, על נתונים חיים. */
-  if(p!==null){ if(p==='new'){ localStorage.setItem('uiLab','new'); } else { localStorage.removeItem('uiLab'); } }
-  /* גם ערך ישן שנשמר במכשיר לפני השינוי מנוקה כאן. */
-  if(localStorage.getItem('uiLab') && localStorage.getItem('uiLab')!=='new'){ localStorage.removeItem('uiLab'); }
-  if(!localStorage.getItem('uiLab')) return;
+  /* הרשימה הלבנה התהפכה. קודם רק ‎?ui=new‎ הדליק, כי העיצוב טרם שוחרר וכל
+     ערך אחר היה חייב לכבות. עכשיו החדש הוא ברירת המחדל, ורק ‎?ui=old‎ מחזיר
+     לקודם — ‎?ui=off‎ מקובל אף הוא, כי זו הייתה כתובת הכיבוי והיא עדיין
+     מסתובבת בקישורים ישנים. כל ערך אחר, שגיאת הקלדה בכלל זה, נשאר על
+     החדש: הנפילה היא שוב אל הצד הבטוח, רק שהצד הבטוח התחלף. */
+  if(p!==null){ localStorage.setItem('uiLab',(p==='old'||p==='off')?'old':'new'); }
+  var oldSkin = localStorage.getItem('uiLab')==='old';
+
+  /* ── בורר העיצוב — שבב בפינה, בשני העיצובים ─────────────────────────
+     ⚠️ זמני, לימי המעבר בלבד. הכל כאן ניתן למחיקה בבת אחת: העיצוב עצמו
+     אינו תלוי בו, והבורר שבמסך ההגדרות ימשיך לעבוד גם בלעדיו.
+     העיצוב שלו נכתב כאן ולא ב-ui-lab.css, כי הוא נדרש דווקא גם בעיצוב
+     הקודם — ושם ui-lab.css אינו נטען כלל. */
+  var s=document.createElement('style');
+  s.textContent='.skin-switch{position:fixed;inset-block-end:12px;inset-inline-start:12px;z-index:9999;'
+   +'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;'
+   +'font-size:.78rem;font-weight:700;line-height:1;text-decoration:none;color:#fff;'
+   +'background:rgba(23,36,29,.72);box-shadow:0 4px 14px rgba(0,0,0,.28);opacity:.72;'
+   +'transition:opacity .15s}'
+   +'.skin-switch:hover{opacity:1}'
+   +'.skin-switch.back{background:#2c6a4c;opacity:.95}'
+   +'@media print{.skin-switch{display:none}}';
+  document.head.appendChild(s);
+  document.addEventListener('DOMContentLoaded',function(){
+    if(document.querySelector('.skin-switch')) return;
+    var u=new URL(location.href); u.searchParams.set('ui', oldSkin?'new':'old');
+    var a=document.createElement('a');
+    a.className='skin-switch'+(oldSkin?' back':'');
+    a.href=u.pathname+u.search+u.hash;
+    a.textContent=oldSkin?'\u21A9 חזרה לעיצוב החדש':'\u21A9 לעיצוב הקודם';
+    a.title=oldSkin?'העיצוב החדש':'חזרה לעיצוב שהיה עד היום — הכל ממשיך לעבוד בשניהם';
+    document.body.appendChild(a);
+  });
+
+  if(oldSkin) return;
   document.documentElement.classList.add('ui-lab');
-  /* גופני העיצוב מוקדמים לקובץ ה-CSS — ראה את ההערה המקבילה ב-index.html. */
+  /* גופני העיצוב מוקדמים לקובץ ה-CSS: בלי זה הדפדפן מגלה אותם רק אחרי
+     ניתוח ui-lab.css, והעמוד מהבהב לרגע בגופן המערכת (FOUT). רק תת-הקבוצה
+     העברית — הלטינית תיטען לבד כשתידרש. crossorigin חובה בהקדמת גופן, גם
+     ממקור עצמי, אחרת הדפדפן מוריד את הקובץ פעמיים. */
   ['fonts/assistant-hebrew.woff2','fonts/heebo-hebrew.woff2'].forEach(function(f){
     var pl=document.createElement('link');
     pl.rel='preload'; pl.as='font'; pl.type='font/woff2'; pl.crossOrigin='anonymous'; pl.href=f;
     document.head.appendChild(pl);
   });
-  /* התג נוסף רק אחרי ש-ui-lab.css באמת נטען. app-artifact.html משמש גם
-     כארטיפקט עצמאי, ושם הקובץ אינו לצידו והבקשה נכשלת בשקט — ואז התג היה
-     נשאר קישור בלי עיצוב בתחתית עמוד שכולו בעיצוב הרגיל. */
-  var cssOk=false, domOk=false, badged=false;
-  function badge(){
-    if(!cssOk||!domOk||badged) return; badged=true;
-    var u=new URL(location.href); u.searchParams.set('ui','off');
-    var a=document.createElement('a');
-    a.className='ui-lab-badge'; a.href=u.pathname+u.search+u.hash;
-    a.textContent='\u{1F9EA} מעבדת עיצוב — יציאה';
-    a.title='חזרה לעיצוב הרגיל';
-    document.body.appendChild(a);
-  }
   var l=document.createElement('link'); l.rel='stylesheet'; l.href='ui-lab.css';
-  l.onload=function(){ cssOk=true; badge(); };
+  /* ⚠️ רשת ביטחון שלא נדרשה כשהעיצוב היה מאחורי דגל: המחלקה נוספת עכשיו
+     לכל משתמש, לפני שידוע אם הקובץ בכלל הגיע. אם לא הגיע (ארטיפקט עצמאי,
+     מטמון חסר) — המחלקה יורדת, והעמוד נשאר שלם בעיצוב הקודם במקום להיתקע
+     בין השניים. */
+  l.onerror=function(){ document.documentElement.classList.remove('ui-lab'); };
   document.head.appendChild(l);
   var j=document.createElement('script'); j.src='ui-lab.js'; j.async=false; document.head.appendChild(j);
-  document.addEventListener('DOMContentLoaded',function(){ domOk=true; badge(); });
 }catch(e){}})();</script>
 <style>
 :root{

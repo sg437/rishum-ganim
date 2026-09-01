@@ -2000,7 +2000,12 @@ function staffTop(){
   var acts = head.querySelector(".lab-sacts");
   if(!acts){ acts = el("div", "lab-sacts"); head.appendChild(acts); }
 
-  if(!acts.querySelector("#labStaffExp")){
+  /* ⚠️ החיפוש הוא בכל המסך ולא רק בתוך acts: מרגע שהעיצוב שוחרר לכולם,
+     index.html מוליד את הכפתור בעצמו (כדי שהייצוא יהיה גם בעיצוב הקודם),
+     ואז orderInto מעביר אותו לכאן. חיפוש בתוך acts בלבד היה יוצר כפול,
+     עם אותו מזהה, בכל ציור מחדש. הדמו עדיין אינו מוליד אותו, ולכן
+     הבנייה שכאן נשארת. */
+  if(!view.querySelector("#labStaffExp")){
     var xp = el("button", "btn ghost", "↧ ייצוא");
     xp.id = "labStaffExp";
     xp.onclick = function(){
