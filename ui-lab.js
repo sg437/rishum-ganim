@@ -249,6 +249,61 @@ function greeting(){
   return "לילה טוב";
 }
 
+/* ===========================================================================
+   שלושת העיגולים שבראש מסך הבית — מספר ילדות · מספר גנים · ממוצע ילדות לגן.
+   ---------------------------------------------------------------------------
+   שלושת המספרים של העיצוב הישן, שחזרו לבקשת המשתמש כשורה ראשונה מעל כרטיסי
+   ה-KPI. הקשת סביב כל עיגול אינה קישוט: בשניים הראשונים היא הפילוח
+   רגיל/מיוחד (ולכן יש לה משמעות רק כשבורר החינוך על "הכל"), ובשלישי היא
+   הממוצע מול רף השיבוץ הממוצע. כשאין מה למדוד — קשת מלאה בצבע אחד.
+   =========================================================================== */
+
+var ARC_REG  = "var(--accent)";      /* רגיל  */
+var ARC_SPEC = "var(--lab-gold)";    /* מיוחד */
+
+/* שתי מנות שמשלימות מעגל */
+function arcSplit(a, b){
+  var t = (a || 0) + (b || 0);
+  if(!t) return ARC_REG + " 0 100%";
+  var p = Math.round(a / t * 100);
+  return ARC_REG + " 0 " + p + "%, " + ARC_SPEC + " " + p + "% 100%";
+}
+/* מד — חלק מלא מול מסילה */
+function arcGauge(pct){
+  var p = Math.max(0, Math.min(100, Math.round(pct)));
+  return ARC_REG + " 0 " + p + "%, var(--border) " + p + "% 100%";
+}
+
+function statCircle(o){
+  var c = el("div", "lh-stat");
+
+  var ring = el("div", "lh-stat-ring");
+  ring.style.background = "conic-gradient(" + o.arc + ")";
+  var inn = el("div", "lh-stat-in");
+  inn.appendChild(el("div", "lh-stat-v", String(o.value)));
+  ring.appendChild(inn);
+  c.appendChild(ring);
+
+  var t = el("div", "lh-stat-txt");
+  t.appendChild(el("div", "lh-stat-k", o.label));
+  if(o.split && o.split.length){
+    var sp = el("div", "lh-stat-split");
+    o.split.forEach(function(x){
+      var one = el("span", "lh-sp");
+      var dot = el("i", "lh-dot");
+      dot.style.background = x.color;
+      one.appendChild(dot);
+      one.appendChild(el("span", "lh-sp-l", x.label));
+      one.appendChild(el("b", null, String(x.n)));
+      sp.appendChild(one);
+    });
+    t.appendChild(sp);
+  }
+  if(o.note) t.appendChild(el("div", "lh-stat-note", o.note));
+  c.appendChild(t);
+  return c;
+}
+
 function kpi(opts){
   var c = el("div", "lh-kpi" + (opts.dark ? " dark" : ""));
   c.appendChild(el("div", "lh-k", opts.label));
@@ -330,6 +385,33 @@ function renderHome(){
   head.appendChild(acts);
 
   root.appendChild(head);
+
+  /* --- שלושת העיגולים: מספר ילדות · מספר גנים · ממוצע ילדות לגן --- */
+  var sp = d.split || {};
+  var full = ARC_REG + " 0 100%";
+  var stats = el("div", "lh-stats");
+  stats.appendChild(statCircle({
+    label:"מספר ילדות", value:d.total,
+    arc: d.isAll ? arcSplit(sp.regStu, sp.specStu) : full,
+    split: d.isAll ? [{label:"רגיל", n:sp.regStu,  color:ARC_REG},
+                      {label:"מיוחד", n:sp.specStu, color:ARC_SPEC}] : null,
+    note: (d.isAll ? "תיקים פעילים" : d.eduName) + (d.year ? " · " + d.year : "")
+  }));
+  stats.appendChild(statCircle({
+    label:"מספר גנים", value:d.gansActive,
+    arc: d.isAll ? arcSplit(sp.regGan, sp.specGan) : full,
+    split: d.isAll ? [{label:"רגיל", n:sp.regGan,  color:ARC_REG},
+                      {label:"מיוחד", n:sp.specGan, color:ARC_SPEC}] : null,
+    note: "גנים פעילים בשנה זו"
+  }));
+  stats.appendChild(statCircle({
+    label:"ממוצע ילדות לגן", value:d.avg,
+    arc: d.avgCap ? arcGauge(d.avg / d.avgCap * 100) : full,
+    split: d.isAll ? [{label:"רגיל", n:sp.regAvg,  color:ARC_REG},
+                      {label:"מיוחד", n:sp.specAvg, color:ARC_SPEC}] : null,
+    note: d.avgCap ? "מתוך רף שיבוץ ממוצע של " + d.avgCap : ""
+  }));
+  root.appendChild(stats);
 
   /* --- ארבעת כרטיסי ה-KPI --- */
   var kpis = el("div", "lh-kpis");
