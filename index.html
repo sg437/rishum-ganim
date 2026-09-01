@@ -2962,6 +2962,20 @@ if(document.documentElement.classList.contains("ui-lab")){
         const stu   = eduScope(studentsOfYear().filter(s=>!s.finished));
         const gans  = eduScope(DB.gans.filter(g=>g.active));
         const total = stu.length;
+
+        /* ── שלושת המספרים של העיצוב הישן, שחזרו לראש מסך הבית ──────────────
+           מספר ילדות · מספר גנים · ממוצע ילדות לגן. הפילוח רגיל/מיוחד נמדד
+           על כלל התיקים והגנים (לא על הסקופ), ומוצג רק כשבורר החינוך על
+           "הכל" — בדיוק כמו ב-viewHome. */
+        const avg = gans.length ? Math.round(total/gans.length*10)/10 : 0;
+        const cntEdu = (list,lbl)=>list.filter(x=>eduLabel(x)===lbl).length;
+        const allStu  = studentsOfYear().filter(s=>!s.finished);
+        const allGans = DB.gans.filter(g=>g.active);
+        const regStu  = cntEdu(allStu,"רגיל"),  specStu = cntEdu(allStu,'ח"מ');
+        const regGan  = cntEdu(allGans,"רגיל"), specGan = cntEdu(allGans,'ח"מ');
+        /* רף השיבוץ הממוצע — הקשת של כרטיס הממוצע נמדדת מולו */
+        const capSum  = gans.reduce((n,g)=>n+(ganAssignCap(g)||0),0);
+        const avgCap  = (gans.length && capSum) ? Math.round(capSum/gans.length*10)/10 : 0;
         const placed  = stu.filter(s=>s.ganId && s.placed!==false).length;
         const waiting = total - placed;
         const notMuni = stu.filter(s=>!s.absorbedMunicipality).length;
@@ -3039,6 +3053,14 @@ if(document.documentElement.classList.contains("ui-lab")){
 
         return {
           year:DB.activeYear||"", activity, name:myName, ganCards,
+          avg, avgCap,
+          isAll: !activeEdu,
+          eduName: activeEdu ? (activeEdu==='ח"מ' ? "חינוך מיוחד" : "חינוך רגיל") : "כל החינוך",
+          split:{
+            regStu, specStu, regGan, specGan,
+            regAvg:  regGan  ? Math.round(regStu /regGan *10)/10 : 0,
+            specAvg: specGan ? Math.round(specStu/specGan*10)/10 : 0
+          },
           total, placed, waiting, notMuni, missingDocs, topDoc, docBreak,
           topAge, topAgeN,
           noTeacherCount:noTeacher.length,

@@ -1826,8 +1826,22 @@ window.__uiLab = Object.freeze({
       return { label: d[1], missing: STUDENTS.filter(function(s){ return !s.docs[d[0]]; }).length };
     }).sort(function(a, b){ return b.missing - a.missing; });
     var noT = GANS.filter(function(g){ return !g.teacher; });
+    /* שלושת העיגולים שבראש המסך — אותם שדות שהתוכנה מספקת */
+    var eduOf = function(s){ var g = ganById(s.ganId); return (g && g.edu) || "רגיל"; };
+    var regStu = STUDENTS.filter(function(s){ return eduOf(s) === "רגיל"; }).length;
+    var regGan = GANS.filter(function(g){ return g.edu === "רגיל"; }).length;
+    var specStu = STUDENTS.length - regStu, specGan = GANS.length - regGan;
+    var r1 = function(n){ return Math.round(n * 10) / 10; };
     return {
       year: YEAR, name: "רכזת רישום",
+      avg: T.gans ? r1(T.total / T.gans) : 0,
+      avgCap: T.gans ? r1(T.cap / T.gans) : 0,
+      isAll: true, eduName: "כל החינוך",
+      split: {
+        regStu: regStu, specStu: specStu, regGan: regGan, specGan: specGan,
+        regAvg:  regGan  ? r1(regStu / regGan)   : 0,
+        specAvg: specGan ? r1(specStu / specGan) : 0
+      },
       total: T.total, placed: T.placed, waiting: T.waiting, notMuni: T.notMuni,
       missingDocs: STUDENTS.filter(function(s){ return docsDone(s) < DOCS.length; }).length,
       topDoc: docBreak[0].label, docBreak: docBreak,
