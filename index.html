@@ -14049,18 +14049,31 @@ function aiIsQuota(msg){
 function aiIsOverload(msg){
   const m=String(msg||"");
   if(aiIsQuota(m)) return false;
-  return /overload|high demand|try again later|temporarily|unavailable|too many requests|rate.?limit|resource[_ ]exhausted|\bhttp-(429|500|502|503|529)\b/i.test(m);
+  if(aiIsBridgeHiccup(m)) return false;   // כשל של הגשר, לא של המודל
+  return /overload|high demand|try again later|temporarily unavailable|service unavailable|too many requests|rate.?limit|resource[_ ]exhausted|\bhttp-(429|500|502|503|529)\b/i.test(m);
 }
 /* תרגום שגיאת העוזר לעברית מובנת (במקום טקסט אנגלי גולמי של הספק) */
 function aiErrHe(raw){
   const m=String(raw||"");
   if(m.indexOf("no-ai-key")>=0) return "העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini · כלים ושירותים → עוזר חכם).";
   if(aiIsQuota(m)) return "נגמרה המכסה של מפתח ה-AI (מכסה יומית או חיוב אצל הספק). אפשר להמתין לאיפוס המכסה, או להחליף מפתח · כלים ושירותים → עוזר חכם.";
+  // כשל מול הגשר: מוצגים גם הפרטים הטכניים (מה בדיוק חזר), אחרת אי אפשר לדעת
+  // אם החיבור נקטע, הגשר ישן, או שחזרה תשובה שאינה JSON.
+  if(aiIsBridgeHiccup(m) || /unknown-action|drive-error/.test(m)){
+    const why = /\bnetwork\b/.test(m) ? "החיבור לגשר לא נענה" : bridgeErrHe(m);
+    return "העוזר לא הצליח להגיע לגשר — "+why+" (ניסינו "+(AI_RETRY_WAITS.length+1)+" פעמים)."
+      +" אם זה חוזר: כלים ושירותים → חיבור Google Drive → 🔄 בדיקת חיבור.";
+  }
   if(aiIsOverload(m)) return "המודל עמוס כרגע אצל הספק — ניסינו שוב כמה פעמים ולא התקבלה תשובה. כדאי לנסות שוב בעוד דקה.";
-  if(/network|bad-response|drive-not-configured|unauthorized|token/.test(m)) return driveErrHe(m);
+  if(/drive-not-configured|unauthorized|token|not-logged-in/.test(m)) return driveErrHe(m);
   return "שגיאה: "+m;
 }
-/* המתנות בין ניסיונות כשהמודל עמוס (שניות עולות, כדי לא להעמיס בחזרה) */
+/* ניתוק זמני מול הגשר: הבקשה לא הגיעה, או שחזרה תשובה שאינה JSON (הפניה,
+   שגיאת שרת רגעית). בקשת צ'אט אינה משנה נתונים, ולכן שליחה חוזרת בטוחה. */
+function aiIsBridgeHiccup(msg){
+  return /\bnetwork\b|bad-response/.test(String(msg||""));
+}
+/* המתנות בין ניסיונות בכשל זמני (שניות עולות, כדי לא להעמיס בחזרה) */
 const AI_RETRY_WAITS = [2000, 5000, 10000];
 async function aiAsk(history, onRetry){
   const model=(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash";
@@ -14068,9 +14081,10 @@ async function aiAsk(history, onRetry){
     try{ return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model }); }
     catch(e){
       const raw=(e&&e.message)||String(e||"");
-      if(i>=AI_RETRY_WAITS.length || !aiIsOverload(raw)) throw e;
+      const why = aiIsBridgeHiccup(raw) ? "bridge" : (aiIsOverload(raw) ? "overload" : "");
+      if(i>=AI_RETRY_WAITS.length || !why) throw e;
       const sec=Math.round(AI_RETRY_WAITS[i]/1000);
-      if(onRetry) onRetry(i+1, sec);
+      if(onRetry) onRetry(i+1, sec, why);
       await new Promise(r=>setTimeout(r, AI_RETRY_WAITS[i]));
     }
   }
@@ -14193,8 +14207,9 @@ async function aiSend(){
   try{
     // עד 4 סבבים: המודל מבקש נתונים → אנחנו מריצים כלי קריאה → הוא עונה
     for(let round=0; round<4; round++){
-      const res=await aiAsk(aiConvo, (n,sec)=>{
-        const txt="⏳ המודל עמוס כרגע — מנסה שוב בעוד "+sec+" שניות (ניסיון "+n+" מתוך "+AI_RETRY_WAITS.length+")";
+      const res=await aiAsk(aiConvo, (n,sec,why)=>{
+        const txt="⏳ "+(why==="bridge" ? "החיבור לגשר נקטע" : "המודל עמוס כרגע")
+          +" — מנסה שוב בעוד "+sec+" שניות (ניסיון "+n+" מתוך "+AI_RETRY_WAITS.length+")";
         if(wait&&wait.parentNode) wait.textContent=txt; else aiBubble("sys",txt);
       });
       const parsed=aiParseActions(res.text||"");
