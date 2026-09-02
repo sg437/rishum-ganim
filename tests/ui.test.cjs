@@ -282,11 +282,12 @@ const server=require('http').createServer((req,res)=>{
       const text=await got.blob.text();
       return got.name.endsWith('.csv') && text.includes('שם משפחה') && text.includes('ילדה1')
         && !!res['בוצע'] && res['בוצע'].includes('3 שורות'); }); });
-  await step('שמירה לדרייב חסומה כשהגשר המותקן ישן', async()=>{
-    return await pg.evaluate(async()=>{
-      const spec=aiDocSpec({ kind:'students', format:'excel', drive:true });
-      const res=await aiDocDeliver(spec);
-      return !!res['שגיאה'] && res['שגיאה'].includes('APPS_SCRIPT.gs'); }); });
+  await step('הקובץ יורד למחשב תמיד — גם בבקשה לשמור בדרייב', ()=>pg.evaluate(()=>{
+    let got=null;
+    __setDownloadBlob((blob,name)=>{ got=name; });
+    const spec=aiDocSpec({ kind:'students', format:'excel', drive:true });
+    const res=aiDocDeliver(spec);
+    return !!got && got.endsWith('.xls') && !res['שגיאה'] && res['בוצע'].includes('הורד למחשב'); }));
   await step('כלי הפקת המסמך מוצג לאישור עם מניין השורות והעמודות', ()=>pg.evaluate(()=>{
     const pv=AI_TOOLS.make_document.preview({ kind:'gans', format:'excel', fields:['שם הגן','טלפון'] });
     return !pv.error && pv.text.includes('קובץ אקסל') && pv.text.includes('טלפון בגן'); }));

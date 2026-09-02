@@ -4574,7 +4574,7 @@ function guideContent(){
         <li><b>שום דבר לא קורה בלי אישור</b> — כל בקשת שינוי מוצגת ככרטיס עם תיאור מדויק של מה ישתנה (<b>לפני ← אחרי</b>) ואזהרות אם יש, ומתבצעת רק בלחיצה על <b>✅ בצע</b>. אפשר תמיד לבטל.</li>
         <li><b>אותן מגבלות כמו ידנית</b> — הרשאות העריכה לפי חינוך ורף השיבוץ נאכפים גם על העוזר.</li>
         <li><b>ניווט</b> — אפשר לבקש "פתחי לי את לשונית הגנים" או "פתחי את התיק של שרה כהן".</li>
-        <li><b>מפיק מסמכים לפי בקשה</b> — <i>"תפיקי לי קובץ אקסל של גן בן הדקל עם שם הילדה, שם משפחה, רחוב, מספר בית וטלפון"</i>. אפשר לבקש <b>אקסל</b>, <b>CSV</b> או <b>מסמך להדפסה/PDF</b>, לבחור עמודות במילים רגילות, ולסנן (גן · גיל · חינוך · בלי גן). הקובץ נוצר <b>רק אחרי אישור</b>, וכרטיס האישור מציג מראש כמה שורות ואילו עמודות. בבקשה "ותשמרי בדרייב" הקובץ נשמר בתיקיית <b>"מסמכים מהעוזר"</b> בדרייב (דורש גשר מעודכן) — אחרת הוא יורד למחשב.</li>
+        <li><b>מפיק מסמכים לפי בקשה</b> — <i>"תפיקי לי קובץ אקסל של גן בן הדקל עם שם הילדה, שם משפחה, רחוב, מספר בית וטלפון"</i>. אפשר לבקש <b>אקסל</b>, <b>CSV</b> או <b>מסמך להדפסה/PDF</b>, לבחור עמודות במילים רגילות, ולסנן (גן · גיל · חינוך · בלי גן). הקובץ נוצר <b>רק אחרי אישור</b>, וכרטיס האישור מציג מראש כמה שורות ואילו עמודות. הקובץ <b>יורד למחשב</b> (PDF נפתח בחלון הדפסה) — הוא נבנה בדפדפן עצמו, בלי שהנתונים עוברים בשום שרת.</li>
         <li><b>עומס אצל ספק ה-AI</b> — אם המודל עמוס, העוזר מציג "המודל עמוס כרגע — מנסה שוב…" ו<b>שולח את הבקשה שוב לבד</b> (עד שלושה ניסיונות). רק אם גם זה לא עזר מוצגת הודעה בעברית עם מה לעשות.</li>
       </ul>
       <div class="gd-tip">💡 העוזר פועל דרך הגשר עם מפתח AI (Google Gemini חינמי מספיק). הגדרה: <b>כלים ושירותים → עוזר חכם</b>.</div>` },
@@ -4889,11 +4889,8 @@ async function driveCall(action, payload){
    הגרסה שנפרסה בפועל מוחזרת מ"ping" — כך אפשר לדעת בוודאות אם הפריסה נקלטה,
    במקום לנחש (שמירת הקוד בעורך Apps Script אינה פריסה!). */
 const BRIDGE_VER_MAILDOC = "2026-08-25";
-/* גרסת הגשר שממנה קיימת שמירת מסמך שהופק לדרייב (פעולת docSave) */
-const BRIDGE_VER_DOCSAVE = "2026-09-02";
 let bridgeVersion = null;   // הגרסה החיה שהוחזרה מהגשר בבדיקת החיבור האחרונה
 function bridgeHasMailDoc(){ return !!bridgeVersion && String(bridgeVersion) >= BRIDGE_VER_MAILDOC; }
-function bridgeHasDocSave(){ return !!bridgeVersion && String(bridgeVersion) >= BRIDGE_VER_DOCSAVE; }
 async function drivePing(){
   const res=await driveCall("ping",{});
   bridgeVersion = res.version || "";   // גשר ישן אינו מחזיר גרסה כלל
@@ -13809,21 +13806,21 @@ const AI_TOOLS = {
       ctx.keys.forEach(k=>{ let v=f[k]; if(k==="active") v=!!v && v!=="false"; g[k]=v; });
       save(); try{ route(); }catch(e){}
       return { בוצע:"כרטיס הגן עודכן" }; } },
-  make_document: { read:false, desc:'הפקת מסמך מהנתונים: קובץ אקסל, CSV או מסמך להדפסה/PDF. פרמטרים: kind ("students" ברירת מחדל / "gans"), format ("excel" ברירת מחדל / "csv" / "pdf"), fields (מערך שמות עמודות בעברית, למשל ["שם משפחה","שם הילדה","רחוב","מספר בית","טלפון"] — ריק = ברירת מחדל), filter (אותם פרמטרים של find_students או list_gans, למשל {"ganName":"בן הדקל"}), title (כותרת המסמך), fileName, drive (true = שמירה לגוגל דרייב במקום הורדה למחשב).',
+  make_document: { read:false, desc:'הפקת מסמך מהנתונים: קובץ אקסל, CSV או מסמך להדפסה/PDF. פרמטרים: kind ("students" ברירת מחדל / "gans"), format ("excel" ברירת מחדל / "csv" / "pdf"), fields (מערך שמות עמודות בעברית, למשל ["שם משפחה","שם הילדה","רחוב","מספר בית","טלפון"] — ריק = ברירת מחדל), filter (אותם פרמטרים של find_students או list_gans, למשל {"ganName":"בן הדקל"}), title (כותרת המסמך), fileName. הקובץ תמיד יורד למחשב של המשתמשת (אין שמירה לדרייב) — אם מבקשים ממך לשמור בדרייב, אמור שהמסמך יירד למחשב ואפשר להעלות אותו לדרייב משם.',
     preview(a){
       const spec=aiDocSpec(a||{});
       if(spec.error) return { error:spec.error };
       if(!spec.rows.length) return { error:"אין נתונים התואמים לבקשה — אין מה להפיק" };
       return { text:'הפקת <b>'+esc(spec.formatLabel)+'</b> · '+esc(spec.title)+'<br>'
           +'• <b>'+spec.rows.length+'</b> שורות · עמודות: '+esc(spec.cols.map(c=>c[1]).join(" · "))+'<br>'
-          +'• יעד: <b>'+(spec.drive?'שמירה בגוגל דרייב':(spec.format==='pdf'?'חלון הדפסה / שמירה כ-PDF':'הורדה למחשב'))+'</b>',
+          +'• יעד: <b>'+(spec.format==='pdf'?'חלון הדפסה / שמירה כ-PDF':'הורדה למחשב')+'</b>',
         warn: spec.unknown.length ? ('עמודות שלא זוהו ולא ייכללו: '+spec.unknown.join(", ")) : '' };
     },
-    async run(a){
+    run(a){
       const spec=aiDocSpec(a||{});
       if(spec.error) return { שגיאה:spec.error };
       if(!spec.rows.length) return { שגיאה:"אין נתונים התואמים לבקשה" };
-      return await aiDocDeliver(spec);
+      return aiDocDeliver(spec);
     } },
   bulk_update_students: { read:false, desc:'עדכון קבוצתי של תלמידות. פרמטרים: filter (כמו ב-find_students), field — אחד מ: '+'placed, absorbedMunicipality, registeredByUs, insurancePaid'+', value (true/false).',
     preview(a){ const f=a.filter||{}; const res=AI_TOOLS.find_students.run(Object.assign({limit:1000}, f));
@@ -13953,14 +13950,13 @@ function aiDocSpec(a){
   const ganFil = filter && (filter.ganName || filter.gan) || "";
   const title = String(a.title||"").trim()
     || ((kind==='gans' ? "רשימת גנים" : "רשימת תלמידות") + (ganFil?(" · "+ganFil):"") + " · " + DB.activeYear);
-  const drive = a.drive===true || a.drive==="true";
-  if(drive && format==='pdf') return { error:'שמירת PDF לדרייב אינה נתמכת מהעוזר. אפשר אקסל או CSV לדרייב, או PDF שנפתח להדפסה/שמירה מהמסך.' };
-  return { kind, format, drive, rows:list, cols:r.cols, unknown:r.unknown, title,
+  return { kind, format, rows:list, cols:r.cols, unknown:r.unknown, title,
     fileName: safeFileName(String(a.fileName||"").trim() || title),
     formatLabel: format==='csv' ? "קובץ CSV" : (format==='pdf' ? "מסמך להדפסה / PDF" : "קובץ אקסל") };
 }
-/* בניית הקובץ בפועל והעברתו ליעד — הורדה, חלון הדפסה, או שמירה לדרייב */
-async function aiDocDeliver(spec){
+/* בניית הקובץ בפועל והעברתו ליעד — הורדה למחשב, או חלון הדפסה ל-PDF.
+   הקובץ נבנה ויורד בדפדפן עצמו: הנתונים אינם עוברים בשום שרת. */
+function aiDocDeliver(spec){
   const headers=spec.cols.map(c=>c[1]);
   const rows=spec.rows.map(r=>spec.cols.map(c=>{
     let v; try{ v=c[2](r); }catch(e){ v=""; }
@@ -13975,13 +13971,6 @@ async function aiDocDeliver(spec){
   const content = isCsv
     ? "﻿"+[headers.map(csvCell).join(",")].concat(rows.map(r=>r.map(csvCell).join(","))).join("\r\n")
     : "﻿"+tableXlsHtml(headers, rows, { title:spec.title });
-  if(spec.drive){
-    if(!bridgeHasDocSave()) return { שגיאה:'הגשר שמותקן אינו תומך עדיין בשמירת מסמכים לדרייב — יש לפרוס מחדש את APPS_SCRIPT.gs (כלים ושירותים → בדיקת חיבור). אפשר לבקש שוב בלי דרייב, והקובץ יירד למחשב.' };
-    const dataB64=btoa(unescape(encodeURIComponent(content)));   // UTF-8 → base64
-    const res=await driveCall("docSave", { name, mimeType:(isCsv?"text/csv":"application/vnd.ms-excel"), dataB64 });
-    toast("המסמך נשמר לדרייב ✓");
-    return { בוצע:'הקובץ "'+name+'" נשמר בדרייב, בתיקיית "מסמכים מהעוזר" ('+rows.length+' שורות)'+(res&&res.link?(' · '+res.link):'') };
-  }
   downloadBlob(new Blob([content],{type:(isCsv?"text/csv;charset=utf-8":"application/vnd.ms-excel;charset=utf-8")}), name);
   toast("הקובץ הופק ✓");
   return { בוצע:'הקובץ "'+name+'" הופק והורד למחשב ('+rows.length+' שורות · '+headers.length+' עמודות)' };

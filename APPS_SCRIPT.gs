@@ -51,7 +51,7 @@ var RG_BUILD = 'rg-b05ea2eb';
 // גרסת הגשר — מוחזרת ב"בדיקת חיבור" בתוכנה, כדי לדעת בוודאות איזו גרסה *נפרסה בפועל*
 // (שמירת הקוד בעורך אינה מספיקה — חייבים לפרוס גרסה חדשה). יש להעלות את התאריך
 // בכל שינוי שמוסיף/משנה פעולה בגשר.
-var BRIDGE_VERSION = '2026-09-02';
+var BRIDGE_VERSION = '2026-08-25';
 
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
@@ -101,7 +101,6 @@ function doPost(e){
       case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
-      case 'docSave':        return json_(out, docSave_(req.name, req.mimeType, req.dataB64));
       case 'backupSave':     return json_(out, backupSave_(req.name, req.dataB64));
       case 'copy':           return json_(out, copy_(req.fileId, req.folderId, req.name));
       case 'download':       return json_(out, download_(req.fileId));
@@ -596,17 +595,6 @@ function upload_(folderId, name, mimeType, dataB64){
   var f = DriveApp.getFolderById(folderId);
   var blob = Utilities.newBlob(Utilities.base64Decode(dataB64), mimeType || 'application/octet-stream', name || 'file');
   var file = f.createFile(blob);
-  return { ok:true, id:file.getId(), name:file.getName(), link:file.getUrl() };
-}
-/* שמירת מסמך שהופק בתוכנה (אקסל/CSV) לתיקייה ייעודית בדרייב — משמש את העוזר
-   החכם כשמבקשים "תפיק לי קובץ ותשמור אותו בדרייב", בלי להוריד ולהעלות ידנית. */
-var DOCS_FOLDER_NAME = 'מסמכים מהעוזר';
-function docSave_(name, mimeType, dataB64){
-  if(!dataB64) return { ok:false, error:'no-data' };
-  var folder = sub_(root_(), DOCS_FOLDER_NAME);
-  var blob = Utilities.newBlob(Utilities.base64Decode(String(dataB64)),
-                               String(mimeType || 'application/octet-stream'), String(name || 'document'));
-  var file = folder.createFile(blob);
   return { ok:true, id:file.getId(), name:file.getName(), link:file.getUrl() };
 }
 function copy_(fileId, folderId, name){
