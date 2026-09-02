@@ -956,7 +956,7 @@
     <div class="card pad" style="margin-top:14px">
       <div class="sec-title">דפי נחיתה לרישום — לפי עיר</div>
       <div class="sec-note" style="margin-bottom:10px">לכל עיר כתובת רישום ייעודית · טפסים מותאמים למסלולים</div>
-      <div class="tbl-wrap"><table id="regForms"><thead><tr><th>עיר</th><th>כתובת דף הנחיתה</th><th>נרשמו העונה</th><th>ממתינים לאישור</th><th>סטטוס</th></tr></thead><tbody></tbody></table></div>
+      <div class="tbl-wrap"><table id="regForms"><thead><tr><th>עיר</th><th id="regFormsCol2">כתובת דף הנחיתה</th><th>נרשמו העונה</th><th id="regFormsCol4">ממתינים לאישור</th><th>סטטוס</th></tr></thead><tbody></tbody></table></div>
     </div>
   </section>
 
@@ -1143,6 +1143,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { initializeFirestore, doc, collection, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-check.js";
 
 const PROD_FIREBASE = {
   apiKey: "AIzaSyBRIWtqtPXxd-W0WR3nB-iGn0Qn9ml-Q8I",
@@ -1166,6 +1167,9 @@ const DEMO_MODE = Q.get("demo")==="1";
 const firebaseConfig = TEST_DB_MODE ? TEST_FIREBASE : PROD_FIREBASE;
 /* בעלי המערכת — חייב להיות זהה ל-index.html / firestore.rules / APPS_SCRIPT.gs */
 const OWNER_EMAILS = ["7684252sg@gmail.com", "sg@taharat.org"];
+/* App Check — אותו מפתח כמו ב-index.html (אותו דומיין). בלי זה, כשמדליקים אכיפה
+   ב-Firestore, המרכזי היה נחסם בשקט. ריק = כבוי. */
+const RECAPTCHA_SITE_KEY = "6LcBJpUtAAAAANZlt45fnwvqD1f8Ylf3_wgFedcq";
 const HOME_CITY = { id:"modiin-illit", name:"מודיעין עילית", legacy:true };
 const PRESENCE_ACTIVE_MS = 300000;
 
@@ -1175,7 +1179,7 @@ const isOwner=e=>OWNER_EMAILS.includes(lower(e));
 
 let app=null, auth=null, db=null, user=null;
 let ORG={ cities:[], users:{} }, orgUnsub=null, orgReady=false;
-const cityUnsubs=new Map(), cityDocs=new Map(), cityPrev=new Map();
+const cityUnsubs=new Map(), cityDocs=new Map(), cityErr=new Map();
 let emitTimer=null;
 
 function normOrg(d){
@@ -1209,10 +1213,14 @@ function buildCity(c, docs){
   const meta=docs.get("meta")||{};
   const settings=meta.settings||{};
   const years=Array.isArray(meta.years)?meta.years:[];
-  const year=(meta.activeYear && years.includes(meta.activeYear)) ? meta.activeYear : (meta.activeYear||years[0]||"");
   const gansRaw=Array.isArray((docs.get("gans")||{}).gans)?(docs.get("gans")||{}).gans:[];
   const staffRaw=Array.isArray((docs.get("staff")||{}).staff)?(docs.get("staff")||{}).staff:[];
   const all=[]; for(const [id,v] of docs){ if(id.startsWith("students_") && v && Array.isArray(v.students)) v.students.forEach(x=>all.push(normStudent(x, v.year))); }
+  /* השנה: מה שהעיר מסמנת כפעילה (meta.activeYear) — ואם אין בה אף תיק פעיל
+     (השדה משקף את ההעדפה של מי ששמר אחרון), השנה שבה יש הכי הרבה תיקים. */
+  const perYear={}; all.forEach(x=>{ if(!x.finished) perYear[x.year]=(perYear[x.year]||0)+1; });
+  let year=meta.activeYear||"";
+  if(!perYear[year]){ let best="",n=0; for(const y in perYear){ if(perYear[y]>n){ n=perYear[y]; best=y; } } if(best) year=best; else if(!year) year=years[0]||""; }
   const stu=all.filter(x=>x.year===year && !x.finished);
   const asg=(((meta.assignments||{})[year]||{}).activity)||{};
   const presence=[]; for(const [id,v] of docs){ if(id.startsWith("presence_") && v && v.ts && Date.now()-v.ts<PRESENCE_ACTIVE_MS) presence.push({ email:v.email||"", name:v.name||v.email||"", ts:v.ts }); }
@@ -1253,7 +1261,7 @@ function buildCity(c, docs){
     staffList, staff:staffList.filter(m=>m.on).length, presence,
     admins:(settings.admins||[]).map(lower), allowed:(settings.allowedEmails||[]).map(lower),
     brand:{ title:(settings.appTitle||""), sub:(settings.appSubtitle||"") },
-    docs:docs.size, loaded:true, lastUpdate:Date.now(), live:true
+    docs:docs.size, loaded:docs.has("meta")||docs.has("gans")||all.length>0, error:cityErr.get(c.id)||"", lastUpdate:Date.now(), live:true
   };
 }
 function scheduleEmit(){ clearTimeout(emitTimer); emitTimer=setTimeout(emitData, 120); }
@@ -1261,9 +1269,10 @@ function emitData(){
   if(!user) return;
   const cities=orgCities().filter(c=>c.active!==false).map(c=>{
     const docs=cityDocs.get(c.id);
-    return docs ? buildCity(c, docs) : { id:c.id, name:c.name||c.id, region:c.region||"", legacy:!!(c.legacy||c.id===HOME_CITY.id), absorption:c.absorption||"local", coordinator:c.coordinator||"", phone:c.phone||"", active:true, year:"", years:[], gans:[], gan:0, spc:0, students:0, special:0, placed:0, unplaced:0, unplacedList:[], muni:0, notMuni:0, todayNew:0, periods:{}, byGender:{}, licenseIssues:0, staffList:[], staff:0, presence:[], admins:[], allowed:[], brand:{}, docs:0, loaded:false, lastUpdate:0, live:true };
+    return docs ? buildCity(c, docs) : { id:c.id, name:c.name||c.id, region:c.region||"", legacy:!!(c.legacy||c.id===HOME_CITY.id), absorption:c.absorption||"local", coordinator:c.coordinator||"", phone:c.phone||"", active:true, year:"", years:[], gans:[], gan:0, spc:0, students:0, special:0, placed:0, unplaced:0, unplacedList:[], muni:0, notMuni:0, todayNew:0, periods:{}, byGender:{}, licenseIssues:0, staffList:[], staff:0, presence:[], admins:[], allowed:[], brand:{}, docs:0, loaded:false, error:cityErr.get(c.id)||"", lastUpdate:0, live:true };
   });
-  emit("central:data", { cities, org:{ cities:orgCities(), users:ORG.users }, user:{ email:lower(user.email), name:user.displayName||"" }, hq:true });
+  const errors=[...cityErr].map(([id,msg])=>({ id, name:(orgCities().find(c=>c.id===id)||{}).name||id, msg }));
+  emit("central:data", { cities, errors, org:{ cities:orgCities(), users:ORG.users }, user:{ email:lower(user.email), name:user.displayName||"" }, hq:true });
 }
 /* אירועי "פעילות חיה" — הפרש בין שני מצבי השרת של אותה עיר */
 function diffEvents(c, prevDocs, docs){
@@ -1292,8 +1301,15 @@ function watchCity(c){
       const changed=snap.docChanges().map(ch=>ch.doc.id);
       if(!changed.every(id=>id.startsWith("presence_")) || changed.length){ diffEvents(c, prev, docs).forEach(e=>emit("central:event", e)); }
     }
+    cityErr.delete(c.id);
     first=false; scheduleEmit();
-  }, err=>{ console.error("city "+c.id, err); emit("central:event", { c:"exit", ic:"⚠️", tx:"<b>אין גישה לנתוני "+(c.name||c.id)+"</b> — "+(err.code||err.message), mt:"בדיקת כללי השרת · עכשיו" }); });
+  }, err=>{
+    console.error("city "+c.id, err);
+    const code=String(err&&(err.code||err.message)||"unknown");
+    cityErr.set(c.id, /permission-denied/i.test(code) ? "אין הרשאה לקרוא את נתוני העיר (permission-denied) — יש לפרסם את firestore.rules המעודכן בקונסולת Firebase" : code);
+    emit("central:event", { c:"exit", ic:"⚠️", tx:"<b>אין גישה לנתוני "+(c.name||c.id)+"</b> — "+code, mt:"בדיקת כללי השרת · עכשיו" });
+    scheduleEmit();
+  });
   cityUnsubs.set(c.id, un);
 }
 function syncCityWatchers(){
@@ -1339,6 +1355,7 @@ window.__centralLive = {
 try{
   app=initializeApp(firebaseConfig);
   auth=getAuth(app);
+  if(RECAPTCHA_SITE_KEY && !TEST_DB_MODE){ try{ initializeAppCheck(app, { provider:new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled:true }); }catch(e){ console.error("App Check init failed", e); } }
   try{ db=initializeFirestore(app,{ experimentalForceLongPolling:true }); }catch(e){ db=initializeFirestore(app,{}); }
   onAuthStateChanged(auth, u=>{
     user=u;
@@ -1591,13 +1608,14 @@ try{
   function openCity(i){ curCity=i; curGan=null; $('#citySel').value=i; renderCityDetail(); }
   function renderCityDetail(){
     var c=CITIES[curCity];
+    if(!c){ $('#cityDetail').innerHTML='<div class="card pad live-note">ממתינים לנתונים מהערים…</div>'; $('#ganDetail').innerHTML=''; return; }
     var gans=c.gans.filter(function(g){return curEdu==='all'||g.edu===curEdu;});
     var reg=c.gans.filter(function(g){return g.edu==='reg';}).length;
     var spc=c.gans.filter(function(g){return g.edu==='spc';}).length;
     var enr=c.gans.reduce(function(a,g){return a+g.enrolled},0);
     var absL={local:'קליטה דיגיטלית בעיר',office:'קליטה במשרד הראשי'};
     var note = LIVEMODE
-      ? (c.loaded ? ((c.year?'שנת '+c.year+' · ':'')+(c.region?'אזור '+c.region+' · ':'')+(absL[c.absorption]||'')+(c.coordinator?' · רכז/ת: '+c.coordinator:'')+(c.phone?' · '+c.phone:'')+' · <span class="pill live" style="font-size:.68rem"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> חי · '+(c.presence||[]).length+' מחוברים</span>'+'<div style="margin-top:6px"><a href="index.html?city='+encodeURIComponent(c.id)+'" target="_blank" rel="noopener" class="btn-mini" style="text-decoration:none">↗ פתיחת תוכנת העיר</a></div>') : 'ממתינים לנתונים מהעיר…')
+      ? (c.loaded ? ((c.year?'שנת '+c.year+' · ':'')+(c.region?'אזור '+c.region+' · ':'')+(absL[c.absorption]||'')+(c.coordinator?' · רכז/ת: '+c.coordinator:'')+(c.phone?' · '+c.phone:'')+' · <span class="pill live" style="font-size:.68rem"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> חי · '+(c.presence||[]).length+' מחוברים</span>'+(c.lastUpdate?' · עודכן '+new Date(c.lastUpdate).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}):'')) : (c.error?'<span style="color:var(--alert)">'+escH(c.error)+'</span>':'ממתינים לנתונים מהעיר…'))
       : ('אזור '+c.region+' · משודרת למרכז');
     var genderHead = LIVEMODE ? '<th>מגדר</th>' : '';
     var html='<div class="card pad">'+
@@ -1637,7 +1655,7 @@ try{
   }
   function openGan(idx){ curGan=idx; renderGanDetail(); updBack(); $('#ganDetail').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'}); }
   function renderGanDetail(){
-    var c=CITIES[curCity]; var g=c.gans[curGan];
+    var c=CITIES[curCity]; var g=c&&c.gans[curGan];
     if(!g){$('#ganDetail').innerHTML='';return;}
     /* sample students (הדמיה) / התלמידים האמיתיים של הגן (חי) */
     var names=[], roster=[];
@@ -1788,7 +1806,8 @@ try{
     var ci=$('#aCity').value;
     var gans=[]; CITIES.forEach(function(c){ if(ci==='all'||c.name===CITIES[+ci].name) c.gans.forEach(function(g){gans.push(g);}); });
     var t=progTotals(gans);
-    $('#aScope').textContent = ci==='all'?'כל הרשת':CITIES[+ci].name;
+    $('#aScope').textContent = ci==='all'?'כל הרשת':(CITIES[+ci]?CITIES[+ci].name:'');
+    { var fc=$('#aFeed')&&$('#aFeed').closest('.card'); if(fc) fc.style.display=LIVEMODE?'none':''; }
     var camps=t.hanuka+t.nisan+t.sofshana;
     $('#aKpis').innerHTML=[
       {l:'☀️ צהרון',v:he(t.tzaharon),s:(t.students?Math.round(t.tzaharon/t.students*100):0)+'% מהתלמידות',cls:'kaccent'},
@@ -1989,10 +2008,13 @@ try{
         {l:'קלוטים בעירייה',v:he(TOT.muni),s:he(TOT.notMuni)+' טרם נקלטו'},
         {live:true,l:'נרשמו היום',v:he(TOT.todayNew)}
       ].map(kpiHTML).join('');
+      { var lk=$('#idLookupInput')&&$('#idLookupInput').closest('.card'); if(lk) lk.style.display='none'; }
       $('#regChannels').innerHTML='<div class="card pad" style="grid-column:1/-1"><div class="sec-title">ערוצי רישום <span class="demo-note">בשלב הבא</span></div><div class="sec-note" style="margin-top:6px">היום הרישום נקלט בתוכנת כל עיר (ידנית, ייבוא מקובץ, וטופס הרישום להורים). חיבור ערוצים נוספים (דף נחיתה, סנכרון נדרים) יתווסף כאן כשיוגדר.</div></div>';
+      var absL={local:'קליטה דיגיטלית בעיר',office:'קליטה במשרד הראשי'};
+      $('#regFormsCol2').textContent='אופן הקליטה'; $('#regFormsCol4').textContent='ממתינים לשיבוץ';
       $('#regForms tbody').innerHTML=CITIES.map(function(c){
-        var url='index.html?city='+encodeURIComponent(c.id);
-        return '<tr><td class="strong">'+c.name+'</td><td><a href="'+url+'" target="_blank" rel="noopener" style="color:var(--accent-strong);text-decoration:none">'+url+'</a></td><td class="n">'+he(c.students)+'</td><td class="n">'+he(c.unplaced||0)+'</td><td>'+(c.loaded?'<span class="pill live"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> חי</span>':'<span class="pill off">טוען…</span>')+'</td></tr>';
+        var src=(absL[c.absorption]||'')+(c.coordinator?' · '+escH(c.coordinator):'')+(c.year?' · שנת '+escH(c.year):'');
+        return '<tr><td class="strong">'+escH(c.name)+'</td><td class="live-note">'+src+'</td><td class="n">'+he(c.students)+'</td><td class="n">'+he(c.unplaced||0)+'</td><td>'+(c.loaded?'<span class="pill live"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> חי</span>':(c.error?'<span class="pill warn">שגיאה</span>':'<span class="pill off">טוען…</span>'))+'</td></tr>';
       }).join('');
       return;
     }
@@ -2147,11 +2169,11 @@ try{
         {l:'תפוסה ממוצעת',v:(function(){ var e=0,c=0; CITIES.forEach(function(x){ x.gans.forEach(function(g){ if(g.on===false) return; e+=g.enrolled; c+=(+g.cap||0); }); }); return c?Math.round(e/c*100)+'%':'—'; })()}
       ].map(kpiHTML).join('');
       var sim=$('#plSimBtn'); if(sim){ var card=sim.closest('.card'); if(card) card.style.display='none'; }
-      $('#plUnCount').innerHTML=un.length+' ממתינים · השיבוץ עצמו נעשה בתוכנת העיר';
+      $('#plUnCount').innerHTML=un.length+' ממתינים';
       $('#plUnplaced').innerHTML=un.map(function(u){
         return '<div class="worker"><div><div class="wn">'+u.name+'</div>'+
           '<div class="wm">'+u.city+' · גיל '+(u.age||'—')+' · מועד '+u.period+' · <span class="pill '+(u.edu==='reg'?'reg':'spc')+'">'+(u.edu==='reg'?'רגיל':'מיוחד')+'</span>'+(u.gan?' · רשום/ה ל'+u.gan:' · <span style="color:var(--warn)">ללא גן</span>')+'</div></div>'+
-          '<a class="btn-mini" style="text-decoration:none" href="index.html?city='+encodeURIComponent(u.cityId)+'" target="_blank" rel="noopener">לתוכנת העיר ↗</a></div>';
+          '<span class="pill warn">ממתין/ה</span></div>';
       }).join('') || '<div class="sec-note" style="text-align:center;padding:20px">אין ממתינים לשיבוץ — כל התיקים משובצים. 🎉</div>';
       $('#plWaitlist').innerHTML='<div class="sec-note">רשימות המתנה לגן מבוקש שמלא — יתווספו כשיוגדר מנגנון ההמתנה בתוכנת העיר. כרגע: גנים שהגיעו לרף השיבוץ מופיעים ב"אחוזים ותפוסות".</div>';
       return;
@@ -2318,7 +2340,7 @@ try{
     var demoCard=$('#permDemoCard');
     if(!LIVEMODE || !LIVE_ORG){ host.innerHTML=''; if(demoCard) demoCard.style.display=''; return; }
     if(demoCard) demoCard.style.display='none';
-    var live=window.__centralLive, org=LIVE_ORG;
+    var live=window.__centralLive||{ homeCity:{id:'modiin-illit'}, isOwner:function(){return false;}, saveOrg:function(){return Promise.reject(new Error('המודול החי לא נטען'));} }, org=LIVE_ORG;
     var cities=org.cities.slice(), act=cities.filter(function(c){return c.active!==false;});
     var users=org.users||{}, emails=Object.keys(users).sort();
     var roleOf=function(em,cid){ var u=users[em]; if(!u||!u.cities) return ''; if(Array.isArray(u.cities)) return u.cities.indexOf(cid)>=0?'edit':''; var r=u.cities[cid]; return (r==='admin'||r==='edit'||r==='view')?r:''; };
@@ -2549,13 +2571,15 @@ try{
 
   /* ---------- HOME ---------- */
   var PORTALS=[
-    {v:'registration',ic:'📝',h:'מערכת רישום',d:'רישום רב-ערוצי, זיהוי ת״ז, סנכרון נדרים.',cls:'p-live',live:true,stat:function(){return 'רישומים חיים'}},
+    {v:'registration',ic:'📝',h:'מערכת רישום',d:'רישום רב-ערוצי, זיהוי ת״ז, סנכרון נדרים.',cls:'p-live',live:true,stat:function(){return LIVEMODE?(he(TOT.students)+' רשומים · '+he(TOT.placed)+' משובצים'):'רישומים חיים'}},
     {v:'crm',ic:'👨‍👩‍👧',h:'כרטיסי משפחה',d:'כרטיס מלא לכל משפחה — הורים, ילדים, מסמכים, חובות.',stat:function(){return he(FAM_TOTAL)+' משפחות'}},
-    {v:'place',ic:'🧩',h:'שיבוץ ילדים',d:'שיבוץ חכם, רשימות המתנה וסימולציה.',stat:function(){return he(UNPLACED.length)+' ממתינים'}},
+    {v:'place',ic:'🧩',h:'שיבוץ ילדים',d:'שיבוץ חכם, רשימות המתנה וסימולציה.',stat:function(){return he(LIVEMODE?TOT.unplaced:UNPLACED.length)+' ממתינים'}},
     {v:'comm',ic:'📨',h:'תקשורת עם הורים',d:'פילוח מדויק ושליחה ב-SMS/מייל/וואטסאפ.',stat:function(){return '5 ערוצים'}},
     {v:'billing',ic:'💳',h:'סליקה ותשלומים',d:'גבייה, הוראות קבע, קבלות ומעקב חייבים.',cls:'p-live',live:true,stat:function(){return 'תשלומים חיים'}},
     {v:'docs',ic:'📄',h:'ניהול מסמכים',d:'הפקה אוטומטית וארכיון דיגיטלי לכל משפחה.',stat:function(){return he(48200)+' בארכיון'}},
     {v:'overview',ic:'📡',h:'סקירה ודוחות',d:'כל הערים חי — תפוסות, פילוחים ומגמות.',stat:function(){return CITIES.length+' ערים · '+he(TOT.gan)+' גנים'}},
+    {v:'cities',ic:'🏙️',h:'ערים וגנים',d:'רשימת הגנים של כל עיר, וצלילה לגן: צוות, תלמידים, תוכניות.',stat:function(){return LIVEMODE?(he(TOT.students)+' תיקים ב-'+he(TOT.gan)+' גנים'):'כל הערים'}},
+    {v:'perms',ic:'🔐',h:'ערים ומשתמשים',d:'פתיחת ערים ושיוך משתמשים — מי רואה איזו עיר.',stat:function(){return LIVEMODE&&LIVE_ORG?(Object.keys(LIVE_ORG.users||{}).length+' משתמשים במרשם'):'הרשאות'}},
     {v:'portal',ic:'📱',h:'פורטל הורים',d:'האזור האישי של ההורה — סטטוס, מסמכים, תשלום.',stat:function(){return 'תצוגת הורה'}},
     {v:'hours',ic:'★',h:'שעות ושכר · חי',d:'שעות זורמות חי מכל עובדת → שכר אוטומטי.',cls:'p-live p-star',live:true,stat:function(){return LIVE.length+' מחוברות כעת'}},
     {v:'spec',ic:'📋',h:'האפיון',d:'9 המודולים, מטרות המערכת ומה כבר חי בהדמיה.',cls:'p-star',stat:function(){return '9 מודולים'}}
@@ -2577,10 +2601,10 @@ try{
       {b:he(TOT.staff),s:'עובדות'},
       {b:he(LIVE.length),s:'מחוברות כעת',live:true}
     ]).map(function(t){return '<div class="tk'+(t.live?' live':'')+'"><b>'+t.b+'</b><span>'+t.s+'</span></div>';}).join('');
-    $('#portals').innerHTML=PORTALS.map(function(p){
+    $('#portals').innerHTML=PORTALS.filter(function(p){ return !(LIVEMODE && DEMO_VIEWS[p.v]); }).map(function(p){
       return '<button class="portal '+(p.cls||'')+'" data-view="'+p.v+'">'+
         '<div class="pic">'+p.ic+'</div>'+
-        '<div class="ph">'+p.h+(LIVEMODE&&DEMO_VIEWS[p.v]?' <span class="demo-note">דמו</span>':'')+'</div>'+
+        '<div class="ph">'+p.h+'</div>'+
         '<div class="pd">'+p.d+'</div>'+
         '<div class="pv">'+(p.live?'<span style="width:7px;height:7px;border-radius:50%;background:var(--live);display:inline-block"></span> ':'')+p.stat()+' ←</div>'+
       '</button>';
@@ -2634,12 +2658,15 @@ try{
 
   /* ---------- מצב חי: קבלת הנתונים מהמודול ---------- */
   function liveBadges(){
-    $$('#drawerNav .navitem').forEach(function(b){
-      var tag=b.querySelector('.demo-tag');
-      var want=LIVEMODE && DEMO_VIEWS[b.dataset.view];
-      if(want && !tag){ tag=document.createElement('span'); tag.className='demo-tag'; tag.textContent='דמו'; b.appendChild(tag); }
-      if(!want && tag) tag.remove();
+    /* במצב חי מסכי ההדמיה (משפחות, תקשורת, סליקה, מסמכים, שעות…) יורדים
+       מהתפריט לגמרי — המרכזי מתחיל מאפס ומציג רק מה שמגיע מהערים. */
+    $$('#drawerNav .navitem').forEach(function(b){ b.hidden = !!(LIVEMODE && DEMO_VIEWS[b.dataset.view]); });
+    $$('#drawerNav .dr-sec').forEach(function(h){
+      var n=h.nextElementSibling, any=false;
+      while(n && !n.classList.contains('dr-sec')){ if(n.classList.contains('navitem') && !n.hidden) any=true; n=n.nextElementSibling; }
+      h.hidden=!any;
     });
+    if(LIVEMODE && DEMO_VIEWS[curView]) switchTab('home');
     $('#abLiveTxt').textContent = LIVEMODE ? ('נתונים חיים · '+CITIES.length+' ערים') : 'הדמיה · נתוני דוגמה';
     $('#abLive').style.opacity = LIVEMODE ? '1' : '.7';
     $('#footL').innerHTML = LIVEMODE ? 'מרכז ניהול ארצי · <b>נתונים חיים</b> מכל הערים' : 'מרכז ניהול ארצי · <b>תוכנית חיה</b> · הדמיה עם נתוני דוגמה';
@@ -2649,16 +2676,35 @@ try{
     var o=$('#drOut'); if(o) o.addEventListener('click',function(){ window.__centralLive.signOut().then(function(){ location.href=location.pathname; }); });
     var i=$('#drIn'); if(i) i.addEventListener('click',function(){ $('#gate').hidden=false; });
   }
+  var LIVE_ERRORS=[];
+  function wipeDemo(){
+    /* נכנסו למרכז: כל מה שההדמיה ציירה יורד — פידים מומצאים, ערים מומצאות,
+       עובדות מומצאות. המסך מציג "טוען…" עד שהנתונים הראשונים מגיעים מהערים. */
+    ['#feed','#regFeed','#aFeed','#punchFeed','#billFeed','#commLog','#docList'].forEach(function(sel){ var el=$(sel); if(el) el.innerHTML=''; });
+    CITIES=[]; STAFF=[]; UNPLACED=[]; computeTotals();
+    fillCitySelects(); fillRoleSel();
+    $('#kpiRow').innerHTML='<div class="card kpi"><div class="kl">טוען נתונים מהערים…</div><div class="kv">⏳</div></div>';
+    $('#cityTable tbody').innerHTML='<tr><td colspan="6" class="live-note">ממתינים לנתונים הראשונים מהערים…</td></tr>';
+    $('#cityDetail').innerHTML=''; $('#ganDetail').innerHTML='';
+    $('#homeTicker').innerHTML='<div class="tk"><b>⏳</b><span>טוען נתונים מהערים</span></div>';
+  }
+  function renderLiveErrors(){
+    var host=$('#liveErrors');
+    if(!host){ host=document.createElement('div'); host.id='liveErrors'; var w=document.querySelector('.wrap'); if(w) w.insertBefore(host, w.firstChild); }
+    if(!LIVEMODE || !LIVE_ERRORS.length){ host.innerHTML=''; return; }
+    host.innerHTML=LIVE_ERRORS.map(function(e){ return '<div class="card pad" style="border-color:var(--alert);background:var(--alert-soft);color:var(--alert);margin-bottom:14px;font-weight:700">⚠️ '+escH(e.name)+': '+escH(e.msg)+'</div>'; }).join('');
+  }
   function applyLive(d){
     var keepId = CITIES[curCity] && CITIES[curCity].id;
-    LIVEMODE=true; LIVE_USER=d.user.email; LIVE_ORG=d.org; LIVE_CITIES_N=d.cities.length;
+    if(!LIVEMODE) wipeDemo();
+    LIVEMODE=true; LIVE_USER=d.user.email; LIVE_ORG=d.org; LIVE_CITIES_N=d.cities.length; LIVE_ERRORS=d.errors||[];
     CITIES=d.cities.map(function(c){ c.gans=c.gans||[]; return c; });
     computeTotals();
     STAFF=[]; CITIES.forEach(function(c){ (c.staffList||[]).forEach(function(m){ STAFF.push(m); }); });
     var idx=-1; CITIES.forEach(function(c,i){ if(c.id===keepId) idx=i; }); curCity=idx>=0?idx:0;
     if(curGan!=null && !(CITIES[curCity] && CITIES[curCity].gans[curGan])) curGan=null;
     fillCitySelects(); fillRoleSel();
-    renderKpis(); renderCityTable(); renderEduDonut(); renderAgeBars(); renderHome(); liveBadges();
+    renderKpis(); renderCityTable(); renderEduDonut(); renderAgeBars(); renderHome(); liveBadges(); renderLiveErrors();
     if(curView==='cities') renderCityDetail();
     if(curView==='reports') renderReports();
     if(curView==='activities') renderActivities();
@@ -2673,7 +2719,7 @@ try{
   var DEMO_REQ = /(^|[?&])demo=1(&|$)/.test(location.search);
   document.addEventListener('central:auth', function(e){
     var st=e.detail.state;
-    if(st==='in'){ gate.hidden=true; gateErr.style.display='none'; $('#gateMsg').textContent='הכניסה למרכז היא עם חשבון Google של המשרד הראשי.'; }
+    if(st==='in'){ gate.hidden=true; gateErr.style.display='none'; $('#gateMsg').textContent='הכניסה למרכז היא עם חשבון Google של המשרד הראשי.'; if(!LIVEMODE){ wipeDemo(); LIVEMODE=true; LIVE_USER=e.detail.email||''; liveBadges(); } }
     else if(st==='loading'){ gate.hidden=true; }
     else if(st==='out'){ if(LIVEMODE){ location.href=location.pathname; return; } gate.hidden=DEMO_REQ; }
     else if(st==='denied'){ gate.hidden=false; gateErr.style.display='block'; gateErr.textContent='החשבון '+(e.detail.email||'')+' אינו מוגדר כמשתמש/ת מרכז. משתמשי הערים נכנסים לתוכנת הרישום של העיר (index.html); הרשאת מרכז ניתנת במרשם המרכזי.'; }
@@ -2718,20 +2764,20 @@ try{
 
   /* ---------- LIVE LOOPS ---------- */
   setInterval(tickClock,1000);
-  setInterval(tickWorkers,1000);
+  setInterval(function(){ if(!LIVEMODE) tickWorkers(); },1000);
   if(!reduce){
     setInterval(function(){ if(!LIVEMODE) pushFeed(feedEl,feedEvent(),14); },4200);
-    setInterval(function(){ pushFeed($('#punchFeed'),punchEvent(),12); punchesToday++; },5200);
+    setInterval(function(){ if(!LIVEMODE){ pushFeed($('#punchFeed'),punchEvent(),12); punchesToday++; } },5200);
     setInterval(function(){ if(!LIVEMODE) pushFeed($('#aFeed'),actFeedEvent(),10); },6400);
     setInterval(function(){ if(!LIVEMODE) pushFeed($('#regFeed'),regEvent(),12); },5600);
-    setInterval(function(){ pushFeed($('#billFeed'),payEvent(),12); },7000);
+    setInterval(function(){ if(!LIVEMODE) pushFeed($('#billFeed'),payEvent(),12); },7000);
     setInterval(function(){ if(!LIVEMODE) renderKpis(); },9000);
   } else {
     setInterval(function(){ if(!LIVEMODE) pushFeed(feedEl,feedEvent(),14); },9000);
-    setInterval(function(){ pushFeed($('#punchFeed'),punchEvent(),12); punchesToday++; },11000);
+    setInterval(function(){ if(!LIVEMODE){ pushFeed($('#punchFeed'),punchEvent(),12); punchesToday++; } },11000);
     setInterval(function(){ if(!LIVEMODE) pushFeed($('#aFeed'),actFeedEvent(),10); },13000);
     setInterval(function(){ if(!LIVEMODE) pushFeed($('#regFeed'),regEvent(),12); },12000);
-    setInterval(function(){ pushFeed($('#billFeed'),payEvent(),12); },14000);
+    setInterval(function(){ if(!LIVEMODE) pushFeed($('#billFeed'),payEvent(),12); },14000);
   }
 })();
 </script>

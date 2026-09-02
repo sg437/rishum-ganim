@@ -345,6 +345,49 @@ const server=require('http').createServer((req,res)=>{
     await pg2.click('#gateDemo'); await pg2.waitForTimeout(100);
     return await pg2.evaluate(()=>document.getElementById('gate').hidden===true);
   });
+  /* ---- המרכזי במצב חי: מדמים את האירועים שהמודול החי משדר ---- */
+  await step('המרכזי: כניסה מוחקת את כל ההדמיה — פידים, ערים מומצאות, מסכי הדמיה', async()=>{
+    const r=await pg2.evaluate(()=>{
+      document.dispatchEvent(new CustomEvent('central:auth',{detail:{state:'in',email:'hq@example.com'}}));
+      const feed=document.querySelectorAll('#feed .ev').length, reg=document.querySelectorAll('#regFeed .ev').length;
+      const hiddenNav=[...document.querySelectorAll('#drawerNav .navitem')].filter(b=>b.hidden).map(b=>b.dataset.view).sort();
+      const visibleNav=[...document.querySelectorAll('#drawerNav .navitem')].filter(b=>!b.hidden).map(b=>b.dataset.view);
+      return { feed, reg, hiddenNav, visibleNav, ticker:document.getElementById('homeTicker').textContent, cityRows:document.querySelectorAll('#cityTable tbody tr.clickable').length, foot:document.getElementById('drFoot').textContent };
+    });
+    const okHidden=JSON.stringify(r.hiddenNav)===JSON.stringify(['billing','comm','crm','docs','hours','plan','portal','spec']);
+    return (r.feed===0 && r.reg===0 && okHidden && r.visibleNav.includes('cities') && r.visibleNav.includes('perms') && /טוען/.test(r.ticker) && r.cityRows===0 && /hq@example.com/.test(r.foot)) || JSON.stringify(r);
+  });
+  await step('המרכזי: נתונים חיים מעיר מוצגים בתוכו — בלי קישורים החוצה, עם מונים אמיתיים', async()=>{
+    const r=await pg2.evaluate(()=>{
+      const city={ id:'modiin-illit', name:'מודיעין עילית', region:'מרכז', legacy:true, absorption:'local', coordinator:'צ. שפירא', phone:'', active:true, year:'תשפ"ז', years:['תשפ"ז'],
+        gans:[ { id:'g1', name:'גן הדקל', sym:'123', age:'3', edu:'reg', gender:'בנות', campus:'מרכז', region:'מרכז', cap:30, enrolled:2, placed:1, on:true, teacher:'שרה לוי', licenseCap:1, licenseAges:'3', roster:[{r:'גננת',n:'שרה לוי'}], prog:{tzaharon:1,hanuka:0,nisan:0,sofshana:0}, students:[{name:'ילדה א',age:'3',placed:true,period:'א',muni:true},{name:'ילדה ב',age:'3',placed:false,period:'ב',muni:false}] } ],
+        gan:1, spc:0, students:2, special:0, placed:1, unplaced:1, unplacedList:[{name:'ילדה ב',city:'מודיעין עילית',cityId:'modiin-illit',age:'3',edu:'reg',gan:'גן הדקל',period:'ב'}],
+        muni:1, notMuni:1, todayNew:0, periods:{'א':1,'ב':1,'ג':0,'סופי':0}, byGender:{'בנות':1,'בנים':0}, licenseIssues:1,
+        staffList:[{id:'s1',name:'שרה לוי',role:'גננת',tz:'',city:'מודיעין עילית',gan:'גן הדקל',on:true}], staff:1, presence:[{email:'x@y.com',name:'צ. שפירא',ts:Date.now()}],
+        admins:[], allowed:[], brand:{}, docs:5, loaded:true, error:'', lastUpdate:Date.now(), live:true };
+      document.dispatchEvent(new CustomEvent('central:data',{detail:{ cities:[city], errors:[], org:{cities:[{id:'modiin-illit',name:'מודיעין עילית',legacy:true}],users:{'hq@example.com':{name:'לאה',hq:true,cities:{}}}}, user:{email:'hq@example.com',name:'לאה'}, hq:true }}));
+      document.querySelector('[data-view="cities"]').click();
+      const detail=document.getElementById('cityDetail').textContent;
+      document.querySelector('[data-view="registration"]').click();
+      const regRows=document.querySelectorAll('#regForms tbody tr').length, regTxt=document.getElementById('regForms').textContent;
+      document.querySelector('[data-view="place"]').click();
+      const un=document.getElementById('plUnplaced').textContent;
+      document.querySelector('[data-view="perms"]').click();
+      const perms=document.getElementById('orgAdmin').textContent;
+      return { ticker:document.getElementById('homeTicker').textContent, kpi:document.getElementById('kpiRow').textContent, detail, regRows, regTxt, un, perms,
+               links:document.querySelectorAll('a[href*="index.html"]').length, cityRows:document.querySelectorAll('#cityTable tbody tr.clickable').length, ab:document.getElementById('abLiveTxt').textContent };
+    });
+    const ok = r.cityRows===1 && /תלמידים רשומים/.test(r.kpi) && /מודיעין עילית/.test(r.detail) && /גן הדקל/.test(r.detail) && /רישיון/.test(r.detail)
+      && r.regRows===1 && /קליטה דיגיטלית/.test(r.regTxt) && /ילדה ב/.test(r.un) && /hq@example.com/.test(r.perms) && r.links===0 && /נתונים חיים · 1 ערים/.test(r.ab);
+    return ok || JSON.stringify({cityRows:r.cityRows, regRows:r.regRows, links:r.links, ab:r.ab, kpi:r.kpi.slice(0,60), detail:r.detail.slice(0,80), un:r.un.slice(0,40)});
+  });
+  await step('המרכזי: תקלת גישה לעיר מוצגת במפורש (ולא נשארת שקטה)', async()=>{
+    const r=await pg2.evaluate(()=>{
+      document.dispatchEvent(new CustomEvent('central:data',{detail:{ cities:[{ id:'ashdod', name:'אשדוד', region:'', legacy:false, absorption:'local', coordinator:'', phone:'', active:true, year:'', years:[], gans:[], gan:0, spc:0, students:0, special:0, placed:0, unplaced:0, unplacedList:[], muni:0, notMuni:0, todayNew:0, periods:{}, byGender:{}, licenseIssues:0, staffList:[], staff:0, presence:[], admins:[], allowed:[], brand:{}, docs:0, loaded:false, error:'אין הרשאה (permission-denied)', lastUpdate:0, live:true }], errors:[{id:'ashdod',name:'אשדוד',msg:'אין הרשאה (permission-denied)'}], org:{cities:[],users:{}}, user:{email:'hq@example.com'}, hq:true }}));
+      return document.getElementById('liveErrors').textContent;
+    });
+    return /אשדוד/.test(r) && /permission-denied/.test(r) || r;
+  });
   if(err2.length){ fail++; console.log('❌ שגיאות במרכזי:\n   '+err2.join('\n   ')); }
 
   await b.close(); server.close();
