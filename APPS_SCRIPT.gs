@@ -394,6 +394,14 @@ function chat_(messages, system, model){
                    : chatAnthropic_(messages, system, model, anthropicKey);
 }
 
+/* שגיאת ספק ה-AI. קודי עומס זמניים (429/5xx) מסומנים במפורש ב-"overloaded",
+   כדי שהאפליקציה תזהה אותם ותנסה שוב לבד — במקום להציג טקסט אנגלי גולמי. */
+function aiErr_(code, data){
+  var msg = (data && data.error && data.error.message) || ('http-' + code);
+  var busy = (code === 429 || code === 500 || code === 502 || code === 503 || code === 529);
+  return busy ? ('overloaded: http-' + code + ': ' + msg) : msg;
+}
+
 /* Anthropic Claude — Messages API */
 function chatAnthropic_(messages, system, model, key){
   var payload = {
@@ -409,7 +417,7 @@ function chatAnthropic_(messages, system, model, key){
   });
   var code = res.getResponseCode();
   var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
-  if(code >= 400) return { ok:false, error: (data.error && data.error.message) || ('http-' + code) };
+  if(code >= 400) return { ok:false, error: aiErr_(code, data) };
   var text = (data.content || []).filter(function(b){ return b.type === 'text'; })
                                  .map(function(b){ return b.text; }).join('\n');
   return { ok:true, text: text };
@@ -437,7 +445,7 @@ function chatGemini_(messages, system, model, key){
   });
   var code = res.getResponseCode();
   var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
-  if(code >= 400) return { ok:false, error: (data.error && data.error.message) || ('http-' + code) };
+  if(code >= 400) return { ok:false, error: aiErr_(code, data) };
   var cand = (data.candidates && data.candidates[0]) || {};
   var text = ((cand.content && cand.content.parts) || [])
                .map(function(p){ return p.text || ''; }).join('\n').replace(/^\n+|\n+$/g,'');

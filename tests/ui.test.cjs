@@ -45,8 +45,10 @@ Object.defineProperty(window,'_placeKind',{get:()=>_placeKind,set:v=>{_placeKind
 Object.defineProperty(window,'_walkWhy',{get:()=>_walkWhy,configurable:true});
 Object.defineProperty(window,'_geoGoogle',{get:()=>_geoGoogle,set:v=>{_geoGoogle=v},configurable:true});
 window.__setDriveCall=fn=>{ driveCall=fn; };   // הצהרת פונקציה — ניתנת להחלפה בתוך המודול
+window.__setDownloadBlob=fn=>{ downloadBlob=fn; };   // כדי לבדוק תוכן קובץ שהופק בלי להוריד אותו
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
+  aiDocSpec, aiDocDeliver, aiIsOverload, aiIsQuota, aiErrHe, aiAsk, AI_RETRY_WAITS, tableXlsHtml,
   guideContent, ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, drivePing, bridgeHasMailDoc, shareReportDoc, shareDocClose, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, bridgeErrHe, mapPlaceSave, save });
 window.__ready=true;
 `;
@@ -258,6 +260,62 @@ const server=require('http').createServer((req,res)=>{
     const pv=AI_TOOLS.assign_student.preview({student:'ילדה4',gan:'גן הרימון'});
     const r=AI_TOOLS.assign_student.run({student:'ילדה4',gan:'גן הרימון'}, pv.ctx);
     return !r['שגיאה'] && DB.students.find(x=>x.id==='s4').ganId==='g2'; }));
+  /* ---- הפקת מסמך לפי בקשה חופשית ---- */
+  await step('הפקת מסמך מזהה עמודות בעברית מדוברת ומסננת לפי גן', ()=>pg.evaluate(()=>{
+    const spec=aiDocSpec({ kind:'students', filter:{ganName:'הדקל'},
+      fields:['שם משפחה','שם הילדה','רחוב','מספר בית','טלפון','עמודה שאינה קיימת'] });
+    if(spec.error) return spec.error;
+    const labels=spec.cols.map(c=>c[1]).join("|");
+    return labels==='שם משפחה|שם פרטי|רחוב|בניין|טלפון'
+      && spec.unknown.length===1 && spec.rows.length===3 && spec.format==='excel'; }));
+  await step('בקשה בלי עמודות מקבלת ברירת מחדל, ופורמט CSV מזוהה', ()=>pg.evaluate(()=>{
+    const spec=aiDocSpec({ format:'csv' });
+    return !spec.error && spec.format==='csv' && spec.cols.length>=8 && spec.rows.length===4; }));
+  await step('הקובץ שנוצר מכיל את הכותרות ואת נתוני התלמידות', async()=>{
+    return await pg.evaluate(async()=>{
+      let got=null;
+      __setDownloadBlob((blob,name)=>{ got={ name, text:null, blob }; });
+      const spec=aiDocSpec({ kind:'students', filter:{ganName:'הדקל'}, format:'csv',
+        fields:['שם משפחה','שם הילדה','טלפון'] });
+      const res=await aiDocDeliver(spec);
+      if(!got) return 'לא נוצר קובץ';
+      const text=await got.blob.text();
+      return got.name.endsWith('.csv') && text.includes('שם משפחה') && text.includes('ילדה1')
+        && !!res['בוצע'] && res['בוצע'].includes('3 שורות'); }); });
+  await step('הקובץ יורד למחשב תמיד — גם בבקשה לשמור בדרייב', ()=>pg.evaluate(()=>{
+    let got=null;
+    __setDownloadBlob((blob,name)=>{ got=name; });
+    const spec=aiDocSpec({ kind:'students', format:'excel', drive:true });
+    const res=aiDocDeliver(spec);
+    return !!got && got.endsWith('.xls') && !res['שגיאה'] && res['בוצע'].includes('הורד למחשב'); }));
+  await step('כלי הפקת המסמך מוצג לאישור עם מניין השורות והעמודות', ()=>pg.evaluate(()=>{
+    const pv=AI_TOOLS.make_document.preview({ kind:'gans', format:'excel', fields:['שם הגן','טלפון'] });
+    return !pv.error && pv.text.includes('קובץ אקסל') && pv.text.includes('טלפון בגן'); }));
+
+  /* ---- עומס אצל ספק ה-AI: זיהוי, ניסיון חוזר, והודעה בעברית ---- */
+  await step('הודעת עומס של הספק מזוהה ומתורגמת לעברית', ()=>pg.evaluate(()=>{
+    const en='This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.';
+    return aiIsOverload(en) && aiIsOverload('overloaded: http-503: The model is overloaded')
+      && !aiIsOverload('You exceeded your current quota')
+      && aiIsQuota('You exceeded your current quota')
+      && aiErrHe(en).includes('עמוס') && aiErrHe('quota exceeded').includes('מכסה'); }));
+  await step('בקשה שנכשלה בעומס נשלחת שוב לבד ומצליחה', async()=>{
+    return await pg.evaluate(async()=>{
+      AI_RETRY_WAITS.length=0; AI_RETRY_WAITS.push(5,5,5);   // בלי להמתין באמת בבדיקה
+      let calls=0; const seen=[];
+      __setDriveCall(async()=>{ calls++;
+        if(calls<3) throw new Error('overloaded: http-503: The model is overloaded. Please try again later.');
+        return { ok:true, text:'שלום' }; });
+      const res=await aiAsk([{role:'user',content:'שלום'}], (n)=>seen.push(n));
+      return calls===3 && seen.join(",")==='1,2' && res.text==='שלום'; }); });
+  await step('שגיאה שאינה עומס אינה נשלחת שוב', async()=>{
+    return await pg.evaluate(async()=>{
+      let calls=0;
+      __setDriveCall(async()=>{ calls++; throw new Error('no-ai-key'); });
+      let msg='';
+      try{ await aiAsk([{role:'user',content:'שלום'}]); }catch(e){ msg=aiErrHe(e.message); }
+      return calls===1 && msg.includes('מפתח AI'); }); });
+
   await step('פירוק בלוקי פעולה מתשובת המודל', ()=>pg.evaluate(()=>{
     const p=aiParseActions('הנה התשובה\n```action\n{"tool":"stats","args":{}}\n```');
     return p.actions.length===1 && p.actions[0].tool==='stats' && p.text==='הנה התשובה'; }));
