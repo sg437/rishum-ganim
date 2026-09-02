@@ -48,7 +48,7 @@ window.__setDriveCall=fn=>{ driveCall=fn; };   // הצהרת פונקציה — 
 window.__setDownloadBlob=fn=>{ downloadBlob=fn; };   // כדי לבדוק תוכן קובץ שהופק בלי להוריד אותו
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
-  aiDocSpec, aiDocDeliver, aiIsOverload, aiIsQuota, aiErrHe, aiAsk, AI_RETRY_WAITS, tableXlsHtml,
+  aiDocSpec, aiDocDeliver, aiIsOverload, aiIsQuota, aiIsBridgeHiccup, aiErrHe, aiAsk, AI_RETRY_WAITS, tableXlsHtml,
   guideContent, ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, drivePing, bridgeHasMailDoc, shareReportDoc, shareDocClose, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, bridgeErrHe, mapPlaceSave, save });
 window.__ready=true;
 `;
@@ -308,6 +308,21 @@ const server=require('http').createServer((req,res)=>{
         return { ok:true, text:'שלום' }; });
       const res=await aiAsk([{role:'user',content:'שלום'}], (n)=>seen.push(n));
       return calls===3 && seen.join(",")==='1,2' && res.text==='שלום'; }); });
+  await step('ניתוק זמני מהגשר נשלח שוב לבד', async()=>{
+    return await pg.evaluate(async()=>{
+      AI_RETRY_WAITS.length=0; AI_RETRY_WAITS.push(5,5,5);
+      let calls=0; const why=[];
+      __setDriveCall(async()=>{ calls++;
+        if(calls<3) throw new Error('network');
+        return { ok:true, text:'שלום' }; });
+      const res=await aiAsk([{role:'user',content:'שלום'}], (n,sec,w)=>why.push(w));
+      return calls===3 && why.join(",")==='bridge,bridge' && res.text==='שלום'; }); });
+  await step('כשל מתמשך מול הגשר מוצג עם הפרטים הטכניים', ()=>pg.evaluate(()=>{
+    const net=aiErrHe('network');
+    const bad=aiErrHe('bad-response:302:<HTML><HEAD><TITLE>Moved Temporarily');
+    return aiIsBridgeHiccup('network') && aiIsBridgeHiccup('bad-response:500:x')
+      && net.includes('לא נענה') && net.includes('בדיקת חיבור')
+      && bad.includes('אינה JSON') && bad.includes('302'); }));
   await step('שגיאה שאינה עומס אינה נשלחת שוב', async()=>{
     return await pg.evaluate(async()=>{
       let calls=0;
