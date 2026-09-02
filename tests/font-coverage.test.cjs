@@ -141,7 +141,10 @@ const bad=(m,d)=>{ fail++; console.log('❌ '+m); (d||[]).forEach(x=>console.log
   /* --- 4. רכיבי טופס בכל עמוד שהמעבדה נוגעת בו -------------------------
      כאן נפתחה הפירצה מלכתחילה: הדפדפן אינו מוריש font-family לרכיבי טופס,
      ו-management.html תיקן זאת ל-button בלבד. */
-  for(const page of ['demo.html','management.html?ui=new','register.html?ui=new',
+  /* management.html (המרכזי) אינו ברשימה: הוא מוצר נפרד עם עיצוב משלו ואינו
+     טוען את ui-lab.css/ui-lab.js — הפרדת העיצוב בין המרכזי לתוכנת הערים
+     (ראה docs/MULTI_CITY.md). בדיקה 6 למטה מוודאת שהוא אכן לא נוגע בעיצוב החדש. */
+  for(const page of ['demo.html','register.html?ui=new',
                      'app-artifact.html?ui=new','test.html?ui=new']){
     const q=await browser.newPage({ viewport:{width:1440,height:900} });
     await q.goto(base+page,{waitUntil:'load'});
@@ -186,7 +189,7 @@ const bad=(m,d)=>{ fail++; console.log('❌ '+m); (d||[]).forEach(x=>console.log
      עד השחרור זה היה "בלי דגל". עכשיו העיצוב החדש הוא ברירת המחדל, ולכן
      הבדיקה נכנסת במפורש עם ‎?ui=old‎ — וממשיכה לוודא את אותו הדבר: מי
      שביקשה את הקודם אינה מקבלת ממנו מחלקה, קובץ או גופן. */
-  for(const page of ['register.html?ui=old','management.html?ui=old',
+  for(const page of ['register.html?ui=old','management.html?ui=old','management.html?ui=new',
                      'app-artifact.html?ui=old','test.html?ui=old']){
     const ctx=await browser.newContext();
     const q=await ctx.newPage();

@@ -51,10 +51,15 @@ var RG_BUILD = 'rg-b05ea2eb';
 // גרסת הגשר — מוחזרת ב"בדיקת חיבור" בתוכנה, כדי לדעת בוודאות איזו גרסה *נפרסה בפועל*
 // (שמירת הקוד בעורך אינה מספיקה — חייבים לפרוס גרסה חדשה). יש להעלות את התאריך
 // בכל שינוי שמוסיף/משנה פעולה בגשר.
-var BRIDGE_VERSION = '2026-08-25';
+var BRIDGE_VERSION = '2026-09-02';
 
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
+// ריבוי ערים: עיר הבית (מודיעין עילית) ממשיכה לשבת ישירות בתיקיית האב ובאוסף app —
+// כל עיר נוספת מקבלת תיקייה משלה בתוך תיקיית האב ("ערים/<שם העיר>") ואוסף
+// cities/<מזהה>/app ב-Firestore. ⚠️ HOME_CITY_ID חייב להיות זהה ל-HOME_CITY.id ב-index.html.
+var HOME_CITY_ID = 'modiin-illit';
+var CITIES_FOLDER_NAME = 'ערים';
 
 // פעולות ניהול משתמשים — דורשות שהקורא יהיה מנהל מערכת (settings.admins ב-Firestore).
 var USER_ACTIONS = { userCreate:true, userList:true, userDelete:true, userSetPassword:true, userSetName:true };
@@ -71,19 +76,21 @@ function doPost(e){
     // אכיפת הרשאה בכל פעולה לא-ציבורית: לא די בטוקן Firebase תקף — המייל חייב
     // להופיע ברשימת המורשים של המערכת (או להיות בעל מערכת). פעולות ניהול משתמשים
     // דורשות הרשאת מנהל (adminGate_ הוא תת-קבוצה של allowedGate_).
+    // העיר שממנה הגיעה הבקשה (התוכנה שולחת cityId/cityName בכל קריאה; חסר = עיר הבית)
+    var city = cityFromReq_(req);
     if(!PUBLIC_ACTIONS[req.action]){
       if(USER_ACTIONS[req.action]){
-        var gate = adminGate_(req.idToken);
+        var gate = adminGate_(req.idToken, city);
         if(!gate.ok) return json_(out, {ok:false, error:gate.error || 'not-admin'});
       } else {
-        var agate = allowedGate_(req.idToken);
+        var agate = allowedGate_(req.idToken, city);
         if(!agate.ok) return json_(out, {ok:false, error:agate.error || 'unauthorized'});
       }
     }
     switch(req.action){
       case 'ping':           return json_(out, ping_());
-      case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu, req.gan));
-      case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan));
+      case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu, req.gan, city));
+      case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan, city));
       case 'chat':           return json_(out, chat_(req.messages, req.system, req.model));
       case 'geocode':        return json_(out, geocode_(req.q, req.city, req.bias));
       case 'walk':           return json_(out, walk_(req.origin, req.dests));
@@ -98,10 +105,10 @@ function doPost(e){
       case 'regSubmit':      return json_(out, regSubmit_(req.data, req.files));
       case 'regList':        return json_(out, regList_());
       case 'regRemove':      return json_(out, regRemove_(req.id));
-      case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name));
+      case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name, city));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
-      case 'backupSave':     return json_(out, backupSave_(req.name, req.dataB64));
+      case 'backupSave':     return json_(out, backupSave_(req.name, req.dataB64, city));
       case 'copy':           return json_(out, copy_(req.fileId, req.folderId, req.name));
       case 'download':       return json_(out, download_(req.fileId));
       case 'sheetSync':      return json_(out, sheetSync_(req.title, req.sheets));
@@ -540,6 +547,20 @@ function root_(){
   var it = DriveApp.getRootFolder().getFoldersByName(ROOT_FOLDER_NAME);
   return it.hasNext() ? it.next() : DriveApp.createFolder(ROOT_FOLDER_NAME);
 }
+/* העיר מתוך הבקשה: {id, name, legacy}. עיר הבית (או בקשה ישנה בלי עיר) = legacy. */
+function cityFromReq_(req){
+  var id = String((req && req.cityId) || '').trim().toLowerCase();
+  var name = String((req && req.cityName) || '').trim();
+  if(!id || id === HOME_CITY_ID) return { id: HOME_CITY_ID, name: name, legacy: true };
+  if(!/^[a-z0-9][a-z0-9-]{1,39}$/.test(id)) return { id: HOME_CITY_ID, name: name, legacy: true };
+  return { id: id, name: name || id, legacy: false };
+}
+/* תיקיית הבסיס של העיר: עיר הבית — תיקיית האב עצמה (כמו תמיד); עיר אחרת — "ערים/<שם>" */
+function cityRoot_(city){
+  var r = root_();
+  if(!city || city.legacy) return r;
+  return sub_(sub_(r, CITIES_FOLDER_NAME), city.name || city.id);
+}
 function sub_(parent, name){
   var it = parent.getFoldersByName(name);
   return it.hasNext() ? it.next() : parent.createFolder(name);
@@ -555,8 +576,8 @@ function eduFolderName_(edu){
   if(e.indexOf('מיוחד') >= 0 || e === 'ח"מ' || e === 'חמ') return 'חינוך מיוחד';
   return 'חינוך רגיל';
 }
-function childFolder_(year, name, edu, gan){
-  var r = root_();
+function childFolder_(year, name, edu, gan, city){
+  var r = cityRoot_(city);
   var e = sub_(r, eduFolderName_(edu));            // חלוקה ראשית לפי חינוך (סעיף 12)
   var y = sub_(e, String(year || 'ללא שנה'));
   var parent = (gan && String(gan).trim()) ? sub_(y, String(gan).trim()) : y;  // תיקיית גן בתוך השנה (חינוך → שנה → גן → ילדה)
@@ -564,8 +585,8 @@ function childFolder_(year, name, edu, gan){
   return { ok:true, folderId:c.getId(), folderLink:c.getUrl(), rootLink:r.getUrl() };
 }
 /* העברת תיקיית ילדה קיימת אל תוך תיקיית הגן שלה (ארגון מחדש של מבנה קיים) */
-function childMove_(folderId, year, edu, gan){
-  var r = root_();
+function childMove_(folderId, year, edu, gan, city){
+  var r = cityRoot_(city);
   var e = sub_(r, eduFolderName_(edu));
   var y = sub_(e, String(year || 'ללא שנה'));
   var parent = (gan && String(gan).trim()) ? sub_(y, String(gan).trim()) : y;
@@ -574,8 +595,8 @@ function childMove_(folderId, year, edu, gan){
   return { ok:true, folderId:f.getId(), folderLink:f.getUrl() };
 }
 /* תיקיית אנשי צוות — לפי חינוך, ובתוכה תיקייה לכל איש/אשת צוות (סעיפים 12, 17) */
-function staffFolder_(edu, name){
-  var r = root_();
+function staffFolder_(edu, name, city){
+  var r = cityRoot_(city);
   var e = sub_(r, eduFolderName_(edu));
   var s = sub_(e, 'אנשי צוות');
   var c = sub_(s, String(name || 'ללא שם'));
@@ -615,8 +636,8 @@ function backupPrune_(folder){
   for(var i = BACKUP_KEEP; i < arr.length; i++){ try{ arr[i].f.setTrashed(true); }catch(e){} }
 }
 /* גיבוי שנשלח מהתוכנה (client-side) — JSON של כל הנתונים, מקודד base64 */
-function backupSave_(name, dataB64){
-  var folder = backupFolder_();
+function backupSave_(name, dataB64, city){
+  var folder = (city && !city.legacy) ? sub_(cityRoot_(city), BACKUP_FOLDER_NAME) : backupFolder_();
   var blob = Utilities.newBlob(Utilities.base64Decode(dataB64), 'application/json',
                                name || ('backup-' + new Date().toISOString().slice(0,10) + '.json'));
   var file = folder.createFile(blob);
@@ -762,9 +783,33 @@ function isOwnerEmail_(email){
    Firestore, בקשות REST עם טוקן משתמש נחסמות, אך טוקן SA עוקף זאת). אם SA אינו
    מוגדר — נופל לטוקן המשתמש (עובד כל עוד אכיפת App Check על Firestore כבויה).
    כך המעבר לאכיפה אינו שובר את הגשר, ובלי SA הכל ממשיך לעבוד כמו קודם. */
-function metaDocJson_(idToken){
+function metaDocJson_(idToken, city){
+  var path = (city && !city.legacy) ? ('cities/' + encodeURIComponent(city.id) + '/app/meta') : 'app/meta';
+  return fsDocJson_(idToken, path);
+}
+/* המרשם המרכזי (org/meta) — הערים ומי רואה איזו עיר. null אם אין/אין גישה. */
+function orgDocJson_(idToken){ return fsDocJson_(idToken, 'org/meta'); }
+/* הרשומה של המשתמש/ת במרשם: { hq:bool, cities:{cityId:role} } או null אם אינו/ה במרשם */
+function orgUserRec_(idToken, email){
+  var org = orgDocJson_(idToken);
+  if(!org || !org.fields) return null;
+  var users = {};
+  try{ users = org.fields.users.mapValue.fields || {}; }catch(e){ return null; }
+  var key = null;
+  Object.keys(users).forEach(function(k){ if(String(k).toLowerCase() === email) key = k; });
+  if(key === null) return null;
+  var rec = { hq:false, cities:{} };
+  try{ var f = users[key].mapValue.fields || {};
+    rec.hq = !!(f.hq && f.hq.booleanValue === true);
+    if(f.cities && f.cities.mapValue){ var cf = f.cities.mapValue.fields || {};
+      Object.keys(cf).forEach(function(cid){ rec.cities[cid] = String(cf[cid].stringValue || ''); }); }
+    else if(f.cities && f.cities.arrayValue){ (f.cities.arrayValue.values || []).forEach(function(v){ if(v.stringValue) rec.cities[v.stringValue] = 'edit'; }); }
+  }catch(e){}
+  return rec;
+}
+function fsDocJson_(idToken, path){
   var url = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID +
-            '/databases/(default)/documents/app/meta';
+            '/databases/(default)/documents/' + path;
   var sa = saToken_();
   var auth = sa ? ('Bearer ' + sa) : (idToken ? ('Bearer ' + idToken) : '');
   if(!auth) return null;
@@ -778,11 +823,22 @@ function metaDocJson_(idToken){
 /* אימות שהקורא הוא מנהל מערכת: בעל מערכת תמיד; אחרת קורא את app/meta מ-Firestore
    ובודק את settings.admins. רשימה ריקה = רק בעלים (אין יותר "כל מחובר מנהל"
    במצב אתחול) — תואם ל-isAdmin() באפליקציה. */
-function adminGate_(idToken){
+function adminGate_(idToken, city){
   var email = tokenEmail_(idToken);
   if(!email) return { ok:false, error:'unauthorized' };
   if(isOwnerEmail_(email)) return { ok:true };
-  var meta = metaDocJson_(idToken);
+  city = city || { id: HOME_CITY_ID, legacy: true };
+  // המרשם המרכזי קודם: מרכז = מנהל/ת בכל עיר; מנהל/ת עיר לפי המפה; משויך/ת אחר/ת בעיר — לא מנהל/ת.
+  var rec = orgUserRec_(idToken, email);
+  if(rec){
+    if(rec.hq) return { ok:true };
+    if(rec.cities[city.id] === 'admin') return { ok:true };
+    if(!rec.cities[city.id]) return { ok:false, error:'not-allowed' };
+    // משויך/ת לעיר בתפקיד אחר — ממשיכים לבדוק את רשימת המנהלים של העיר עצמה
+  } else if(!city.legacy){
+    return { ok:false, error:'not-allowed' };   // עיר שאינה עיר הבית — רק דרך המרשם
+  }
+  var meta = metaDocJson_(idToken, city);
   if(!meta) return { ok:false, error:'admin-check-failed' };
   var admins = [];
   try{
@@ -797,11 +853,20 @@ function adminGate_(idToken){
    ברשימת המורשים ב-app/meta (admins ∪ allowedEmails ∪ מפתחות userActivity) —
    מקביל ל-emailAllowed()/knownEmails() באפליקציה. חוסם כל חשבון Google אקראי
    שקיבל טוקן תקף אך אינו מורשה במערכת. */
-function allowedGate_(idToken){
+function allowedGate_(idToken, city){
   var email = tokenEmail_(idToken);
   if(!email) return { ok:false, error:'unauthorized' };
   if(isOwnerEmail_(email)) return { ok:true, email:email };
-  var meta = metaDocJson_(idToken);
+  city = city || { id: HOME_CITY_ID, legacy: true };
+  // המרשם המרכזי: מרכז רואה הכל; משויך/ת לעיר — רק אותה; משתמש/ת שבמרשם ולא משויך/ת — נחסם/ת.
+  var rec = orgUserRec_(idToken, email);
+  if(rec){
+    if(rec.hq || rec.cities[city.id]) return { ok:true, email:email };
+    return { ok:false, error:'not-allowed' };
+  }
+  if(!city.legacy) return { ok:false, error:'not-allowed' };   // עיר נוספת — רק דרך המרשם
+  // משתמש/ת ותיק/ה שאינו/ה במרשם — עיר הבית לפי רשימת המורשים שלה (כמו עד היום)
+  var meta = metaDocJson_(idToken, city);
   if(!meta) return { ok:false, error:'access-check-failed' };
   var s = {};
   try{ s = meta.fields.settings.mapValue.fields; }catch(e){ s = {}; }

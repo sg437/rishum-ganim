@@ -153,6 +153,7 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .fieldwrap.tel>.act{width:30px;margin-inline-start:3px}
 .fieldwrap.tel>input{min-width:5.5em}
 .chip.year{background:var(--accent-soft);color:var(--accent-strong)}
+.chip.city{background:var(--surface-2);color:var(--ink);border:1px solid var(--border)}
 .chip.edu{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--border)}
 .chip.edu.reg{background:var(--good-soft);color:var(--good);border-color:transparent}
 .chip.edu.spec{background:var(--warn-soft);color:var(--warn);border-color:transparent}
@@ -184,6 +185,8 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .drawer-sec>.lbl{font-size:.72rem;font-weight:800;color:var(--muted);margin:0 4px 7px;letter-spacing:.02em}
 .drawer-year{display:flex;align-items:center;gap:8px;background:var(--accent-soft);border-radius:12px;padding:9px 13px;font-weight:800;color:var(--accent-strong)}
 .drawer-year select{width:auto;flex:1;background:transparent;border:0;font-weight:800;color:var(--accent-strong);padding:2px}
+.drawer-city{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:9px 13px;font-weight:800;color:var(--ink)}
+.drawer-city select{width:auto;flex:1;background:transparent;border:0;font-weight:800;color:var(--ink);padding:2px;font-family:inherit}
 .drawer-edu{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .drawer-edu button{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-soft);padding:9px 4px;border-radius:11px;font-weight:800;font-size:.83rem}
 .drawer-edu button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -658,6 +661,7 @@ body.ai-docked{padding-inline-end:var(--ai-w,380px)}
     </div>
     <div class="top-spacer"></div>
     <div class="top-chips" id="topChips">
+      <span class="chip city" id="cityChip" style="display:none"></span>
       <span class="chip year" id="yearChip"></span>
       <span class="chip edu" id="eduChip"></span>
     </div>
@@ -676,6 +680,10 @@ body.ai-docked{padding-inline-end:var(--ai-w,380px)}
     <button class="drawer-close" id="drawerClose" title="סגירה" aria-label="סגירה">✕</button>
   </div>
   <div class="drawer-body">
+    <div class="drawer-sec" id="drawerCitySec" style="display:none">
+      <div class="lbl">עיר</div>
+      <div class="drawer-city">🏙️ <select id="citySelect" aria-label="העיר הפעילה"></select></div>
+    </div>
     <div class="drawer-sec">
       <div class="lbl">שנה</div>
       <div class="drawer-year">📅 <select id="yearSelect"></select></div>
@@ -864,6 +872,7 @@ const OWNER_EMAILS = ["7684252sg@gmail.com", "sg@taharat.org"].map(x=>x.toLowerC
 function isOwnerEmail(email){ return OWNER_EMAILS.includes(String(email||"").toLowerCase()); }
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
+const GENDERS = ["בנות","בנים"];   // מגדר הגן — יש גני בנות ויש גני בנים; התלמיד/ה יורש/ת מהגן
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
 const DEFAULT_STAFF_ROLES = ["גננת","סייעת","סייעת ב'","סייעת רפואית","סייעת רפואית משלימה","סייעת רפואית ממלאת מקום","סייעת צמודה","גננת משלימה","סייעת משלימה","העשרה","גננת שילוב","מנתחת התנהגות",'הכנה לכיתה א׳',"סייעת תגבור","פרא רפואי","גננת ממלאת מקום","סייעת ממלאת מקום"]; // תפקידי צוות (סעיף 2)
 const DEFAULT_CHILD_AGES = ["2","3","4","5","6"]; // גיל ילדה בודדת (סעיף 6)
@@ -993,6 +1002,228 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 
 let app=null, auth=null, db=null, currentUser=null;
 let DB = blankDB();
+
+/* ============================================================
+   ריבוי ערים — המרשם המרכזי, העיר הפעילה, וההרשאה לפי עיר
+   ------------------------------------------------------------
+   התוכנה נולדה לעיר אחת (מודיעין עילית) וכל הנתונים שלה יושבים באוסף
+   Firestore יחיד בשם app. הפתיחה לערים נוספות נעשית בלי להזיז את הנתונים
+   הקיימים: העיר הראשונה ("עיר הבית") ממשיכה לחיות ב-app, וכל עיר חדשה
+   מקבלת אוסף משלה — cities/<מזהה-העיר>/app — באותו מבנה מסמכים בדיוק
+   (meta, gans, staff, management, branding, students_<שנה>, presence_*).
+   כך כל הקוד שקורא וכותב "מסמך בעיר" עובר דרך cityDoc()/cityColl(), ולא
+   יודע ולא צריך לדעת באיזו עיר הוא נמצא.
+
+   המרשם המרכזי — מסמך org/meta — אומר אילו ערים קיימות ומי רשאי לראות
+   מה:
+     cities: [ {id, name, region, absorption, coordinator, phone, note, active} ]
+     users:  { [email]: { name, hq:bool, cities:{ [cityId]: "admin"|"edit"|"view" } } }
+   • hq:true — משתמש/ת המרכז: רואה את כל הערים (ומנהל/ת את המרשם).
+   • cities — לכל עיר בנפרד: מנהל/ת עיר, עריכה, או צפייה בלבד. מי שאינו
+     במפה של עיר — אינו רואה אותה בכלל, גם לא בבורר.
+   • בעלי המערכת (OWNER_EMAILS) הם תמיד מרכז.
+   • משתמש/ת שאינו במרשם כלל — "משתמש/ת ותיק/ה": ממשיך/ה לעבוד בעיר
+     הבית בדיוק לפי רשימת המורשים של העיר (settings.allowedEmails וכו׳),
+     כמו עד היום. כך המעבר אינו מנתק אף אחד.
+   הכללים בצד השרת (firestore.rules) משכפלים את אותה לוגיקה.
+   ============================================================ */
+const HOME_CITY = Object.freeze({ id:"modiin-illit", name:"מודיעין עילית", legacy:true });
+const CITY_ROLES = [["admin","מנהל/ת עיר"],["edit","עריכה"],["view","צפייה בלבד"]];
+const CITY_ROLE_LABEL = Object.fromEntries(CITY_ROLES);
+const CITY_ABSORPTION = [["local","קליטה דיגיטלית בעיר"],["office","קליטה במשרד הראשי"]];
+const ORG_DOC = ["org","meta"];
+let ORG = { cities:[], users:{} };   // עותק חי של org/meta
+let orgLoaded=false, orgUnsub=null, _orgRestTimer=null;
+let CITY = null;                      // העיר הפעילה במכשיר הזה — {id,name,legacy,...}
+/* רשימת הערים — עיר הבית תמיד קיימת, גם כשהמרשם ריק או חסר */
+function orgCities(){
+  const list=(ORG&&Array.isArray(ORG.cities)?ORG.cities:[]).filter(c=>c&&c.id);
+  const home=list.find(c=>c.id===HOME_CITY.id);
+  const out=home ? list.slice() : [Object.assign({},HOME_CITY)].concat(list);
+  return out.map(c=> c.id===HOME_CITY.id ? Object.assign({}, HOME_CITY, c, {legacy:true}) : c);
+}
+function cityById(id){ return orgCities().find(c=>c.id===id)||null; }
+function cityIsLegacy(c){ return !c || c.id===HOME_CITY.id || !!c.legacy; }
+function cityName(id){ const c=cityById(id||(CITY&&CITY.id)); return c ? (c.name||c.id) : String(id||""); }
+/* מזהה עיר תקני — אותיות לטיניות קטנות, ספרות ומקפים (חייב להתאים לכללי השרת) */
+function cityIdFrom(text){
+  const t=String(text||"").trim().toLowerCase();
+  if(!t) return "";
+  const map={"א":"a","ב":"b","ג":"g","ד":"d","ה":"h","ו":"v","ז":"z","ח":"ch","ט":"t","י":"y","כ":"k","ך":"k","ל":"l","מ":"m","ם":"m","נ":"n","ן":"n","ס":"s","ע":"a","פ":"p","ף":"f","צ":"tz","ץ":"tz","ק":"k","ר":"r","ש":"sh","ת":"t"};
+  const v=t.split("").map(ch=>map[ch]!==undefined?map[ch]:ch).join("").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  return v.slice(0,40);
+}
+function orgUser(email){
+  const em=String(email==null?myEmail():email).toLowerCase(); if(!em) return null;
+  const u=(ORG&&ORG.users)||{};
+  for(const k in u){ if(String(k).toLowerCase()===em) return u[k]; }
+  return null;
+}
+/* משתמש/ת מרכז — רואה את כל הערים. בעלי המערכת תמיד. */
+function isHQ(email){
+  const em=String(email==null?myEmail():email).toLowerCase();
+  if(!em) return false;
+  if(isOwnerEmail(em)) return true;
+  const u=orgUser(em); return !!(u&&u.hq);
+}
+/* התפקיד של המשתמש/ת בעיר לפי המרשם ("" = לא משויך/ת דרך המרשם) */
+function cityRole(cityId, email){
+  const u=orgUser(email); if(!u) return "";
+  const c=u.cities; if(!c) return "";
+  if(Array.isArray(c)) return c.includes(cityId) ? "edit" : "";   // צורה ישנה: רשימה = עריכה
+  const r=c[cityId]; return (r==="admin"||r==="edit"||r==="view") ? r : "";
+}
+/* האם מותר למשתמש/ת לראות את העיר. הסדר: בעלים → מרכז → משויך/ת במרשם →
+   ורק בעיר הבית, ורק למי שאינו במרשם כלל — רשימת המורשים של העיר עצמה. */
+function cityAccess(cityId, email){
+  const em=String(email==null?myEmail():email).toLowerCase(); if(!em||!cityId) return false;
+  if(isOwnerEmail(em)) return true;
+  const u=orgUser(em);
+  if(u){ if(u.hq) return true; return !!cityRole(cityId, em); }
+  if(cityId===HOME_CITY.id) return knownEmails().has(em);   // משתמש/ת ותיק/ה — כמו היום
+  return false;
+}
+/* הערים שהמשתמש/ת רשאי/ת לראות — לבורר. משתמש/ת ותיק/ה שאינו/ה במרשם מקבל/ת
+   את עיר הבית (האימות הסופי מול רשימת המורשים נעשה אחרי טעינת הנתונים, ב-enforceAccess). */
+function myCities(){
+  const em=myEmail(); if(!em) return [];
+  const all=orgCities().filter(c=>c.active!==false);
+  if(isHQ(em)) return all;
+  const u=orgUser(em);
+  if(!u) return all.filter(c=>c.id===HOME_CITY.id);
+  return all.filter(c=>!!cityRole(c.id, em));
+}
+function getCityPref(){ try{ return localStorage.getItem("rg-city")||""; }catch(_){ return ""; } }
+function setCityPref(id){ try{ if(id) localStorage.setItem("rg-city", id); else localStorage.removeItem("rg-city"); }catch(_){} }
+/* אוספי Firestore של העיר הפעילה — הנקודה היחידה שיודעת איפה העיר יושבת */
+function cityColl(c){ c=c||CITY; return cityIsLegacy(c) ? collection(db,"app") : collection(db,"cities",c.id,"app"); }
+function cityDoc(id, c){ c=c||CITY; return cityIsLegacy(c) ? doc(db,"app",id) : doc(db,"cities",c.id,"app",id); }
+function cityRestPath(c){ c=c||CITY; return cityIsLegacy(c) ? "app" : "cities/"+encodeURIComponent(c.id)+"/app"; }
+function restRoot(){ return "https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/"; }
+function cityRestBase(c){ return restRoot()+cityRestPath(c); }   // בלי לוכסן בסוף
+/* ---------- המרשם המרכזי: האזנה, טעינה חלופית ושמירה ---------- */
+function normOrg(d){
+  const o={ cities:[], users:{} };
+  if(d && Array.isArray(d.cities)) o.cities=d.cities.filter(c=>c&&c.id).map(c=>Object.assign({},c));
+  if(d && d.users && typeof d.users==="object"){ for(const k in d.users){ const v=d.users[k]; if(v&&typeof v==="object") o.users[String(k).toLowerCase()]=Object.assign({},v); } }
+  return o;
+}
+function orgForWrite(){
+  return { cities:orgCities().map(c=>Object.assign({},c)), users:Object.assign({},ORG.users||{}), updatedAt:Date.now(), updatedBy:myEmail() };
+}
+async function saveOrg(){
+  if(!db || !currentUser) return;
+  if(!isHQ()) throw new Error("not-hq");
+  const payload=orgForWrite();
+  if(restMode){
+    const token=await currentUser.getIdToken();
+    const r=await fetch(restRoot()+"org/meta",{ method:"PATCH", headers:{ "Authorization":"Bearer "+token, "Content-Type":"application/json" }, body:JSON.stringify({fields:encFsFields(payload)}) });
+    if(!r.ok) throw new Error("write org ("+r.status+")");
+  } else {
+    await setDoc(doc(db,ORG_DOC[0],ORG_DOC[1]), payload);
+  }
+  ORG=normOrg(payload);
+}
+/* מה קורה כשהמרשם הגיע (או שהוחלט שאין): בוחרים עיר ומתחילים את הסנכרון */
+let _cityResolved=false;
+function onOrgReady(){
+  if(!currentUser || _cityResolved) return;
+  const mine=myCities();
+  if(!mine.length){ _cityResolved=true; renderNoCity(); return; }
+  const want=(()=>{ try{ return new URLSearchParams(location.search).get("city")||""; }catch(_){ return ""; } })() || getCityPref();
+  const pick = mine.find(c=>c.id===want) || (mine.length===1 ? mine[0] : null);
+  if(!pick){ _cityResolved=true; renderCityPicker(mine); return; }
+  _cityResolved=true; enterCity(pick);
+}
+function enterCity(c){
+  CITY=Object.assign({}, c);
+  setCityPref(CITY.id);
+  try{ const u=new URL(location.href); if(u.searchParams.has("city")){ u.searchParams.delete("city"); history.replaceState(history.state,"",u.pathname+u.search+u.hash); } }catch(_){}
+  startDataSync();
+}
+/* החלפת עיר במכשיר — עוצרים את הסנכרון של העיר הקודמת ומתחילים את החדשה */
+function switchCity(id){
+  const c=myCities().find(x=>x.id===id); if(!c){ toast("אין לך הרשאה לעיר זו"); return; }
+  if(CITY && CITY.id===c.id) return;
+  if(RESILIENT_SAVE && _pending.size){ toast("יש עריכה שטרם נשמרה בענן — ממתינים לסיום השמירה לפני החלפת עיר"); return; }
+  closeDrawer();
+  stopDataSync();
+  active="home";
+  enterCity(c);
+  toast("עברת לעיר "+(c.name||c.id));
+}
+function startOrgSync(){
+  if(orgUnsub || !db || !currentUser) return;
+  orgLoaded=false; _cityResolved=false;
+  orgUnsub=onSnapshot(doc(db,ORG_DOC[0],ORG_DOC[1]), { includeMetadataChanges:true }, snap=>{
+    ORG=normOrg(snap.exists()?snap.data():null);
+    if(snap.metadata.fromCache && !orgLoaded && !snap.exists()) return; // מטמון ריק — ממתינים לשרת (או לזמן-הקצוב)
+    clearTimeout(_orgRestTimer); _orgRestTimer=null;
+    const first=!orgLoaded; orgLoaded=true;
+    if(first) onOrgReady();
+    else onOrgChanged();
+  }, err=>{
+    /* אין גישה למרשם (משתמש/ת ותיק/ה שאינו/ה בו, או כללים ישנים בשרת) — ממשיכים בעיר הבית כמו היום */
+    if(TEST_DB_MODE) dlog("org/meta: "+((err&&err.code)||err));
+    clearTimeout(_orgRestTimer); _orgRestTimer=null;
+    if(!orgLoaded){ ORG={cities:[],users:{}}; orgLoaded=true; onOrgReady(); }
+  });
+  /* השרת לא ענה בזמן (רשת שחוסמת את ה-SDK) — מנסים דרך REST, ואם גם זה נכשל — עיר הבית */
+  _orgRestTimer=setTimeout(async()=>{
+    if(orgLoaded || !currentUser) return;
+    try{
+      const token=await currentUser.getIdToken();
+      const r=await fetch(restRoot()+"org/meta",{ headers:{ Authorization:"Bearer "+token }, cache:"no-store" });
+      if(r.ok){ const j=await r.json(); ORG=normOrg(decFsFields(j.fields||{})); }
+      else if(r.status!==404 && r.status!==403) throw new Error("org "+r.status);
+    }catch(e){ if(TEST_DB_MODE) dlog("org/meta REST: "+e.message); }
+    if(!orgLoaded){ orgLoaded=true; onOrgReady(); }
+  }, 9000);
+}
+function stopOrgSync(){ if(orgUnsub){ try{ orgUnsub(); }catch(_){} orgUnsub=null; } clearTimeout(_orgRestTimer); _orgRestTimer=null; orgLoaded=false; _cityResolved=false; ORG={cities:[],users:{}}; CITY=null; }
+/* המרשם השתנה בזמן העבודה — אולי נלקחה ההרשאה לעיר הנוכחית, אולי נוספה עיר */
+function onOrgChanged(){
+  if(!currentUser) return;
+  if(CITY && !cityAccess(CITY.id)){
+    toast("ההרשאה שלך לעיר "+cityName()+" הוסרה");
+    stopDataSync(); _cityResolved=false; onOrgReady(); return;
+  }
+  if(CITY){ const c=cityById(CITY.id); if(c) CITY=Object.assign({},c); }
+  renderCityPick();
+  if(active==="settings" && $("#org-box")) renderOrgPanel();
+}
+function renderNoCity(){
+  document.body.classList.add("locked");
+  $("#view").innerHTML=`<div class="panel login-card">
+    <h2>🔒 אין עיר משויכת</h2>
+    <div class="sub">החשבון <b>${esc(myEmail())}</b> רשום במערכת, אך לא שויכה לו אף עיר. פנה/י למשרד הראשי לשיוך.</div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost" id="nc-out" type="button">⎋ התנתקות</button></div></div>`;
+  $("#nc-out").onclick=doSignOut;
+}
+function renderCityPicker(list){
+  document.body.classList.add("locked");
+  $("#view").innerHTML=`<div class="panel login-card">
+    <h2>🏙️ באיזו עיר עובדים?</h2>
+    <div class="sub">החשבון שלך משויך לכמה ערים. הבחירה נזכרת במכשיר הזה, ואפשר להחליף עיר בכל רגע מהתפריט.</div>
+    <div id="cp-list" style="display:flex;flex-direction:column;gap:8px;margin-top:12px">${list.map(c=>`<button class="btn ghost" type="button" data-city="${esc(c.id)}" style="justify-content:flex-start;padding:12px 14px;font-weight:800">🏙️ ${esc(c.name||c.id)}${c.region?` <span class="hint" style="display:inline;margin-inline-start:6px">${esc(c.region)}</span>`:""}</button>`).join("")}</div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost sm" id="cp-out" type="button">⎋ התנתקות</button></div></div>`;
+  $("#cp-list").querySelectorAll("[data-city]").forEach(b=> b.onclick=()=>{ const c=list.find(x=>x.id===b.dataset.city); if(c) enterCity(c); });
+  $("#cp-out").onclick=doSignOut;
+}
+/* בורר העיר בתפריט הצד + השבב בכותרת — מוצגים רק כשיש יותר מעיר אחת */
+function renderCityPick(){
+  const mine=currentUser ? myCities() : [];
+  const sec=$("#drawerCitySec"), sel=$("#citySelect"), chip=$("#cityChip");
+  const multi=mine.length>1;
+  if(sec) sec.style.display = multi ? "" : "none";
+  if(sel && multi){ sel.innerHTML=mine.map(c=>`<option value="${esc(c.id)}" ${CITY&&CITY.id===c.id?'selected':''}>${esc(c.name||c.id)}</option>`).join(""); sel.onchange=()=>switchCity(sel.value); }
+  if(chip){
+    if(!CITY || !currentUser){ chip.style.display="none"; }
+    else { chip.style.display="inline-flex"; chip.textContent="🏙️ "+(CITY.name||CITY.id); chip.title = multi ? "העיר הפעילה — להחלפה: תפריט → עיר" : "העיר הפעילה"; }
+  }
+}
+/* לגשר ה-Drive: העיר נשלחת בכל קריאה, כדי שהתיקיות ייפתחו בתיקיית העיר הנכונה */
+function cityBridgeArgs(){ return CITY ? { cityId:CITY.id, cityName:(CITY.name||CITY.id), cityLegacy:cityIsLegacy(CITY) } : {}; }
 let dataUnsub=null;
 let restMode=false; // מצב חלופי: קריאה+כתיבה דרך Firestore REST (כשחיבור ה-SDK חסום ברשת אך HTTPS רגיל עובר)
 function enterRestMode(){
@@ -1169,7 +1400,7 @@ function _pendingPersist(){
   try{
     if(!_pending.size){ localStorage.removeItem(PENDING_LS_KEY); _pendingPersisted=true; return; }
     const owner=((currentUser&&currentUser.email)||_pendingOwner||"").toLowerCase();
-    localStorage.setItem(PENDING_LS_KEY, JSON.stringify({ v:1, owner, ts:Date.now(), items:[..._pending.values()] }));
+    localStorage.setItem(PENDING_LS_KEY, JSON.stringify({ v:1, owner, city:_pendingCityId(), ts:Date.now(), items:[..._pending.values()] }));
     _pendingPersisted=true;
   }catch(e){
     // מכסת האחסון מלאה — לא מפילים את השמירה עצמה, אבל כן מפסיקים להבטיח שרענון בטוח
@@ -1177,6 +1408,8 @@ function _pendingPersist(){
     if(TEST_DB_MODE) dlog("⚠️ שמירת הממתינים בדפדפן נכשלה: "+((e&&e.message)||e));
   }
 }
+/* העיר שהעריכות שייכות לה. עמיד גם כשהפונקציה רצה לבד (בדיקות שמחלצות אותה מהקוד). */
+function _pendingCityId(){ try{ return (CITY && CITY.id) || HOME_CITY.id; }catch(_){ return "modiin-illit"; } }
 function _pendingForget(){ try{ localStorage.removeItem(PENDING_LS_KEY); }catch(_){} _pendingPersisted=true; }
 /* שחזור חד-פעמי אחרי טעינה — נקרא כשכבר יש מצב-שרת ובסיס-השוואה טרי */
 function _pendingRestoreOnce(){
@@ -1190,6 +1423,8 @@ function _pendingRestoreOnce(){
   const owner=((currentUser&&currentUser.email)||"").toLowerCase();
   // עריכות של חשבון אחר על אותו מכשיר — לא שלנו לכתוב, ולא שלנו למחוק
   if(saved.owner && owner && saved.owner!==owner) return false;
+  // עריכות של עיר אחרת (המשתמש/ת החליף/ה עיר) — לא כותבים אותן לעיר הזאת
+  if((saved.city||"modiin-illit")!==_pendingCityId()) return false;
   let n=0;
   for(const it of items){
     if(!it || !it.coll || !it.id) continue;
@@ -1365,7 +1600,7 @@ async function loadViaRest(){
   if(out) out.innerHTML="טוען נתונים במצב חלופי… ⏳";
   try{
     const token=await currentUser.getIdToken();
-    const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app";
+    const base=cityRestBase();
     const map=new Map(); let pageToken="";
     do{
       const url=base+"?pageSize=300"+(pageToken?("&pageToken="+encodeURIComponent(pageToken)):"");
@@ -1482,7 +1717,7 @@ async function _restMergeStudents(base, hdr){
 }
 async function mergePushRest(){
   const token=await currentUser.getIdToken();
-  const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
+  const base=cityRestBase()+"/";
   const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
   const r=await fetch(base+"meta",{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(metaForWrite())}) }); if(!r.ok) throw new Error("write meta ("+r.status+")");
   await _restMergeSimple(base,hdr,"gans","gans",DB.gans,_mergeBase.gan);
@@ -1496,7 +1731,7 @@ async function mergePushRest(){
 async function pushAllRest(){
   if(MERGE_WRITE){ await mergePushRest(); return; } // מנעול נגד דריסה
   const token=await currentUser.getIdToken();
-  const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
+  const base=cityRestBase()+"/";
   const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
   const put=async(id,obj)=>{ const r=await fetch(base+encodeURIComponent(id),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(obj)}) }); if(!r.ok) throw new Error("write "+id+" ("+r.status+")"); };
   const meta=metaForWrite();
@@ -1548,14 +1783,14 @@ function _shadowChanges(){
   for(const id of _shadowBase.gan.keys()){ if(!curGan.has(id)) ch.push({coll:"gan",id,data:null}); }
   return ch;
 }
-function _shadowRef(c){ return doc(db,"app", c.coll==="stu"?stuDocId(c.id):ganDocId(c.id)); }
+function _shadowRef(c){ return cityDoc( c.coll==="stu"?stuDocId(c.id):ganDocId(c.id)); }
 function _shadowPayload(c){ return c.coll==="stu" ? {_t:"stu", student:c.data} : {_t:"gan", gan:c.data}; }
 async function shadowWriteNewModel(){
   if(!NEW_MODEL_SHADOW || !db || !currentUser) return;
   const changes=_shadowChanges(); if(!changes.length) return;
   if(restMode){
     const token=await currentUser.getIdToken();
-    const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
+    const base=cityRestBase()+"/";
     const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
     for(const c of changes){ const id=c.coll==="stu"?stuDocId(c.id):ganDocId(c.id);
       if(c.data===null){ try{ await fetch(base+encodeURIComponent(id),{method:"DELETE",headers:hdr}); }catch(_){} }
@@ -1572,7 +1807,7 @@ async function shadowWriteNewModel(){
 async function cleanupNewModelDocs(){
   if(!currentUser) return {found:0,deleted:0};
   const token=await currentUser.getIdToken();
-  const listUrl="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app";
+  const listUrl=cityRestBase();
   const delBase=listUrl+"/";
   const hdr={ Authorization:"Bearer "+token };
   const ids=[]; let pageToken="";
@@ -1629,11 +1864,11 @@ async function saveBranding(){
   const brand=brandingFromSettings();
   if(restMode){
     const token=await currentUser.getIdToken();
-    const base="https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app/";
+    const base=cityRestBase()+"/";
     const r=await fetch(base+"branding",{ method:"PATCH", headers:{ "Authorization":"Bearer "+token, "Content-Type":"application/json" }, body:JSON.stringify({fields:encFsFields(brand)}) });
     if(!r.ok) throw new Error("write branding ("+r.status+")");
   } else {
-    await setDoc(doc(db,"app","branding"), brand);
+    await setDoc(cityDoc("branding"), brand);
   }
   if(cloudDocs && cloudDocs.set) cloudDocs.set("branding", brand); // עדכון מיידי של העותק המקומי
 }
@@ -1653,14 +1888,14 @@ async function testCloudConnection(){
   const out=$("#ob-result"); if(out) out.innerHTML="בודק/ת חיבור… ⏳";
   const email=(currentUser && currentUser.email) || "";
   let reachable=false;
-  try{ await fetch("https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app?pageSize=1",{ mode:"no-cors", cache:"no-store" }); reachable=true; }catch(e){}
+  try{ await fetch(cityRestBase()+"?pageSize=1",{ mode:"no-cors", cache:"no-store" }); reachable=true; }catch(e){}
   // בדיקה אמיתית: קריאת REST מאומתת (עם token) — קובעת חד-משמעית אם הבקשה בפועל עוברת,
   // בניגוד ל-no-cors שעשוי "להצליח" גם כשהבקשה האמיתית נחסמת (וגם חושף token שפג שאי-אפשר לרענן).
   let realOk=false, realMsg="";
   if(email){
     try{
       const token=await currentUser.getIdToken();
-      const r=await fetch("https://firestore.googleapis.com/v1/projects/"+firebaseConfig.projectId+"/databases/(default)/documents/app?pageSize=1",{ headers:{ Authorization:"Bearer "+token }, cache:"no-store" });
+      const r=await fetch(cityRestBase()+"?pageSize=1",{ headers:{ Authorization:"Bearer "+token }, cache:"no-store" });
       realOk=r.ok; realMsg=r.ok?"":("("+r.status+")");
     }catch(err){ realOk=false; realMsg=String((err&&err.message)||err); }
   }
@@ -1883,7 +2118,7 @@ if(TEST_DB_MODE){
 async function _txnMergeSimple(docId, listKey, list, baseMap){
   const { changed, deleted } = _diffList(list, baseMap);
   if(!changed.length && !deleted.length) return;
-  const ref=doc(db,"app",docId);
+  const ref=cityDoc(docId);
   await runTransaction(db, async tx=>{
     const snap=await tx.get(ref);
     const server=(snap.exists() && Array.isArray(snap.data()[listKey])) ? snap.data()[listKey] : [];
@@ -1910,7 +2145,7 @@ async function _txnMergeStudents(){
   const years=new Set([...addsByYear.keys(), ...removesByYear.keys()]);
   for(const y of years){
     if(!y) continue;
-    const docId=safeYearId(y), ref=doc(db,"app",docId);
+    const docId=safeYearId(y), ref=cityDoc(docId);
     const adds=addsByYear.get(y)||[], rms=removesByYear.get(y)||new Set();
     await runTransaction(db, async tx=>{
       const snap=await tx.get(ref);
@@ -1929,7 +2164,7 @@ async function _txnMergeStudents(){
   }
 }
 async function mergePushSDK(){
-  await setDoc(doc(db,"app","meta"), metaForWrite()); // meta קטן — כתיבה רגילה
+  await setDoc(cityDoc("meta"), metaForWrite()); // meta קטן — כתיבה רגילה
   await _txnMergeSimple("gans","gans",DB.gans,_mergeBase.gan);
   await _txnMergeSimple("staff","staff",DB.staff,_mergeBase.staff);
   await _txnMergeSimple("management","management",DB.management,_mergeBase.mgmt);
@@ -1949,13 +2184,13 @@ async function pushAll(){
   const meta=metaForWrite();
   const gans=DB.gans.slice(), management=DB.management.slice(), staff=DB.staff.slice();
   const byYear={}; DB.students.forEach(s=>{ (byYear[s.year]=byYear[s.year]||[]).push(s); });
-  await setDoc(doc(db,"app","meta"), meta);
-  await setDoc(doc(db,"app","gans"), { gans });
-  await setDoc(doc(db,"app","management"), { management });
-  await setDoc(doc(db,"app","staff"), { staff });
+  await setDoc(cityDoc("meta"), meta);
+  await setDoc(cityDoc("gans"), { gans });
+  await setDoc(cityDoc("management"), { management });
+  await setDoc(cityDoc("staff"), { staff });
   const wantIds=new Set();
-  for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await setDoc(doc(db,"app",id), { year:y, students:packStudents(byYear[y]) }); }
-  for(const id of [...knownStudentDocs]){ if(!wantIds.has(id)){ try{ await deleteDoc(doc(db,"app",id)); }catch(e){} knownStudentDocs.delete(id); } }
+  for(const y of Object.keys(byYear)){ const id=safeYearId(y); wantIds.add(id); knownStudentDocs.add(id); await setDoc(cityDoc(id), { year:y, students:packStudents(byYear[y]) }); }
+  for(const id of [...knownStudentDocs]){ if(!wantIds.has(id)){ try{ await deleteDoc(cityDoc(id)); }catch(e){} knownStudentDocs.delete(id); } }
   try{ await shadowWriteNewModel(); }catch(e){ console.error("shadow write (SDK) failed", e); }
 }
 /* בנייה מחדש של DB מתוך מסמכי הענן */
@@ -2522,7 +2757,8 @@ const DEFAULT_LOGO = "🎒";
 function appTitle(){ return (DB.settings && DB.settings.appTitle) || DEFAULT_TITLE; }
 function appLogo(){ return (DB.settings && DB.settings.appLogo) || DEFAULT_LOGO; }
 function logoHtml(){ const l=appLogo(); return /^(https?:|data:)/i.test(l) ? `<img src="${esc(l)}" alt="לוגו">` : esc(l); }
-function appSubtitle(){ return (DB.settings && DB.settings.appSubtitle) || DEFAULT_SUBTITLE; }
+function defaultSubtitle(){ return (CITY && CITY.name && !cityIsLegacy(CITY)) ? ("רשת הגנים "+CITY.name) : DEFAULT_SUBTITLE; }
+function appSubtitle(){ return (DB.settings && DB.settings.appSubtitle) || defaultSubtitle(); }
 /* ---------- כפתורי פעולה קטנים (ניווט/חיוג/מייל) — סעיפים 8–9 ----------
    מוחזרים כתגי <a> בלבד (ללא onclick), כדי לשמור על מדיניות הקוד; מטפלי השורות
    שכבר קיימים מתעלמים מלחיצה על a/button/input, כך שלחיצה לא פותחת את השורה. */
@@ -2646,6 +2882,8 @@ if('serviceWorker' in navigator){ window.addEventListener('load', ()=>{ navigato
 function isAdmin(){
   const em=(currentUser&&currentUser.email||"").toLowerCase();
   if(isOwnerEmail(em)) return true;                 // בעלי המערכת — תמיד מנהלים
+  if(isHQ(em)) return true;                         // המרכז — מנהל/ת בכל עיר
+  if(CITY && cityRole(CITY.id, em)==="admin") return true; // מנהל/ת העיר לפי המרשם המרכזי
   const admins=(DB.settings&&DB.settings.admins)||[];
   if(!admins.length) return false;                  // אין מנהלים מוגדרים — רק הבעלים (לא כל מחובר)
   return admins.map(x=>String(x).toLowerCase()).includes(em);
@@ -2657,6 +2895,7 @@ function isAdmin(){
 function myEditScope(){
   if(isAdmin()) return "";
   const em=(currentUser&&currentUser.email||"").toLowerCase();
+  if(CITY && cityRole(CITY.id, em)==="view") return "צופה";   // צפייה בלבד לפי המרשם המרכזי
   const map=(DB.settings&&DB.settings.editScopes)||{};
   for(const k in map){ if(String(k).toLowerCase()===em){ const v=map[k]; return (v==="רגיל"||v==='ח"מ'||v==="צופה")?v:""; } }
   return "";
@@ -2691,7 +2930,7 @@ function accessConfigured(){ const s=DB.settings||{}; return !!((s.admins&&s.adm
 function emailAllowed(email){
   const em=String(email||"").toLowerCase();
   if(isOwnerEmail(em)) return true;
-  return knownEmails().has(em);
+  return cityAccess((CITY&&CITY.id)||HOME_CITY.id, em);   // לפי המרשם המרכזי; משתמש/ת ותיק/ה — לפי רשימת העיר
 }
 let _accessDenied=false;
 /* אוכף רשימת-מורשים לכל משתמש מחובר. הכניסה למערכת היא Google בלבד, וכל כתובת
@@ -2702,9 +2941,10 @@ function enforceAccess(){
   if(_accessDenied) return false;
   _accessDenied=true;
   const em=currentUser.email||"";
-  toast("אין הרשאה — האימייל אינו מורשה");
+  const where=CITY?(" לעיר "+cityName()):"";
+  toast("אין הרשאה — האימייל אינו מורשה"+where);
   signOut(auth).catch(()=>{});
-  setTimeout(()=>{ const e=$("#lg-err"); if(e){ e.style.display="block"; e.textContent="האימייל "+em+" אינו מורשה במערכת. פנה/י למנהל להוספתו."; } }, 500);
+  setTimeout(()=>{ const e=$("#lg-err"); if(e){ e.style.display="block"; e.textContent="האימייל "+em+" אינו מורשה במערכת"+where+". פנה/י למנהל להוספתו."; } }, 500);
   return false;
 }
 
@@ -2782,8 +3022,12 @@ function makeGan(){ return {
   teacherMobile:"", assistantName:"", assistantMobile:"",
   campus:"",   // קמפוס הגן — מקור האמת; אצל התלמידות נגזר מהגן
   city:"",     // עיר הגן — נדרשת לגאוקוד מדויק; בלעדיה הכתובת נשאלת מהתלמידות
+  gender:"",   // "בנות" / "בנים" — ריק = לא צוין (גנים ותיקים)
+  licenseAges:"", licenseCap:"",   // רישיון משרד החינוך: גילאים מורשים ומכסת ילדים (בקרת תפוסה מול הרישיון)
   capacity:"", assignCap:"", active:true, docsNote:"", createdAt:new Date().toISOString()
 };}
+function ganGender(ganId){ const g=ganById(ganId); return g ? String(g.gender||"") : ""; }
+function genderBadge(g){ const v=String((g&&g.gender)||""); if(!v) return '<span class="pill neutral" style="opacity:.6">—</span>'; return v==="בנים" ? '<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">בנים</span>' : '<span class="pill ok">בנות</span>'; }
 
 /* ============================================================
    ניווט / טאבים
@@ -2822,6 +3066,7 @@ const SETTINGS_SECTIONS = [
   { g:"מערכת ומשתמשים" },
   { k:"presence",      label:"מי מחובר ויומן פעילות" },
   { k:"admins users",  label:"ניהול משתמשים" },
+  { k:"cities",        label:"ערים ומשתמשים (מרכזי)", hq:true },
   { k:"auth",          label:"חשבון והתחברות" },
   { k:"feedback",      label:"פניות והצעות שיפור", admin:true },
   { g:"מראה והתקנה" },
@@ -2852,7 +3097,8 @@ function parentTabOf(id){ return STUDENT_SUBTABS.some(t=>t.id===id) ? "students"
 
 function settingsNavHtml(){
   const admin=isAdmin();
-  const items=SETTINGS_SECTIONS.filter(x=>x.g||!x.admin||admin);
+  const hq=isHQ();
+  const items=SETTINGS_SECTIONS.filter(x=>x.g||((!x.admin||admin)&&(!x.hq||hq)));
   return items.map((x,i)=>{
     if(x.g){
       /* כותרת קבוצה שכל מקטעיה מוסתרים — לא מציגים אותה לבדה */
@@ -2976,6 +3222,9 @@ if(document.documentElement.classList.contains("ui-lab")){
     stats(){
       try{
         return {
+          city:        CITY ? (CITY.name||CITY.id) : "",
+          cityId:      CITY ? CITY.id : "",
+          multiCity:   myCities().length>1,
           year:        DB.activeYear || "",
           students:    eduScope(studentsOfYear().filter(s=>!s.finished)).length,
           gansActive:  eduScope(DB.gans.filter(g=>g.active)).length,
@@ -4652,7 +4901,7 @@ function printGuide(){
 function route(){
   syncSettingsLists();
   applyBranding();
-  renderTabs(); renderYearSelect(); renderEduPick(); updateBackBtn();
+  renderTabs(); renderCityPick(); renderYearSelect(); renderEduPick(); updateBackBtn();
   const so=$("#signOutBtn"); if(so) so.style.display=currentUser?"flex":"none";
   const v = $("#view");
   ({home:viewHome, students:viewStudents, tzaharon:viewTzaharon, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
@@ -4690,12 +4939,12 @@ async function writePresence(){
   try{
     const em=myEmail();
     const nm=(DB.settings&&DB.settings.userNames&&DB.settings.userNames[em])||"";
-    await setDoc(doc(db,"app",presenceKey(em)), { _t:"presence", email:em, name:nm, ts:Date.now() });
+    await setDoc(cityDoc(presenceKey(em)), { _t:"presence", email:em, name:nm, ts:Date.now() });
   }catch(_){}
 }
 async function clearPresence(){
   if(!db || !currentUser) return;
-  try{ await deleteDoc(doc(db,"app",presenceKey(myEmail()))); }catch(_){}
+  try{ await deleteDoc(cityDoc(presenceKey(myEmail()))); }catch(_){}
 }
 function startPresence(){ stopPresence(); const beat=()=>{ if(document.visibilityState!=="hidden") writePresence(); }; beat(); _presenceTimer=setInterval(beat, PRESENCE_BEAT_MS); }
 function stopPresence(){ if(_presenceTimer){ clearInterval(_presenceTimer); _presenceTimer=null; } }
@@ -4739,9 +4988,10 @@ window.addEventListener("beforeunload", ev=>{
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState!=="hidden") writePresence(); });
 function startDataSync(){
   if(dataUnsub) return;
+  if(!CITY) CITY=Object.assign({}, cityById(HOME_CITY.id)||HOME_CITY);   // רשת ביטחון — לעולם לא מסנכרנים בלי עיר
   document.body.classList.remove("locked");
   cloudDocs=new Map();
-  dataUnsub = onSnapshot(collection(db,"app"), { includeMetadataChanges:true }, snap=>{
+  dataUnsub = onSnapshot(cityColl(), { includeMetadataChanges:true }, snap=>{
     const md=snap.metadata; // עדכון חיווי הסנכרון לפי מצב הכתיבות מול השרת
     lastSyncError=""; // התקבל סנאפשוט — הקריאה עובדת
     if(TEST_DB_MODE) dlog("📸 snapshot fromCache="+md.fromCache+" hasPending="+md.hasPendingWrites+" changes="+snap.docChanges().length+" savePending="+savePending+" pending="+_pending.size);
@@ -4804,8 +5054,8 @@ function boot(){
   onAuthStateChanged(auth, user=>{
     currentUser=user;
     const b=$("#signOutBtn"); if(b) b.style.display=user?"flex":"none";
-    if(user){ startDataSync(); }
-    else { closeDrawer(); stopDataSync(); renderLogin(); }
+    if(user){ document.body.classList.add("locked"); $("#view").innerHTML=`<div class="panel login-card"><h2>⏳ טוען…</h2><div class="sub">מאתרים את הערים המשויכות לחשבון.</div></div>`; startOrgSync(); }
+    else { closeDrawer(); stopDataSync(); stopOrgSync(); renderLogin(); }
   });
 }
 function renderSetupNeeded(extra){
@@ -4838,6 +5088,144 @@ function renderLogin(){
   };
 }
 async function doSignOut(){ try{ await clearPresence(); }catch(_){} try{ await signOut(auth); toast("התנתקת מהמערכת"); }catch(e){} }
+/* ============================================================
+   פאנל המרשם המרכזי — ערים ומשתמשים (למשתמשי המרכז בלבד)
+   ============================================================ */
+let _orgForm={ city:{name:"",id:"",region:"",absorption:"local",coordinator:"",phone:""}, user:{email:"",name:""} };
+function renderOrgPanel(){
+  const box=$("#org-box"); if(!box) return;
+  if(!isHQ()){ box.innerHTML='<div class="hint">רק משתמשי המרכז רואים ועורכים את המרשם.</div>'; return; }
+  const cities=orgCities();
+  const activeCities=cities.filter(c=>c.active!==false);
+  const users=Object.assign({}, ORG.users||{});
+  const emails=Object.keys(users).sort();
+  const me=myEmail();
+  const roleSel=(em,c)=>{ const cur=cityRole(c.id, em);
+    return `<select class="org-role" data-em="${esc(em)}" data-city="${esc(c.id)}" title="${esc(c.name||c.id)}"><option value="">—</option>${CITY_ROLES.map(([k,l])=>`<option value="${k}" ${cur===k?'selected':''}>${esc(l)}</option>`).join("")}</select>`; };
+  const absLabel=v=>(CITY_ABSORPTION.find(x=>x[0]===v)||[])[1]||"—";
+  const legacyUsersN=(()=>{ try{ return [...knownEmails()].filter(e=>!orgUser(e)&&!isOwnerEmail(e)).length; }catch(_){ return 0; } })();
+  box.innerHTML=`
+  <h3 style="margin:0 0 6px">🏙️ ערים</h3>
+  <div class="table-wrap"><table style="min-width:820px"><thead><tr>
+    <th>עיר</th><th>מזהה</th><th>אזור</th><th>אופן הקליטה</th><th>רכז/ת</th><th>טלפון</th><th>משתמשים</th><th>סטטוס</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
+    cities.map(c=>{ const n=emails.filter(e=>users[e].hq||cityRole(c.id,e)).length;
+      return `<tr>
+        <td><b>${esc(c.name||c.id)}</b>${cityIsLegacy(c)?' <span class="pill neutral" title="הנתונים של העיר הזאת יושבים במאגר המקורי (app)">עיר הבית</span>':''}${CITY&&CITY.id===c.id?' <span class="pill ok">פעילה כאן</span>':''}</td>
+        <td dir="ltr" style="text-align:right"><code>${esc(c.id)}</code></td>
+        <td><input class="org-cf" data-city="${esc(c.id)}" data-k="region" value="${esc(c.region||"")}" placeholder="—" style="min-width:90px"></td>
+        <td><select class="org-cf" data-city="${esc(c.id)}" data-k="absorption" style="min-width:170px">${CITY_ABSORPTION.map(([k,l])=>`<option value="${k}" ${(c.absorption||"local")===k?'selected':''}>${esc(l)}</option>`).join("")}</select></td>
+        <td><input class="org-cf" data-city="${esc(c.id)}" data-k="coordinator" value="${esc(c.coordinator||"")}" placeholder="—" style="min-width:110px"></td>
+        <td><input class="org-cf" data-city="${esc(c.id)}" data-k="phone" value="${esc(c.phone||"")}" placeholder="—" inputmode="tel" style="min-width:100px"></td>
+        <td>${n}</td>
+        <td>${c.active===false?'<span class="pill neutral">מושהית</span>':'<span class="pill ok">פעילה</span>'}</td>
+        <td style="text-align:end;white-space:nowrap">${cityIsLegacy(c)?'':`<button class="btn ghost sm" data-city-toggle="${esc(c.id)}">${c.active===false?'הפעלה':'השהיה'}</button>`}</td></tr>`; }).join("")
+  }</tbody></table></div>
+  <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px;align-items:flex-end">
+    <div class="field" style="min-width:160px"><label>שם העיר החדשה</label><input id="org-city-name" value="${esc(_orgForm.city.name)}" placeholder="למשל: ביתר עילית" autocomplete="off"></div>
+    <div class="field" style="min-width:140px"><label>מזהה (אנגלית)</label><input id="org-city-id" value="${esc(_orgForm.city.id)}" placeholder="beitar-illit" dir="ltr" autocomplete="off"></div>
+    <div class="field" style="min-width:110px"><label>אזור</label><input id="org-city-region" value="${esc(_orgForm.city.region)}" placeholder="ירושלים / מרכז…" autocomplete="off"></div>
+    <div class="field"><label>אופן הקליטה</label><select id="org-city-abs">${CITY_ABSORPTION.map(([k,l])=>`<option value="${k}" ${_orgForm.city.absorption===k?'selected':''}>${esc(l)}</option>`).join("")}</select></div>
+    <button class="btn" id="org-city-add">➕ פתיחת עיר</button>
+  </div>
+  <div class="hint" style="margin-top:6px">המזהה נקבע פעם אחת ואינו משתנה — הוא שם המאגר של העיר בענן. אחרי הפתיחה משייכים לעיר משתמשים בטבלה למטה, והם ייכנסו לאותה תוכנה בדיוק ויראו רק את העיר שלהם.</div>
+
+  <h3 style="margin:18px 0 6px">👥 משתמשים והרשאות לפי עיר</h3>
+  <div class="table-wrap"><table style="min-width:${Math.max(720, 380+activeCities.length*150)}px"><thead><tr>
+    <th>אימייל</th><th>שם</th><th title="רואה את כל הערים ומנהל/ת את המרשם">מרכז</th>${activeCities.map(c=>`<th>${esc(c.name||c.id)}</th>`).join("")}<th style="text-align:end">פעולות</th></tr></thead><tbody>${
+    emails.length ? emails.map(em=>{ const u=users[em]; const own=isOwnerEmail(em);
+      return `<tr>
+        <td dir="ltr" style="text-align:right">${esc(em)}${em===me?' <span class="pill neutral">זה אני</span>':''}${own?' <span class="pill ok" title="בעל/ת המערכת — תמיד מרכז">בעלים</span>':''}</td>
+        <td><input class="org-un" data-em="${esc(em)}" value="${esc(u.name||"")}" placeholder="—" autocomplete="off" style="min-width:120px"></td>
+        <td style="text-align:center"><input type="checkbox" class="org-hq" data-em="${esc(em)}" ${u.hq||own?'checked':''} ${own?'disabled':''}></td>
+        ${activeCities.map(c=>`<td>${(u.hq||own)?'<span class="hint">הכל</span>':roleSel(em,c)}</td>`).join("")}
+        <td style="text-align:end;white-space:nowrap"><button class="btn danger sm" data-org-rm="${esc(em)}" ${em===me||own?'disabled title="אי אפשר להסיר את עצמך"':''}>✕ הסרה</button></td></tr>`; }).join("")
+    : `<tr><td colspan="${4+activeCities.length}"><div class="hint">המרשם ריק. כרגע כל המשתמשים הקיימים עובדים בעיר הבית לפי רשימת המורשים שלה (כמו עד היום). הוסף/י משתמשים כאן, או ייבא/י את המורשים של העיר הנוכחית בכפתור למטה.</div></td></tr>`
+  }</tbody></table></div>
+  <div id="org-msg" class="note" style="display:none;margin-top:10px"></div>
+  <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px;align-items:flex-end">
+    <div class="field grow" style="min-width:220px"><label>אימייל Google של המשתמש/ת</label><input id="org-user-email" type="email" inputmode="email" value="${esc(_orgForm.user.email)}" placeholder="name@gmail.com" autocomplete="off"></div>
+    <div class="field" style="min-width:150px"><label>שם (לא חובה)</label><input id="org-user-name" value="${esc(_orgForm.user.name)}" placeholder="שם מלא" autocomplete="off"></div>
+    <div class="field"><label>עיר ראשונה</label><select id="org-user-city"><option value="">— ללא (מרכז) —</option>${activeCities.map(c=>`<option value="${esc(c.id)}" ${CITY&&CITY.id===c.id?'selected':''}>${esc(c.name||c.id)}</option>`).join("")}</select></div>
+    <div class="field"><label>תפקיד בעיר</label><select id="org-user-role">${CITY_ROLES.map(([k,l])=>`<option value="${k}" ${k==='edit'?'selected':''}>${esc(l)}</option>`).join("")}</select></div>
+    <button class="btn" id="org-user-add">➕ הוספת משתמש/ת</button>
+    ${legacyUsersN?`<button class="btn ghost" id="org-import" title="כל מי שברשימת המורשים של העיר הנוכחית ואינו במרשם — יתווסף עם הרשאה לעיר הזאת בלבד">⬇️ ייבוא ${legacyUsersN} מורשי ${esc(cityName())} למרשם</button>`:""}
+  </div>
+  <div class="hint" style="margin-top:6px"><b>מנהל/ת עיר</b> = כמו מנהל מערכת בעיר ההיא (הגדרות, משתמשים של העיר) · <b>עריכה</b> = עבודה רגילה (ניתן לצמצם לחינוך רגיל/מיוחד ב"ניהול משתמשים" של העיר) · <b>צפייה בלבד</b> = בלי שינויים. משתמש/ת שסומן/ה כ<b>מרכז</b> רואה את כל הערים ואת המרשם הזה.</div>`;
+
+  const msg=(t,ok)=>{ const m=$("#org-msg"); if(!m) return; m.style.display="block"; m.textContent=t; m.style.background=ok?"var(--good-soft)":"var(--bad-soft)"; m.style.color=ok?"var(--good)":"var(--bad)"; m.style.borderColor=ok?"var(--good)":"var(--bad)"; };
+  const commit=async(what)=>{ try{ await saveOrg(); toast(what||"המרשם נשמר"); renderOrgPanel(); renderCityPick(); }catch(e){ console.error(e); msg("שמירת המרשם נכשלה: "+(e&&e.message||e), false); } };
+  const keepForm=()=>{ _orgForm.city={ name:$("#org-city-name").value, id:$("#org-city-id").value, region:$("#org-city-region").value, absorption:$("#org-city-abs").value }; _orgForm.user={ email:$("#org-user-email").value, name:$("#org-user-name").value }; };
+  // ערים
+  $("#org-city-name").oninput=()=>{ const idEl=$("#org-city-id"); if(!idEl.dataset.touched) idEl.value=cityIdFrom($("#org-city-name").value); };
+  $("#org-city-id").oninput=()=>{ $("#org-city-id").dataset.touched="1"; };
+  $("#org-city-add").onclick=()=>{
+    const name=$("#org-city-name").value.trim(), id=cityIdFrom($("#org-city-id").value||name);
+    if(!name){ msg("יש להזין שם עיר.", false); return; }
+    if(!id || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(id)){ msg("המזהה חייב להיות באנגלית: אותיות קטנות, ספרות ומקפים.", false); return; }
+    if(cityById(id)){ msg("כבר קיימת עיר עם המזהה הזה.", false); return; }
+    if(orgCities().some(c=>String(c.name||"").trim()===name)){ msg("כבר קיימת עיר בשם הזה.", false); return; }
+    ORG.cities=orgCities().concat([{ id, name, region:$("#org-city-region").value.trim(), absorption:$("#org-city-abs").value||"local", coordinator:"", phone:"", active:true, createdAt:Date.now(), createdBy:me }]);
+    _orgForm.city={name:"",id:"",region:"",absorption:"local",coordinator:"",phone:""};
+    commit("העיר "+name+" נפתחה — עכשיו אפשר לשייך לה משתמשים");
+  };
+  box.querySelectorAll("[data-city-toggle]").forEach(b=> b.onclick=()=>{
+    const c=cityById(b.dataset.cityToggle); if(!c) return;
+    const off=c.active!==false;
+    if(off && !confirm(`להשהות את העיר ${c.name||c.id}? המשתמשים שלה לא יוכלו להיכנס עד להפעלה מחדש. הנתונים נשמרים.`)) return;
+    ORG.cities=orgCities().map(x=> x.id===c.id ? Object.assign({},x,{active:!off}) : x);
+    keepForm(); commit(off?"העיר הושהתה":"העיר הופעלה");
+  });
+  box.querySelectorAll(".org-cf").forEach(inp=> inp.onchange=()=>{
+    ORG.cities=orgCities().map(x=> x.id===inp.dataset.city ? Object.assign({},x,{[inp.dataset.k]:inp.value.trim()}) : x);
+    keepForm(); commit("פרטי העיר נשמרו");
+  });
+  // משתמשים
+  const isEmail=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  $("#org-user-add").onclick=()=>{
+    const em=$("#org-user-email").value.trim().toLowerCase(), nm=$("#org-user-name").value.trim();
+    const city=$("#org-user-city").value, role=$("#org-user-role").value;
+    if(!isEmail(em)){ msg("יש להזין כתובת אימייל תקינה.", false); return; }
+    if(orgUser(em)){ msg(em+" כבר במרשם — עדכן/י את ההרשאות בטבלה.", false); return; }
+    const rec={ name:nm, hq:!city, cities:{} };
+    if(city) rec.cities[city]=role||"edit";
+    ORG.users=Object.assign({}, ORG.users, { [em]:rec });
+    _orgForm.user={email:"",name:""};
+    commit(em+(city?" נוסף/ה לעיר "+cityName(city):" נוסף/ה כמשתמש/ת מרכז"));
+  };
+  box.querySelectorAll("[data-org-rm]").forEach(b=> b.onclick=()=>{
+    const em=b.dataset.orgRm;
+    if(!confirm(`להסיר את ${em} מהמרשם? הוא/היא לא יוכל/תוכל להיכנס לאף עיר (מלבד עיר הבית, אם מופיע/ה ברשימת המורשים שלה).`)) return;
+    const u=Object.assign({}, ORG.users); delete u[em]; ORG.users=u;
+    keepForm(); commit("המשתמש/ת הוסר/ה מהמרשם");
+  });
+  box.querySelectorAll(".org-un").forEach(inp=> inp.onchange=()=>{
+    const em=inp.dataset.em; ORG.users=Object.assign({}, ORG.users, { [em]:Object.assign({}, ORG.users[em], {name:inp.value.trim()}) });
+    keepForm(); commit("השם נשמר");
+  });
+  box.querySelectorAll(".org-hq").forEach(cb=> cb.onchange=()=>{
+    const em=cb.dataset.em;
+    if(cb.checked && !confirm(`לסמן את ${em} כמשתמש/ת מרכז? הוא/היא יראה/תראה את כל הערים ויוכל/תוכל לערוך את המרשם הזה.`)){ cb.checked=false; return; }
+    ORG.users=Object.assign({}, ORG.users, { [em]:Object.assign({}, ORG.users[em], {hq:cb.checked}) });
+    keepForm(); commit(cb.checked?"סומן/ה כמרכז":"הוסר/ה ממרכז");
+  });
+  box.querySelectorAll(".org-role").forEach(sel=> sel.onchange=()=>{
+    const em=sel.dataset.em, cid=sel.dataset.city, v=sel.value;
+    const u=Object.assign({}, ORG.users[em]); const cm=Object.assign({}, (u.cities&&!Array.isArray(u.cities))?u.cities:{});
+    if(Array.isArray(u.cities)) u.cities.forEach(id=>{ cm[id]="edit"; });
+    if(v) cm[cid]=v; else delete cm[cid];
+    u.cities=cm; ORG.users=Object.assign({}, ORG.users, { [em]:u });
+    keepForm(); commit("ההרשאה עודכנה");
+  });
+  const imp=$("#org-import"); if(imp) imp.onclick=()=>{
+    const st=DB.settings||{}; const admins=new Set((st.admins||[]).map(x=>String(x).toLowerCase())); const scopes=st.editScopes||{}; const names=st.userNames||{};
+    const list=[...knownEmails()].filter(e=>!orgUser(e)&&!isOwnerEmail(e));
+    if(!list.length) return;
+    if(!confirm(`לייבא ${list.length} משתמשים למרשם עם הרשאה לעיר ${cityName()} בלבד?\n\nמנהלי המערכת של העיר יהפכו ל"מנהל/ת עיר", "צופה" ל"צפייה בלבד", והשאר ל"עריכה". ההגדרות בתוך העיר (חינוך רגיל/מיוחד) נשארות כמו שהן.`)) return;
+    const u=Object.assign({}, ORG.users);
+    list.forEach(em=>{ const role=admins.has(em)?"admin":(scopes[em]==="צופה"?"view":"edit"); u[em]={ name:names[em]||"", hq:false, cities:{ [CITY.id]:role } }; });
+    ORG.users=u; keepForm(); commit("יובאו "+list.length+" משתמשים למרשם");
+  };
+}
 function renderAuthBox(){
   const box=$("#auth-box"); if(!box) return;
   const email = currentUser? currentUser.email : "—";
@@ -4860,7 +5248,7 @@ async function driveCall(action, payload){
   let force=false;
   for(let attempt=0; attempt<2; attempt++){
     const idToken=await driveIdToken(force);
-    const json=JSON.stringify(Object.assign({action, idToken}, payload||{}));
+    const json=JSON.stringify(Object.assign({action, idToken}, cityBridgeArgs(), payload||{}));
     // Apps Script לעיתים משמיט את גוף בקשת ה-POST החוצה-מקור (בגלל הפניה פנימית),
     // ואז הטוקן לא מגיע. לכן בקשות קטנות נשלחות בשאילתת ה-URL ששורדת הפניות,
     // ורק העלאות גדולות (base64) נשלחות בגוף הבקשה.
@@ -5267,12 +5655,12 @@ function renderInstallBox(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; // gans = ריבוי גנים (אפשר לבחור כמה); age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
+let stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"" }; // gans = ריבוי גנים (אפשר לבחור כמה); age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
 let stuFiltersOpen=false; // האם פאנל הסינון המתקדם פתוח
 function stuActiveFilterCount(){ const f=stuFilter; let n=0;
-  if(f.gans&&f.gans.length)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
+  if(f.gans&&f.gans.length)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.gender)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
 /* איפוס כל סינוני התלמידות לברירת המחדל (כפתור "ניקוי") */
-function clearStuFilter(){ stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active" }; }
+function clearStuFilter(){ stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"" }; }
 /* תווית התקציר לרשימת הגנים הנפתחת (בחירה מרובה) */
 function ganFilterLabel(){ const sel=stuFilter.gans||[];
   if(!sel.length) return "כל הגנים";
@@ -5511,6 +5899,7 @@ function viewStudents(root){
         ${campuses.length?`<div class="field"><label>קמפוס</label><select id="f-campus"><option value="">הכל</option>${campuses.map(c=>`<option ${stuFilter.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>`:""}
         <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
         ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
+        ${DB.gans.some(g=>g.gender)?`<div class="field"><label>מגדר (לפי הגן)</label><select id="f-gender"><option value="">הכל</option>${GENDERS.map(t=>`<option ${stuFilter.gender===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`:""}
         <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
         <div class="field"><label>שיבוץ</label><select id="f-placed"><option value="">הכל</option><option value="yes" ${stuFilter.placed==='yes'?'selected':''}>משובצת</option><option value="no" ${stuFilter.placed==='no'?'selected':''}>לא משובצת</option></select></div>
         <div class="field"><label>מאפיין</label><select id="f-flag"><option value="">הכל</option>${Object.entries(STU_FLAGS).map(([k,d])=>`<option value="${k}" ${stuFilter.flag===k?'selected':''}>${esc(d.label)}</option>`).join("")}</select></div>
@@ -5539,7 +5928,7 @@ function viewStudents(root){
   $("#importStu").onclick = ()=> openImport();
   $("#stuFilterToggle").onclick = ()=>{ stuFiltersOpen = $("#stuFilterPanel").hasAttribute("hidden"); viewStudents(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
+  bind("#f-q","q");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-gender","gender");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
   const clr=$("#f-clear"); if(clr) clr.onclick=()=>{ clearStuFilter(); stuFiltersOpen=true; viewStudents(root); };
   // סינון גן בריבוי בחירה — רשימה נפתחת עם תיבות סימון (אפשר לבחור כמה גנים יחד)
   const ganBox=$("#f-gan");
@@ -5582,6 +5971,7 @@ function studentsScopeBase(){
       if(!ok) return false;
     }
     if(f.age && f.age.length && !f.age.includes(String(s.age))) return false;
+    if(f.gender && ganGender(s.ganId)!==f.gender) return false;   // מגדר לפי הגן
     if(f.city && s.city!==f.city) return false;
     if(f.street){ const sq=f.street.trim().toLowerCase(); if(sq && !(s.street||"").toLowerCase().includes(sq)) return false; }
     if(f.campus && s.campus!==f.campus) return false;
@@ -6880,12 +7270,12 @@ function openImport(){
 /* ============================================================
    טאב גנים
    ============================================================ */
-let ganFilter = { q:"", zone:"", status:"", age:"", campus:"", full:"" };  // full: "yes" מלאה / "no" לא מלאה
+let ganFilter = { q:"", zone:"", status:"", age:"", campus:"", full:"", gender:"" };  // full: "yes" מלאה / "no" לא מלאה
 let ganFiltersOpen=false;
 let ganSort = { key:"name", dir:1 }; // מיון רשימת הגנים לפי עמודה
 const GAN_SORT_VAL = {
   name:g=>ganName(g.id), internalSymbol:g=>g.internalSymbol, ganSymbol:g=>g.ganSymbol,
-  age:g=>g.age, teacherName:g=>g.teacherName,
+  age:g=>g.age, teacherName:g=>g.teacherName, gender:g=>g.gender||"",
   address:g=>[g.address,g.building].filter(Boolean).join(" "), zone:g=>g.zone,
   capacity:g=>+g.capacity||0, city:g=>(g.city||"").toLowerCase(), reg:g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length,
   assigned:g=>ganAssignedCount(g.id)
@@ -6904,6 +7294,7 @@ function gansScoped(){
     if(ganFilter.status==='off' && g.active) return false;
     if(ganFilter.age && String(g.age||"").trim()!==ganFilter.age) return false;
     if(ganFilter.campus && String(g.campus||"").trim()!==ganFilter.campus) return false;
+    if(ganFilter.gender && String(g.gender||"")!==ganFilter.gender) return false;
     if(ganFilter.full){
       /* "מלאה" = הגיע לרף השיבוץ. גן בלי רף אינו נחשב מלא. */
       const cap=ganAssignCap(g), used=ganAssignedCount(g.id);
@@ -6993,7 +7384,7 @@ const CITY_ALT_NAMES = {
   "ביתר עילית":["ביתר"]
 };
 /* העיר הראשית של הרשת — לפי העיר הנפוצה ביותר אצל התלמידות, בכתיב מנורמל */
-function mainCityName(){ return normCityName(geoDefaultCity()); }
+function mainCityName(){ const c=(typeof CITY!=="undefined" && CITY && CITY.name) || ""; return normCityName(c || geoDefaultCity()); }
 /* עיר הגן: מה שנקבע בכרטיס הגן, ואם ריק — העיר הראשית (התנהגות תואמת לאחור) */
 function ganCity(g){ return normCityName((g&&g.city)||"") || mainCityName(); }
 function normCityName(c){
@@ -9182,7 +9573,7 @@ function viewGans(root){
   const zones=[...new Set(DB.gans.map(g=>g.zone).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
   const ganAges=[...new Set(DB.gans.map(g=>String(g.age||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he",{numeric:true}));
   const ganCampuses=[...new Set(DB.gans.map(g=>String(g.campus||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
-  const fCount=(ganFilter.zone?1:0)+(ganFilter.status?1:0)+(ganFilter.age?1:0)+(ganFilter.campus?1:0)+(ganFilter.full?1:0);
+  const fCount=(ganFilter.zone?1:0)+(ganFilter.status?1:0)+(ganFilter.age?1:0)+(ganFilter.campus?1:0)+(ganFilter.full?1:0)+(ganFilter.gender?1:0);
   const fOpen=ganFiltersOpen || fCount>0;
   root.innerHTML = `
   <div class="panel">
@@ -9194,6 +9585,7 @@ function viewGans(root){
     <div class="filter-panel" id="ganFilterPanel" ${fOpen?'':'hidden'}>
       <div class="toolbar" style="margin-bottom:0">
         <div class="field"><label>גיל</label><select id="fg-age"><option value="">הכל</option>${ganAges.map(a=>`<option ${ganFilter.age===a?'selected':''}>${esc(a)}</option>`).join("")}</select></div>
+        <div class="field"><label>מגדר</label><select id="fg-gender"><option value="">הכל</option>${GENDERS.map(t=>`<option ${ganFilter.gender===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
         <div class="field"><label>תפוסה</label><select id="fg-full"><option value="">הכל</option><option value="yes" ${ganFilter.full==='yes'?'selected':''}>מלאה</option><option value="no" ${ganFilter.full==='no'?'selected':''}>לא מלאה</option></select></div>
         <div class="field"><label>קמפוס</label><select id="fg-campus"><option value="">הכל</option>${ganCampuses.map(c=>`<option ${ganFilter.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select></div>
         <div class="field"><label>אזור</label><select id="fg-zone"><option value="">הכל</option>${zones.map(z=>`<option ${ganFilter.zone===z?'selected':''}>${esc(z)}</option>`).join("")}</select></div>
@@ -9228,7 +9620,7 @@ function viewGans(root){
   $("#ganFilterToggle").onclick=()=>{ ganFiltersOpen=$("#ganFilterPanel").hasAttribute("hidden"); viewGans(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ ganFilter[key]=e.value; renderGanTable(); }; };
   bind("#fg-q","q"); bind("#fg-zone","zone"); bind("#fg-status","status");
-  bind("#fg-age","age"); bind("#fg-campus","campus"); bind("#fg-full","full");
+  bind("#fg-age","age"); bind("#fg-campus","campus"); bind("#fg-full","full"); bind("#fg-gender","gender");
   renderGanTable();
 }
 function renderGanTable(){
@@ -9242,7 +9634,7 @@ function renderGanTable(){
   const totalActive = eduScope(DB.gans.filter(g=>g.active)).length;
   const eduNote = activeEdu ? ` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})` : "";
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
-    ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${th("age","גיל")}${th("","חינוך")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("city","עיר")}${th("zone","אזור")}
+    ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${th("age","גיל")}${th("","חינוך")}${th("gender","מגדר")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("city","עיר")}${th("zone","אזור")}
     ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("assigned","משובצות / רף")}${th("","סטטוס")}</tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
@@ -9253,6 +9645,7 @@ function renderGanTable(){
         <td>${esc(g.ganSymbol)||'—'}</td>
         <td>${esc(g.age)||'—'}</td>
         <td>${eduBadge(g)}</td>
+        <td>${genderBadge(g)}</td>
         <td>${esc(g.teacherName)||'—'}</td>
         <td>${g.address?`${esc(g.address)} ${navBtns([g.address,g.building,g.zone].filter(Boolean).join(" "))}`:'—'}</td>
         <td>${esc(g.building)||'—'}</td>
@@ -9287,6 +9680,8 @@ function openGan(g){
       <div><label>סמל הגן</label><input id="g-ganSymbol" value="${esc(g.ganSymbol)}"></div>
       <div><label>גיל</label><select id="g-age"><option value="">—</option>${GAN_AGES.map(a=>`<option ${String(g.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
+      <div><label>מגדר הגן</label><select id="g-gender"><option value="">— לא צוין —</option>${GENDERS.map(t=>`<option ${String(g.gender||"")===t?'selected':''}>${esc(t)}</option>`).join("")}</select>
+        <div class="hint">גן בנות / גן בנים. הילדים בגן יורשים את המגדר מהגן.</div></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
       <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}">
         <div class="hint">חיווי בלבד על הרישום — חריגה נצבעת אך מותרת.</div></div>
@@ -9315,6 +9710,10 @@ function openGan(g){
     <div class="note" style="margin-top:6px">פרטי הצוות (גננת, סייעת, ניידים) והשיבוץ נקבעים בלשונית "שיבוץ" לכל שנה בנפרד.</div>
   </fieldset>
   <fieldset><legend>מסמכים והפעלה</legend>
+    <div class="grid g3" style="margin-bottom:8px">
+      <div><label>רישיון — גילאים מורשים</label><input id="g-licenseAges" value="${esc(g.licenseAges||"")}" placeholder="למשל: 3-4"><div class="hint">גיל הרישיון של הגן ממשרד החינוך — לבקרת קליטה.</div></div>
+      <div><label>רישיון — מכסת ילדים</label><input id="g-licenseCap" inputmode="numeric" value="${esc(g.licenseCap||"")}" placeholder="למשל 35"><div class="hint">${(()=>{ const cap=+String(g.licenseCap||"").replace(/[^\d]/g,"")||0; if(!cap) return "ריק = לא הוגדר. גן שחורג מהמכסה מסומן לטיפול (הרחבת רישיון)."; const n=isNew?0:studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length; return n>cap?`<b style="color:var(--bad)">חריגה: ${n} רשומים מול מכסה ${cap} — נדרשת הרחבת רישיון.</b>`:`${n} רשומים מתוך ${cap} במכסה.`; })()}</div></div>
+    </div>
     <div><label>מסמכים הקשורים לגן (הערה/קישורים)</label><textarea id="g-docsNote" rows="2">${esc(g.docsNote)}</textarea></div>
     <label class="check" style="margin-top:10px"><input type="checkbox" id="g-active" ${g.active?'checked':''}> גן פעיל (נספר במניין הגנים)</label>
   </fieldset>
@@ -9332,7 +9731,8 @@ function openGan(g){
       teacherName:val("g-teacherName"),capacity:val("g-capacity"),
       assignCap:String(val("g-assignCap")||"").replace(/[^\d]/g,""),campus:val("g-campus"),
       address:val("g-address"),building:val("g-building"),street:val("g-street"),zone:val("g-zone"),
-      city:val("g-city"),
+      city:val("g-city"), gender:val("g-gender"),
+      licenseAges:val("g-licenseAges"), licenseCap:String(val("g-licenseCap")||"").replace(/[^\d]/g,""),
       phoneGan:val("g-phoneGan"),docsNote:val("g-docsNote"),active:chk("g-active")
     });
     if(!data.ganName && !data.teacherName && !data.ganSymbol && !data.internalSymbol){ toast("יש להזין שם הגן, גננת או סמל"); return; }
@@ -15515,6 +15915,12 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
+  ${isHQ()?`<div class="panel" data-set="cities">
+    <h2>ערים ומשתמשים — המרשם המרכזי</h2>
+    <div class="sub">כאן המשרד הראשי פותח את התוכנה לערים נוספות וקובע מי רואה איזו עיר. כל עיר מקבלת מאגר נתונים משלה (תלמידים, גנים, צוות, שיבוץ) — נפרד לחלוטין מהערים האחרות. משתמש/ת רואה <b>רק</b> את הערים שסומנו לו/ה כאן; משתמש/ת <b>מרכז</b> רואה את כולן. ההרשאות נאכפות גם בשרת.</div>
+    <div id="org-box" style="margin-top:12px"><div class="hint">טוען…</div></div>
+  </div>`:""}
+
   ${admin?`<div class="panel" data-set="users">
     <h2>ניהול משתמשים</h2>
     <div class="sub">הכניסה למערכת היא עם חשבון <b>Google בלבד</b>. כאן מאשרים כתובות Google שיוכלו להיכנס, קובעים <b>שם</b> לכל משתמש, ומגדירים <b>מה מותר לו/ה לערוך</b>: חינוך רגיל, חינוך מיוחד, או צפייה בלבד. רק כתובת שמופיעה ברשימה כאן (או מנהל מערכת) תוכל להיכנס.</div>
@@ -15582,6 +15988,7 @@ function viewSettings(root){
 
   renderAuthBox();
   renderInstallBox();
+  if(isHQ()) renderOrgPanel();
   $("#skin-new").onclick=()=>skinGo("new");
   $("#skin-old").onclick=()=>skinGo("old");
   writePresence(); refreshPresenceWidget(); renderActivityPanel(); // "מי מחובר עכשיו" + "יומן פעילות"
