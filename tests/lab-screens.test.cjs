@@ -535,7 +535,9 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     };
   });
   const GROUPS = ['שנה ונתונים', 'רשימות המערכת', 'מערכת ומשתמשים', 'מראה והתקנה'];
-  const CARDS  = ['year','hist','ages','roles','campus','caps','tzmin','presence','users','auth','feedback','brand'];
+  /* 'org' — המרשם המרכזי (ערים ומשתמשים): מוצג רק למשתמשי המרכז, והבדיקה
+     נכנסת כבעלים (= מרכז). יושב בין "מי מחובר" ל"ניהול משתמשים". */
+  const CARDS  = ['year','hist','ages','roles','campus','caps','tzmin','presence','org','users','auth','feedback','brand'];
   if (sg.inTop || sg.inTopChips)
     bad('בורר השנה עדיין יושב ברצועה העליונה');
   else if (sg.realHome !== 'drawer-year')

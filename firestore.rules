@@ -4,89 +4,141 @@ service cloud.firestore {
 
     /* =====================================================================
        אכיפת הרשאות בצד השרת (Firestore) — לא רק בדפדפן.
-       החוקים כאן משכפלים את enforceAccess() ואת isAdmin() שבאפליקציה, כך שכל
-       משתמש שהמערכת מתירה לו כיום ממשיך לעבוד, אבל:
-         • חשבון שאינו מורשה (למשל כניסת Google של אדם אקראי) נחסם כבר בשרת —
-           גם אם הוא פונה ישירות ל-REST ועוקף את מסך התוכנה.
-         • משתמש מורשה שאינו מנהל אינו יכול לשנות את השדות הרגישים בהגדרות
-           (admins/allowedEmails/editScopes) — כלומר אינו יכול להוסיף את עצמו
-           ל-admins דרך ה-REST (מניעת הסלמת הרשאות שהדפדפן חוסם אך הכללים
-           הקודמים אִפשרו). שמירת נתונים רגילה במסמך meta ממשיכה לעבוד.
+       החוקים כאן משכפלים את enforceAccess() / isAdmin() / cityAccess() שבאפליקציה,
+       כך שמי שהתוכנה מתירה לו ממשיך לעבוד, אבל:
+         • חשבון שאינו מורשה נחסם כבר בשרת — גם אם הוא פונה ישירות ל-REST.
+         • משתמש/ת שמורשה לעיר אחת אינו/ה יכול/ה לקרוא או לכתוב עיר אחרת,
+           גם לא בעקיפת המסך. עיר = אוסף נפרד בענן (ראה למטה).
+         • משתמש/ת שאינו/ה מנהל/ת אינו/ה יכול/ה לשנות את השדות הרגישים
+           בהגדרות העיר (admins/allowedEmails/editScopes) — מניעת הסלמה.
+         • את המרשם המרכזי (org/meta) כותבים רק בעלי המערכת ומשתמשי המרכז.
 
-       מודל ההרשאות (זהה לאפליקציה):
-         • בעלי המערכת (OWNER_EMAILS) — עוגן קבוע: תמיד מנהלים ומורשים, גם אם
+       ── מבנה הנתונים ─────────────────────────────────────────────────────
+         org/meta                — המרשם המרכזי: הערים ומי רואה איזו עיר
+             cities: [ {id, name, region, active, …} ]
+             users:  { [email]: { name, hq:bool, cities:{ [cityId]: "admin"|"edit"|"view" } } }
+         app/*                   — נתוני עיר הבית (מודיעין עילית) — האוסף המקורי, לא הוזז
+         cities/{cityId}/app/*   — נתוני כל עיר נוספת, באותו מבנה מסמכים בדיוק
+
+       ── מודל ההרשאות (זהה לאפליקציה) ────────────────────────────────────
+         • בעלי המערכת (OWNER_EMAILS) — עוגן קבוע: תמיד מרכז ומנהלים, גם אם
            ההגדרות ריקות/נמחקו. כך המערכת לעולם אינה "פתוחה לכולם".
-         • רשימת המורשים = בעלים ∪ מנהלים ∪ allowedEmails ∪ מי שכבר ערך
-           (userActivity), השמורה במסמך app/meta תחת settings.
-         • מנהלים = בעלים ∪ settings.admins.
-         • הכניסה למערכת היא Google בלבד; כל כתובת חייבת להופיע ברשימת המורשים.
+         • מרכז (hq) — רואה וכותב את כל הערים, ומנהל/ת את המרשם.
+         • משויך/ת לעיר במרשם — לפי התפקיד: מנהל/ת עיר (= מנהל מערכת בעיר),
+           עריכה, או צפייה בלבד (קריאה בלבד בשרת).
+         • משתמש/ת ותיק/ה שאינו/ה במרשם כלל — עיר הבית בלבד, לפי רשימת
+           המורשים של העיר (admins ∪ allowedEmails ∪ userActivity) — כמו עד היום.
+         • הכניסה למערכת היא Google בלבד.
        ⚠️ OWNER_EMAILS חייבת להישאר זהה לזו שב-index.html וב-APPS_SCRIPT.gs.
+       ⚠️ מזהה עיר הבית ('modiin-illit') חייב להישאר זהה ל-HOME_CITY.id ב-index.html.
        ===================================================================== */
 
     // בעלי המערכת — עוגן הרשאה קבוע (חייב להיות זהה ל-index.html / APPS_SCRIPT.gs)
     function ownerEmails() { return ['7684252sg@gmail.com', 'sg@taharat.org']; }
-
-    function metaPath()   { return /databases/$(database)/documents/app/meta; }
-    function metaExists() { return exists(metaPath()); }
-    function metaData()   { return get(metaPath()).data; }
-    function settings()   { return ('settings' in metaData()) ? metaData().settings : {}; }
-
-    // מחזיר את הערך כרשימה, או רשימה ריקה אם המפתח חסר / אינו רשימה
-    function asList(m, k)  { return (k in m) && (m[k] is list) ? m[k] : []; }
+    // מזהה עיר הבית — נתוניה יושבים באוסף app (חייב להיות זהה ל-HOME_CITY.id באפליקציה)
+    function homeCityId() { return 'modiin-illit'; }
 
     function authEmail()  { return request.auth != null && request.auth.token.email != null ? request.auth.token.email : ''; }
     function emailLower() { return authEmail().lower(); }
-
     // בדיקת חברות ברשימה — משווה גם למקור וגם ל-lowercase (מיילים נשמרים לעיתים באותיות שונות)
     function inList(l)    { return l.hasAny([ authEmail(), emailLower() ]); }
-
     function isOwner()    { return request.auth != null && inList(ownerEmails()); }
+    // מחזיר את הערך כרשימה, או רשימה ריקה אם המפתח חסר / אינו רשימה
+    function asList(m, k)  { return (k in m) && (m[k] is list) ? m[k] : []; }
 
-    // מנהל מערכת — בעלים או מי שברשימת admins (מקביל ל-isAdmin() באפליקציה).
-    // רשימת admins ריקה → רק הבעלים מנהל (אין יותר "כל מחובר מנהל" במצב אתחול).
-    function isAdminUser() {
-      return isOwner() || inList(asList(settings(), 'admins'));
+    /* ── המרשם המרכזי ──────────────────────────────────────────────────── */
+    function orgPath()   { return /databases/$(database)/documents/org/meta; }
+    function orgUsers()  {
+      return exists(orgPath()) && ('users' in get(orgPath()).data) && (get(orgPath()).data.users is map)
+             ? get(orgPath()).data.users : {};
     }
-
-    function isKnownEmail() {
-      return inList(asList(settings(), 'admins'))
-          || inList(asList(settings(), 'allowedEmails'))
-          || ( ('userActivity' in settings()) && (emailLower() in settings().userActivity) );
+    function orgKey()    { return (emailLower() in orgUsers()) ? emailLower() : authEmail(); }
+    function inOrg()     { return request.auth != null && (emailLower() in orgUsers() || authEmail() in orgUsers()); }
+    function orgUser()   { return inOrg() ? orgUsers()[orgKey()] : {}; }
+    function isHQ()      { return isOwner() || (inOrg() && (orgUser() is map) && orgUser().get('hq', false) == true); }
+    // התפקיד בעיר לפי המרשם: מפה {cityId: role}; צורה ישנה — רשימת מזהים = עריכה
+    function cityRole(cityId) {
+      let c = (orgUser() is map) ? orgUser().get('cities', {}) : {};
+      return (c is map && cityId in c) ? string(c[cityId])
+           : ((c is list && cityId in c) ? 'edit' : '');
     }
+    function hasCity(cityId)    { return inOrg() && cityRole(cityId) != ''; }
+    function cityAdmin(cityId)  { return inOrg() && cityRole(cityId) == 'admin'; }
+    // צפייה בלבד לפי המרשם — אלא אם המשתמש/ת מרכז (המרכז גובר)
+    function cityViewer(cityId) { return !isHQ() && inOrg() && cityRole(cityId) == 'view'; }
 
-    // מקביל ל-enforceAccess() בקוד: בעלים תמיד; אחרת חייב להופיע ברשימת המורשים.
-    // אין יותר "פתוח במצב לא-מוגדר" — מערכת ריקה פתוחה לבעלים בלבד (חלון האתחול נסגר).
-    function isAllowedUser() {
-      return isOwner() || isKnownEmail();
+    /* ── רשימת המורשים של עיר (settings שבמסמך meta של העיר) ────────────── */
+    function homeMetaPath()        { return /databases/$(database)/documents/app/meta; }
+    function cityMetaPath(cityId)  { return /databases/$(database)/documents/cities/$(cityId)/app/meta; }
+    function settingsAt(p) {
+      return exists(p) && ('settings' in get(p).data) && (get(p).data.settings is map) ? get(p).data.settings : {};
+    }
+    function knownIn(s) {
+      return inList(asList(s, 'admins'))
+          || inList(asList(s, 'allowedEmails'))
+          || ( ('userActivity' in s) && (s.userActivity is map) && (emailLower() in s.userActivity) );
+    }
+    function adminIn(s) { return inList(asList(s, 'admins')); }
+
+    /* ── גישה לעיר ─────────────────────────────────────────────────────── */
+    // עיר הבית: בעלים / מרכז / משויך/ת במרשם / משתמש/ת ותיק/ה שאינו/ה במרשם — לפי רשימת העיר
+    function homeAllowed() {
+      return isOwner() || isHQ() || hasCity(homeCityId())
+          || ( !inOrg() && knownIn(settingsAt(homeMetaPath())) );
+    }
+    function homeAdmin() {
+      return isOwner() || isHQ() || cityAdmin(homeCityId())
+          || ( homeAllowed() && !cityViewer(homeCityId()) && adminIn(settingsAt(homeMetaPath())) );
+    }
+    function homeCanWrite() { return homeAllowed() && !cityViewer(homeCityId()); }
+    // עיר נוספת: רק דרך המרשם (אין "ותיקים" בעיר שנפתחה אחרי המרשם)
+    function cityAllowed(cityId)  { return isOwner() || isHQ() || hasCity(cityId); }
+    function cityCanWrite(cityId) { return cityAllowed(cityId) && !cityViewer(cityId); }
+    function cityIsAdmin(cityId) {
+      return isOwner() || isHQ() || cityAdmin(cityId)
+          || ( cityCanWrite(cityId) && adminIn(settingsAt(cityMetaPath(cityId))) );
     }
 
     /* השדות הרגישים שבתוך settings — מי שאינו מנהל אינו רשאי לשנותם (מניעת הסלמה).
        ההשוואה היא בין הקיים לנכנס; שאר settings (כמו userActivity, מיתוג, שנים)
        נשמר כרגיל גם ע"י משתמש מורשה שאינו מנהל — כי save() כותב את כל מסמך meta. */
-    function oldMetaSettings() {
-      return (metaExists() && ('settings' in metaData())) ? metaData().settings : {};
-    }
-    function newMetaSettings() {
-      return request.resource.data.get('settings', {});
-    }
-    function metaPrivFieldsUnchanged() {
-      return oldMetaSettings().get('admins', [])        == newMetaSettings().get('admins', [])
-          && oldMetaSettings().get('allowedEmails', []) == newMetaSettings().get('allowedEmails', [])
-          && oldMetaSettings().get('editScopes', {})    == newMetaSettings().get('editScopes', {});
+    function oldSettings(p) { return settingsAt(p); }
+    function newSettings()  { return request.resource.data.get('settings', {}); }
+    function privUnchanged(p) {
+      return oldSettings(p).get('admins', [])        == newSettings().get('admins', [])
+          && oldSettings(p).get('allowedEmails', []) == newSettings().get('allowedEmails', [])
+          && oldSettings(p).get('editScopes', {})    == newSettings().get('editScopes', {});
     }
 
-    // הגדרות המערכת (app/meta): כל מורשה קורא. כתיבה — מנהל חופשי; משתמש מורשה
-    // שאינו מנהל רשאי לשמור רק אם השדות הרגישים (admins/allowedEmails/editScopes)
-    // נותרים ללא שינוי. כך שמירה רגילה עובדת, אך אי אפשר להעלות את עצמך למנהל.
+    /* ── המרשם המרכזי: כל מי שמוכר למערכת קורא (כדי לדעת מהן הערים שלו);
+          כותבים רק בעלים ומרכז. ─────────────────────────────────────────── */
+    match /org/meta {
+      allow read:  if isOwner() || inOrg() || knownIn(settingsAt(homeMetaPath()));
+      allow write: if isHQ();
+    }
+
+    /* ── עיר הבית (האוסף המקורי app) ───────────────────────────────────── */
     match /app/meta {
-      allow read:  if isAllowedUser();
-      allow write: if isAdminUser() || (isAllowedUser() && metaPrivFieldsUnchanged());
+      allow read:  if homeAllowed();
+      allow write: if homeAdmin() || (homeCanWrite() && privUnchanged(homeMetaPath()));
+    }
+    match /app/{docId} {
+      allow read:  if homeAllowed();
+      allow write: if homeCanWrite() && docId != 'meta';
     }
 
-    // שאר נתוני האפליקציה — כל משתמש מורשה קורא/כותב (כתיבה ל-meta מטופלת למעלה)
-    match /app/{docId} {
-      allow read:  if isAllowedUser();
-      allow write: if isAllowedUser() && docId != 'meta';
+    /* ── ערים נוספות: cities/<cityId>/app/* — אותו מבנה, בידוד מלא בין ערים ── */
+    match /cities/{cityId} {
+      allow read:  if cityAllowed(cityId);
+      allow write: if false;   // מסמך העיר עצמו אינו בשימוש — המרשם הוא org/meta
+    }
+    match /cities/{cityId}/app/meta {
+      allow read:  if cityAllowed(cityId);
+      allow write: if cityIsAdmin(cityId) || (cityCanWrite(cityId) && privUnchanged(cityMetaPath(cityId)));
+    }
+    match /cities/{cityId}/app/{docId} {
+      allow read:  if cityAllowed(cityId);
+      allow write: if cityCanWrite(cityId) && docId != 'meta';
     }
 
     // כל השאר חסום כברירת מחדל

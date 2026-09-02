@@ -3176,7 +3176,7 @@ var SET_FIND = [
   ["ages","#ages-box"],        ["roles","#roles-box"],
   ["campus","#campus-box"],    ["admins","#admins-box"],
   ["feedback","#feedback-box"],["auth","#auth-box"],
-  ["users","#users-box"]
+  ["users","#users-box"],     ["org","#org-box"]
 ];
 
 /* העברת גוף הפאנל — בלי הכותרת ובלי שורת ההסבר, שמוחלפות בכותרת הכרטיס */
@@ -3420,7 +3420,8 @@ function plainCard(key, title, sub, src){
 var LAB_SET = {
   year:"years promote", hist:"hist histgans", ages:"ages", roles:"roles",
   campus:"campus", caps:"caps", tzmin:"tzmin", presence:"presence activity",
-  users:"users admins", auth:"auth", brand:"branding install", feedback:"feedback"
+  users:"users admins", auth:"auth", brand:"branding install", feedback:"feedback",
+  org:"cities"
 };
 
 function settingsScreen(){
@@ -3505,6 +3506,16 @@ function settingsScreen(){
 
   /* ═══ 3. מערכת ומשתמשים ═══════════════════════════════════════════ */
   addCard(presenceCard(P));
+  /* המרשם המרכזי (ערים ומשתמשים) — קיים רק אצל משתמשי המרכז. הפאנל מוזז
+     כמות שהוא: renderOrgPanel() בונה את תוכנו מחדש בכל שינוי ומחווט אותו בעצמו. */
+  if(P.org){
+    mark("org");
+    var oc = labPanel("org", "ערים ומשתמשים — המרשם המרכזי",
+      "פתיחת התוכנה לערים נוספות, ומי רואה איזו עיר. משתמש/ת רואה רק את הערים שסומנו לו/ה; המרכז רואה את כולן.");
+    moveBody(P.org, oc);
+    P.org.remove();
+    addCard(oc);
+  }
   addCard(usersCard(P));
   addCard(authCard(P));
   if(P.feedback){
