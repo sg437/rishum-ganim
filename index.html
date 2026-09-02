@@ -4574,8 +4574,9 @@ function guideContent(){
         <li><b>שום דבר לא קורה בלי אישור</b> — כל בקשת שינוי מוצגת ככרטיס עם תיאור מדויק של מה ישתנה (<b>לפני ← אחרי</b>) ואזהרות אם יש, ומתבצעת רק בלחיצה על <b>✅ בצע</b>. אפשר תמיד לבטל.</li>
         <li><b>אותן מגבלות כמו ידנית</b> — הרשאות העריכה לפי חינוך ורף השיבוץ נאכפים גם על העוזר.</li>
         <li><b>ניווט</b> — אפשר לבקש "פתחי לי את לשונית הגנים" או "פתחי את התיק של שרה כהן".</li>
-        <li><b>מפיק מסמכים לפי בקשה</b> — <i>"תפיקי לי קובץ אקסל של גן בן הדקל עם שם הילדה, שם משפחה, רחוב, מספר בית וטלפון"</i>. אפשר לבקש <b>אקסל</b>, <b>CSV</b> או <b>מסמך להדפסה/PDF</b>, לבחור עמודות במילים רגילות, ולסנן (גן · גיל · חינוך · בלי גן). הקובץ נוצר <b>רק אחרי אישור</b>, וכרטיס האישור מציג מראש כמה שורות ואילו עמודות. הקובץ <b>יורד למחשב</b> (PDF נפתח בחלון הדפסה) — הוא נבנה בדפדפן עצמו, בלי שהנתונים עוברים בשום שרת.</li>
-        <li><b>עומס אצל ספק ה-AI</b> — אם המודל עמוס, העוזר מציג "המודל עמוס כרגע — מנסה שוב…" ו<b>שולח את הבקשה שוב לבד</b> (עד שלושה ניסיונות). רק אם גם זה לא עזר מוצגת הודעה בעברית עם מה לעשות.</li>
+        <li><b>מפיק מסמכים לפי בקשה</b> — <i>"תפיקי לי קובץ אקסל של גן בן הדקל עם שם הילדה, שם משפחה, רחוב, מספר בית וטלפון"</i>. אפשר לבקש <b>אקסל</b>, <b>CSV</b> או <b>מסמך להדפסה/PDF</b>, לבחור עמודות במילים רגילות, ולסנן (גן · גיל · חינוך · בלי גן). ארבעה סוגי מסמכים: <b>תלמידות</b> · <b>גנים</b> · <b>רשימת צוות</b> (כולל הגנים שכל אחת משובצת בהם) · <b>מצבת שיבוץ הצוות</b> (שורה לכל תפקיד בכל גן, עם ימים ושעות). הקובץ נוצר <b>רק אחרי אישור</b>, וכרטיס האישור מציג מראש כמה שורות ואילו עמודות. הקובץ <b>יורד למחשב</b> (PDF נפתח בחלון הדפסה) — הוא נבנה בדפדפן עצמו, בלי שהנתונים עוברים בשום שרת.</li>
+        <li><b>עומס או ניתוק</b> — אם המודל עמוס או שהחיבור לגשר נקטע, העוזר מציג "מנסה שוב…" ו<b>שולח את הבקשה שוב לבד</b> (עד שלושה ניסיונות). רק אם גם זה לא עזר מוצגת הודעה בעברית — עם הפרטים הטכניים המדויקים ומה לעשות.</li>
+        <li><b>קורא מהמדריך מה שצריך</b> — במקום לשאת את כל המדריך בכל שאלה, העוזר מקבל את רשימת הפרקים ואת הפרקים שנראים קשורים לשאלה, ומושך פרק נוסף בעצמו כשצריך. התשובות מהירות יותר וחסינות יותר לרשת חלשה.</li>
       </ul>
       <div class="gd-tip">💡 העוזר פועל דרך הגשר עם מפתח AI (Google Gemini חינמי מספיק). הגדרה: <b>כלים ושירותים → עוזר חכם</b>.</div>` },
 
@@ -13643,9 +13644,12 @@ function openRegReview(){
 }
 /* ---------- עוזר AI (Gemini החינמי / Claude — דרך הגשר) ---------- */
 function guidePlainText(){
-  const c=guideContent();
+  return guideSections().map(s=>"### "+s.title+"\n"+s.text).join("\n\n");
+}
+/* המדריך כפרקים נפרדים ({title,text}) — הבסיס לבחירת מה נשלח לעוזר */
+function guideSections(){
   const strip=h=>String(h||"").replace(/<[^>]+>/g," ").replace(/&[a-z]+;/gi," ").replace(/\s+/g," ").trim();
-  return c.sections.map(s=>"### "+s.title+"\n"+strip(s.html)).join("\n\n");
+  return guideContent().sections.map(s=>({ title:s.title, text:strip(s.html) }));
 }
 /* ============================================================
    עוזר חכם (סעיפים 4-5)
@@ -13716,15 +13720,23 @@ const AI_TOOLS = {
         משובצות:ganAssignedCount(g.id), רף:ganAssignCap(g)||"ללא" }))
         .sort((x,y)=>x['מרחק_קמ']-y['מרחק_קמ']);
     } },
-  list_staff: { read:true, desc:'רשימת אנשי הצוות. פרמטרים אופציונליים: role, edu, q (שם), limit.',
-    run(a){ a=a||{};
-      let l=(DB.staff||[]).filter(m=>m.active!==false);
-      if(a.role) l=l.filter(m=>String(m.role||"").includes(a.role));
-      if(a.edu) l=l.filter(m=>eduLabel(m)===a.edu);
-      const q=String(a.q||"").trim().toLowerCase();
-      if(q) l=l.filter(m=>(staffName(m)+" "+(m.tz||"")).toLowerCase().includes(q));
-      return l.slice(0,Math.min(+a.limit||30,100)).map(m=>({ id:m.id, שם:staffName(m), תפקיד:m.role||"",
-        חינוך:eduLabel(m), נייד:m.mobile||"", טלפון:m.phone||"", 'דוא"ל':m.email||"" }));
+  list_staff: { read:true, desc:'רשימת אנשי הצוות. פרמטרים אופציונליים: role, edu, q (שם), city, ganName (מי משובצת בגן זה), limit.',
+    run(a){
+      const q=aiQueryStaff(a); if(q.error) return { שגיאה:q.error };
+      return q.list.slice(0,Math.min(+((a||{}).limit)||30,100)).map(m=>({ id:m.id, שם:staffName(m), תפקיד:m.role||"",
+        חינוך:eduLabel(m), נייד:m.mobile||"", טלפון:m.phone||"", 'דוא"ל':m.email||"",
+        גנים:aiStaffGans(m).join(" · ") }));
+    } },
+
+  read_guide: { read:true, desc:'קריאת פרק מהמדריך של התוכנה לפי כותרת או מילת מפתח. פרמטר: section. השתמש בו בכל שאלת "איך עושים" שהפרק שלה אינו לפניך — אל תנחש מה כתוב במדריך.',
+    run(a){
+      const q=String((a&&a.section)||"").trim();
+      const secs=guideSections();
+      if(!q) return { שגיאה:"יש לציין שם פרק", פרקים:secs.map(x=>x.title) };
+      const one = secs.find(x=>x.title===q) || secs.find(x=>x.title.includes(q))
+        || aiGuidePick([{ role:"user", content:q }], 9000)[0];
+      if(!one) return { שגיאה:'לא נמצא פרק מתאים ל"'+q+'"', פרקים:secs.map(x=>x.title) };
+      return { פרק:one.title, תוכן:one.text.slice(0,9000) };
     } },
 
   /* ---- ניווט (בטוח — לא משנה נתונים) ---- */
@@ -13806,7 +13818,7 @@ const AI_TOOLS = {
       ctx.keys.forEach(k=>{ let v=f[k]; if(k==="active") v=!!v && v!=="false"; g[k]=v; });
       save(); try{ route(); }catch(e){}
       return { בוצע:"כרטיס הגן עודכן" }; } },
-  make_document: { read:false, desc:'הפקת מסמך מהנתונים: קובץ אקסל, CSV או מסמך להדפסה/PDF. פרמטרים: kind ("students" ברירת מחדל / "gans"), format ("excel" ברירת מחדל / "csv" / "pdf"), fields (מערך שמות עמודות בעברית, למשל ["שם משפחה","שם הילדה","רחוב","מספר בית","טלפון"] — ריק = ברירת מחדל), filter (אותם פרמטרים של find_students או list_gans, למשל {"ganName":"בן הדקל"}), title (כותרת המסמך), fileName. הקובץ תמיד יורד למחשב של המשתמשת (אין שמירה לדרייב) — אם מבקשים ממך לשמור בדרייב, אמור שהמסמך יירד למחשב ואפשר להעלות אותו לדרייב משם.',
+  make_document: { read:false, desc:'הפקת מסמך מהנתונים: קובץ אקסל, CSV או מסמך להדפסה/PDF. פרמטרים: kind ("students" ברירת מחדל · "gans" · "staff" רשימת צוות · "assignment" מצבת שיבוץ הצוות, שורה לכל תפקיד בכל גן), format ("excel" ברירת מחדל / "csv" / "pdf"), fields (מערך שמות עמודות בעברית, למשל ["שם משפחה","שם הילדה","רחוב","מספר בית","טלפון"] — ריק = ברירת מחדל), filter (אותם פרמטרים של find_students / list_gans / list_staff, למשל {"ganName":"בן הדקל"} או {"role":"סייעת"}), title (כותרת המסמך), fileName. הקובץ תמיד יורד למחשב של המשתמשת (אין שמירה לדרייב) — אם מבקשים ממך לשמור בדרייב, אמור שהמסמך יירד למחשב ואפשר להעלות אותו לדרייב משם.',
     preview(a){
       const spec=aiDocSpec(a||{});
       if(spec.error) return { error:spec.error };
@@ -13872,6 +13884,54 @@ function aiQueryStudents(a){
   if(a.placed===false) l=l.filter(s=>s.placed===false);
   return { list:l };
 }
+function aiQueryStaff(a){
+  a=a||{};
+  let l=(DB.staff||[]).filter(m=> a.includeInactive===true ? true : m.active!==false);
+  if(a.role) l=l.filter(m=>String(m.role||"").includes(a.role));
+  if(a.edu) l=l.filter(m=>eduLabel(m)===a.edu);
+  if(a.city) l=l.filter(m=>String(m.city||"").includes(a.city));
+  const q=String(a.q||"").trim().toLowerCase();
+  if(q) l=l.filter(m=>(staffName(m)+" "+(m.tz||"")).toLowerCase().includes(q));
+  if(a.ganName||a.gan){
+    const g=aiFindGan(a.ganName||a.gan);
+    if(!g) return { error:'לא נמצא גן בשם "'+(a.ganName||a.gan)+'"' };
+    const asg=ganAsg(g.id,'activity'), ids=new Set();
+    assignRoles().forEach(r=>{ const c=asg[r.role]; if(c&&c.staffId) ids.add(c.staffId); });
+    l=l.filter(m=>ids.has(m.id));
+  }
+  return { list:l };
+}
+/* הגנים שאיש/אשת הצוות משובצ/ת בהם (בהקשר "פעילות הגן") */
+function aiStaffGans(m){
+  const roles=assignRoles();
+  return DB.gans.filter(g=>g.active).filter(g=>{
+    const asg=ganAsg(g.id,'activity');
+    return roles.some(r=>{ const c=asg[r.role]; return c && c.staffId===m.id; });
+  }).map(g=>ganName(g.id));
+}
+/* מצבת השיבוץ כשורות שטוחות — שורה לכל תפקיד משובץ בכל גן */
+function aiQueryAsg(a){
+  a=a||{};
+  const ctx=a.context||'activity';
+  const gq=aiQueryGans(a); if(gq.error) return { error:gq.error };
+  const roles=assignRoles(), rows=[];
+  gq.list.slice().sort((x,y)=>ganName(x.id).localeCompare(ganName(y.id),"he")).forEach(g=>{
+    const asg=ganAsg(g.id,ctx), free=ganFreeDays(g.id,ctx);
+    const students=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
+    roles.forEach(meta=>{
+      const c=asg[meta.role]; if(!c || !(c.name||c.staffId)) return;
+      if(a.role && !String(meta.role).includes(a.role)) return;
+      const info=asgStaffInfo(asg,meta.role);
+      const hours=HOURS_ROLES.includes(meta.role)?(c.hours||(info.m&&info.m.weeklyHours)||""):"";
+      let days=info.days.length?info.days.join(", "):asgExtraText(meta.role,c);
+      if(free[meta.role] && free[meta.role].length) days="יום חופשי: "+free[meta.role].join(", ");
+      rows.push({ gan:ganName(g.id), age:g.age||"", symbol:g.ganSymbol||g.internalSymbol||"",
+        address:[g.address,g.building].filter(Boolean).join(" "), students,
+        role:meta.role, name:info.name, phone:info.phone, days, hours });
+    });
+  });
+  return { list:rows };
+}
 function aiQueryGans(a){
   a=a||{};
   let g=DB.gans.filter(x=> a.onlyActive===false ? true : x.active);
@@ -13893,6 +13953,37 @@ const AI_DOC_STUDENT_EXTRA = [
   ["fullName","שם מלא",s=>[s.lastName,s.firstName].filter(Boolean).join(" ")],
   ["fullAddress","כתובת מלאה",s=>[s.street,s.building,s.city].filter(Boolean).join(" ")]
 ];
+const AI_DOC_STAFF_FIELDS = [
+  ["name","שם",m=>staffName(m)],
+  ["lastName","שם משפחה",m=>m.lastName||""],
+  ["firstName","שם פרטי",m=>m.firstName||""],
+  ["tz",'ת"ז',m=>m.tz||""],
+  ["role","תפקיד",m=>m.role||""],
+  ["education","חינוך",m=>eduLabel(m)],
+  ["mobile","נייד",m=>m.mobile||""],
+  ["phone","טלפון",m=>m.phone||""],
+  ["email",'דוא"ל',m=>m.email||""],
+  ["street","רחוב",m=>m.street||""],
+  ["building","מספר בית",m=>m.building||""],
+  ["city","עיר",m=>m.city||""],
+  ["weeklyHours","שעות שבועיות",m=>m.weeklyHours||""],
+  ["certificate","תעודה",m=>m.certificate?"✓":""],
+  ["gans","גנים משובצים",m=>aiStaffGans(m).join(" · ")],
+  ["active","פעיל/ה",m=>m.active===false?"לא":"כן"],
+  ["notes","הערות",m=>m.notes||""]
+];
+const AI_DOC_ASG_FIELDS = [
+  ["gan","גן",r=>r.gan],
+  ["age","גיל",r=>r.age],
+  ["symbol","סמל הגן",r=>r.symbol],
+  ["address","כתובת",r=>r.address],
+  ["students","מספר תלמידות",r=>r.students],
+  ["role","תפקיד",r=>r.role],
+  ["name","שם",r=>r.name],
+  ["phone","טלפון",r=>r.phone],
+  ["days","ימים / תקופה",r=>r.days],
+  ["hours","שעות שבועיות",r=>r.hours]
+];
 /* כינויים בעברית מדוברת → מפתח העמודה (נבדקים רק אחרי התאמה לשם עמודה אמיתי) */
 const AI_DOC_ALIASES = {
   students: { 'שם הילדה':'firstName','שם הילד':'firstName','שם התלמידה':'firstName','שם':'firstName',
@@ -13902,15 +13993,33 @@ const AI_DOC_ALIASES = {
     'שם הגן':'gan','גן משובץ':'gan','מייל':'email','אימייל':'email','דואל':'email','אמא':'motherName','אבא':'fatherName' },
   gans: { 'שם':'ganName','גן':'ganName','שם גן':'ganName','טלפון':'phoneGan','נייד':'phoneGan',
     'סמל':'ganSymbol','רחוב':'address','מספר בית':'building','מספר':'building','שם הגננת':'teacherName',
-    'מספר תלמידות':'records','מספר ילדות':'records','תלמידות':'records','ילדות':'records' }
+    'מספר תלמידות':'records','מספר ילדות':'records','תלמידות':'records','ילדות':'records' },
+  staff: { 'שם מלא':'name','שם העובדת':'name','טלפון':'mobile','פלאפון':'mobile','נייד':'mobile',
+    'טלפון בית':'phone','כתובת':'street','מספר':'building','מייל':'email','אימייל':'email','דואל':'email',
+    'שעות':'weeklyHours','גן':'gans','גנים':'gans','גן משובץ':'gans','תז':'tz','תעודת זהות':'tz' },
+  assignment: { 'שם הגן':'gan','שם':'name','שם העובדת':'name','נייד':'phone','פלאפון':'phone',
+    'ימים':'days','יום חופשי':'days','שעות':'hours','שעות שבועיות':'hours','סמל':'symbol',
+    'רחוב':'address','מספר ילדות':'students','מספר תלמידות':'students','תלמידות':'students' }
 };
 const AI_DOC_DEFAULTS = {
   students:["lastName","firstName","tz","gan","age","street","building","city","mobileAny"],
-  gans:["ganName","age","education","teacherName","address","building","phoneGan","records"]
+  gans:["ganName","age","education","teacherName","address","building","phoneGan","records"],
+  staff:["name","role","education","mobile","phone","gans","weeklyHours"],
+  assignment:["gan","age","students","role","name","phone","days","hours"]
 };
+/* סוג המסמך — שם באנגלית או בעברית */
+const AI_DOC_KINDS = { students:"students", student:"students", תלמידות:"students", ילדות:"students",
+  gans:"gans", gan:"gans", גנים:"gans", גן:"gans",
+  staff:"staff", צוות:"staff", עובדות:"staff", מורות:"staff", גננות:"staff",
+  assignment:"assignment", asg:"assignment", שיבוץ:"assignment", מצבת:"assignment", "מצבת שיבוץ":"assignment" };
 /* השוואת שמות עמודות סלחנית — בלי גרשיים, נקודות ורווחים כפולים */
 function aiDocNorm(x){ return String(x==null?"":x).replace(/["'`׳״.\-]/g,"").replace(/\s+/g," ").trim().toLowerCase(); }
-function aiDocFields(kind){ return kind==='gans' ? GAN_EXPORT_FIELDS : EXPORT_FIELDS.concat(AI_DOC_STUDENT_EXTRA); }
+function aiDocFields(kind){
+  if(kind==='gans') return GAN_EXPORT_FIELDS;
+  if(kind==='staff') return AI_DOC_STAFF_FIELDS;
+  if(kind==='assignment') return AI_DOC_ASG_FIELDS;
+  return EXPORT_FIELDS.concat(AI_DOC_STUDENT_EXTRA);
+}
 function aiDocResolveCols(kind, want){
   const all=aiDocFields(kind), byKey={}, byLabel={};
   all.forEach(f=>{ byKey[aiDocNorm(f[0])]=f; byLabel[aiDocNorm(f[1])]=f; });
@@ -13929,11 +14038,14 @@ function aiDocResolveCols(kind, want){
 function aiDocSpec(a){
   a=a||{};
   const k=aiDocNorm(a.kind||"students");
-  const kind = (k==="gans"||k==="gan"||k==="גנים"||k==="גן") ? "gans" : "students";
+  const kind = AI_DOC_KINDS[k] || "students";
   const ff=String(a.format||"excel").toLowerCase();
   const format = /csv/.test(ff) ? "csv" : (/pdf|print|הדפס/.test(ff) ? "pdf" : "excel");
   const filter = (a.filter && typeof a.filter==="object") ? a.filter : a;
-  const q = kind==='gans' ? aiQueryGans(filter) : aiQueryStudents(filter);
+  const q = kind==='gans' ? aiQueryGans(filter)
+          : kind==='staff' ? aiQueryStaff(filter)
+          : kind==='assignment' ? aiQueryAsg(filter)
+          : aiQueryStudents(filter);
   if(q.error) return { error:q.error };
   const list=q.list.slice();
   if(kind==='students') list.sort((x,y)=>
@@ -13941,15 +14053,19 @@ function aiDocSpec(a){
     || (ganAgeKey(ganById(x.ganId)||{})-ganAgeKey(ganById(y.ganId)||{}))
     || String(x.lastName||"").localeCompare(String(y.lastName||""),"he")
     || String(x.firstName||"").localeCompare(String(y.firstName||""),"he"));
-  else list.sort((x,y)=>ganName(x.id).localeCompare(ganName(y.id),"he"));
+  else if(kind==='gans') list.sort((x,y)=>ganName(x.id).localeCompare(ganName(y.id),"he"));
+  else if(kind==='staff') list.sort((x,y)=>
+    String(x.role||"").localeCompare(String(y.role||""),"he") || staffName(x).localeCompare(staffName(y),"he"));
+  // מצבת השיבוץ כבר מסודרת לפי גן ולפי סדר התפקידים
   let want = a.fields;
   if(typeof want==="string") want=want.split(/[,·|]/);
   if(!Array.isArray(want)||!want.length) want=AI_DOC_DEFAULTS[kind];
   const r=aiDocResolveCols(kind, want);
   if(!r.cols.length) return { error:'לא זוהתה אף עמודה. אפשר לבקש למשל: שם משפחה · שם פרטי · ת"ז · רחוב · מספר בית · טלפון · גן · גיל.' };
   const ganFil = filter && (filter.ganName || filter.gan) || "";
+  const KIND_TITLE = { students:"רשימת תלמידות", gans:"רשימת גנים", staff:"רשימת צוות", assignment:"מצבת שיבוץ צוות" };
   const title = String(a.title||"").trim()
-    || ((kind==='gans' ? "רשימת גנים" : "רשימת תלמידות") + (ganFil?(" · "+ganFil):"") + " · " + DB.activeYear);
+    || (KIND_TITLE[kind] + (ganFil?(" · "+ganFil):"") + " · " + DB.activeYear);
   return { kind, format, rows:list, cols:r.cols, unknown:r.unknown, title,
     fileName: safeFileName(String(a.fileName||"").trim() || title),
     formatLabel: format==='csv' ? "קובץ CSV" : (format==='pdf' ? "מסמך להדפסה / PDF" : "קובץ אקסל") };
@@ -14021,7 +14137,48 @@ function aiContextBlock(){
     +' · '+list.length+' תלמידות פעילות · '+gans.length+' גנים פעילים בתחום הנבחר.\n'
     +'שמות הגנים הפעילים: '+gans.slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he")).map(g=>ganName(g.id)).join(' · ');
 }
-function aiSystemPrompt(){
+/* ---------- כמה מהמדריך נשלח בכל בקשה ----------
+   שליחת המדריך המלא (כ-47 אלף תווים) בכל סבב הפכה כל שאלה לאיטית, יקרה
+   ורגישה לקטיעה ברשת חלשה — ורוב השאלות נוגעות לפרק אחד. במקומו נשלחות
+   כותרות כל הפרקים, הפרקים שנראים רלוונטיים לשאלה, ו-read_guide שמאפשר
+   למודל למשוך כל פרק אחר בסבב הבא. */
+const AI_GUIDE_BUDGET = 12000;   // תקרת תווים לפרקי המדריך שנשלחים מראש
+const AI_GUIDE_STOP = new Set(["את","של","עם","לי","לא","כן","מה","איך","יש","אני","הוא","היא","זה","זו","זאת",
+  "על","אל","כל","גם","רק","או","אם","כדי","אפשר","צריך","תוכל","תוכלי","בבקשה","שלי","שלך","כמה","מי","איפה","למה","הזה"]);
+function aiGuideTokens(t){
+  return String(t||"").split(/[^\u0590-\u05FFA-Za-z0-9]+/)
+    .filter(w=>w.length>=3 && !AI_GUIDE_STOP.has(w));
+}
+/* השוואת מילים בעברית בלי מנתח מורפולוגי: מסירים אות שימוש מובילה ולוקחים
+   שלוש אותיות ראשונות, כך ש"מייצאים" ו"ייצוא" נפגשים, וכך גם "הגיבוי"/"גיבוי". */
+function aiGuideStem(w){
+  w=String(w||"");
+  if(w.length>=5 && /^[הובכלמש]/.test(w)) w=w.slice(1);
+  return w.length>=4 ? w.slice(0,3) : w;
+}
+function aiGuideStems(t){ return new Set(aiGuideTokens(t).map(aiGuideStem)); }
+/* הפרקים הרלוונטיים לשאלה האחרונה — כותרת שווה יותר מהגוף, ועד תקרת התווים */
+function aiGuidePick(history, budget, secs){
+  const q=(history||[]).filter(m=>m&&m.role==="user").slice(-2).map(m=>String(m.content||"")).join(" ");
+  const words=[...new Set(aiGuideTokens(q).map(aiGuideStem))];
+  if(!words.length) return [];
+  const scored=(secs||guideSections()).map(sec=>{
+    const inTitle=aiGuideStems(sec.title), inText=aiGuideStems(sec.text);
+    let score=0;
+    words.forEach(w=>{ if(inTitle.has(w)) score+=3; else if(inText.has(w)) score+=1; });
+    return { sec, score };
+  }).filter(o=>o.score>0).sort((a,b)=>b.score-a.score);
+  const out=[]; let used=0;
+  scored.forEach(o=>{
+    if(out.length>=3) return;
+    const len=o.sec.text.length+o.sec.title.length;
+    if(used+len > (budget||AI_GUIDE_BUDGET)) return;
+    out.push(o.sec); used+=len;
+  });
+  return out;
+}
+function aiSystemPrompt(history){
+  const _secs=guideSections();
   return 'אתה עוזר עברית ידידותי ומקצועי בתוך התוכנה "'+appTitle()+'" — מערכת לניהול רשת גני ילדים (רישום תלמידות, גנים, צוות, שיבוץ, מסמכים בדרייב, יצוא ודוחות).\n'
     +'תפקידך כפול: (א) להסביר איך להשתמש בתוכנה; (ב) לבצע פעולות בפועל על הנתונים באמצעות הכלים שלמטה.\n'
     +'ענה בקצרה, בעברית פשוטה ומעשית. אם משהו לא קיים או שאינך יודע — אמור זאת בכנות, אל תמציא.\n\n'
@@ -14036,7 +14193,12 @@ function aiSystemPrompt(){
     +'- אם חסר לך פרט (איזו תלמידה בדיוק, איזה גן) — שאל, אל תנחש.\n\n'
     +'רשימת הכלים:\n'+aiToolsSpec()+'\n\n'
     +aiContextBlock()+'\n\n'
-    +'להלן מבנה התוכנה והמדריך המלא:\n'+guidePlainText();
+    +'== המדריך של התוכנה ==\n'
+    +'פרקי המדריך: '+_secs.map(s=>s.title).join(' · ')+'\n'
+    +'אם התשובה דורשת פרק שאינו מופיע למטה — הפעל read_guide עם שם הפרק וחכה לתוצאה.\n\n'
+    +(function(){ const p=aiGuidePick(history, AI_GUIDE_BUDGET, _secs);
+        return p.length ? ('הפרקים שנראים רלוונטיים לשאלה:\n'+p.map(s=>"### "+s.title+"\n"+s.text).join("\n\n"))
+                        : '(לא זוהה פרק רלוונטי מראש — משוך את מה שצריך ב-read_guide.)'; })();
 }
 /* ---------- שגיאות ספק ה-AI ----------
    ספקי ה-AI (Gemini/Claude) מחזירים בעומס שגיאה זמנית באנגלית ("high demand",
@@ -14078,7 +14240,7 @@ const AI_RETRY_WAITS = [2000, 5000, 10000];
 async function aiAsk(history, onRetry){
   const model=(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash";
   for(let i=0; ; i++){
-    try{ return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model }); }
+    try{ return await driveCall("chat", { system:aiSystemPrompt(history), messages:history, model }); }
     catch(e){
       const raw=(e&&e.message)||String(e||"");
       const why = aiIsBridgeHiccup(raw) ? "bridge" : (aiIsOverload(raw) ? "overload" : "");

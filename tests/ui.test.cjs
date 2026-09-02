@@ -48,7 +48,9 @@ window.__setDriveCall=fn=>{ driveCall=fn; };   // הצהרת פונקציה — 
 window.__setDownloadBlob=fn=>{ downloadBlob=fn; };   // כדי לבדוק תוכן קובץ שהופק בלי להוריד אותו
 Object.assign(window,{ TABS, route, closeModal, openStudentById, openAutoAssign, _mapState, openStuQuick, renderStuTable,
   msgState, msgBuild, msgApplyTemplate, msgManualPanel, msgMerge, AI_TOOLS, aiParseActions, aiOpen, aiClose,
+  staffName,
   aiDocSpec, aiDocDeliver, aiIsOverload, aiIsQuota, aiIsBridgeHiccup, aiErrHe, aiAsk, AI_RETRY_WAITS, tableXlsHtml,
+  aiSystemPrompt, aiGuidePick, guideSections, guidePlainText, aiQueryStaff, aiQueryAsg,
   guideContent, ganAssignCap, ganAssignedCount, autoAssignPlan, proxPanelHtml, proxBind, phoneCell, drivePing, bridgeHasMailDoc, shareReportDoc, shareDocClose, mapGanShown, mapGanIssue, mapEnsureCityCenter, ensureGeo, geoDropHouseNo, geoQueryCandidates, splitStreetNo, streetPointFromGans, geoStripCountry, geocodeOnce, mapWalk, bridgeErrHe, mapPlaceSave, save });
 window.__ready=true;
 `;
@@ -291,6 +293,48 @@ const server=require('http').createServer((req,res)=>{
   await step('כלי הפקת המסמך מוצג לאישור עם מניין השורות והעמודות', ()=>pg.evaluate(()=>{
     const pv=AI_TOOLS.make_document.preview({ kind:'gans', format:'excel', fields:['שם הגן','טלפון'] });
     return !pv.error && pv.text.includes('קובץ אקסל') && pv.text.includes('טלפון בגן'); }));
+
+  await step('מסמך צוות — ברירת מחדל, סינון לפי תפקיד, וגנים משובצים', ()=>pg.evaluate(()=>{
+    DB.staff.push({id:'st2',lastName:'דוד',firstName:'לאה',role:'סייעת',education:'רגיל',
+      mobile:'0539999999',city:'מודיעין עילית',active:true});
+    DB.assignments={'תשפ"ז':{activity:{ g1:{ 'גננת':{staffId:'st1',days:['א','ב']},
+                                             'סייעת':{staffId:'st2',days:['ג']} } }}};
+    const all=aiDocSpec({ kind:'staff' });
+    const one=aiDocSpec({ kind:'staff', filter:{role:'סייעת'} });
+    const gans=all.cols.find(c=>c[0]==='gans');
+    return !all.error && all.rows.length===2 && one.rows.length===1 && staffName(one.rows[0])==='דוד לאה'
+      && all.title.includes('רשימת צוות') && !!gans && gans[2](DB.staff[0])==='גן הדקל'; }));
+  await step('מסמך מצבת שיבוץ — שורה לכל תפקיד משובץ, עם הגן והטלפון', ()=>pg.evaluate(()=>{
+    const spec=aiDocSpec({ kind:'assignment', fields:['שם הגן','תפקיד','שם','ימים','מספר ילדות'] });
+    if(spec.error) return spec.error;
+    const val=(r,k)=>spec.cols.find(c=>c[0]===k)[2](r);
+    return spec.rows.length===2 && spec.title.includes('מצבת שיבוץ')
+      && val(spec.rows[0],'gan')==='גן הדקל' && val(spec.rows[0],'role')==='גננת'
+      && val(spec.rows[0],'name')==='ברוך רחל' && val(spec.rows[0],'students')===3
+      && spec.cols.map(c=>c[1]).join("|")==='גן|תפקיד|שם|ימים / תקופה|מספר תלמידות'; }));
+  await step('סינון מצבת השיבוץ לפי גן ולפי תפקיד', ()=>pg.evaluate(()=>{
+    const byRole=aiQueryAsg({ role:'סייעת' });
+    const byGan=aiQueryAsg({ ganName:'הרימון' });
+    const staffOfGan=aiQueryStaff({ ganName:'הדקל' });
+    return byRole.list.length===1 && byRole.list[0].role==='סייעת'
+      && byGan.list.length===0 && staffOfGan.list.length===2; }));
+
+  /* ---- ההנחיה לעוזר: המדריך נשלח לפי הצורך, לא במלואו ---- */
+  await step('ההנחיה קצרה בהרבה מהמדריך המלא, ונושאת את הפרק הרלוונטי', ()=>pg.evaluate(()=>{
+    const full=guidePlainText().length;
+    const sys=aiSystemPrompt([{role:'user',content:'איך מייצאים רשימת תלמידות לאקסל?'}]);
+    const picked=aiGuidePick([{role:'user',content:'איך מייצאים רשימת תלמידות לאקסל?'}]);
+    return full>40000 && sys.length < full/2 && picked.length>0
+      && picked.some(s=>s.title.includes('ייצוא'))
+      && sys.includes('read_guide') && sys.includes('פרקי המדריך:'); }));
+  await step('שאלה על מסך אחר מושכת את הפרק שלו', ()=>pg.evaluate(()=>{
+    const p=aiGuidePick([{role:'user',content:'איפה מגדירים את הגיבוי והשחזור?'}]);
+    return p.length>0 && p[0].title.includes('גיבוי'); }));
+  await step('read_guide מחזיר פרק מלא, וללא התאמה מציע את רשימת הפרקים', ()=>pg.evaluate(()=>{
+    const ok=AI_TOOLS.read_guide.run({section:'גיבוי'});
+    const bad=AI_TOOLS.read_guide.run({section:'קקטוסים'});
+    return ok['פרק'].includes('גיבוי') && ok['תוכן'].length>50
+      && !!bad['שגיאה'] && bad['פרקים'].length===guideSections().length; }));
 
   /* ---- עומס אצל ספק ה-AI: זיהוי, ניסיון חוזר, והודעה בעברית ---- */
   await step('הודעת עומס של הספק מזוהה ומתורגמת לעברית', ()=>pg.evaluate(()=>{
