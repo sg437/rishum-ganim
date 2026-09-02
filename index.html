@@ -4574,6 +4574,8 @@ function guideContent(){
         <li><b>שום דבר לא קורה בלי אישור</b> — כל בקשת שינוי מוצגת ככרטיס עם תיאור מדויק של מה ישתנה (<b>לפני ← אחרי</b>) ואזהרות אם יש, ומתבצעת רק בלחיצה על <b>✅ בצע</b>. אפשר תמיד לבטל.</li>
         <li><b>אותן מגבלות כמו ידנית</b> — הרשאות העריכה לפי חינוך ורף השיבוץ נאכפים גם על העוזר.</li>
         <li><b>ניווט</b> — אפשר לבקש "פתחי לי את לשונית הגנים" או "פתחי את התיק של שרה כהן".</li>
+        <li><b>מפיק מסמכים לפי בקשה</b> — <i>"תפיקי לי קובץ אקסל של גן בן הדקל עם שם הילדה, שם משפחה, רחוב, מספר בית וטלפון"</i>. אפשר לבקש <b>אקסל</b>, <b>CSV</b> או <b>מסמך להדפסה/PDF</b>, לבחור עמודות במילים רגילות, ולסנן (גן · גיל · חינוך · בלי גן). הקובץ נוצר <b>רק אחרי אישור</b>, וכרטיס האישור מציג מראש כמה שורות ואילו עמודות. בבקשה "ותשמרי בדרייב" הקובץ נשמר בתיקיית <b>"מסמכים מהעוזר"</b> בדרייב (דורש גשר מעודכן) — אחרת הוא יורד למחשב.</li>
+        <li><b>עומס אצל ספק ה-AI</b> — אם המודל עמוס, העוזר מציג "המודל עמוס כרגע — מנסה שוב…" ו<b>שולח את הבקשה שוב לבד</b> (עד שלושה ניסיונות). רק אם גם זה לא עזר מוצגת הודעה בעברית עם מה לעשות.</li>
       </ul>
       <div class="gd-tip">💡 העוזר פועל דרך הגשר עם מפתח AI (Google Gemini חינמי מספיק). הגדרה: <b>כלים ושירותים → עוזר חכם</b>.</div>` },
 
@@ -4887,8 +4889,11 @@ async function driveCall(action, payload){
    הגרסה שנפרסה בפועל מוחזרת מ"ping" — כך אפשר לדעת בוודאות אם הפריסה נקלטה,
    במקום לנחש (שמירת הקוד בעורך Apps Script אינה פריסה!). */
 const BRIDGE_VER_MAILDOC = "2026-08-25";
+/* גרסת הגשר שממנה קיימת שמירת מסמך שהופק לדרייב (פעולת docSave) */
+const BRIDGE_VER_DOCSAVE = "2026-09-02";
 let bridgeVersion = null;   // הגרסה החיה שהוחזרה מהגשר בבדיקת החיבור האחרונה
 function bridgeHasMailDoc(){ return !!bridgeVersion && String(bridgeVersion) >= BRIDGE_VER_MAILDOC; }
+function bridgeHasDocSave(){ return !!bridgeVersion && String(bridgeVersion) >= BRIDGE_VER_DOCSAVE; }
 async function drivePing(){
   const res=await driveCall("ping",{});
   bridgeVersion = res.version || "";   // גשר ישן אינו מחזיר גרסה כלל
@@ -12882,6 +12887,11 @@ function tintHex(hex, p){ hex=String(hex||"").replace('#',''); if(hex.length===3
 /* יצוא טבלה צבעונית לאקסל: HTML‏-table בסיומת .xls — נפתח באקסל וב-Google Sheets עם הצבעים.
    opts.colBg[i] = צבע רקע לעמודה i (בגוף הטבלה) · opts.title = כותרת מעל הטבלה. */
 function tableToXls(name, headers, rows, opts){
+  downloadBlob(new Blob(["﻿"+tableXlsHtml(headers, rows, opts)],{type:"application/vnd.ms-excel;charset=utf-8"}), name);
+}
+/* גוף קובץ האקסל (Excel-HTML) — מוחזר כמחרוזת, כדי שאפשר יהיה גם להוריד אותו
+   וגם לשמור אותו לדרייב דרך הגשר, בלי לשכפל את הבנייה */
+function tableXlsHtml(headers, rows, opts){
   opts=opts||{}; const colBg=opts.colBg||[], title=opts.title||"", cellInk=opts.cellInk||null;
   const td=(v,bg,ink)=>`<td${(bg||ink)?` style="${bg?`background:${bg};`:''}${ink?`color:${ink};font-weight:bold;`:''}"`:''}>${esc(String(v==null?"":v))}</td>`;
   let h='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'+
@@ -12892,7 +12902,7 @@ function tableToXls(name, headers, rows, opts){
   if(title) h+='<h3 style="font-family:Arial,sans-serif">'+esc(title)+'</h3>';
   h+='<table><thead><tr>'+headers.map(hd=>`<th>${esc(String(hd==null?"":hd))}</th>`).join("")+'</tr></thead><tbody>'+
     rows.map((r,ri)=>'<tr>'+r.map((c,i)=>td(c,colBg[i],cellInk?cellInk(ri,i):"")).join("")+'</tr>').join("")+'</tbody></table></body></html>';
-  downloadBlob(new Blob(["﻿"+h],{type:"application/vnd.ms-excel;charset=utf-8"}), name);
+  return h;
 }
 /* פענוח קובץ טקסט עם זיהוי קידוד — תומך UTF-8 (עם/בלי BOM) וגם Windows-1255
    (הקידוד שאקסל בעברית שומר בו כברירת מחדל, מה שמקלקל את הכותרות אם קוראים כ-UTF-8) */
@@ -13667,12 +13677,8 @@ const AI_TOOLS = {
     } },
   list_gans: { read:true, desc:'רשימת הגנים עם גיל, גננת, קמפוס, כתובת, רשומות, משובצות ורף השיבוץ. פרמטרים אופציונליים: edu ("רגיל"/"ח\\"מ"), campus, age, onlyActive (ברירת מחדל true).',
     run(a){
-      a=a||{};
-      let g=DB.gans.filter(x=> a.onlyActive===false ? true : x.active);
-      if(a.edu) g=g.filter(x=>eduLabel(x)===a.edu);
-      if(a.campus) g=g.filter(x=>String(x.campus||"").includes(a.campus));
-      if(a.age) g=g.filter(x=>String(x.age||"")===String(a.age));
-      return g.map(x=>({ id:x.id, שם:ganName(x.id), סמל:x.ganSymbol||x.internalSymbol||"", גיל:x.age||"",
+      const q=aiQueryGans(a); if(q.error) return { שגיאה:q.error };
+      return q.list.map(x=>({ id:x.id, שם:ganName(x.id), סמל:x.ganSymbol||x.internalSymbol||"", גיל:x.age||"",
         חינוך:eduLabel(x), גננת:x.teacherName||"", קמפוס:x.campus||"",
         כתובת:[x.address,x.building].filter(Boolean).join(" "), טלפון:x.phoneGan||"",
         רשומות:studentsOfYear().filter(s=>s.ganId===x.id&&!s.finished).length,
@@ -13681,23 +13687,10 @@ const AI_TOOLS = {
     } },
   find_students: { read:true, desc:'חיפוש תלמידות בשנה הפעילה. פרמטרים (כולם אופציונליים): q (שם או ת"ז), ganName, ganId, age, edu, city, street, placed (true/false), noGan (true), campus, limit (ברירת מחדל 25).',
     run(a){
-      a=a||{};
-      let l=studentsOfYear().filter(s=>!s.finished);
-      const q=String(a.q||"").trim().toLowerCase();
-      if(q) l=l.filter(s=>([s.firstName,s.lastName,s.tz].join(" ")).toLowerCase().includes(q));
-      if(a.ganId) l=l.filter(s=>s.ganId===a.ganId);
-      if(a.ganName){ const g=aiFindGan(a.ganName); if(g) l=l.filter(s=>s.ganId===g.id); else return { שגיאה:'לא נמצא גן בשם "'+a.ganName+'"' }; }
-      if(a.age!=null && a.age!=="") l=l.filter(s=>String(s.age||"")===String(a.age));
-      if(a.edu) l=l.filter(s=>eduLabel(s)===a.edu);
-      if(a.city) l=l.filter(s=>String(s.city||"").includes(a.city));
-      if(a.street) l=l.filter(s=>String(s.street||"").includes(a.street));
-      if(a.campus) l=l.filter(s=>String(ganCampus(s.ganId)||s.campus||"").includes(a.campus));
-      if(a.noGan===true) l=l.filter(s=>!s.ganId);
-      if(a.placed===true) l=l.filter(s=>s.ganId&&s.placed!==false);
-      if(a.placed===false) l=l.filter(s=>s.placed===false);
-      const total=l.length, lim=Math.min(+a.limit||25, 100);
+      const q=aiQueryStudents(a); if(q.error) return { שגיאה:q.error };
+      const total=q.list.length, lim=Math.min(+((a||{}).limit)||25, 100);
       return { סה_כ:total, מוצגות:Math.min(total,lim),
-        תלמידות:l.slice(0,lim).map(s=>aiStudentBrief(s)) };
+        תלמידות:q.list.slice(0,lim).map(s=>aiStudentBrief(s)) };
     } },
   student_details: { read:true, desc:'כל פרטי תיק תלמידה. פרמטרים: id או tz או name (שם מלא/חלקי).',
     run(a){ const s=aiFindStudent(a||{}); if(!s) return { שגיאה:"לא נמצאה תלמידה מתאימה" };
@@ -13816,6 +13809,22 @@ const AI_TOOLS = {
       ctx.keys.forEach(k=>{ let v=f[k]; if(k==="active") v=!!v && v!=="false"; g[k]=v; });
       save(); try{ route(); }catch(e){}
       return { בוצע:"כרטיס הגן עודכן" }; } },
+  make_document: { read:false, desc:'הפקת מסמך מהנתונים: קובץ אקסל, CSV או מסמך להדפסה/PDF. פרמטרים: kind ("students" ברירת מחדל / "gans"), format ("excel" ברירת מחדל / "csv" / "pdf"), fields (מערך שמות עמודות בעברית, למשל ["שם משפחה","שם הילדה","רחוב","מספר בית","טלפון"] — ריק = ברירת מחדל), filter (אותם פרמטרים של find_students או list_gans, למשל {"ganName":"בן הדקל"}), title (כותרת המסמך), fileName, drive (true = שמירה לגוגל דרייב במקום הורדה למחשב).',
+    preview(a){
+      const spec=aiDocSpec(a||{});
+      if(spec.error) return { error:spec.error };
+      if(!spec.rows.length) return { error:"אין נתונים התואמים לבקשה — אין מה להפיק" };
+      return { text:'הפקת <b>'+esc(spec.formatLabel)+'</b> · '+esc(spec.title)+'<br>'
+          +'• <b>'+spec.rows.length+'</b> שורות · עמודות: '+esc(spec.cols.map(c=>c[1]).join(" · "))+'<br>'
+          +'• יעד: <b>'+(spec.drive?'שמירה בגוגל דרייב':(spec.format==='pdf'?'חלון הדפסה / שמירה כ-PDF':'הורדה למחשב'))+'</b>',
+        warn: spec.unknown.length ? ('עמודות שלא זוהו ולא ייכללו: '+spec.unknown.join(", ")) : '' };
+    },
+    async run(a){
+      const spec=aiDocSpec(a||{});
+      if(spec.error) return { שגיאה:spec.error };
+      if(!spec.rows.length) return { שגיאה:"אין נתונים התואמים לבקשה" };
+      return await aiDocDeliver(spec);
+    } },
   bulk_update_students: { read:false, desc:'עדכון קבוצתי של תלמידות. פרמטרים: filter (כמו ב-find_students), field — אחד מ: '+'placed, absorbedMunicipality, registeredByUs, insurancePaid'+', value (true/false).',
     preview(a){ const f=a.filter||{}; const res=AI_TOOLS.find_students.run(Object.assign({limit:1000}, f));
       if(res['שגיאה']) return { error:res['שגיאה'] };
@@ -13843,6 +13852,140 @@ const AI_STUDENT_FIELDS = { firstName:"שם פרטי", lastName:"שם משפחה
 const AI_GAN_FIELDS = { ganName:"שם הגן", ganSymbol:"סמל הגן", internalSymbol:"סמל פנימי",
   teacherName:"שם הגננת", age:"גיל", education:"חינוך", address:"כתובת", building:"מספר", street:"רחוב",
   zone:"אזור", phoneGan:"טלפון בגן", campus:"קמפוס", capacity:"קיבולת", assignCap:"רף שיבוץ", active:"פעיל" };
+
+/* ---------- סינון משותף לכלי הקריאה ולהפקת מסמכים ----------
+   אותה הגדרת סינון בדיוק משמשת את find_students/list_gans ואת make_document,
+   כך שמה שהעוזר סופר הוא מה שנכנס לקובץ. */
+function aiQueryStudents(a){
+  a=a||{};
+  let l=studentsOfYear().filter(s=>a.finished===true ? true : !s.finished);
+  const q=String(a.q||"").trim().toLowerCase();
+  if(q) l=l.filter(s=>([s.firstName,s.lastName,s.tz].join(" ")).toLowerCase().includes(q));
+  if(a.ganId) l=l.filter(s=>s.ganId===a.ganId);
+  if(a.ganName||a.gan){ const g=aiFindGan(a.ganName||a.gan);
+    if(!g) return { error:'לא נמצא גן בשם "'+(a.ganName||a.gan)+'"' };
+    l=l.filter(s=>s.ganId===g.id); }
+  if(a.age!=null && a.age!=="") l=l.filter(s=>String(s.age||"")===String(a.age));
+  if(a.edu) l=l.filter(s=>eduLabel(s)===a.edu);
+  if(a.city) l=l.filter(s=>String(s.city||"").includes(a.city));
+  if(a.street) l=l.filter(s=>String(s.street||"").includes(a.street));
+  if(a.campus) l=l.filter(s=>String(ganCampus(s.ganId)||s.campus||"").includes(a.campus));
+  if(a.noGan===true) l=l.filter(s=>!s.ganId);
+  if(a.placed===true) l=l.filter(s=>s.ganId&&s.placed!==false);
+  if(a.placed===false) l=l.filter(s=>s.placed===false);
+  return { list:l };
+}
+function aiQueryGans(a){
+  a=a||{};
+  let g=DB.gans.filter(x=> a.onlyActive===false ? true : x.active);
+  if(a.ganName||a.gan){ const one=aiFindGan(a.ganName||a.gan);
+    if(!one) return { error:'לא נמצא גן בשם "'+(a.ganName||a.gan)+'"' };
+    g=g.filter(x=>x.id===one.id); }
+  if(a.edu) g=g.filter(x=>eduLabel(x)===a.edu);
+  if(a.campus) g=g.filter(x=>String(x.campus||"").includes(a.campus));
+  if(a.age) g=g.filter(x=>String(x.age||"")===String(a.age));
+  return { list:g };
+}
+
+/* ---------- הפקת מסמכים לפי בקשה חופשית (העוזר) ----------
+   אותה תשתית של מסך "ייצוא רשימות" — סינון, בחירת עמודות, אקסל/CSV/PDF —
+   רק שהבקשה נאמרת במילים ("קובץ אקסל של גן בן הדקל עם שם, כתובת וטלפון").
+   הקובץ נוצר רק אחרי אישור בכרטיס הפעולה, כמו כל פעולת שינוי. */
+const AI_DOC_STUDENT_EXTRA = [
+  ["mobileAny","טלפון",s=>s.momMobile||s.dadMobile||s.mobile||s.phone||""],
+  ["fullName","שם מלא",s=>[s.lastName,s.firstName].filter(Boolean).join(" ")],
+  ["fullAddress","כתובת מלאה",s=>[s.street,s.building,s.city].filter(Boolean).join(" ")]
+];
+/* כינויים בעברית מדוברת → מפתח העמודה (נבדקים רק אחרי התאמה לשם עמודה אמיתי) */
+const AI_DOC_ALIASES = {
+  students: { 'שם הילדה':'firstName','שם הילד':'firstName','שם התלמידה':'firstName','שם':'firstName',
+    'משפחה':'lastName','שם המשפחה':'lastName','תז':'tz','תעודת זהות':'tz','מספר זהות':'tz','זהות':'tz',
+    'נייד':'mobileAny','פלאפון':'mobileAny','טלפון נייד':'mobileAny','מספר טלפון':'mobileAny','טלפון הורים':'mobileAny',
+    'כתובת':'street','מספר בית':'building','מספר':'building','מספר בניין':'building','בית':'building',
+    'שם הגן':'gan','גן משובץ':'gan','מייל':'email','אימייל':'email','דואל':'email','אמא':'motherName','אבא':'fatherName' },
+  gans: { 'שם':'ganName','גן':'ganName','שם גן':'ganName','טלפון':'phoneGan','נייד':'phoneGan',
+    'סמל':'ganSymbol','רחוב':'address','מספר בית':'building','מספר':'building','שם הגננת':'teacherName',
+    'מספר תלמידות':'records','מספר ילדות':'records','תלמידות':'records','ילדות':'records' }
+};
+const AI_DOC_DEFAULTS = {
+  students:["lastName","firstName","tz","gan","age","street","building","city","mobileAny"],
+  gans:["ganName","age","education","teacherName","address","building","phoneGan","records"]
+};
+/* השוואת שמות עמודות סלחנית — בלי גרשיים, נקודות ורווחים כפולים */
+function aiDocNorm(x){ return String(x==null?"":x).replace(/["'`׳״.\-]/g,"").replace(/\s+/g," ").trim().toLowerCase(); }
+function aiDocFields(kind){ return kind==='gans' ? GAN_EXPORT_FIELDS : EXPORT_FIELDS.concat(AI_DOC_STUDENT_EXTRA); }
+function aiDocResolveCols(kind, want){
+  const all=aiDocFields(kind), byKey={}, byLabel={};
+  all.forEach(f=>{ byKey[aiDocNorm(f[0])]=f; byLabel[aiDocNorm(f[1])]=f; });
+  const alias=AI_DOC_ALIASES[kind]||{}, cols=[], unknown=[], seen=new Set();
+  (want||[]).forEach(x=>{
+    const n=aiDocNorm(x);
+    const ak=alias[n];
+    const f = byKey[n] || byLabel[n] || (ak ? byKey[aiDocNorm(ak)] : null);
+    if(!f){ if(n) unknown.push(String(x)); return; }
+    if(seen.has(f[0])) return;
+    seen.add(f[0]); cols.push(f);
+  });
+  return { cols, unknown };
+}
+/* תרגום בקשת המסמך למפרט מוכן: אילו שורות, אילו עמודות, איזה פורמט ולאן */
+function aiDocSpec(a){
+  a=a||{};
+  const k=aiDocNorm(a.kind||"students");
+  const kind = (k==="gans"||k==="gan"||k==="גנים"||k==="גן") ? "gans" : "students";
+  const ff=String(a.format||"excel").toLowerCase();
+  const format = /csv/.test(ff) ? "csv" : (/pdf|print|הדפס/.test(ff) ? "pdf" : "excel");
+  const filter = (a.filter && typeof a.filter==="object") ? a.filter : a;
+  const q = kind==='gans' ? aiQueryGans(filter) : aiQueryStudents(filter);
+  if(q.error) return { error:q.error };
+  const list=q.list.slice();
+  if(kind==='students') list.sort((x,y)=>
+    String(ganName(x.ganId)||"").localeCompare(String(ganName(y.ganId)||""),"he")
+    || (ganAgeKey(ganById(x.ganId)||{})-ganAgeKey(ganById(y.ganId)||{}))
+    || String(x.lastName||"").localeCompare(String(y.lastName||""),"he")
+    || String(x.firstName||"").localeCompare(String(y.firstName||""),"he"));
+  else list.sort((x,y)=>ganName(x.id).localeCompare(ganName(y.id),"he"));
+  let want = a.fields;
+  if(typeof want==="string") want=want.split(/[,·|]/);
+  if(!Array.isArray(want)||!want.length) want=AI_DOC_DEFAULTS[kind];
+  const r=aiDocResolveCols(kind, want);
+  if(!r.cols.length) return { error:'לא זוהתה אף עמודה. אפשר לבקש למשל: שם משפחה · שם פרטי · ת"ז · רחוב · מספר בית · טלפון · גן · גיל.' };
+  const ganFil = filter && (filter.ganName || filter.gan) || "";
+  const title = String(a.title||"").trim()
+    || ((kind==='gans' ? "רשימת גנים" : "רשימת תלמידות") + (ganFil?(" · "+ganFil):"") + " · " + DB.activeYear);
+  const drive = a.drive===true || a.drive==="true";
+  if(drive && format==='pdf') return { error:'שמירת PDF לדרייב אינה נתמכת מהעוזר. אפשר אקסל או CSV לדרייב, או PDF שנפתח להדפסה/שמירה מהמסך.' };
+  return { kind, format, drive, rows:list, cols:r.cols, unknown:r.unknown, title,
+    fileName: safeFileName(String(a.fileName||"").trim() || title),
+    formatLabel: format==='csv' ? "קובץ CSV" : (format==='pdf' ? "מסמך להדפסה / PDF" : "קובץ אקסל") };
+}
+/* בניית הקובץ בפועל והעברתו ליעד — הורדה, חלון הדפסה, או שמירה לדרייב */
+async function aiDocDeliver(spec){
+  const headers=spec.cols.map(c=>c[1]);
+  const rows=spec.rows.map(r=>spec.cols.map(c=>{
+    let v; try{ v=c[2](r); }catch(e){ v=""; }
+    return v==null?"":v; }));
+  if(spec.format==='pdf'){
+    printReport({ title:spec.title, subtitle:"שנת "+DB.activeYear, headers, rows,
+      footNote:rows.length+" שורות", landscape:headers.length>7 });
+    return { בוצע:"המסמך נפתח בחלון להדפסה או לשמירה כ-PDF ("+rows.length+" שורות)" };
+  }
+  const isCsv = spec.format==='csv';
+  const name  = spec.fileName + (isCsv ? ".csv" : ".xls");
+  const content = isCsv
+    ? "﻿"+[headers.map(csvCell).join(",")].concat(rows.map(r=>r.map(csvCell).join(","))).join("\r\n")
+    : "﻿"+tableXlsHtml(headers, rows, { title:spec.title });
+  if(spec.drive){
+    if(!bridgeHasDocSave()) return { שגיאה:'הגשר שמותקן אינו תומך עדיין בשמירת מסמכים לדרייב — יש לפרוס מחדש את APPS_SCRIPT.gs (כלים ושירותים → בדיקת חיבור). אפשר לבקש שוב בלי דרייב, והקובץ יירד למחשב.' };
+    const dataB64=btoa(unescape(encodeURIComponent(content)));   // UTF-8 → base64
+    const res=await driveCall("docSave", { name, mimeType:(isCsv?"text/csv":"application/vnd.ms-excel"), dataB64 });
+    toast("המסמך נשמר לדרייב ✓");
+    return { בוצע:'הקובץ "'+name+'" נשמר בדרייב, בתיקיית "מסמכים מהעוזר" ('+rows.length+' שורות)'+(res&&res.link?(' · '+res.link):'') };
+  }
+  downloadBlob(new Blob([content],{type:(isCsv?"text/csv;charset=utf-8":"application/vnd.ms-excel;charset=utf-8")}), name);
+  toast("הקובץ הופק ✓");
+  return { בוצע:'הקובץ "'+name+'" הופק והורד למחשב ('+rows.length+' שורות · '+headers.length+' עמודות)' };
+}
 
 /* איתור גן לפי שם / סמל (התאמה מלאה קודמת, ואז הכלה) */
 function aiFindGan(name){
@@ -13906,8 +14049,42 @@ function aiSystemPrompt(){
     +aiContextBlock()+'\n\n'
     +'להלן מבנה התוכנה והמדריך המלא:\n'+guidePlainText();
 }
-async function aiAsk(history){
-  return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model:(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash" });
+/* ---------- שגיאות ספק ה-AI ----------
+   ספקי ה-AI (Gemini/Claude) מחזירים בעומס שגיאה זמנית באנגלית ("high demand",
+   "overloaded", 503/529). עד כה היא הוצגה כמו שהיא באמצע שיחה בעברית, והמשתמשת
+   הייתה צריכה לנחש שצריך פשוט לשלוח שוב. כאן היא מזוהה, מתורגמת, והבקשה נשלחת
+   שוב לבד. מכסה שנגמרה (quota/חיוב) אינה עומס — שם ניסיון חוזר לא יעזור. */
+function aiIsQuota(msg){
+  return /quota|billing|credit|insufficient|exceeded your current/i.test(String(msg||""));
+}
+function aiIsOverload(msg){
+  const m=String(msg||"");
+  if(aiIsQuota(m)) return false;
+  return /overload|high demand|try again later|temporarily|unavailable|too many requests|rate.?limit|resource[_ ]exhausted|\bhttp-(429|500|502|503|529)\b/i.test(m);
+}
+/* תרגום שגיאת העוזר לעברית מובנת (במקום טקסט אנגלי גולמי של הספק) */
+function aiErrHe(raw){
+  const m=String(raw||"");
+  if(m.indexOf("no-ai-key")>=0) return "העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini · כלים ושירותים → עוזר חכם).";
+  if(aiIsQuota(m)) return "נגמרה המכסה של מפתח ה-AI (מכסה יומית או חיוב אצל הספק). אפשר להמתין לאיפוס המכסה, או להחליף מפתח · כלים ושירותים → עוזר חכם.";
+  if(aiIsOverload(m)) return "המודל עמוס כרגע אצל הספק — ניסינו שוב כמה פעמים ולא התקבלה תשובה. כדאי לנסות שוב בעוד דקה.";
+  if(/network|bad-response|drive-not-configured|unauthorized|token/.test(m)) return driveErrHe(m);
+  return "שגיאה: "+m;
+}
+/* המתנות בין ניסיונות כשהמודל עמוס (שניות עולות, כדי לא להעמיס בחזרה) */
+const AI_RETRY_WAITS = [2000, 5000, 10000];
+async function aiAsk(history, onRetry){
+  const model=(DB.settings&&DB.settings.aiModel)||"gemini-3.6-flash";
+  for(let i=0; ; i++){
+    try{ return await driveCall("chat", { system:aiSystemPrompt(), messages:history, model }); }
+    catch(e){
+      const raw=(e&&e.message)||String(e||"");
+      if(i>=AI_RETRY_WAITS.length || !aiIsOverload(raw)) throw e;
+      const sec=Math.round(AI_RETRY_WAITS[i]/1000);
+      if(onRetry) onRetry(i+1, sec);
+      await new Promise(r=>setTimeout(r, AI_RETRY_WAITS[i]));
+    }
+  }
 }
 /* חילוץ בלוקי הפעולה מתשובת המודל; מחזיר { text, actions:[{tool,args}] } */
 function aiParseActions(raw){
@@ -13976,9 +14153,13 @@ function aiActionCard(act){
     +(pv.warn?`<div style="color:var(--bad);margin-top:5px">⚠ ${esc(pv.warn)}</div>`:"")
     +`<div class="aiact-row"><button class="btn sm" data-ai-do>✅ בצע</button><button class="btn ghost sm" data-ai-no>ביטול</button></div>`;
   b.appendChild(card); aiScroll();
-  card.querySelector("[data-ai-do]").onclick=()=>{
+  card.querySelector("[data-ai-do]").onclick=async ()=>{
+    if(card.dataset.busy) return;            // לחיצה כפולה לא תבצע פעמיים
+    card.dataset.busy="1";
+    const row=card.querySelector(".aiact-row"); if(row) row.innerHTML='<span class="sub">מבצע…</span>';
     let res;
-    try{ res=tool.run(act.args||{}, pv.ctx||{}); }
+    // חלק מהכלים אסינכרוניים (שמירה לדרייב) — await על ערך רגיל אינו משנה דבר
+    try{ res=await tool.run(act.args||{}, pv.ctx||{}); }
     catch(e){ res={ שגיאה:((e&&e.message)||String(e)) }; }
     card.classList.add(res && res['שגיאה'] ? "cancel" : "done");
     card.innerHTML=`<b>${res && res['שגיאה'] ? "⚠ הפעולה נכשלה" : "✅ בוצע"}</b><div>${pv.text}</div>`
@@ -14023,7 +14204,10 @@ async function aiSend(){
   try{
     // עד 4 סבבים: המודל מבקש נתונים → אנחנו מריצים כלי קריאה → הוא עונה
     for(let round=0; round<4; round++){
-      const res=await aiAsk(aiConvo);
+      const res=await aiAsk(aiConvo, (n,sec)=>{
+        const txt="⏳ המודל עמוס כרגע — מנסה שוב בעוד "+sec+" שניות (ניסיון "+n+" מתוך "+AI_RETRY_WAITS.length+")";
+        if(wait&&wait.parentNode) wait.textContent=txt; else aiBubble("sys",txt);
+      });
       const parsed=aiParseActions(res.text||"");
       aiConvo.push({ role:"assistant", content:res.text||"" });
       if(round===0) wait.remove();
@@ -14035,11 +14219,7 @@ async function aiSend(){
       if(round===3) aiBubble("sys","(הופסק אחרי 4 סבבים כדי לא להיתקע)");
     }
   }catch(e){
-    const raw=((e&&e.message)||String(e||""));
-    let msg;
-    if(raw.indexOf("no-ai-key")>=0) msg="העוזר עדיין לא הופעל — יש להגדיר מפתח AI בגשר (חינם עם Google Gemini · כלים ושירותים → עוזר חכם).";
-    else if(/network|bad-response|drive-not-configured|unauthorized|token/.test(raw)) msg=driveErrHe(e);
-    else msg="שגיאה: "+raw;
+    const msg=aiErrHe((e&&e.message)||String(e||""));
     if(wait&&wait.parentNode) wait.textContent=msg; else aiBubble("bot",msg);
   }finally{
     aiBusy=false; if(sendBtn) sendBtn.disabled=false; aiScroll();

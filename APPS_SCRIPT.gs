@@ -51,7 +51,7 @@ var RG_BUILD = 'rg-b05ea2eb';
 // גרסת הגשר — מוחזרת ב"בדיקת חיבור" בתוכנה, כדי לדעת בוודאות איזו גרסה *נפרסה בפועל*
 // (שמירת הקוד בעורך אינה מספיקה — חייבים לפרוס גרסה חדשה). יש להעלות את התאריך
 // בכל שינוי שמוסיף/משנה פעולה בגשר.
-var BRIDGE_VERSION = '2026-08-25';
+var BRIDGE_VERSION = '2026-09-02';
 
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
@@ -101,6 +101,7 @@ function doPost(e){
       case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
+      case 'docSave':        return json_(out, docSave_(req.name, req.mimeType, req.dataB64));
       case 'backupSave':     return json_(out, backupSave_(req.name, req.dataB64));
       case 'copy':           return json_(out, copy_(req.fileId, req.folderId, req.name));
       case 'download':       return json_(out, download_(req.fileId));
@@ -394,6 +395,14 @@ function chat_(messages, system, model){
                    : chatAnthropic_(messages, system, model, anthropicKey);
 }
 
+/* שגיאת ספק ה-AI. קודי עומס זמניים (429/5xx) מסומנים במפורש ב-"overloaded",
+   כדי שהאפליקציה תזהה אותם ותנסה שוב לבד — במקום להציג טקסט אנגלי גולמי. */
+function aiErr_(code, data){
+  var msg = (data && data.error && data.error.message) || ('http-' + code);
+  var busy = (code === 429 || code === 500 || code === 502 || code === 503 || code === 529);
+  return busy ? ('overloaded: http-' + code + ': ' + msg) : msg;
+}
+
 /* Anthropic Claude — Messages API */
 function chatAnthropic_(messages, system, model, key){
   var payload = {
@@ -409,7 +418,7 @@ function chatAnthropic_(messages, system, model, key){
   });
   var code = res.getResponseCode();
   var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
-  if(code >= 400) return { ok:false, error: (data.error && data.error.message) || ('http-' + code) };
+  if(code >= 400) return { ok:false, error: aiErr_(code, data) };
   var text = (data.content || []).filter(function(b){ return b.type === 'text'; })
                                  .map(function(b){ return b.text; }).join('\n');
   return { ok:true, text: text };
@@ -437,7 +446,7 @@ function chatGemini_(messages, system, model, key){
   });
   var code = res.getResponseCode();
   var data; try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
-  if(code >= 400) return { ok:false, error: (data.error && data.error.message) || ('http-' + code) };
+  if(code >= 400) return { ok:false, error: aiErr_(code, data) };
   var cand = (data.candidates && data.candidates[0]) || {};
   var text = ((cand.content && cand.content.parts) || [])
                .map(function(p){ return p.text || ''; }).join('\n').replace(/^\n+|\n+$/g,'');
@@ -587,6 +596,17 @@ function upload_(folderId, name, mimeType, dataB64){
   var f = DriveApp.getFolderById(folderId);
   var blob = Utilities.newBlob(Utilities.base64Decode(dataB64), mimeType || 'application/octet-stream', name || 'file');
   var file = f.createFile(blob);
+  return { ok:true, id:file.getId(), name:file.getName(), link:file.getUrl() };
+}
+/* שמירת מסמך שהופק בתוכנה (אקסל/CSV) לתיקייה ייעודית בדרייב — משמש את העוזר
+   החכם כשמבקשים "תפיק לי קובץ ותשמור אותו בדרייב", בלי להוריד ולהעלות ידנית. */
+var DOCS_FOLDER_NAME = 'מסמכים מהעוזר';
+function docSave_(name, mimeType, dataB64){
+  if(!dataB64) return { ok:false, error:'no-data' };
+  var folder = sub_(root_(), DOCS_FOLDER_NAME);
+  var blob = Utilities.newBlob(Utilities.base64Decode(String(dataB64)),
+                               String(mimeType || 'application/octet-stream'), String(name || 'document'));
+  var file = folder.createFile(blob);
   return { ok:true, id:file.getId(), name:file.getName(), link:file.getUrl() };
 }
 function copy_(fileId, folderId, name){
