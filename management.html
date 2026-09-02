@@ -508,8 +508,10 @@
   .worker.placing{opacity:0; transform:translateX(-30px); transition:.4s}
 
   /* ---- שער הכניסה (Google) — מכסה את הכל עד שמתחברים; "הדמיה" עוקפת ---- */
+  /* השער אטום: בלי התחברות לא רואים שום מספר — לא של הדמיה ולא של אף עיר.
+     המרכזי מתחיל מאפס, וכל מה שמוצג אחרי הכניסה מגיע חי מהערים. */
   .gate{position:fixed; inset:0; z-index:70; display:flex; align-items:center; justify-content:center; padding:20px;
-        background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(14px)}
+        background:var(--bg); background-image:var(--sky-glow)}
   .gate[hidden]{display:none}
   .gate .card{max-width:440px; width:100%; padding:26px 24px; text-align:center}
   .gate h2{font-size:1.35rem; font-weight:800; margin:10px 0 6px}
