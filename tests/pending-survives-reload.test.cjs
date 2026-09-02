@@ -79,7 +79,7 @@ function makeSandbox(){
     grab('function studentsDocUsage'),
     grabLine('const PENDING_LS_KEY'),
     'let _pendingOwner="", _pendingPersisted=true, _pendingRestored=0, _pendingRestoredAt=0, _pendingLoadedOnce=false;',
-    grab('function _pendingPersist'), grab('function _pendingForget'), grab('function _pendingRestoreOnce'),
+    grab('function _pendingCityId'), grab('function _pendingPersist'), grab('function _pendingForget'), grab('function _pendingRestoreOnce'),
     grab('function _guardApplyList')
   ].join('\n');
   vm.runInContext(code, sandbox);

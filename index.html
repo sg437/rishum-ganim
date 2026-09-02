@@ -1400,7 +1400,7 @@ function _pendingPersist(){
   try{
     if(!_pending.size){ localStorage.removeItem(PENDING_LS_KEY); _pendingPersisted=true; return; }
     const owner=((currentUser&&currentUser.email)||_pendingOwner||"").toLowerCase();
-    localStorage.setItem(PENDING_LS_KEY, JSON.stringify({ v:1, owner, city:(CITY&&CITY.id)||HOME_CITY.id, ts:Date.now(), items:[..._pending.values()] }));
+    localStorage.setItem(PENDING_LS_KEY, JSON.stringify({ v:1, owner, city:_pendingCityId(), ts:Date.now(), items:[..._pending.values()] }));
     _pendingPersisted=true;
   }catch(e){
     // מכסת האחסון מלאה — לא מפילים את השמירה עצמה, אבל כן מפסיקים להבטיח שרענון בטוח
@@ -1408,6 +1408,8 @@ function _pendingPersist(){
     if(TEST_DB_MODE) dlog("⚠️ שמירת הממתינים בדפדפן נכשלה: "+((e&&e.message)||e));
   }
 }
+/* העיר שהעריכות שייכות לה. עמיד גם כשהפונקציה רצה לבד (בדיקות שמחלצות אותה מהקוד). */
+function _pendingCityId(){ try{ return (CITY && CITY.id) || HOME_CITY.id; }catch(_){ return "modiin-illit"; } }
 function _pendingForget(){ try{ localStorage.removeItem(PENDING_LS_KEY); }catch(_){} _pendingPersisted=true; }
 /* שחזור חד-פעמי אחרי טעינה — נקרא כשכבר יש מצב-שרת ובסיס-השוואה טרי */
 function _pendingRestoreOnce(){
@@ -1422,7 +1424,7 @@ function _pendingRestoreOnce(){
   // עריכות של חשבון אחר על אותו מכשיר — לא שלנו לכתוב, ולא שלנו למחוק
   if(saved.owner && owner && saved.owner!==owner) return false;
   // עריכות של עיר אחרת (המשתמש/ת החליף/ה עיר) — לא כותבים אותן לעיר הזאת
-  if((saved.city||HOME_CITY.id)!==((CITY&&CITY.id)||HOME_CITY.id)) return false;
+  if((saved.city||"modiin-illit")!==_pendingCityId()) return false;
   let n=0;
   for(const it of items){
     if(!it || !it.coll || !it.id) continue;
