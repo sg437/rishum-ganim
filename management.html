@@ -615,7 +615,7 @@
   .topnav{display:none}
   @media (min-width:1020px){
     .burger{display:none}
-    .topnav{display:flex; position:sticky; top:58px; z-index:39; gap:2px; padding:4px clamp(10px,2vw,28px); background:var(--surface); border-bottom:1px solid var(--border); overflow-x:auto; scrollbar-width:thin}
+    .topnav{display:flex; flex-wrap:wrap; position:sticky; top:58px; z-index:39; gap:2px; padding:4px clamp(10px,2vw,28px); background:var(--surface); border-bottom:1px solid var(--border); overflow:visible}
     .topnav .tn-group{position:relative; flex:0 0 auto}
     .topnav .tn-btn{border:0; background:none; font:inherit; font-weight:700; font-size:.86rem; color:var(--ink-soft); padding:9px 12px; border-radius:9px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap}
     .topnav .tn-btn:hover,.topnav .tn-btn[aria-expanded="true"]{background:var(--surface-2); color:var(--ink)}
@@ -3522,6 +3522,8 @@ try{
     var host=$('#topnav'); if(!host){ host=document.createElement('nav'); host.id='topnav'; host.className='topnav'; host.setAttribute('aria-label','ניווט ראשי'); var ab=document.querySelector('.appbar'); ab.parentNode.insertBefore(host, ab.nextSibling); }
     var items={}; $$('#drawerNav .navitem').forEach(function(b){ items[b.dataset.view]=b; });
     var cur=C.view;
+    /* רינדור מחדש (נתונים חיים) לא סוגר תפריט שפתוח כרגע */
+    var openIdx=-1; $$('.tn-group',host).forEach(function(g,i){ if(g.classList.contains('open')) openIdx=i; });
     host.innerHTML=NAV_GROUPS.map(function(g){
       var vs=g[2].filter(function(v){ var b=items[v]; return b && !b.hidden && perm(v)!=='none'; }); if(!vs.length) return '';
       var isCur=vs.indexOf(cur)>=0, later=g[1]==='יופעל בהמשך';
@@ -3531,6 +3533,7 @@ try{
     $$('.tn-group',host).forEach(function(g){ var b=g.querySelector('.tn-btn'); if(b.dataset.go){ b.addEventListener('click',function(){ C.switchTab(b.dataset.go); }); return; }
       b.addEventListener('click',function(e){ e.stopPropagation(); var open=g.classList.contains('open'); $$('.tn-group.open',host).forEach(function(x){ x.classList.remove('open'); x.querySelector('.tn-btn').setAttribute('aria-expanded','false'); }); if(!open){ g.classList.add('open'); b.setAttribute('aria-expanded','true'); } }); });
     $$('.tn-item',host).forEach(function(b){ b.addEventListener('click',function(){ C.switchTab(b.dataset.go); }); });
+    if(openIdx>=0){ var g=$$('.tn-group',host)[openIdx]; if(g && g.querySelector('.tn-menu')){ g.classList.add('open'); g.querySelector('.tn-btn').setAttribute('aria-expanded','true'); } }
   }
   document.addEventListener('click',function(){ $$('#topnav .tn-group.open').forEach(function(x){ x.classList.remove('open'); }); });
   window.renderTopNav=renderTopNav;

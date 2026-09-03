@@ -103,6 +103,13 @@ const DATA={
       topnav:!!document.querySelector('#topnav .tn-group'), body:document.body.classList.contains('livemode') }));
     return (r.live && r.n===2 && /2 ערים/.test(r.ab) && r.liveNav>=15 && JSON.stringify(r.later)===JSON.stringify(['billing','crm','docs','hours','plan','portal','spec']) && r.topnav && r.body) || JSON.stringify(r);
   });
+  await step('ניווט עליון: לחיצה על קבוצה פותחת תפריט גלוי ולחיץ, ופריט בו מחליף מסך', async()=>{
+    await pg.click('#topnav .tn-btn:has-text("בקרה ודוחות")'); await pg.waitForTimeout(120);
+    const r=await pg.evaluate(()=>{ const m=document.querySelector('#topnav .tn-group.open .tn-menu'); if(!m) return { open:false }; const b=m.getBoundingClientRect(); const el=document.elementFromPoint(b.left+b.width/2, b.top+20); return { open:true, h:b.height, hit:!!(el&&m.contains(el)) }; });
+    await pg.click('#topnav .tn-item[data-go="followups"]'); await pg.waitForTimeout(120);
+    const v=await pg.evaluate(()=>window.__central.view);
+    return (r.open && r.h>100 && r.hit && v==='followups') || JSON.stringify({r,v});
+  });
   await step('מסך הדמיה במצב חי מקבל באנר "יופעל בהמשך" ולא נמחק', async()=>{ await go('crm'); const t=await txt('#view-crm .later-banner'); const has=await pg.evaluate(()=>!!document.getElementById('crmTable')); return (/יופעל בהמשך/.test(t) && has) || t; });
   await step('תלמידים · כל הערים: כל התיקים הפעילים משתי הערים, עם עירייה/שיבוץ/משרד החינוך', async()=>{
     await go('students'); const r=await pg.evaluate(()=>({ rows:document.querySelectorAll('#stuTable tbody tr[data-id]').length, t:document.getElementById('hqStudents').textContent }));
