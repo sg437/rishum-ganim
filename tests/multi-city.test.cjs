@@ -352,10 +352,12 @@ const server=require('http').createServer((req,res)=>{
       const feed=document.querySelectorAll('#feed .ev').length, reg=document.querySelectorAll('#regFeed .ev').length;
       const hiddenNav=[...document.querySelectorAll('#drawerNav .navitem')].filter(b=>b.hidden).map(b=>b.dataset.view).sort();
       const visibleNav=[...document.querySelectorAll('#drawerNav .navitem')].filter(b=>!b.hidden).map(b=>b.dataset.view);
-      return { feed, reg, hiddenNav, visibleNav, ticker:document.getElementById('homeTicker').textContent, cityRows:document.querySelectorAll('#cityTable tbody tr.clickable').length, foot:document.getElementById('drFoot').textContent };
+      /* מסכי ההדמיה אינם נמחקים — הם יורדים מהתפריט הראשי לקבוצת "יופעל בהמשך" (מעומעמים), ומסומנים כך */
+      const later=[...document.querySelectorAll('#drawerNav .navitem.later')].filter(b=>!b.hidden).map(b=>b.dataset.view).sort();
+      return { feed, reg, hiddenNav, visibleNav, later, ticker:document.getElementById('homeTicker').textContent, cityRows:document.querySelectorAll('#cityTable tbody tr.clickable').length, foot:document.getElementById('drFoot').textContent };
     });
-    const okHidden=JSON.stringify(r.hiddenNav)===JSON.stringify(['billing','comm','crm','docs','hours','plan','portal','spec']);
-    return (r.feed===0 && r.reg===0 && okHidden && r.visibleNav.includes('cities') && r.visibleNav.includes('perms') && /טוען/.test(r.ticker) && r.cityRows===0 && /hq@example.com/.test(r.foot)) || JSON.stringify(r);
+    const okLater=JSON.stringify(r.later)===JSON.stringify(['billing','crm','docs','hours','plan','portal','spec']);
+    return (r.feed===0 && r.reg===0 && r.hiddenNav.length===0 && okLater && r.visibleNav.includes('cities') && r.visibleNav.includes('perms') && r.visibleNav.includes('students') && /טוען/.test(r.ticker) && r.cityRows===0 && /hq@example.com/.test(r.foot)) || JSON.stringify(r);
   });
   await step('המרכזי: נתונים חיים מעיר מוצגים בתוכו — בלי קישורים החוצה, עם מונים אמיתיים', async()=>{
     const r=await pg2.evaluate(()=>{
