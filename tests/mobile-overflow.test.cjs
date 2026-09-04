@@ -203,10 +203,44 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     console.log('❌ המעבדה לא נדלקה'); await browser.close(); server.close(); process.exit(1);
   }
   await p.evaluate(SEED);
+  let bad=0, n=0;
+
+  /* ---- הרצועה העליונה: שם עיר ארוך + כפתור חזרה --------------------------
+     הבדיקה שלמטה מודדת את <main> בלבד, ולכן גלישה של הכותרת חמקה ממנה:
+     שבב "מודיעין עילית" לצד שבבי השנה והחינוך דחס את תיבת המותג לרוחב 0
+     (הלוגו גלש ממנה ונראה מכוסה), דחף את ההמבורגר אל מחוץ למסך, והעמוד
+     כולו "ברח" לצדדים. כאן נמדד המסמך כולו, ולא רק ה-main. */
+  await p.evaluate(()=>{
+    const c=document.querySelector('#cityChip');
+    c.style.display='inline-flex';
+    c.innerHTML='🏙️ <span class="t">מודיעין עילית</span>';
+    document.querySelector('#yearChip').innerHTML='📅 תשפ"ז';
+    const e=document.querySelector('#eduChip');
+    e.style.display='inline-flex';
+    e.innerHTML='🟢 <span class="w">חינוך רגיל</span><span class="n">רגיל</span>';
+    document.querySelector('#backBtn').classList.add('show');
+  });
+  for(const W of [320, 360, 390, 430]){
+    await p.setViewportSize({ width:W, height:844 });
+    await p.waitForTimeout(250);
+    const r=await p.evaluate(()=>{
+      const W=document.documentElement.clientWidth;
+      const box=e=>e.getBoundingClientRect();
+      return { W, doc:document.documentElement.scrollWidth,
+        logo:Math.round(box(document.querySelector('.brand .logo')).width),
+        brand:Math.round(box(document.querySelector('.brand')).width),
+        ham:Math.round(box(document.querySelector('#menuBtn')).right) };
+    });
+    if(r.doc > r.W+1){ bad++; console.log('❌ '+r.W+'px — העמוד גולש '+(r.doc-r.W)+'px בגלל הרצועה העליונה'); }
+    else if(r.brand < r.logo){ bad++; console.log('❌ '+r.W+'px — תיבת המותג נדחסה מתחת ללוגו ('+r.brand+' < '+r.logo+')'); }
+    else if(r.ham < 0 || r.ham > r.W+1){ bad++; console.log('❌ '+r.W+'px — ההמבורגר מחוץ למסך'); }
+  }
+  if(!bad) console.log('✅ הרצועה העליונה נשארת במסך בכל רוחב — הלוגו, השבבים וההמבורגר');
+  await p.setViewportSize({ width:390, height:844 });
+  await p.waitForTimeout(250);
 
   const TABS=['home','students','gans','staff','assign','map','tzaharon','reports',
               'messages','docs','export','settings','tools','management','guide'];
-  let bad=0, n=0;
   for(const t of TABS){
     try{ await goTab(p,t); }catch(e){ continue; }
     await p.waitForTimeout(550);

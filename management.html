@@ -3482,6 +3482,13 @@ try{
     w.document.write('<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>'+esc(title)+'</title><style>body{font-family:Arial,"Segoe UI",sans-serif;padding:18px;color:#111}h2{margin:0 0 4px}.sub{color:#555;font-size:.9rem;margin-bottom:12px}table{border-collapse:collapse;width:100%;font-size:.82rem}th,td{border:1px solid #bbb;padding:4px 7px;text-align:right}th{background:#e8f1f0}@media print{@page{margin:12mm}}</style></head><body><h2>'+esc(title)+'</h2><div class="sub">'+esc(sub||'')+' · הופק מהמרכזי · '+esc(new Date().toLocaleString('he-IL'))+'</div><table><thead><tr>'+headers.map(function(x){ return '<th>'+esc(x)+'</th>'; }).join('')+'</tr></thead><tbody>'+rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+esc(c==null?'':c)+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table><script>setTimeout(function(){window.print();},300);<\/script></body></html>');
     w.document.close();
   }
+  /* מספור רץ — טור ראשון בכל יצוא של רשימת תלמידים (כמו בתוכנת העיר):
+     מתחיל מ-1 בשורה הראשונה שבמסמך, אחרי הסינון והמיון. */
+  var SEQ_LABEL="מס'";
+  function withSeq(headers, rows){
+    return { headers:[SEQ_LABEL].concat(headers||[]),
+             rows:(rows||[]).map(function(r,i){ return [i+1].concat(r); }) };
+  }
   /* חלון ייצוא עם בחירת שדות — אותו רכיב לתלמידים / צוות / גנים / פילוחים */
   var EXPORT_SEL={};
   function exportDialog(key, title, fields, defKeys, getRows, sub){
@@ -3492,7 +3499,12 @@ try{
       '<div class="sec-h">תצוגה מקדימה</div><div class="hq-scroll" style="max-height:34vh"><table class="hq-table" id="xp-prev" style="min-width:auto"></table></div>';
     modal(title, body, '<button class="btn-primary" id="xp-xls">🎨 אקסל</button><button class="btn-ghost" id="xp-csv">CSV</button><button class="btn-ghost" id="xp-pdf">🖨️ הדפסה / PDF</button><button class="btn-ghost" id="xp-close">סגירה</button>', true);
     var cols=function(){ return fields.filter(function(f){ return sel.has(f[0]); }); };
-    var build=function(){ var cs=cols(); var rows=getRows(); return { headers:cs.map(function(f){ return f[1]; }), rows:rows.map(function(r){ return cs.map(function(f){ try{ return f[2](r); }catch(e){ return ''; } }); }), n:rows.length }; };
+    var build=function(){ var cs=cols(); var rows=getRows();
+      var headers=cs.map(function(f){ return f[1]; });
+      var body=rows.map(function(r){ return cs.map(function(f){ try{ return f[2](r); }catch(e){ return ''; } }); });
+      /* טור המספור נוסף רק כשנבחרה לפחות עמודה אחת — "נקה הכל" משאיר טבלה ריקה */
+      if(key==='students' && headers.length){ var X=withSeq(headers, body); headers=X.headers; body=X.rows; }
+      return { headers:headers, rows:body, n:rows.length }; };
     var rerender=function(){ var b=build(); $('#xp-n').textContent=b.n+' שורות · '+b.headers.length+' עמודות'; $('#xp-prev').innerHTML='<thead><tr>'+b.headers.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('')+'</tr></thead><tbody>'+b.rows.slice(0,12).map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+esc(c)+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>'; };
     $$('#xp-cols input').forEach(function(cb){ cb.addEventListener('change',function(){ if(cb.checked) sel.add(cb.value); else sel.delete(cb.value); rerender(); }); });
     var setAll=function(keys){ sel.clear(); keys.forEach(function(k){ sel.add(k); }); $$('#xp-cols input').forEach(function(cb){ cb.checked=sel.has(cb.value); }); rerender(); };
@@ -3580,6 +3592,7 @@ try{
     ['divorced','גרושים',function(s){ return yes(s.special&&s.special.divorced); }],
     ['outOfCity','ילדת חוץ',function(s){ return yes(s.special&&s.special.outOfCity); }],
     ['retention','השארות',function(s){ return yes(s.special&&s.special.retention); }],
+    ['retentionDoc','מסמך השארות',function(s){ var sp=s.special||{}; return sp.retention?(sp.retentionDoc?'כן':'חסר'):''; }],
     ['retentionNext','השארות לשנה הבאה',function(s){ return yes(s.retentionNext); }],
     ['other','אחר',function(s){ return (s.special&&s.special.other)?(s.special.otherText||'✓'):''; }],
     ['tzaharon','צהרון',function(s){ return yes(s.programs&&s.programs.tzaharon); }],
@@ -3668,7 +3681,7 @@ try{
 
   window.__hq={ HQ:function(){ return HQ; }, perm:perm, canEdit:canEdit, guard:guard, ro:ro, roNote:roNote, modal:modal, closeModal:closeModal, openDrawer:openDrawer, closeDrawer:closeDrawer, promptForm:promptForm, confirmBox:confirmBox,
     save:save, remove:remove, saveSettings:saveSettings, hqErr:hqErr, selCities:selCities, citySelHTML:citySelHTML, wireCitySel:wireCitySel, SEL:function(){ return SEL_CITIES; },
-    exportCSV:exportCSV, exportXLS:exportXLS, printTable:printTable, exportDialog:exportDialog, tableHTML:tableHTML, sortRows:sortRows, wireSort:wireSort, reg:reg, rerender:rerenderCurrent,
+    exportCSV:exportCSV, exportXLS:exportXLS, printTable:printTable, exportDialog:exportDialog, withSeq:withSeq, tableHTML:tableHTML, sortRows:sortRows, wireSort:wireSort, reg:reg, rerender:rerenderCurrent,
     cities:cities, cityById:cityById, me:me, isOwner:isOwner, fmtDT:fmtDT, fmtD:fmtD, fmtDate:fmtDate, todayISO:todayISO, digits:digits, tzKey:tzKey, fixPhone:fixPhone, stuName:stuName, eduL:eduL, yes:yes, yn:yn, uid:uid, sortHe:sortHe, debounce:debounce,
     STU_FIELDS:STU_FIELDS, STU_DEFAULT:STU_DEFAULT, STAFF_FIELDS:STAFF_FIELDS, STAFF_DEFAULT:STAFF_DEFAULT, GAN_FIELDS:GAN_FIELDS, ctxLabel:ctxLabel, asgText:asgText, MODULES:MODULES,
     allStudents:allStudents, allStaff:allStaff, allGans:allGans, findStudent:findStudent, thresholds:thresholds, licenseState:licenseState, assistantBState:assistantBState, flagId:flagId, flagFor:flagFor,
@@ -3711,6 +3724,7 @@ try{
       if(F.flag==='noreg' && s.registeredByUs) return false;
       if(F.flag==='outofcity' && !(s.special&&s.special.outOfCity)) return false;
       if(F.flag==='retention' && !(s.special&&s.special.retention)) return false;
+      if(F.flag==='retentionNoDoc' && !retentionNeedsDoc(s)) return false;
       if(q){ var hay=[s.firstName,s.lastName,s.motherName,s.fatherName,s.gan,s.street,s.email,s.notes].join(' ').toLowerCase(); if(hay.indexOf(q)<0 && !(qd && H.digits(s.tz+' '+s.mobile+' '+s.phone+' '+s.dadMobile+' '+s.momMobile).indexOf(qd)>=0)) return false; }
       return true;
     });
@@ -3762,7 +3776,7 @@ try{
         opt('muni',F.muni,[['','עירייה: הכל'],['1','קלוטים'],['0','טרם נקלטו']])+
         opt('ministry',F.ministry,[['','משרד החינוך: הכל'],['ok','מתוקצבים'],['missing','לא נקלטו'],['error','שגויים'],['none','לא נבדקו']])+
         opt('prog',F.prog,[['','תוכנית: הכל'],['tzaharon','צהרון'],['campHanukkah','קייטנת חנוכה'],['campNisan','קייטנת ניסן'],['campEndYear','קייטנת סוף שנה']])+
-        opt('flag',F.flag,[['','מאפיין: הכל'],['req','פניות פתוחות'],['bounce','מייל חזר'],['notz','בלי ת״ז'],['nodocs','חסרים מסמכים'],['noreg','לא נרשמה על ידינו'],['outofcity','ילדת חוץ'],['retention','השארות']])+
+        opt('flag',F.flag,[['','מאפיין: הכל'],['req','פניות פתוחות'],['bounce','מייל חזר'],['notz','בלי ת״ז'],['nodocs','חסרים מסמכים'],['noreg','לא נרשמה על ידינו'],['outofcity','ילדת חוץ'],['retention','השארות'],['retentionNoDoc','השארות בלי מסמך']])+
         '<label class="hq-count" style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="stuFin"'+(F.finished?' checked':'')+'> כולל שסיימו</label>'+
         '<button class="btn-mini" id="stuClear">נקה סינון</button></div>'+
       '<div class="hq-toolbar" style="margin-bottom:0"><button class="btn-primary" id="stuExport">⬇️ ייצוא לפי בחירת שדות</button><button class="btn-ghost" id="stuPrint">🖨️ הדפסה</button><button class="btn-ghost" id="stuMsg">📨 הודעה לנמענים שבסינון</button><button class="btn-ghost" id="stuMap">🗺️ מפה</button><span class="sp"></span>'+
@@ -3775,7 +3789,9 @@ try{
     $('#stuFin').addEventListener('change',function(){ F.finished=this.checked; render(); });
     $('#stuClear').addEventListener('click',function(){ F={ q:'', gan:'', age:'', edu:'', gender:'', period:'', place:'', muni:'', ministry:'', prog:'', flag:'', finished:false }; render(); });
     $('#stuExport').addEventListener('click',function(){ H.exportDialog('students','רשימת תלמידים', H.STU_FIELDS, H.STU_DEFAULT, function(){ return H.sortRows(filtered(), COLS, ST.sort); }, 'מיוצאת הרשימה שעל המסך — כולל הסינון והערים שנבחרו ('+list.length+' תיקים).'); });
-    $('#stuPrint').addEventListener('click',function(){ var cs=COLS.slice(1); H.printTable('רשימת תלמידים', cs.map(function(c){ return c.l; }), list.map(function(s){ return cs.map(function(c){ return c.v(s); }); }), list.length+' תיקים'); });
+    $('#stuPrint').addEventListener('click',function(){ var cs=COLS.slice(1);
+      var X=H.withSeq(cs.map(function(c){ return c.l; }), list.map(function(s){ return cs.map(function(c){ return c.v(s); }); }));
+      H.printTable('רשימת תלמידים', X.headers, X.rows, list.length+' תיקים'); });
     $('#stuMsg').addEventListener('click',function(){ window.__hqComm && window.__hqComm.fromStudents(list); C.switchTab('comm'); });
     $('#stuMap').addEventListener('click',function(){ C.switchTab('map'); });
     wireTable();
@@ -3810,18 +3826,27 @@ try{
     H.openDrawer(H.stuName(s)+' · '+c.name, body, foot);
     var b;
     if((b=$('#sd-place'))) b.addEventListener('click',function(){ placeDialog([s]); });
-    if((b=$('#sd-final'))) b.addEventListener('click',function(){ if(!s.ganId){ toast('אין גן — קודם שיבוץ'); return; } setFinal([s], s.placed===false); });
+    if((b=$('#sd-final'))) b.addEventListener('click',function(){ if(!s.ganId){ toast('אין גן — קודם שיבוץ'); return; }
+      if(s.placed===false && retentionNeedsDoc(s)){ toast('⚠️ ילדת השארות בלי מסמך השארות — אין שיבוץ סופי עד שהמסמך יסומן בתיק שבתוכנת העיר'); return; }
+      setFinal([s], s.placed===false); });
     if((b=$('#sd-req'))) b.addEventListener('click',function(){ window.__hqReq && window.__hqReq.add(s); });
     if((b=$('#sd-moe'))) b.addEventListener('click',function(){ window.__hqMoe && window.__hqMoe.setStatus(s); });
     if((b=$('#sd-bounce'))) b.addEventListener('click',function(){ window.__hqSmoove && window.__hqSmoove.toggleBounce(s); });
   }
   function reqStatus(r){ return r.status==='closed'?'<span class="tag ok">נסגר</span>':(r.status==='progress'?'<span class="tag acc">בטיפול</span>':'<span class="tag warn">פתוח</span>'); }
   /* ---- שיבוץ מרכזי: כתיבה לתיק בעיר, העיר רואה חי ---- */
+  /* ילדת השארות בלי מסמך השארות — כמו בתוכנת העיר, אין לה שיבוץ סופי עד
+     שהאישור מגיע והמסמך מסומן בתיק שבעיר. כאן זו חסימה על "שיבוץ סופי";
+     רישום לגן במצב "ממתין/ה" נשאר אפשרי. */
+  function retentionNeedsDoc(s){ var sp=(s&&s.special)||{}; return !!(sp.retention && !sp.retentionDoc); }
   function placeDialog(students){
     var cityId=students[0].cityId; if(students.some(function(s){ return s.cityId!==cityId; })){ toast('שיבוץ מרוכז — רק לתלמידים מאותה עיר'); return; }
     var c=H.cityById(cityId); var gans=(c.gans||[]).filter(function(g){ return g.on; }).slice().sort(function(a,b){ return H.sortHe(a.name,b.name); });
+    var noDoc=students.filter(retentionNeedsDoc);
     var note=c.placement==='office'?'<span class="tag acc">העיר הזאת: השיבוץ במשרד הראשי</span>':'<span class="tag warn">בעיר הזאת השיבוץ נעשה בעיר — שיבוץ מהמרכזי ידרוס את הבחירה המקומית</span>';
-    var body='<div class="sec-note" style="margin-bottom:8px">'+note+'</div><div class="sec-note">'+students.length+' תלמיד/ה: '+esc(students.slice(0,6).map(H.stuName).join(', '))+(students.length>6?'…':'')+'</div>'+
+    var body='<div class="sec-note" style="margin-bottom:8px">'+note+'</div>'+
+      (noDoc.length?'<div class="sec-note" style="margin-bottom:8px"><span class="tag warn">⚠️ '+noDoc.length+' ילדות השארות בלי מסמך השארות</span> '+esc(noDoc.slice(0,6).map(H.stuName).join(', '))+(noDoc.length>6?'…':'')+' — אי אפשר לסמן להן "שיבוץ סופי" עד שהמסמך יסומן בתיק שבתוכנת העיר.</div>':'')+
+      '<div class="sec-note">'+students.length+' תלמיד/ה: '+esc(students.slice(0,6).map(H.stuName).join(', '))+(students.length>6?'…':'')+'</div>'+
       '<div class="frm" style="margin-top:10px"><label class="full">גן<select class="txtin" id="pl-gan"><option value="">— ללא גן —</option>'+gans.map(function(g){ var room=g.assignCap?(g.assignCap-g.enrolled):(g.cap?(g.cap-g.enrolled):null); return '<option value="'+esc(g.id)+'"'+(students.length===1&&students[0].ganId===g.id?' selected':'')+'>'+esc(g.name)+' · גיל '+esc(g.age)+' · '+(g.edu==='spc'?'ח״מ':'רגיל')+(g.gender?' · '+esc(g.gender):'')+' · '+g.enrolled+(g.cap?'/'+g.cap:'')+(room!=null?(room>0?' · פנוי '+room:' · מלא'):'')+'</option>'; }).join('')+'</select></label>'+
       '<label>מצב<select class="txtin" id="pl-final"><option value="1">שיבוץ סופי (משובץ/ת)</option><option value="0">רשום/ה לגן, ממתין/ה לאישור</option></select></label><label class="full">הערה לתיק (אופציונלי)<input class="txtin" id="pl-note"></label></div>'+
       '<div class="sec-note" style="margin-top:8px">השינוי נכתב ישירות לתיק בתוכנת העיר ומופיע שם מיד. מוצג גם ביומן המרכזי.</div>';
@@ -3829,6 +3854,7 @@ try{
     $('#pl-cancel').addEventListener('click',H.closeModal);
     $('#pl-ok').addEventListener('click',function(){
       var ganId=$('#pl-gan').value, fin=$('#pl-final').value==='1', note=$('#pl-note').value.trim(); var g=gans.filter(function(x){ return x.id===ganId; })[0];
+      if(ganId && fin && noDoc.length){ toast('⚠️ אין שיבוץ סופי לילדת השארות בלי מסמך השארות ('+noDoc.map(H.stuName).join(', ')+') — אפשר לבחור "ממתין/ה לאישור"'); return; }
       if(g && g.assignCap && (g.enrolled+students.filter(function(s){ return s.ganId!==ganId; }).length)>g.assignCap && !H.confirmBox('הגן '+g.name+' יעבור את רף השיבוץ ('+g.assignCap+'). להמשיך בכל זאת?')) return;
       H.closeModal(); $('#pl-ok')&&($('#pl-ok').disabled=true);
       run(students, function(s){ s.ganId=ganId; s.placed=ganId?fin:true; if(g&&g.campus) s.campus=g.campus; if(note) s.notes=(s.notes?s.notes+' | ':'')+note; }, 'שיבוץ מרכזי → '+(g?g.name:'ללא גן'));
@@ -3843,7 +3869,10 @@ try{
   }
   function selected(){ return H.allStudents(H.cities()).filter(function(s){ return ST.sel[s.cityId+'|'+s.id]; }); }
   function bulkPlace(){ var l=selected(); if(!l.length) return; placeDialog(l); }
-  function bulkFinal(){ var l=selected().filter(function(s){ return s.ganId; }); if(!l.length){ toast('לנבחרים אין גן'); return; } if(H.confirmBox('לסמן '+l.length+' תיקים כשיבוץ סופי?')) setFinal(l,true); }
+  function bulkFinal(){ var l=selected().filter(function(s){ return s.ganId; }); if(!l.length){ toast('לנבחרים אין גן'); return; }
+    var noDoc=l.filter(retentionNeedsDoc); l=l.filter(function(s){ return !retentionNeedsDoc(s); });
+    if(!l.length){ toast('⚠️ כל הנבחרות הן ילדות השארות בלי מסמך השארות — אין שיבוץ סופי'); return; }
+    if(H.confirmBox('לסמן '+l.length+' תיקים כשיבוץ סופי?'+(noDoc.length?'\n\n'+noDoc.length+' ילדות השארות בלי מסמך השארות יידלגו.':''))) setFinal(l,true); }
   H.reg('students', render);
   window.__hqStudents={ open:openStudent, place:placeDialog, filterTo:function(f){ F=Object.assign(F,f); }, filtered:filtered };
 
@@ -5053,7 +5082,7 @@ function xlsToRows(buf){
   /* ===== מדריך ===== */
   var GUIDE=[
     ['🏠','דף הבית ותפריט','המרכזי פתוח למשתמשי המרכז (בעלים ומי שסומן "מרכז" במרשם) עם חשבון Google. אחרי הכניסה כל המסכים עובדים על הנתונים החיים של כל הערים. בדסקטופ הניווט הוא בפס העליון (קבוצות: רישום וקליטה · שיבוץ והפצה · ערים וצוות · בקרה ודוחות · תקשורת · ניהול); במובייל — במגירה. הקבוצה "יופעל בהמשך" מכילה מסכי תכנון (CRM, פורטל הורים, סליקה, מסמכים, שעות ושכר, האפיון, התוכנית) עם נתוני דוגמה בלבד — הם לא נמחקו, רק מסומנים, כדי שלא יתבלבלו עם הנתונים החיים.'],
-    ['🎒','תלמידים · כל הערים','כל התיקים מכל הערים בטבלה אחת: קליטה במערכת ובעירייה, שיבוץ (גן, סופי/ממתין), מועד, חינוך, מגדר לפי הגן, תוכניות וצהרון, מסמכים, בקרת משרד החינוך, פניות ומיילים חוזרים. סינון לפי כמה ערים יחד (בורר הערים בראש המסך), חיפוש חופשי (שם/ת״ז/טלפון), ומסננים לכל שדה. לחיצה על שורה פותחת תיק מלא בצד. ייצוא — כמו בתוכנת העיר: בחירת שדות, אקסל/CSV/הדפסה. <b>שיבוץ מרכזי:</b> בתיק או בסימון כמה שורות → "שיבוץ מרכזי" → בחירת גן ומצב (סופי/ממתין). השינוי נכתב ישירות לתיק בתוכנת העיר ומופיע שם מיד; לערים שהשיבוץ שלהן בעיר מוצגת אזהרה.'],
+    ['🎒','תלמידים · כל הערים','כל התיקים מכל הערים בטבלה אחת: קליטה במערכת ובעירייה, שיבוץ (גן, סופי/ממתין), מועד, חינוך, מגדר לפי הגן, תוכניות וצהרון, מסמכים, בקרת משרד החינוך, פניות ומיילים חוזרים. סינון לפי כמה ערים יחד (בורר הערים בראש המסך), חיפוש חופשי (שם/ת״ז/טלפון), ומסננים לכל שדה. לחיצה על שורה פותחת תיק מלא בצד. ייצוא — כמו בתוכנת העיר: בחירת שדות, אקסל/CSV/הדפסה, ו<b>טור מספור <span dir="ltr">"מס\'"</span> ראשון</b> בכל יצוא והדפסה של רשימת התלמידים. <b>שיבוץ מרכזי:</b> בתיק או בסימון כמה שורות → "שיבוץ מרכזי" → בחירת גן ומצב (סופי/ממתין). השינוי נכתב ישירות לתיק בתוכנת העיר ומופיע שם מיד; לערים שהשיבוץ שלהן בעיר מוצגת אזהרה. <b>ילדת השארות בלי מסמך השארות אינה מקבלת שיבוץ סופי</b> — לא בשיבוץ המרכזי, לא ב"סמן שיבוץ סופי" ולא בסימון מרוכז; המסמך מסומן בתיק שבתוכנת העיר (שונות → ילדת השארות → מסמך השארות). מסנן <b>"השארות בלי מסמך"</b> מציג את כולן.'],
     ['👥','עובדות ושיבוץ','כל אנשי הצוות מכל הערים עם כל הפרטים ושיבוציהם (פעילות הגן, צהרונים, קייטנות, ימים), סינון לפי תפקיד/הקשר/גן/סטטוס, תיק מלא (כניסה/יציאה, העדרויות, איחורים, הערות), ייצוא לפי בחירת שדות, ו"מצבת שיבוץ צוות" (שורה לכל תפקיד בכל גן). עריכת הצוות והשיבוץ נעשית בתוכנת העיר.'],
     ['📥','ייבוא מאקסל לעיר','בוחרים עיר, מעלים xlsx/xls/CSV (או מדביקים מאקסל), ומקבלים טבלת מיפוי עמודות: כל עמודה בקובץ → שדה בתוכנה (כותרות מוכרות מזוהות לבד). ברירות מחדל: "נרשמה על ידינו" דלוק, "קלוט בעירייה" כבוי (רק העירייה קובעת), דילוג על ת״ז קיימת. תצוגה מקדימה עם מונים (כפולים, גן לא זוהה, בלי ת״ז) ואז ייבוא — התיקים נפתחים בשנת הרישום של העיר ומופיעים בתוכנת העיר מיד. כל ייבוא נרשם ביומן.'],
     ['🔗','ערוצי רישום ואחראיות קליטה','לכל עיר: אופן הקליטה (דיגיטלית בעיר / במשרד הראשי) ואופן השיבוץ (בעיר / במשרד הראשי), אחראי/ת קליטת טפסי הרישום, רכז/ת, מנהל/ת ואנשי קשר (משמשים גם במרכז ההודעות), מצב הטפסים מול נדרים פלוס (טפסים לפי גיל ומגדר, תיקונים שנשלחו, קובץ ילדים ממשיכים), ושני דגשי הקליטה חי — קליטה במערכת · קליטה בעירייה. קישור הרישום שלנו לכל עיר (register.html); קליטה לפי עיר בטופס הציבורי — <span class="later">יופעל בהמשך</span>. סנכרון אוטומטי מנדרים — <span class="later">יופעל בהמשך</span>.'],

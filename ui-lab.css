@@ -1732,6 +1732,9 @@ html.ui-lab .lab-bottom{ display:none }
   html.ui-lab .stu-table td:empty{ display:none }
 
   /* ---- כותרת כהה קומפקטית (לוח 16) ---- */
+  /* שם המסך שייך לרצועה הרחבה בלבד. בנייד הוא נשאר בלי עיצוב ובלע רוחב
+     מהשבבים — עד שההמבורגר נדחף אל מחוץ למסך והעמוד גלש לצדדים. */
+  html.ui-lab .lab-topname{ display:none }
   html.ui-lab header.top{
     background:var(--lab-deep); border-bottom:0;
     box-shadow:0 1px 0 rgba(0,0,0,.12);

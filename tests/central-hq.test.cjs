@@ -141,7 +141,8 @@ const DATA={
     const r=await pg.evaluate(()=>({ open:document.getElementById('hqModalWrap').classList.contains('open'), heads:[...document.querySelectorAll('#xp-prev thead th')].map(x=>x.textContent), rows:document.querySelectorAll('#xp-prev tbody tr').length, n:document.getElementById('xp-n').textContent }));
     await pg.click('#xp-none'); await pg.waitForTimeout(50); const h2=await pg.evaluate(()=>document.querySelectorAll('#xp-prev thead th').length);
     await pg.click('#xp-close');
-    return (r.open && r.heads.includes('עיר') && r.heads.includes('קלוט בעירייה') && r.heads.includes('משרד החינוך') && r.rows===4 && h2===0) || JSON.stringify(r);
+    /* טור המספור הוא תמיד הראשון ברשימת התלמידים — כמו בתוכנת העיר */
+    return (r.open && r.heads[0]==="מס'" && r.heads.includes('עיר') && r.heads.includes('קלוט בעירייה') && r.heads.includes('משרד החינוך') && r.rows===4 && h2===0) || JSON.stringify(r);
   });
   await step('עובדות: הרשימה החיה עם שיבוצים לפי הקשר, וייצוא', async()=>{
     await go('staff'); const r=await pg.evaluate(()=>({ rows:document.querySelectorAll('#stfTable tbody tr[data-id]').length, t:document.getElementById('hqStaff').textContent, demoHidden:document.getElementById('staffDemoCard').style.display==='none' }));

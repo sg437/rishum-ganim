@@ -133,16 +133,24 @@ a{color:var(--accent)}
 /* header */
 header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bottom:1px solid var(--border);
   box-shadow:var(--shadow)}
-.top-inner{max-width:1200px;margin:0 auto;padding:9px 14px;display:flex;align-items:center;gap:10px}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.top-inner{max-width:1200px;margin:0 auto;padding:9px 14px;display:flex;align-items:center;gap:10px;min-width:0}
+/* ⚠️ אין כאן min-width:0. עם אפס הרצועה כולה נדחסה: תיבת המותג התכווצה
+   לרוחב 0, הלוגו (flex:0 0 auto) גלש ממנה החוצה ונראה כאילו שבב שם העיר
+   יושב עליו — ובמקביל השבבים דחפו את ההמבורגר אל מחוץ למסך והעמוד "ברח"
+   לצדדים. בלי הכלל הרוחב המזערי של המותג הוא בדיוק הלוגו (הכיתוב שלצידו
+   הוא ‎.txt‎ עם ‎min-width:0‎ ולכן מתקצר עד היעלמות). */
+.brand{display:flex;align-items:center;gap:10px;flex:0 1 auto}
 .brand .logo{width:42px;height:42px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:1.3rem;flex:0 0 auto}
 .brand .logo img{width:100%;height:100%;object-fit:cover;border-radius:12px}
 .brand .txt{display:flex;flex-direction:column;line-height:1.18;min-width:0}
 .brand .txt .t1{font-weight:800;font-size:1.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .brand .txt .t2{font-weight:700;font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top-spacer{flex:1}
-.top-chips{display:flex;align-items:center;gap:7px}
-.chip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-weight:800;font-size:.84rem;white-space:nowrap}
+/* השבבים מתכווצים וגוללים בתוך עצמם במקום לדחוף את שאר הרצועה החוצה.
+   שם עיר ארוך ("מודיעין עילית") הוא המקרה שהפיל את זה בנייד. */
+.top-chips{display:flex;align-items:center;gap:7px;min-width:0;flex:0 1 auto;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.top-chips::-webkit-scrollbar{display:none}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-weight:800;font-size:.84rem;white-space:nowrap;flex:0 0 auto}
 /* כפתורי פעולה קטנים: ניווט (Waze/מפות), חיוג, מייל */
 .act{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);text-decoration:none;font-size:.95rem;line-height:1;margin-inline-start:4px;vertical-align:middle;flex:0 0 auto;cursor:pointer;padding:0;color:inherit}
 .act:hover{border-color:var(--accent);background:var(--accent-soft,var(--surface))}
@@ -152,6 +160,9 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .fieldwrap>.act{width:38px;height:auto;cursor:pointer}
 .fieldwrap.tel>.act{width:30px;margin-inline-start:3px}
 .fieldwrap.tel>input{min-width:5.5em}
+.chip .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.chip .n{display:none}
+.chip.city{max-width:min(42vw,190px)}
 .chip.year{background:var(--accent-soft);color:var(--accent-strong)}
 .chip.city{background:var(--surface-2);color:var(--ink);border:1px solid var(--border)}
 .chip.edu{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--border)}
@@ -164,7 +175,9 @@ header.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bot
 .backbtn:hover{border-color:var(--accent);color:var(--accent)}
 .backbtn svg{width:20px;height:20px;display:block}
 .hamburger span{display:block;width:19px;height:2px;background:var(--ink-soft);border-radius:2px;box-shadow:0 6px 0 var(--ink-soft),0 -6px 0 var(--ink-soft)}
-@media(max-width:560px){.brand .txt .t2{display:none}.brand .logo{width:38px;height:38px}.chip{padding:5px 9px;font-size:.78rem}.top-inner{gap:7px}}
+/* בנייד נשאר הלוגו בלבד — שם המערכת המלא מופיע בראש תפריט הצד. כך שבב
+   העיר, השנה והחינוך מקבלים את כל הרוחב שנשאר, וההמבורגר לא נדחף החוצה. */
+@media(max-width:560px){.brand .txt{display:none}.brand{flex:0 0 auto}.brand .logo{width:38px;height:38px}.chip{padding:5px 9px;font-size:.78rem}.chip .w{display:none}.chip .n{display:inline}.chip.city{max-width:9em}.chip.city.solo{display:none!important}.top-inner{gap:7px}}
 
 /* drawer (תפריט צד שמאל) */
 .scrim{position:fixed;inset:0;background:rgba(6,18,22,.5);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
@@ -1219,7 +1232,13 @@ function renderCityPick(){
   if(sel && multi){ sel.innerHTML=mine.map(c=>`<option value="${esc(c.id)}" ${CITY&&CITY.id===c.id?'selected':''}>${esc(c.name||c.id)}</option>`).join(""); sel.onchange=()=>switchCity(sel.value); }
   if(chip){
     if(!CITY || !currentUser){ chip.style.display="none"; }
-    else { chip.style.display="inline-flex"; chip.textContent="🏙️ "+(CITY.name||CITY.id); chip.title = multi ? "העיר הפעילה — להחלפה: תפריט → עיר" : "העיר הפעילה"; }
+    /* שם העיר יושב ב-span משלו כדי שיוכל להתקצר עם "…" ברצועה צרה,
+       במקום לדחוף את שבבי השנה והחינוך אל מחוץ למסך. */
+    else { chip.style.display="inline-flex"; chip.innerHTML='🏙️ <span class="t">'+esc(CITY.name||CITY.id)+'</span>';
+      /* למי שיש עיר אחת בלבד השבב הוא תזכורת ולא בורר — ובנייד הוא נעלם
+         כדי לפנות את הרצועה לשבבי השנה והחינוך (ראה .chip.city.solo). */
+      chip.classList.toggle("solo", !multi);
+      chip.title = multi ? "העיר הפעילה — להחלפה: תפריט → עיר" : "העיר הפעילה"; }
   }
 }
 /* לגשר ה-Drive: העיר נשלחת בכל קריאה, כדי שהתיקיות ייפתחו בתיקיית העיר הנכונה */
@@ -2578,11 +2597,31 @@ function ganAssignRoom(g, excludeStudentId){
   const cap=ganAssignCap(g); if(!cap) return Infinity;
   return cap - ganAssignedCount(g.id, excludeStudentId);
 }
+/* ============================================================
+   מסמך השארות — תנאי לשיבוץ
+   ------------------------------------------------------------
+   ילדת השארות משובצת לשנה נוספת רק אחרי שהאישור הגיע בפועל. הסימון
+   "מסמך השארות" (בתיק: שונות → ילדת השארות → מסמך השארות) הוא ההצהרה
+   שהאישור התקבל; כל עוד הוא כבוי — השיבוץ חסום בכל דרך שהיא (תיק, גרירה
+   במפה, עדכון קבוצתי, מסך השיבוץ והעוזר החכם), ומוצגת התראה שמסבירה
+   שהחסימה היא בגלל המסמך החסר.
+   ============================================================ */
+function retentionNeedsDoc(student){
+  const sp=student&&student.special;
+  return !!(sp && sp.retention && !sp.retentionDoc);
+}
+function retentionGateMsg(student){
+  const nm=[student&&student.lastName, student&&student.firstName].filter(Boolean).join(" ").trim();
+  return '⚠️ אין אפשרות לשבץ'+(nm?(" את "+nm):"")+' — ילדת השארות בלי מסמך השארות. '
+       +'כשהאישור מגיע: תיק התלמידה → "שונות" → "ילדת השארות" → לסמן "מסמך השארות" (ואפשר לצרף את הקובץ).';
+}
 /* האם מותר לשבץ תלמידה לגן. מחזיר {ok, cap, count, msg} */
 function canAssignStudent(g, student){
   const cap=ganAssignCap(g);
   const exclude=student&&student.id;
   const count=ganAssignedCount(g.id, exclude);
+  /* מסמך ההשארות קודם לרף השיבוץ: גם בגן ריק לגמרי אין שיבוץ בלעדיו */
+  if(retentionNeedsDoc(student)) return { ok:false, cap, count, retention:true, msg:retentionGateMsg(student) };
   if(!cap) return { ok:true, cap:0, count, msg:"" };
   if(count>=cap) return { ok:false, cap, count,
     msg:'אין אפשרות לשבץ ל'+ganName(g.id)+' — הגן מלא ('+count+'/'+cap+'). '
@@ -2593,7 +2632,8 @@ function canAssignStudent(g, student){
 function assignGate(ganId, student, silent){
   const g=ganById(ganId); if(!g) return true;
   const r=canAssignStudent(g, student);
-  if(!r.ok && !silent) toast(r.msg);
+  /* הודעת ההשארות ארוכה (היא אומרת גם איפה מסמנים) — צריך זמן לקרוא אותה */
+  if(!r.ok && !silent) toast(r.msg, r.retention ? 7000 : undefined);
   return r.ok;
 }
 /* תגית "משובצות / רף" עם צבע (ירוק=פנוי · כתום=מלא · אדום=חריגה) */
@@ -2729,7 +2769,10 @@ function buildPromoted(src, toYear, forceRetain, promoteGrads){
     approvalFather:false, approvalMother:false, idFather:false, idMother:false,
     approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false,
     outOfCity: !!sp.outOfCity, paymentArrangement:false,
-    retention:false, retentionDoc:false,
+    /* ילדה שנשארת — מסומנת "ילדת השארות" בשנה החדשה, בלי מסמך ההשארות.
+       המסמך הוא תנאי לשיבוץ (ראה retentionGateMsg), ולכן הוא נדרש מחדש
+       בכל שנה שבה היא נשארת. ילדה שקודמה רגיל — הסימון אינו עובר. */
+    retention: !!retain, retentionDoc:false,
     other: !!sp.other, otherText: sp.other ? (sp.otherText||"") : ""
   };
   // דרייב — תיקייה חדשה לשנה החדשה (תיווצר עם הצורך)
@@ -4140,7 +4183,12 @@ function renderEduPick(){
     if(!eduPicked){ chip.style.display="none"; }
     else{ chip.style.display="inline-flex";
       chip.className="chip edu"+(activeEdu==="רגיל"?" reg":activeEdu==='ח"מ'?" spec":"");
-      chip.innerHTML = activeEdu==="רגיל"?"🟢 חינוך רגיל":activeEdu==='ח"מ'?"🟠 חינוך מיוחד":"⚪ כל החינוך";
+      /* בנייד מוצגת הגרסה הקצרה (‎.n‎) — ברצועה צרה כל תו נחשב, ובלעדיה
+         שבב החינוך נדחק אל מחוץ למסך יחד עם ההמבורגר. */
+      const two=(w,n)=>`<span class="w">${w}</span><span class="n">${n}</span>`;
+      chip.innerHTML = activeEdu==="רגיל"?("🟢 "+two("חינוך רגיל","רגיל"))
+                     : activeEdu==='ח"מ'?("🟠 "+two("חינוך מיוחד","מיוחד"))
+                     : ("⚪ "+two("כל החינוך","הכל"));
     }
   }
 }
@@ -4337,7 +4385,7 @@ function guideContent(){
     <div class="gd-flow">
       <div class="gd-box">גן חובה (גיל 5)<br><small>תשפ"ז</small></div>
       <div class="gd-ar">⟵<br><small>סימון "השארות<br>לשנה הבאה"</small></div>
-      <div class="gd-box on">אותו גן<br><small>תשפ"ח · לא משובצת<br>בלי מסמך השארות</small></div>
+      <div class="gd-box on">אותו גן<br><small>תשפ"ח · לא משובצת<br>"ילדת השארות" בלי מסמך — השיבוץ חסום</small></div>
     </div></div>`;
 
   const illInstall = `<div class="gd-ill gd-phone"><div class="gd-screen">
@@ -4485,7 +4533,7 @@ function guideContent(){
           <b>4)</b> גנים חסרים <b>מאותו קמפוס ומאותו סוג חינוך</b> מוצעים לצירוף לקבוצה אחת (גילים שונים — מותר).
           <b>5)</b> פותחים קבוצה — והמונה "נפתחו / ניתן לפתוח עוד" מתעדכן מיד.
           <b>6)</b> משבצים צוות לקבוצה בלשונית "שיבוץ צוות" → "צהרונים". קבוצה מצורפת היא שיבוץ אחד.</li>
-        <li><b>תשלום ביטוח תלמידים</b> · <b>סיוע והעשרה</b> · <b>שונות</b> (גרושים/חוץ/השארות/אחר).</li>
+        <li><b>תשלום ביטוח תלמידים</b> · <b>סיוע והעשרה</b> · <b>שונות</b> (גרושים/חוץ/השארות/אחר). ב"ילדת השארות" נפתח מתחתיו הסימון <b>מסמך השארות</b> — <b>בלעדיו אי אפשר לשבץ אותה</b>.</li>
         <li><b>הערות</b> — טקסט חופשי בתוך התיק. ברשימת התלמידות מוצג רק <b>סימון</b> שיש הערה (<span class="gd-pill warn">📝 הערה</span>), בלי תוכן ההערה.</li>
         <li><b>🔎 בדיקת אחים/אחיות</b> — מאתר תיקים עם אותו שם משפחה + כתובת, לשיבוץ באותו קמפוס. לכל תוצאה יש כפתור <b>↩ פתיחת התיק</b>.</li>
         <li><b>🧭 בדיקת קרבה לגנים (חדש)</b> — מקטע מתקפל בתוך התיק, ממש מתחת ל"בדיקת אחים/אחיות": מסמנים אילו גנים לבדוק (מקובצים לפי קמפוס, עם חיווי מי כבר מלא) ולוחצים <b>"📏 בדיקת המרחקים"</b> — ומקבלים <b>כאן בתיק</b> טבלת מרחקים ממוינת מהקרוב לרחוק, בלי לפתוח את המפה הגדולה. עם גשר Google מוצג גם <b>מרחק וזמן הליכה</b> אמיתיים, והמיון לפיהם. אחרת מוצג <b>מרחק אווירי</b> (קו ישר) — ומתחת לטבלה מופיעה הסיבה המדויקת לכך. לחיצה על <b>"שבץ"</b> בוחרת את הגן בשדה "גן משובצת" (השמירה בכפתור <b>שמירה</b>).<br>אותה בדיקה זמינה גם בלי לפתוח את התיק — כפתור <b>🧭</b> בעמודת הגן בטבלת התלמידות.
@@ -4528,7 +4576,7 @@ function guideContent(){
       illFilter+
       `<ul>
         <li><b>שורת חיפוש</b> עם 🔎 — לפי שם או ת"ז.</li>
-        <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: <b>גן — אפשר לבחור כמה גנים יחד</b> (כולל <b>"ללא גן (הוצאו)"</b>; ריק = כל הגנים), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, <b>מאפיין</b> (השארות · צהרון · קייטנת חנוכה/ניסן/סוף שנה · ביטוח שולם / לא שולם · השארות לשנה הבאה · <b>בלי מספר זהות</b>), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים. <b>רשימת הגנים הנפתחת נסגרת בלחיצה בכל מקום אחר במסך</b> (או ב-Esc) — אין צורך ללחוץ שוב על הכותרת.</li>
+        <li><b>☰ סינון</b> — כפתור בקצה שורת החיפוש פותח את הסינון המתקדם: <b>גן — אפשר לבחור כמה גנים יחד</b> (כולל <b>"ללא גן (הוצאו)"</b>; ריק = כל הגנים), גיל (ריבוי), עיר, <b>רחוב</b>, קמפוס, מועד, חינוך, קלוט, <b>שיבוץ</b>, <b>ביטוח</b>, <b>מאפיין</b> (השארות · <b>השארות בלי מסמך</b> · צהרון · קייטנת חנוכה/ניסן/סוף שנה · ביטוח שולם / לא שולם · השארות לשנה הבאה · <b>בלי מספר זהות</b>), וסטטוס. כפתור <b>🧹 ניקוי</b> מאפס את כל הסינון בבת אחת. מספר קטן על הכפתור מציין כמה סינונים פעילים. <b>רשימת הגנים הנפתחת נסגרת בלחיצה בכל מקום אחר במסך</b> (או ב-Esc) — אין צורך ללחוץ שוב על הכותרת.</li>
         <li><b>לחיצה על שורה</b> פותחת את <b>התיק המקוצר בצד</b> (בגנים ובצוות — את הטופס המלא). לחיצה כפולה פותחת את התיק המלא.</li>
         <li><b>צ׳יפים של סינון פעיל</b> — מעל הטבלה מופיעה שורת צ׳יפים עם כל סינון שפעיל כרגע ("גיל 4", "לא קלוט בעירייה"…). ✕ על צ׳יפ מסיר את אותו סינון בלבד, ו<b>"נקה הכל"</b> מאפס את כולם — בלי לפתוח את חלון הסינון.</li>
         <li><b>מיון</b> — לחיצה על כותרת עמודה.</li>
@@ -4709,13 +4757,21 @@ function guideContent(){
       <h4 style="margin:14px 0 4px">השארות לשנה הבאה</h4>
       <p>דגל נפרד (בתיק / בעדכון קבוצתי / בייבוא) שמעביר את הילדה <b>מיד</b> לשנה הבאה, באותו גן, לא משובצת, בלי מסמך ההשארות.</p>`+
       illRetention+
-      `<div class="gd-tip">💡 הדגל נפרד מ"השארות" של השנה הנוכחית — כך ילדה שהייתה בהשארות השנה לא תעבור בטעות אם היא לא נשארת לשנה הבאה. ומכיוון שהיא "לא משובצת", קל לאשר סופית אחר כך את מי שבאמת נשארת.</div>` },
+      `<div class="gd-tip">💡 הדגל נפרד מ"השארות" של השנה הנוכחית — כך ילדה שהייתה בהשארות השנה לא תעבור בטעות אם היא לא נשארת לשנה הבאה. ומכיוון שהיא "לא משובצת", קל לאשר סופית אחר כך את מי שבאמת נשארת.</div>
+      <h4 style="margin:14px 0 4px">⛔ מסמך השארות — תנאי לשיבוץ</h4>
+      <p>בשנה החדשה הילדה שנשארת נפתחת מסומנת <b>"ילדת השארות"</b> ו<b>בלי "מסמך השארות"</b> — כי האישור עדיין לא הגיע. כל עוד המסמך אינו מסומן <b>אי אפשר לשבץ אותה</b>, ובכל ניסיון קופצת התראה שאומרת שהשיבוץ נחסם בגלל המסמך החסר.</p>
+      <ul>
+        <li><b>איפה מסמנים</b> — תיק הילדה → <b>שונות</b> → <b>ילדת השארות</b> → הסימון <b>מסמך השארות</b> שנפתח מתחתיו (ואפשר לצרף שם גם את הקובץ 📎).</li>
+        <li><b>איפה זה חוסם</b> — סימון "משובצת" בתיק, ההחלפה המהירה ברשימה, שיבוץ מהמפה ומ"בדיקת קרבה", שיבוץ מרוכז לגן, עדכון קבוצתי של "משובצת", השיבוץ האוטומטי לפי קרבה (הילדה מדווחת ב"לא ישובצו" עם הסיבה), פעולות העוזר החכם, ו<b>גם "שיבוץ מרכזי" מהתוכנה המרכזית</b>.</li>
+        <li><b>מה כן אפשר</b> — לרשום אותה לגן במצב <b>"ממתינה לשיבוץ"</b>. כך רואים לאן היא מיועדת, והשיבוץ הסופי נפתח ברגע שהמסמך מסומן.</li>
+        <li><b>איך מוצאים את כולן</b> — ברשימה הן מסומנות בתגית אדומה <b>"השארות · חסר מסמך"</b>, ובסינון → <b>מאפיין</b> יש <b>"השארות בלי מסמך"</b>. אותו מסנן קיים גם ביצוא ובתוכנה המרכזית.</li>
+      </ul>` },
 
     { icon:"⬆️⬇️", title:"ייבוא וייצוא", html:
       `<ul>
         <li><b>ייבוא</b> — <b>מקובץ אקסל (‎.xlsx‎ / ‎.xls‎) או CSV, או הדבקה ישירה מאקסל</b>; תיק לכל שורה לפי הכותרות, זיהוי כפילויות ותיקון ניידים. קובצי אקסל נקראים <b>ישירות</b> בכל מסכי הייבוא בתוכנה (הגיליון הראשון) — גם ‎.xlsx‎ וגם ‎.xls‎ הישן — בלי להמיר ל-CSV ובלי ספרייה חיצונית.</li>
         <li><b>ברירות המחדל של הייבוא</b> — "נרשמה על ידינו", "רשומות לצהרון", "דלג על ת"ז שכבר קיימת". <b>"סמן את כולם כקלוט בעירייה" כבוי כברירת מחדל</b> <span class="gd-pill warn">חדש</span> — <b>רק רשימת הקלוטות של העירייה קובעת מי קלוטה</b>. סימון גורף כאן יוצר קלוטות שאינן בקובץ העירייה, והן יצוצו כחריגה ("מסומנות אצלנו ואינן בקובץ") בהעלאה הבאה. עמודת "קלוט בעירייה" שבקובץ עצמו ממשיכה לגבור, לכל שורה בנפרד.</li>
-        <li><b>ייצוא</b> — לאקסל (CSV) ולהדפסה/PDF, עם <b>בחירת שדות</b> ולפי הסינון — כולל סינון לפי <b>מאפיין</b> (השארות · צהרון · קייטנות · ביטוח · <b>בלי מספר זהות</b>), אותה הגדרה בדיוק של מסך התלמידות. יצוא התלמידות נפתח מכפתור <b>📤 יצוא רשימות</b> בלשונית התלמידות; קיים גם לגנים ולשיבוץ הצוות.</li>
+        <li><b>ייצוא</b> — לאקסל (CSV) ולהדפסה/PDF, עם <b>בחירת שדות</b> ולפי הסינון — כולל סינון לפי <b>מאפיין</b> (השארות · <b>השארות בלי מסמך</b> · צהרון · קייטנות · ביטוח · <b>בלי מספר זהות</b>), אותה הגדרה בדיוק של מסך התלמידות. יצוא התלמידות נפתח מכפתור <b>📤 יצוא רשימות</b> בלשונית התלמידות; קיים גם לגנים ולשיבוץ הצוות. <b>בכל יצוא של רשימת תלמידות מתווסף טור <span dir="ltr">"מס'"</span> ראשון</b> — מספור רץ מ-1, לפי סדר השורות שבמסמך: בתצוגה המקדימה, ב<b>אקסל הצבעוני</b>, ב<b>CSV</b>, ב<b>הדפסה/PDF</b>, ב<b>שיתוף המסמך</b> ובקבצים שמפיק העוזר החכם.</li>
         <li><b>ייצוא תלמידות (רשימות)</b> — בין השדות גם <b>שם הגן</b> (הגן המשובץ) ו<b>סמל גן</b>. <b>ברירת המחדל היא מיון "לפי גן"</b> — הרשימה יוצאת לפי סדר הגנים (שם הגן ואז גיל, למשל אבני נזר 3, 4, 5) ובתוך כל גן לפי א־ב; בבורר <b>מיון</b> אפשר לעבור ל"שם משפחה". כפתור <b>🎨 אקסל צבעוני</b> מפיק אקסל שבו <b>שם הגן והגיל צבועים לפי צבע הגיל</b> (3 ירוק · 4 סגול · 5 צהוב).</li>
         <li><b>ייצוא גנים</b> — מלשונית הגנים (📤 ייצוא / הדפסה). בין השדות לבחירה גם <b>סמל הגן</b> ו<b>גננת משובצת</b> (מהשיבוץ השנתי). הרשימה יוצאת <b>מסודרת לפי שם הגן ואז לפי גיל</b> (למשל אבני נזר 3, 4, 5). כפתור <b>🎨 אקסל צבעוני</b> מפיק קובץ אקסל שבו <b>שם הגן והגיל צבועים לפי צבע הגיל</b> (3 ירוק · 4 סגול · 5 צהוב; דו-גילאי לפי הגיל הראשון).</li>
         <li><b>יצוא ממותג</b> — בהדפסה/PDF מופיע <b>לוגו הרשת</b> בראש הדף, ומתחתיו <b>פרטי המקום</b> לפי הבחירה (למשל שם הגן · סמל · כתובת).</li>
@@ -4770,7 +4826,13 @@ function guideContent(){
 
     { icon:"📄", title:"מסמכים ותבניות", html:
       `<ul>
-        <li><b>📋 רשימת גן</b>: בוחרים גן ולוחצים <b>הפקה והדפסה</b> או <b>📎 שיתוף מסמך</b>. נוצרת רשימת התלמידות בגן (שם, ת"ז, גיל, טלפונים, כתובת) עם כותרת ממותגת (הלוגו, שם הרשת ופרטי הגן).</li>
+        <li><b>📋 רשימת גן</b> — רשימת התלמידות בגן, עם כותרת ממותגת (הלוגו, שם הרשת ופרטי הגן):
+          <ul>
+            <li><b>אפשר לבחור כמה גנים יחד</b> — בורר הגנים הוא רשימה עם סימונים ("בחר/י הכל" / "ניקוי"). בהדפסה ובשיתוף כל גן מקבל <b>בלוק משלו</b> עם כותרת ומספור שמתחיל מ-1; בייצוא לאקסל נוספת עמודת <b>גן</b> (צבועה לפי גיל הגן ב"אקסל צבעוני").</li>
+            <li><b>תבנית העמודות</b> — ברירת המחדל היא ה<b>תבנית הקבועה</b>: <b>מספור · מספר זהות · שם משפחה · שם פרטי · כתובת · מספר בניין · טלפון · טלפון הורה</b> (הנייד של האם, ובהיעדרו של האב). יש גם <b>תבנית מורחבת</b> — משפחה · פרטי · ת"ז · גיל · טלפון · נייד · כתובת.</li>
+            <li><b>ארבע דרכי הפקה</b>: <b>🖨️ הפקה והדפסה</b> · <b>🎨 אקסל צבעוני</b> · <b>⬇️ ייצוא לאקסל (CSV)</b> · <b>📎 שיתוף מסמך</b> — בדיוק כמו במצבת השיבוץ שמתחת.</li>
+            <li>גן שנבחר ואין בו תלמידות פשוט מדולג, ומצוין בסוף המסמך.</li>
+          </ul></li>
         <li><b>🧩 מצבת שיבוץ צוות</b> — בשתי תבניות:
           <ul>
             <li><b>🏢 למשרד הראשי</b> — כל הגנים, מסודר לפי גן עם כל אנשי הצוות, ימים ושעות שבועיות, <b>צבע לכל תפקיד + מקרא</b>. זמין ב<b>🖨️ הפקה והדפסה</b>, ב<b>📎 שיתוף מסמך</b>, וב<b>🎨 אקסל צבעוני</b> — טבלה אחת ב<b>שורות רצות</b>: תחילה טורי פרטי הגן (שם גננת · גיל · סמל · רחוב · מספר · מס' תלמידות — ללא צבע, פעם אחת לכל גן), ואז טורי התפקיד (תפקיד · שם · טלפון · ימים/תקופה · שעות) <b>צבועים בצבע התפקיד</b>.</li>
@@ -5669,6 +5731,8 @@ function ganFilterLabel(){ const sel=stuFilter.gans||[];
 /* מאפייני סינון מיוחדים לתלמידה — לסינון + סיכום מותנה (סעיף השארות/צהרון/קייטנות) */
 const STU_FLAGS = {
   retention:    { label:"השארות",        test:s=>!!(s.special && s.special.retention) },
+  /* ילדות השארות שהאישור שלהן טרם הגיע — אלה שהשיבוץ שלהן חסום */
+  retentionNoDoc:{ label:"השארות בלי מסמך", test:s=>retentionNeedsDoc(s) },
   tzaharon:     { label:"צהרון",          test:s=>!!(s.programs && s.programs.tzaharon) },
   campHanukkah: { label:"קייטנת חנוכה",   test:s=>!!(s.programs && s.programs.campHanukkah) },
   campNisan:    { label:"קייטנת ניסן",    test:s=>!!(s.programs && s.programs.campNisan) },
@@ -5710,9 +5774,11 @@ const BULK_FIELDS = [
 function applyBulk(fieldKey, val){
   const f=BULK_FIELDS.find(x=>x.key===fieldKey); if(!f){ toast("בחר/י שדה"); return; }
   const ids=[...bulkSel]; if(!ids.length){ toast("לא סומנו תלמידות"); return; }
-  let n=0, transferred=0, failed=0, blocked=0, full=0;
+  let n=0, transferred=0, failed=0, blocked=0, full=0, noDoc=0;
   ids.forEach(id=>{ const s=DB.students.find(x=>x.id===id); if(!s) return;
     if(!canEditRec(s)){ blocked++; return; } // הרשאת עריכה לפי חינוך
+    // ילדת השארות בלי מסמך השארות — אין סימון "משובצת", בגן מלא או ריק
+    if(f.key==='placed' && val && retentionNeedsDoc(s)){ noDoc++; return; }
     // רף שיבוץ (סעיף 2): סימון "משובצת" לא יעבור את הרף של הגן
     if(f.key==='placed' && val && s.ganId && s.placed===false && !assignGate(s.ganId, s, true)){ full++; return; }
     const before = f.retention ? !!s.retentionNext : null;
@@ -5720,7 +5786,7 @@ function applyBulk(fieldKey, val){
     if(f.retention && val && !before){ const r=ensureRetentionTransfer(s); r.ok?transferred++:failed++; }
   });
   save(); bulkSel.clear(); renderStuTable();
-  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}${blocked?` · ${blocked} דולגו (אין הרשאת חינוך)`:''}${full?` · ${full} לא שובצו (הגן הגיע לרף השיבוץ)`:''}`);
+  toast(`עודכנו ${n} תלמידות · ${f.label}: ${val?'כן':'לא'}${transferred?` · ${transferred} הועברו להשארות`:''}${failed?` · ${failed} לא הועברו`:''}${blocked?` · ${blocked} דולגו (אין הרשאת חינוך)`:''}${full?` · ${full} לא שובצו (הגן הגיע לרף השיבוץ)`:''}${noDoc?` · ${noDoc} לא שובצו (ילדות השארות בלי מסמך השארות)`:''}`);
 }
 
 /* ============================================================
@@ -6029,7 +6095,9 @@ function specialBadges(s){
   const b=[]; const sp=s.special||{};
   if(sp.divorced) b.push('<span class="pill warn">גרושים</span>');
   if(sp.outOfCity) b.push('<span class="pill warn">ילדת חוץ</span>');
-  if(sp.retention) b.push('<span class="pill warn">השארות</span>');
+  if(sp.retention) b.push(sp.retentionDoc
+    ? '<span class="pill warn">השארות</span>'
+    : '<span class="pill no" title="חסר מסמך השארות — אי אפשר לשבץ עד שיסומן">השארות · חסר מסמך</span>');
   if(sp.other) b.push('<span class="pill warn">'+(sp.otherText?esc(sp.otherText):'אחר')+'</span>');
   const sup=s.support||{}; // תגי סיוע (סעיף 15)
   SUPPORT_TYPES.forEach(([k,lbl])=>{ if(sup[k]) b.push(`<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">${esc(lbl)}</span>`); });
@@ -6290,10 +6358,12 @@ function openBulkAssignGan(){
   $("#bag-go").onclick=()=>{
     const g=ganById($("#bag-gan").value); if(!g) return;
     const markPlaced=$("#bag-placed").checked;
-    let n=0, blocked=0, full=0;
+    let n=0, blocked=0, full=0, noDoc=0;
     ids.forEach(id=>{
       const st=DB.students.find(x=>x.id===id); if(!st) return;
       if(!canEditRec(st)){ blocked++; return; }
+      /* ילדת השארות בלי מסמך השארות — אין שיבוץ סופי (רישום בלבד מותר) */
+      if(markPlaced && retentionNeedsDoc(st)){ noDoc++; return; }
       if(markPlaced && !assignGate(g.id, st, true)){ full++; return; }
       st.ganId=g.id; st.campus=ganCampus(g.id)||st.campus||"";
       const ages=ganAges(g); if(ages.length===1) st.age=ages[0];
@@ -6301,7 +6371,7 @@ function openBulkAssignGan(){
       n++;
     });
     save(); closeModal(); bulkSel.clear(); renderStuTable();
-    toast(`שובצו ${n} ל${ganName(g.id)}`+(full?` · ${full} לא שובצו (הגן הגיע לרף)`:"")+(blocked?` · ${blocked} דולגו (אין הרשאה)`:""));
+    toast(`שובצו ${n} ל${ganName(g.id)}`+(full?` · ${full} לא שובצו (הגן הגיע לרף)`:"")+(noDoc?` · ${noDoc} ללא מסמך השארות`:"")+(blocked?` · ${blocked} דולגו (אין הרשאה)`:""));
   };
 }
 function renderBulkBar(list){
@@ -6608,6 +6678,8 @@ function openStudent(s){
     set("sp-approvalFatherSig","approvalFatherSig"); set("sp-approvalMotherSig","approvalMotherSig");
     set("sp-paymentArrangement","paymentArrangement"); set("sp-retentionDoc","retentionDoc");
     const ot=$("#sp-otherText"); if(ot) s.special.otherText=ot.value;
+    /* סימון/ביטול של "מסמך השארות" משנה מיד את חיווי השיבוץ שליד בורר הגן */
+    try{ ganRoomHint(); }catch(e){}
   }
   function renderSpecialBlocks(){
     const host=$("#special-blocks"); if(!host) return;
@@ -6700,10 +6772,14 @@ function openStudent(s){
     if(ages.length===1){ ageSel.value=ages[0]; if(hint) hint.textContent="הגיל נקבע אוטומטית לפי הגן ("+ages[0]+")."; }
     else if(ages.length>=2){ if(!ages.includes(ageSel.value)) ageSel.value=""; if(hint) hint.textContent="גן דו-גילאי — בחר/י גיל: "+ages.join(" / "); }
   }
-  /* חיווי חי של רף השיבוץ לגן הנבחר (סעיף 2) */
+  /* חיווי חי של רף השיבוץ לגן הנבחר (סעיף 2) + חסימת השארות בלי מסמך */
   function ganRoomHint(){
     const h=$("#s-gan-room"); if(!h) return;
-    const g=ganById(($("#s-ganId")||{}).value||""); if(!g){ h.textContent=""; h.style.color=""; return; }
+    if(retentionNeedsDoc(s)){
+      h.textContent='⛔ ילדת השארות בלי מסמך השארות — אי אפשר לשמור כ"משובצת". לסמן "מסמך השארות" במקטע "שונות" כשהאישור מגיע.';
+      h.style.color="var(--bad)"; h.style.fontWeight="700"; return;
+    }
+    const g=ganById(($("#s-ganId")||{}).value||""); if(!g){ h.textContent=""; h.style.color=""; h.style.fontWeight=""; return; }
     const cap=ganAssignCap(g);
     if(!cap){ h.textContent="לא הוגדר רף שיבוץ לגן זה."; h.style.color=""; return; }
     const cnt=ganAssignedCount(g.id, s.id), room=cap-cnt;
@@ -6848,7 +6924,7 @@ function openStudent(s){
     /* רף שיבוץ (סעיף 2) — חוסם *שיבוץ סופי* מעבר לרף. רישום (בלי "משובצת") אינו מוגבל. */
     if(data.ganId && data.placed!==false){
       const gate=canAssignStudent(ganById(data.ganId), data);
-      if(!gate.ok){ toast(gate.msg); const h=$("#s-gan-room"); if(h){ h.scrollIntoView({block:"center"}); } return; }
+      if(!gate.ok){ toast(gate.msg, gate.retention ? 7000 : undefined); const h=$("#s-gan-room"); if(h){ h.scrollIntoView({block:"center"}); } return; }
     }
     const i=DB.students.findIndex(x=>x.id===s.id);
     const hadRetention = i>=0 ? !!DB.students[i].retentionNext : false;
@@ -8589,6 +8665,10 @@ function sibKey(s){
    מחזיר { plan:[{s,g,km}], skipped:[{s,why}], caps:Map(ganId→{cap,used}) } */
 function autoAssignPlan(students, gans, opts){
   opts=opts||{};
+  /* ילדות השארות בלי מסמך השארות יורדות מהמאגר לפני כל חישוב — כך הן
+     מדווחות ברשימת "לא ישובצו" עם הסיבה, ולא תופסות מקום בגן. */
+  const noRetDoc=(students||[]).filter(retentionNeedsDoc);
+  students=(students||[]).filter(s=>!retentionNeedsDoc(s));
   const caps=new Map();
   gans.forEach(g=>{
     const cap=opts.respectCap===false ? 0 : ganAssignCap(g);
@@ -8601,6 +8681,7 @@ function autoAssignPlan(students, gans, opts){
   const take=id=>{ const c=caps.get(id); if(c) c.used++; };
 
   const plan=[], skipped=[];
+  noRetDoc.forEach(s=>skipped.push({ s, why:"ילדת השארות בלי מסמך השארות" }));
   /* מועמדים לתלמידה — גנים תואמים, ממוינים לפי מרחק אווירי */
   const candsFor=s=> gans
     .filter(g=> eduLabel(g)===eduLabel(s) && (opts.matchAge===false || ageFits(s,g)) && g.geo && g.geo.lat!=null)
@@ -10223,19 +10304,102 @@ function printDoc(title, bodyHtml){
   w.document.write(`<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${esc(title)}</title>${labFontTags()}${style}</head><body>${bodyHtml}</body></html>`);
   w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 350);
 }
-/* רשימת גן — טבלת תלמידות הגן להדפסה/שיתוף לגננת (יצוא ממותג עם התאמה לעמוד אחד) */
-function makeGanRoster(ganId, opts){
-  opts=opts||{};
-  const g=ganById(ganId); if(!g){ toast("יש לבחור גן"); return; }
-  const list = studentsOfYear().filter(s=>!s.finished && s.ganId===ganId)
+/* ============================================================
+   רשימת גן — תבניות העמודות
+   ------------------------------------------------------------
+   "תבנית קבועה" היא הרשימה שמבקשים בפועל מהגננות: מספור, מספר זהות,
+   משפחה, פרטי, כתובת, מספר בניין, טלפון וטלפון של אחד ההורים. היא ברירת
+   המחדל בכל מקום שמפיק רשימת גן. "תבנית מורחבת" שומרת את הסדר הקודם
+   (גיל ושני מספרי הטלפון) למי שהתרגלה אליו.
+   טור המספור עצמו אינו ברשימה — הוא נוסף תמיד ראשון ע"י withSeq.
+   ============================================================ */
+const GAN_ROSTER_TEMPLATES = {
+  fixed: { label:'תבנית קבועה (מספור · מספר זהות · משפחה · פרטי · כתובת · בניין · טלפון · טלפון הורה)',
+    cols:[ ["מספר זהות", s=>s.tz||""],
+           ["שם משפחה",  s=>s.lastName||""],
+           ["שם פרטי",   s=>s.firstName||""],
+           ["כתובת",     s=>s.street||""],
+           ["מספר בניין",s=>s.building||""],
+           ["טלפון",     s=>s.phone||""],
+           ["טלפון הורה",s=>s.momMobile||s.dadMobile||s.mobile||""] ] },
+  full:  { label:'תבנית מורחבת (מספור · משפחה · פרטי · ת"ז · גיל · טלפון · נייד · כתובת)',
+    cols:[ ["שם משפחה",  s=>s.lastName||""],
+           ["שם פרטי",   s=>s.firstName||""],
+           ['ת"ז',       s=>s.tz||""],
+           ["גיל",       s=>s.age||""],
+           ["טלפון",     s=>s.phone||""],
+           ["נייד",      s=>s.momMobile||s.dadMobile||s.mobile||""],
+           ["כתובת",     s=>[s.street,s.building].filter(Boolean).join(" ")] ] }
+};
+function ganRosterTpl(key){ return GAN_ROSTER_TEMPLATES[key] || GAN_ROSTER_TEMPLATES.fixed; }
+/* בלוק אחד — גן, כותרות, שורות (בלי המספור) ורשימת התלמידות */
+function ganRosterBlock(ganId, tplKey){
+  const g=ganById(ganId); if(!g) return null;
+  const T=ganRosterTpl(tplKey);
+  const list=studentsOfYear().filter(s=>!s.finished && s.ganId===ganId)
     .sort((a,b)=>(a.lastName||"").localeCompare(b.lastName||"","he") || (a.firstName||"").localeCompare(b.firstName||"","he"));
-  if(!list.length){ toast("אין תלמידות בגן זה"); return; }
-  const headers=["#","שם משפחה","שם פרטי",'ת"ז',"גיל","טלפון","נייד","כתובת"];
-  const rows=list.map((s,i)=>[i+1, s.lastName, s.firstName, s.tz, s.age, s.phone, s.mobile, [s.street,s.building].filter(Boolean).join(" ")]);
-  const rep={ title:"רשימת גן — "+ganName(ganId),
-    subtitle:[ganPlaceLine(g), g.teacherName?("גננת: "+g.teacherName):"", "שנת "+DB.activeYear, list.length+" תלמידות"].filter(Boolean).join(" · "),
-    headers, rows, onePage:!!opts.onePage, fileName:"רשימת גן "+ganName(ganId) };
-  if(opts.share) shareReportDoc(rep); else printReport(rep);
+  return { g, list, headers:T.cols.map(c=>c[0]), rows:list.map(s=>T.cols.map(c=>c[1](s))) };
+}
+function ganRosterSub(g, n){
+  return [ganPlaceLine(g), g.teacherName?("גננת: "+g.teacherName):"", "שנת "+DB.activeYear, n+" תלמידות"]
+    .filter(Boolean).join(" · ");
+}
+/* רשימת גן — הדפסה / שיתוף / אקסל, לגן אחד או לכמה גנים יחד.
+   ganIds: מזהה בודד או מערך. opts: { tpl, onePage, share, kind:'print'|'share'|'csv'|'xls' } */
+function makeGanRoster(ganIds, opts){
+  opts=opts||{};
+  const kind = opts.kind || (opts.share ? "share" : "print");
+  const ids=(Array.isArray(ganIds)?ganIds:[ganIds]).filter(Boolean);
+  if(!ids.length){ toast("יש לבחור גן"); return; }
+  const all=ids.map(id=>ganRosterBlock(id, opts.tpl)).filter(Boolean);
+  const blocks=all.filter(b=>b.rows.length);
+  if(!blocks.length){ toast(ids.length>1?"אין תלמידות בגנים שנבחרו":"אין תלמידות בגן זה"); return; }
+  const multi=blocks.length>1;
+  const total=blocks.reduce((n,b)=>n+b.rows.length,0);
+  const empty=all.length-blocks.length;
+  const title = multi ? ("רשימות גן — "+blocks.length+" גנים") : ("רשימת גן — "+ganName(blocks[0].g.id));
+  const subtitle = multi
+    ? ["שנת "+DB.activeYear, blocks.length+" גנים", total+" תלמידות"].join(" · ")
+    : ganRosterSub(blocks[0].g, blocks[0].rows.length);
+  const fileBase = multi ? ("רשימות גן "+DB.activeYear) : ("רשימת גן "+ganName(blocks[0].g.id));
+
+  /* --- אקסל: טבלה אחת. כשנבחרו כמה גנים נוסף טור "גן" (צבוע לפי גיל הגן),
+         והמספור מתחיל מחדש בכל גן — בדיוק כמו ברשימה המודפסת. --- */
+  if(kind==="csv" || kind==="xls"){
+    const headers=[SEQ_LABEL].concat(multi?["גן"]:[]).concat(blocks[0].headers);
+    const rows=[], inks=[];
+    blocks.forEach(b=>{ b.rows.forEach((r,i)=>{
+      rows.push([i+1].concat(multi?[ganName(b.g.id)]:[]).concat(r));
+      inks.push(ganAgeInk(b.g)); }); });
+    if(kind==="csv"){
+      const csv=[headers.map(csvCell).join(",")].concat(rows.map(r=>r.map(csvCell).join(","))).join("\r\n");
+      downloadBlob(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}), safeFileName(fileBase)+".csv");
+      toast("קובץ אקסל נוצר"+(empty?` · ${empty} גנים בלי תלמידות דולגו`:""));
+    } else {
+      const cellInk=(ri,ci)=> multi && ci===1 ? (inks[ri]||"") : "";
+      tableToXls(safeFileName(fileBase)+".xls", headers, rows, { title:title+" · "+subtitle, cellInk });
+      toast("קובץ אקסל צבעוני נוצר"+(empty?` · ${empty} גנים בלי תלמידות דולגו`:""));
+    }
+    return;
+  }
+
+  /* --- הדפסה / שיתוף: גן אחד = טבלה; כמה גנים = בלוק לכל גן, כל אחד
+         עם המספור שלו מ-1 (‎.gan-block‎ שומר על גן שלם באותו עמוד). --- */
+  const rep={ title, subtitle, onePage:!!opts.onePage, fileName:fileBase,
+    footNote: empty ? (empty+" גנים שנבחרו הם בלי תלמידות ולא נכללו") : "" };
+  if(multi){
+    rep.bodyHtml = blocks.map(b=>{
+      const P=withSeq(b.headers, b.rows);
+      return `<div class="gan-block"><h3>${esc(ganName(b.g.id))}</h3>
+        <div class="place">${esc(ganRosterSub(b.g, b.rows.length))}</div>
+        <table><thead><tr>${P.headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
+        <tbody>${P.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    }).join("");
+  } else {
+    const P=withSeq(blocks[0].headers, blocks[0].rows);
+    rep.headers=P.headers; rep.rows=P.rows;
+  }
+  if(kind==="share") shareReportDoc(rep); else printReport(rep);
 }
 
 /* ============================================================
@@ -10425,16 +10589,31 @@ function openMoeHeaderForm(){
 function viewTemplates(root){
   const gans = eduScope(DB.gans.filter(g=>g.active)).slice()
     .sort((a,b)=>(ganName(a.id)).localeCompare(ganName(b.id),"he"));
-  const ganOpts = gans.map(g=>`<option value="${g.id}">${esc(ganName(g.id))}${g.ganSymbol?` · ${esc(g.ganSymbol)}`:""}</option>`).join("");
   root.innerHTML = `
   <div class="panel">
     <div class="section-title" style="margin-bottom:6px"><h2>מסמכים ותבניות</h2></div>
     <div class="sub">הפקת מסמכים מוכנים להדפסה (או שמירה כ-PDF), ממולאים אוטומטית מהנתונים העדכניים.</div>
     <fieldset><legend>📋 רשימת גן</legend>
-      <div class="hint" style="margin-bottom:10px">רשימת התלמידות בגן — שם, ת"ז, גיל, טלפונים וכתובת — להדפסה לגננת.</div>
+      <div class="hint" style="margin-bottom:10px">רשימת התלמידות בגן — להדפסה לגננת, לשיתוף או לאקסל. אפשר לבחור <b>כמה גנים יחד</b>: כל גן מקבל רשימה משלו, והמספור בכל אחת מתחיל מ-1.</div>
       <div class="row" style="align-items:end;gap:10px;flex-wrap:wrap">
-        <div class="field" style="min-width:220px"><label>גן</label><select id="tpl-roster-gan"><option value="">— בחר/י גן —</option>${ganOpts}</select></div>
+        <div class="field" style="min-width:240px"><label>גן (אפשר לבחור כמה)</label>
+          <details class="msel" id="tpl-roster-gan">
+            <summary id="tpl-roster-sum">— בחר/י גן —</summary>
+            <div class="msel-menu">
+              <div class="msel-tools">
+                <button type="button" class="btn ghost sm" id="tpl-roster-all">בחר/י הכל</button>
+                <button type="button" class="btn ghost sm" id="tpl-roster-none">ניקוי</button>
+              </div>
+              ${gans.map(g=>`<label class="msel-opt"><input type="checkbox" data-rgan="${esc(g.id)}"> ${esc(ganName(g.id))}${g.ganSymbol?` <span class="hint">${esc(g.ganSymbol)}</span>`:""}</label>`).join("")}
+            </div>
+          </details></div>
+        <div class="field" style="min-width:260px"><label>תבנית העמודות</label>
+          <select id="tpl-roster-tpl">${Object.entries(GAN_ROSTER_TEMPLATES).map(([k,t])=>`<option value="${esc(k)}">${esc(t.label)}</option>`).join("")}</select></div>
+      </div>
+      <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px">
         <button class="btn" id="tpl-roster-go">🖨️ הפקה והדפסה</button>
+        <button class="btn ghost" id="tpl-roster-xls">🎨 אקסל צבעוני</button>
+        <button class="btn ghost" id="tpl-roster-csv">⬇️ ייצוא לאקסל (CSV)</button>
         <button class="btn ghost" id="tpl-roster-share">📎 שיתוף מסמך</button>
         <label class="check" style="align-self:center"><input type="checkbox" id="tpl-roster-onepage"> התאם לעמוד אחד</label>
       </div>
@@ -10462,8 +10641,23 @@ function viewTemplates(root){
     </fieldset>
     <div class="note">💡 בחלון ההדפסה שנפתח אפשר לבחור מדפסת אמיתית או "שמירה כ-PDF" (Save as PDF) כדי לשמור קובץ.</div>
   </div>`;
-  $("#tpl-roster-go").onclick=()=>{ const gid=$("#tpl-roster-gan").value; if(!gid){ toast("יש לבחור גן"); return; } makeGanRoster(gid, { onePage:$("#tpl-roster-onepage").checked }); };
-  $("#tpl-roster-share").onclick=()=>{ const gid=$("#tpl-roster-gan").value; if(!gid){ toast("יש לבחור גן"); return; } makeGanRoster(gid, { onePage:$("#tpl-roster-onepage").checked, share:true }); };
+  /* בורר הגנים המרובה — אותו רכיב של סינון התלמידות (details.msel) */
+  const rosterBox=$("#tpl-roster-gan");
+  const rosterIds=()=>[...rosterBox.querySelectorAll("input[data-rgan]:checked")].map(cb=>cb.dataset.rgan);
+  const rosterSum=()=>{ const sel=rosterIds(); const sum=$("#tpl-roster-sum"); if(!sum) return;
+    sum.textContent = !sel.length ? "— בחר/י גן —" : (sel.length===1 ? ganName(sel[0]) : sel.length+" גנים נבחרו"); };
+  rosterBox.querySelectorAll("input[data-rgan]").forEach(cb=> cb.onchange=rosterSum);
+  $("#tpl-roster-all").onclick=()=>{ rosterBox.querySelectorAll("input[data-rgan]").forEach(cb=>cb.checked=true); rosterSum(); };
+  $("#tpl-roster-none").onclick=()=>{ rosterBox.querySelectorAll("input[data-rgan]").forEach(cb=>cb.checked=false); rosterSum(); };
+  const rosterRun=kind=>{
+    const ids=rosterIds();
+    if(!ids.length){ toast("יש לבחור גן אחד לפחות"); return; }
+    makeGanRoster(ids, { kind, tpl:$("#tpl-roster-tpl").value, onePage:$("#tpl-roster-onepage").checked });
+  };
+  $("#tpl-roster-go").onclick=()=>rosterRun("print");
+  $("#tpl-roster-share").onclick=()=>rosterRun("share");
+  $("#tpl-roster-csv").onclick=()=>rosterRun("csv");
+  $("#tpl-roster-xls").onclick=()=>rosterRun("xls");
   $("#tpl-hq-print").onclick=()=>makeAsgMainOffice({ onePage:$("#tpl-hq-onepage").checked });
   $("#tpl-hq-xls").onclick=makeAsgMainOfficeXls;
   $("#tpl-hq-share").onclick=()=>makeAsgMainOffice({ onePage:$("#tpl-hq-onepage").checked, share:true });
@@ -13227,9 +13421,10 @@ function viewExport(root){
     const out=$("#x-out");
     if(!C.length){ out.innerHTML=`<div class="note">בחר/י לפחות שדה אחד לייצוא.</div>`; return rows; }
     if(!rows.length){ out.innerHTML=`<div class="empty">אין תלמידות התואמות לסינון.</div>`; return rows; }
-    out.innerHTML=`<div class="table-wrap"><table><thead><tr>${C.map(c=>`<th>${esc(c[1])}</th>`).join("")}</tr></thead>
-      <tbody>${rows.map(s=>`<tr>${C.map(c=>`<td>${esc(c[2](s)??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
-      <div class="hint">${rows.length} שורות · ${C.length} עמודות.</div>`;
+    const P=withSeq(C.map(c=>c[1]), rows.map(s=>C.map(c=>c[2](s)??"")));
+    out.innerHTML=`<div class="table-wrap"><table><thead><tr>${P.headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
+      <tbody>${P.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c??"")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      <div class="hint">${rows.length} שורות · ${P.headers.length} עמודות (כולל טור המספור).</div>`;
     return rows;
   };
   const rerenderCols=()=>{ root.querySelectorAll(".x-col").forEach(cb=>cb.checked=exportSel.has(cb.value)); preview(); };
@@ -13244,10 +13439,12 @@ function viewExport(root){
     const rows=gather(), C=cols();
     if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
     if(!rows.length){ toast("אין נתונים לייצוא"); return; }
-    // צביעת הטקסט של עמודות "גן" ו"גיל" בלבד — לפי צבע גיל הגן של כל תלמידה
-    const inkCols=new Set(); C.forEach((c,i)=>{ if(c[0]==='gan'||c[0]==='age') inkCols.add(i); });
+    // צביעת הטקסט של עמודות "גן" ו"גיל" בלבד — לפי צבע גיל הגן של כל תלמידה.
+    // המדדים מוזזים ב-1 כי טור המספור נוסף בראש.
+    const inkCols=new Set(); C.forEach((c,i)=>{ if(c[0]==='gan'||c[0]==='age') inkCols.add(i+1); });
     const cellInk=(ri,ci)=> inkCols.has(ci) ? ganAgeInk(ganById(rows[ri].ganId)||{}) : "";
-    tableToXls(`תלמידות_${DB.activeYear}.xls`, C.map(c=>c[1]), rows.map(s=>C.map(c=>c[2](s))),
+    const X=withSeq(C.map(c=>c[1]), rows.map(s=>C.map(c=>c[2](s))));
+    tableToXls(`תלמידות_${DB.activeYear}.xls`, X.headers, X.rows,
       { title:"רשימת תלמידות · "+DB.activeYear, cellInk });
     toast("קובץ אקסל צבעוני נוצר");
   };
@@ -13255,7 +13452,8 @@ function viewExport(root){
     const rows=gather(); const C=cols();
     if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
     if(!rows.length){ toast("אין נתונים לייצוא"); return; }
-    const csv=[C.map(c=>c[1]).join(",")].concat(rows.map(s=>C.map(c=>csvCell(c[2](s))).join(","))).join("\r\n");
+    const X=withSeq(C.map(c=>c[1]), rows.map(s=>C.map(c=>c[2](s))));
+    const csv=[X.headers.map(csvCell).join(",")].concat(X.rows.map(r=>r.map(csvCell).join(","))).join("\r\n");
     const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"});
     downloadBlob(blob, `תלמידות_${DB.activeYear}.csv`); toast("קובץ אקסל נוצר");
   };
@@ -13264,19 +13462,34 @@ function viewExport(root){
     if(!C.length){ toast("בחר/י לפחות שדה אחד"); return; }
     if(!rows.length){ toast("אין נתונים"); return; }
     const g=DB.gans.find(x=>x.id===$("#x-gan").value);
+    const X=withSeq(C.map(c=>c[1]), rows.map(s=>C.map(c=>c[2](s))));
     printReport({ title:"רשימת תלמידות"+(g?" · "+ganName(g.id):""), subtitle:subtitleOf(),
-      headers:C.map(c=>c[1]), rows:rows.map(s=>C.map(c=>c[2](s))),
+      headers:X.headers, rows:X.rows,
       onePage:$("#x-onepage").checked, footNote:rows.length+" תלמידות · שנת "+DB.activeYear });
   };
   $("#x-mail").onclick=()=>{
     const rows=gather(), C=cols();
     if(!C.length||!rows.length){ toast("אין נתונים לשיתוף"); return; }
     const g=DB.gans.find(x=>x.id===$("#x-gan").value);
+    const X=withSeq(C.map(c=>c[1]), rows.map(s=>C.map(c=>c[2](s))));
     shareReportDoc({ title:"רשימת תלמידות"+(g?" · "+ganName(g.id):""), subtitle:subtitleOf(),
-      headers:C.map(c=>c[1]), rows:rows.map(s=>C.map(c=>c[2](s))),
+      headers:X.headers, rows:X.rows,
       onePage:$("#x-onepage").checked, fileName:"רשימת תלמידות "+DB.activeYear });
   };
   preview();
+}
+/* ============================================================
+   מספור רץ ביצוא רשימות התלמידות
+   ------------------------------------------------------------
+   כל יצוא של רשימת תלמידות — תצוגה מקדימה, אקסל צבעוני, CSV, הדפסה/PDF
+   ושיתוף מסמך — מקבל טור ראשון של מספור, 1 ומעלה, לפי סדר השורות שבמסמך
+   (כלומר מתחיל מהתלמידה הראשונה שברשימה, אחרי המיון והסינון). הטור אינו
+   ניתן לכיבוי: הוא נועד לספירה ולסימון ידני על הדף.
+   ============================================================ */
+const SEQ_LABEL = "מס'";
+function withSeq(headers, rows){
+  return { headers:[SEQ_LABEL].concat(headers||[]),
+           rows:(rows||[]).map((r,i)=>[i+1].concat(r)) };
 }
 function csvCell(v){ v=String(v??""); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function downloadBlob(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500); }
@@ -14473,10 +14686,12 @@ function aiDocSpec(a){
 /* בניית הקובץ בפועל והעברתו ליעד — הורדה למחשב, או חלון הדפסה ל-PDF.
    הקובץ נבנה ויורד בדפדפן עצמו: הנתונים אינם עוברים בשום שרת. */
 function aiDocDeliver(spec){
-  const headers=spec.cols.map(c=>c[1]);
-  const rows=spec.rows.map(r=>spec.cols.map(c=>{
+  let headers=spec.cols.map(c=>c[1]);
+  let rows=spec.rows.map(r=>spec.cols.map(c=>{
     let v; try{ v=c[2](r); }catch(e){ v=""; }
     return v==null?"":v; }));
+  /* רשימת תלמידות — טור מספור ראשון, כמו בכל יצוא אחר של הרשימה */
+  if(spec.kind==='students'){ const X=withSeq(headers, rows); headers=X.headers; rows=X.rows; }
   if(spec.format==='pdf'){
     printReport({ title:spec.title, subtitle:"שנת "+DB.activeYear, headers, rows,
       footNote:rows.length+" שורות", landscape:headers.length>7 });
