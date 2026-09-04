@@ -29,6 +29,7 @@ function grab(name){
   return code.slice(a+1, e+2);
 }
 const names=['capState','ganAssignCap','ganAssignCapSource','ganAssignedCount','ganAssignRoom',
+  'retentionNeedsDoc','retentionGateMsg',
   'canAssignStudent','assignGate','assignCapDefaults','eduLabel','ganById','ganName','studentsOfYear',
   'haversineKm','ganAges','ageFits','sibKey','addrKey','nameKey','autoAssignPlan','msgMerge','waNumber',
   'waHref','smsHref','isMobileNum','telHref','aiFindGan','aiFindStudent'];
@@ -71,6 +72,38 @@ ok(ctx.ganAssignRoom(gans[0])===0, 'אין מקום פנוי כשהגיעו לר
 const gate=ctx.canAssignStudent(gans[0], mk(9,'חדשה',31.93,35.04));
 ok(gate.ok===false && /מלא/.test(gate.msg), 'שיבוץ נוסף נחסם עם הודעה');
 ok(ctx.canAssignStudent(gans[0], ctx.DB.students[0]).ok===true, 'תלמידה שכבר משובצת שם אינה נחסמת מעצמה');
+
+/* ---- ילדת השארות בלי מסמך השארות — חסומה לשיבוץ ------------------------
+   הכלל קודם לרף השיבוץ: גם בגן ריק לגמרי אין שיבוץ בלי המסמך, וההודעה
+   אומרת מה חסר ואיפה מסמנים אותו. ברגע שהמסמך מסומן — השיבוץ נפתח. */
+{
+  const free=gans[1];                                  // גן ב — בלי רף
+  ctx.DB.settings.assignCaps={ 'רגיל':'', 'ח"מ':'', useCapacity:false };
+  const ret=mk(21,'השארות',31.94,35.06,'');
+  ret.special={ retention:true, retentionDoc:false };
+  ok(ctx.retentionNeedsDoc(ret)===true, 'ילדת השארות בלי מסמך — מזוהה');
+  const g1=ctx.canAssignStudent(free, ret);
+  ok(g1.ok===false && g1.retention===true && /מסמך השארות/.test(g1.msg),
+     'שיבוץ ילדת השארות בלי מסמך נחסם — גם בגן בלי רף');
+  ret.special.retentionDoc=true;
+  ok(ctx.retentionNeedsDoc(ret)===false, 'עם המסמך — כבר לא חסר');
+  ok(ctx.canAssignStudent(free, ret).ok===true, 'עם מסמך השארות — השיבוץ נפתח');
+  const plain=mk(22,'רגילה',31.94,35.06,'');
+  ok(ctx.retentionNeedsDoc(plain)===false, 'מי שאינה ילדת השארות אינה מושפעת');
+
+  /* השיבוץ האוטומטי מדלג עליה עם הסיבה, ואינו תופס לה מקום בגן */
+  const blocked=mk(23,'השארות-ב',31.9300,35.0400,'');
+  blocked.special={ retention:true, retentionDoc:false };
+  const near=mk(24,'שכנה',31.9301,35.0401,'');
+  const before=ctx.DB.students;
+  ctx.DB.students=[blocked, near];
+  const pl=ctx.autoAssignPlan([blocked, near], gans.filter(g=>g.education==='רגיל'),
+    { siblings:false, respectCap:true, matchAge:true });
+  ok(pl.plan.length===1 && pl.plan[0].s.id===24, 'שיבוץ אוטומטי משבץ רק את מי שאינה חסומה');
+  ok(pl.skipped.some(x=>x.s.id===23 && /מסמך השארות/.test(x.why)),
+     'ילדת ההשארות מדווחת ב"לא ישובצו" עם הסיבה');
+  ctx.DB.students=before;
+}
 
 /* שיבוץ אוטומטי לפי קרבה */
 ctx.DB.students=[

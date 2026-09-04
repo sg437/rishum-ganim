@@ -1051,7 +1051,7 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   });
   const screenOpts = await p.evaluate(() => {
     /* אותה רשימה בדיוק כמו במסך התלמידות — שתיהן נגזרות מ-STU_FLAGS */
-    return JSON.stringify(['campEndYear','campHanukkah','campNisan','insurancePaid','insuranceUnpaid','noTz','retention','retentionNext','tzaharon'].sort());
+    return JSON.stringify(['campEndYear','campHanukkah','campNisan','insurancePaid','insuranceUnpaid','noTz','retention','retentionNext','retentionNoDoc','tzaharon'].sort());
   });
   sameAsScreen === screenOpts
     ? ok('אותן אפשרויות בדיוק כמו במסך התלמידות') : bad('הרשימות נבדלו', [sameAsScreen, screenOpts]);
