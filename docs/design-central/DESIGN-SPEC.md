@@ -186,7 +186,8 @@ body { font-variant-numeric: tabular-nums }
     "חריגה מרף השיבוץ · שיבוץ חסום".
 9.12 תגית סטטוס: radius 999 · padding 1px 8px · 12.5px/700 · רקע *-soft · טקסט בצבע המצב.
 9.13 Drawer: רוחב 452px · צמוד לקצה שמאל (RTL) · גובה מלא · background var(--surface) ·
-    border-inline-end 1px solid var(--border) · radius 14 בפינות הפנימיות · --sh-3 ·
+    border-inline-start 1px solid var(--border) (ב-RTL זהו הקצה הימני של המגירה,
+    הצד הפונה לתוכן) · radius 14 בפינות הפנימיות · --sh-3 ·
     כותרת 18px 20px 14px + כפתור ✕ 32px · גוף גולל · פוטר עם פעולות על var(--surface-2).
     פתיחה: opacity 0→1 + translateX(-8px→0), 180ms ease-out. Esc סוגר. לחיצה על ה-scrim סוגרת.
 9.14 Popover: רוחב 320px · radius 12 · background var(--surface) · border 1px solid var(--border-strong) ·
@@ -264,3 +265,4 @@ prefers-reduced-motion: reduce → כל ה-transition ל-0ms.
 | תאריך | מה השתנה | באיזו שיחה/מסך התגלה |
 |---|---|---|
 | 2026-09-07 | המפרט המלא נכתב — שלב ב', פלטה "מסילה רכה · Warm Rail" | שלב ב' |
+| 2026-09-07 | 9.13 מגירה: `border-inline-end` ← `border-inline-start` — ב-RTL הקצה הפונה לתוכן הוא הימני, ולכן הקו לא היה נראה | בדיקת המפרט |
