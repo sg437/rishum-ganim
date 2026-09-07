@@ -4698,8 +4698,8 @@ function guideContent(){
         <div><h4>מי יוצאת ומי לא</h4><ul style="margin:0;padding-inline-start:18px">
           <li><b>יוצאת רק מי שיש אצלה שינוי</b> בין הסמל שבקובץ לסמל שאצלנו. מי שכבר באותו סמל — אינה בקובץ.</li>
           <li>מי שאצלנו ב<b>חינוך מיוחד</b> — הסמל החדש שלה הוא <b>ח"מ</b> ולא מספר.</li>
-          <li>מי ש<b>אינה בתוכנה כלל</b>, או שאצלנו <b>סיימה</b> — <b>אינה יוצאת בכלל</b>. שתיהן מדווחות ברשימה נפרדת להורדה, כדי שיהיה ברור מה הושמט.</li>
-          <li>מי שבחינוך רגיל ו<b>אינה משובצת לגן</b> — אין לה סמל חדש, ולכן היא מדווחת בנפרד ואינה בקובץ.</li>
+          <li>מי ש<b>אינה בתוכנה כלל</b>, או שאצלנו <b>סיימה</b> — <b>אינה יוצאת בכלל</b>. אלה שני התנאים היחידים להשמטה, ושתיהן מדווחות ברשימה נפרדת להורדה כדי שיהיה ברור מה הושמט.</li>
+          <li><b>כל מי שפעילה אצלנו יוצאת — גם אם אינה משובצת לגן.</b> אז הסמל החדש שלה יוצא <b>ריק</b>, וזה בעצמו השינוי שהעירייה צריכה לדעת עליו.</li>
         </ul></div>
       </div>
       <p class="gd-mut">מומלץ להוריד ב<b>🎨 אקסל</b> ולא ב-CSV: הוא שומר את מספר הזהות כטקסט ולא מאבד אפס מוביל. לצידו יש גם CSV ו<b>📎 שיתוף / הדפסה</b>.</p>
@@ -11371,7 +11371,7 @@ function wireMuniSection(root, inModal){
     if(hint) hint.innerHTML = mode==="compare"
       ? 'מעלים מספרי זהות עם עמודת <b>סמל מוסד</b> ומקבלים סיכום בלבד: כמה תלמידות בכל סמל אצלנו בתוכנה מול כמה ברשימת העירייה, ופירוט מי רשומה אצל מי בסמל אחר. <b>שום דבר בתוכנה לא משתנה</b> — לא סימון "קלוט", לא השלמת פרטים ולא פתיחת תיקים.'
       : mode==="symbols"
-      ? 'מעלים את קובץ העירייה עם <b>מספר זהות</b> ו<b>סמל מוסד</b>, ויוצא אקסל אחד לשליחה חזרה לעירייה: <b>שם משפחה · שם פרטי · מספר זהות · סמל ישן · סמל חדש</b>. יוצאות רק מי שהסמל שלה השתנה; מי שאצלנו בחינוך מיוחד — הסמל החדש שלה הוא <b>ח"מ</b>; מי שאינה בתוכנה או סיימה אצלנו — <b>אינה יוצאת בכלל</b>. <b>שום דבר בתוכנה לא משתנה ולא נשמר.</b>'
+      ? 'מעלים את קובץ העירייה עם <b>מספר זהות</b> ו<b>סמל מוסד</b>, ויוצא אקסל אחד לשליחה חזרה לעירייה: <b>שם משפחה · שם פרטי · מספר זהות · סמל ישן · סמל חדש</b>. יוצאות רק מי שהסמל שלה השתנה; מי שאצלנו בחינוך מיוחד — הסמל החדש שלה הוא <b>ח"מ</b>; מי שאינה בתוכנה או סיימה אצלנו — <b>אינה יוצאת בכלל</b>, וזה התנאי היחיד להשמטה: כל מי שפעילה אצלנו יוצאת, גם אם אינה משובצת. <b>שום דבר בתוכנה לא משתנה ולא נשמר.</b>'
       : 'סוג החינוך נקבע לתיקים החדשים שייפתחו (אם לא מופתה עמודת "סוג חינוך"). ההשלמה נעשית לפי ת"ז בכל התוכנה, בלי תלות בסוג החינוך. <b>סמל המוסד שבקובץ אינו נכנס לתיקים ואינו משנה שיבוץ</b> — הוא משמש להשוואה ולדיווח בלבד.';
   }
   q("#muni-mode").onchange=syncMode;
@@ -11575,14 +11575,14 @@ function wireMuniSection(root, inModal){
            ח"מ שונה מכל סמל מספרי, ולכן היא יוצאת ממילא — אלא אם בקובץ
            העירייה כבר כתוב אצלה ח"מ, ואז אין מה לעדכן.
          • מי שאינה בתוכנה כלל, או שמסומנת אצלנו "סיימה" — אינה יוצאת בכלל.
-         • מי שאצלנו בחינוך רגיל ואינה משובצת לגן — אין לה סמל חדש, ולכן
-           אי-אפשר לומר לעירייה למה לשנות. היא מדווחת בנפרד ואינה בקובץ. */
+           אלה שני התנאים היחידים להשמטה.
+         • כל מי שפעילה אצלנו יוצאת — גם אם אינה משובצת לגן. אז הסמל החדש
+           שלה יוצא ריק, וזה בעצמו השינוי שהעירייה צריכה לדעת עליו. */
     if(q("#muni-mode").value==="symbols"){
       const chg=[];              // השורות שייצאו בקובץ
       const notInSys=[];         // בקובץ ואינן בתוכנה — לא יוצאות
       const finishedOut=[];      // בקובץ, ואצלנו סיימו — לא יוצאות
-      const noGan=[];            // בחינוך רגיל בלי שיבוץ — אין סמל חדש
-      let same=0, special=0;
+      let same=0, special=0, blankNew=0;   // blankNew — יוצאות בלי סמל חדש (פעילות בלי שיבוץ)
       nums.forEach(tz=>{
         const rec=recs.get(tz)||{tz};
         const oldSym=String(rec.symbol||"").trim();
@@ -11594,9 +11594,9 @@ function wireMuniSection(root, inModal){
         if(s.finished){ finishedOut.push({ last, first, tz:idOut, oldSym }); return; }
         const isSpecial = eduLabel(s)==='ח"מ';
         const newSym = isSpecial ? 'ח"מ' : ganSymbolText(ganById(s.ganId));
-        if(!isSpecial && !newSym){ noGan.push({ last, first, tz:idOut, oldSym }); return; }
         if(newSym===oldSym){ same++; return; }        // אין שינוי — לא בקובץ
         if(isSpecial) special++;
+        if(!newSym) blankNew++;                        // פעילה בלי שיבוץ — יוצאת, עם סמל חדש ריק
         chg.push({ last, first, tz:idOut, oldSym, newSym, special:isSpecial });
       });
       /* סדר הקובץ: לפי הסמל החדש (ח"מ בסוף), ובתוכו לפי שם משפחה ושם פרטי —
@@ -11618,7 +11618,6 @@ function wireMuniSection(root, inModal){
         </div>`:'';
       const notInRows   = notInSys.map(r=>[r.tz,r.name,r.oldSym]);
       const finishedRows= finishedOut.map(r=>[r.last,r.first,r.tz,r.oldSym]);
-      const noGanRows   = noGan.map(r=>[r.last,r.first,r.tz,r.oldSym]);
       out.innerHTML=`
         <div class="note">מצב <b>הפקת אקסל שינויי סמל</b> — הכול קריאה בלבד. שום דבר בתוכנה לא שונה ולא נשמר.</div>
         <div class="stats" style="margin-top:10px">
@@ -11628,7 +11627,7 @@ function wireMuniSection(root, inModal){
           <div class="stat"><div class="k">מתוך היוצאות — ח"מ</div><div class="v">${special}</div></div>
           <div class="stat"><div class="k">אינן בתוכנה — לא יוצאות</div><div class="v">${notInSys.length}</div></div>
           <div class="stat"><div class="k">סיימו אצלנו — לא יוצאות</div><div class="v">${finishedOut.length}</div></div>
-          ${noGan.length?`<div class="stat bad"><div class="k">בלי שיבוץ — אין סמל חדש</div><div class="v">${noGan.length}</div></div>`:''}
+          ${blankNew?`<div class="stat"><div class="k">מתוך היוצאות — בלי שיבוץ אצלנו</div><div class="v">${blankNew}</div></div>`:''}
         </div>
         ${(noTz&&noTz.length)?`<div class="note" style="margin-top:8px">${noTz.length} שורות בקובץ בלי מספר זהות — לא נספרו כלל. ההתאמה היא לפי ת"ז בלבד.</div>`:''}
         ${chg.length?`
@@ -11642,9 +11641,10 @@ function wireMuniSection(root, inModal){
             ${tbl(`<thead><tr>${CHG_HEADERS.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>
               ${chg.map(r=>`<tr><td>${esc(r.last)||'—'}</td><td>${esc(r.first)||'—'}</td><td>${esc(r.tz)}</td>
                 <td>${esc(r.oldSym)||'<span class="hint">(ריק בקובץ)</span>'}</td>
-                <td style="font-weight:700">${r.special?'<span class="pill warn">ח"מ</span>':esc(r.newSym)}</td></tr>`).join("")}
+                <td style="font-weight:700">${r.special?'<span class="pill warn">ח"מ</span>'
+                  : esc(r.newSym)||'<span class="pill warn">אינה משובצת אצלנו</span>'}</td></tr>`).join("")}
             </tbody>`,340)}
-            <div class="hint">"סמל ישן" — הסמל שבקובץ העירייה. "סמל חדש" — הסמל של הגן שאליו היא משובצת אצלנו${special?', או <b>ח"מ</b> למי שאצלנו בחינוך מיוחד':''}. מומלץ להוריד ב<b>🎨 אקסל</b> — הוא שומר את מספר הזהות כטקסט ולא מאבד אפס מוביל.</div>
+            <div class="hint">"סמל ישן" — הסמל שבקובץ העירייה. "סמל חדש" — הסמל של הגן שאליו היא משובצת אצלנו${special?', או <b>ח"מ</b> למי שאצלנו בחינוך מיוחד':''}.${blankNew?` <b>${blankNew}</b> מהן פעילות אצלנו אך עדיין אינן משובצות לגן, ולכן הסמל החדש שלהן יוצא <b>ריק</b> — הן נכללות, כי הן פעילות אצלנו.`:''} מומלץ להוריד ב<b>🎨 אקסל</b> — הוא שומר את מספר הזהות כטקסט ולא מאבד אפס מוביל.</div>
           </div>`:`<div class="empty" style="margin-top:12px">אין אף תלמידה שהסמל שלה משתנה. כל מי שנמצאה בתוכנה רשומה כבר באותו סמל שבקובץ העירייה.</div>`}
         ${miniTbl(`${notInSys.length} מספרי זהות שבקובץ ואינם בתוכנה — לא נכללו בקובץ`,"muni-symchg-nf","",
                   ['מספר זהות',"שם בקובץ העירייה","סמל בעירייה"],notInRows,
@@ -11652,9 +11652,7 @@ function wireMuniSection(root, inModal){
         ${miniTbl(`${finishedOut.length} תלמידות שבקובץ ואצלנו מסומנות "סיימה" — לא נכללו בקובץ`,"muni-symchg-fin","",
                   ["שם משפחה","שם פרטי",'מספר זהות',"סמל בעירייה"],finishedRows,
                   'לפי ההגדרה שנקבעה — מי שסיימה אצלנו אינה יוצאת בקובץ לעירייה.')}
-        ${miniTbl(`${noGan.length} תלמידות בחינוך רגיל בלי שיבוץ לגן — אין להן סמל חדש`,"muni-symchg-nogan","",
-                  ["שם משפחה","שם פרטי",'מספר זהות',"סמל בעירייה"],noGanRows,
-                  'אי-אפשר לומר לעירייה לאיזה סמל לשנות כל עוד אין שיבוץ אצלנו. אחרי השיבוץ אפשר להפיק שוב.')}`;
+`;
       wireDownload("muni-symchg-csv", fileBase+".csv", CHG_HEADERS, chgRows);
       wireShare("muni-symchg-share", { title:"שינויי סמל מוסד — לעירייה",
         subtitle:["שנת "+DB.activeYear, chg.length+" תלמידות"].join(" · "),
@@ -11664,7 +11662,6 @@ function wireMuniSection(root, inModal){
         { title:`שינויי סמל מוסד — שנת ${DB.activeYear} · ${chg.length} תלמידות` }); toast("קובץ אקסל נוצר"); };
       wireDownload("muni-symchg-nf", "בקובץ העירייה ואינן בתוכנה.csv", ['מספר זהות',"שם בקובץ העירייה","סמל בעירייה"], notInRows);
       wireDownload("muni-symchg-fin", "בקובץ העירייה וסיימו אצלנו.csv", ["שם משפחה","שם פרטי",'מספר זהות',"סמל בעירייה"], finishedRows);
-      wireDownload("muni-symchg-nogan", "בלי שיבוץ אצלנו — אין סמל חדש.csv", ["שם משפחה","שם פרטי",'מספר זהות',"סמל בעירייה"], noGanRows);
       toast(`${chg.length} שינויי סמל · ${same} בלי שינוי · ${notInSys.length+finishedOut.length} לא נכללו`);
       return;
     }

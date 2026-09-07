@@ -11,7 +11,8 @@
      8. סיכום לפי סמל מוסד + רשימת מי שבסמל אחר בעירייה ואצלנו.
      8ב. מצב "השוואה בלבד" — סיכום הסמלים בלי לגעת בנתונים.
      8ג. הורדות: אצלנו+בעירייה · רק אצלנו · שיתוף.
-     8ד. מצב "אקסל שינויי סמל לעירייה" — רק מי שהסמל השתנה, ח"מ, ומי שאינה יוצאת.
+     8ד. מצב "אקסל שינויי סמל לעירייה" — רק מי שהסמל השתנה, ח"מ, פעילה בלי שיבוץ,
+         ומי שאינה יוצאת (סיימה / אינה בתוכנה).
      9. רשימת ת"ז נטו (בלי כותרות) ממשיכה לעבוד — סימון "קלוט" בלבד.
     10. אותו מקטע בדיוק עובד גם בעיצוב החדש (חלון "עדכון לפי מ.ז.").
     11. קובץ xlsx אמיתי נקרא כטבלה — ולא נשפך כג'יבריש לתיבה.
@@ -501,10 +502,10 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     + '|' + JSON.stringify(DB.municipality));
   afterSym === beforeSym ? ok('שום דבר בתוכנה לא השתנה ולא נשמר') : bad('ההפקה שינתה נתונים');
   const symStats = await stats(p);
-  (symStats['יוצאות באקסל — שינוי סמל'] === 2 && symStats['אותו סמל — אין שינוי'] === 1
+  (symStats['יוצאות באקסל — שינוי סמל'] === 3 && symStats['אותו סמל — אין שינוי'] === 1
    && symStats['אינן בתוכנה — לא יוצאות'] === 1 && symStats['סיימו אצלנו — לא יוצאות'] === 1
-   && symStats['בלי שיבוץ — אין סמל חדש'] === 1)
-    ? ok('הספירה: 2 יוצאות · 1 בלי שינוי · 1 אינה בתוכנה · 1 סיימה · 1 בלי שיבוץ')
+   && symStats['מתוך היוצאות — בלי שיבוץ אצלנו'] === 1)
+    ? ok('הספירה: 3 יוצאות (מהן 1 בלי שיבוץ) · 1 בלי שינוי · 1 אינה בתוכנה · 1 סיימה')
     : bad('הספירה שגויה', [JSON.stringify(symStats)]);
   const symTable = await p.evaluate(() => {
     const b = document.querySelector('#muni-symchg-csv'); if (!b) return null;
@@ -521,16 +522,23 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   const rHana = symTable && symTable.find(r => r[2] === '300000004');
   (rHana && rHana[3] === '111111' && rHana[4] === 'ח"מ')
     ? ok('חנה דוד — חינוך מיוחד — הסמל החדש שלה הוא ח"מ') : bad('שורת ח"מ שגויה', [JSON.stringify(rHana)]);
+  /* פעילה אצלנו ואינה משובצת — כן יוצאת, עם סמל חדש ריק */
+  const rTova = symTable && symTable.find(r => r[2] === '300000006');
+  (rTova && rTova[0] === 'ברוך' && rTova[3] === '111111' && /^(—|)$/.test(rTova[4].replace('אינה משובצת אצלנו', '')))
+    ? ok('טובה ברוך — פעילה בלי שיבוץ — יוצאת, והסמל החדש ריק')
+    : bad('שורת מי שאינה משובצת שגויה', [JSON.stringify(rTova)]);
   const outIds = (symTable || []).map(r => r[2]);
   (!outIds.includes('300000003') && !outIds.includes('012345678') && !outIds.includes('12345678')
-   && !outIds.includes('300000009') && !outIds.includes('300000006'))
-    ? ok('אין שינוי · סיימה · אינה בתוכנה · בלי שיבוץ — אף אחת מהן אינה בקובץ')
+   && !outIds.includes('300000009'))
+    ? ok('אין שינוי · סיימה · אינה בתוכנה — אף אחת מהן אינה בקובץ')
     : bad('יצאו שורות שאסור להן לצאת', [JSON.stringify(outIds)]);
   const symBtns = await p.evaluate(() =>
-    ['muni-symchg-xls','muni-symchg-csv','muni-symchg-share','muni-symchg-nf','muni-symchg-fin','muni-symchg-nogan']
+    ['muni-symchg-xls','muni-symchg-csv','muni-symchg-share','muni-symchg-nf','muni-symchg-fin']
       .filter(id => !!document.querySelector('#' + id)));
-  symBtns.length === 6 ? ok('אקסל · CSV · שיתוף — ושלוש רשימות הנפרדות להורדה')
-                       : bad('חסרים כפתורי הפקה', [JSON.stringify(symBtns)]);
+  const noNoGan = await p.evaluate(() => !document.querySelector('#muni-symchg-nogan'));
+  (symBtns.length === 5 && noNoGan)
+    ? ok('אקסל · CSV · שיתוף — ושתי הרשימות הנפרדות; אין עוד רשימת "בלי שיבוץ"')
+    : bad('כפתורי ההפקה שגויים', [JSON.stringify(symBtns), 'nogan gone: ' + noNoGan]);
   /* ההורדה עצמה — הקובץ שנוצר, לא רק הטבלה שעל המסך */
   const symDl = await (async () => {
     const dl = p.waitForEvent('download', { timeout: 5000 }).catch(() => null);
@@ -538,10 +546,13 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
     const d = await dl; if (!d) return null;
     const f = path.join(TMP, 'symchg.csv'); await d.saveAs(f);
     return fs.readFileSync(f, 'utf8'); })();
-  (symDl && symDl.split(/\r?\n/).length === 3 && /שם משפחה,שם פרטי,מספר זהות,סמל ישן,סמל חדש/.test(symDl)
-   && /300000001,222222,111111/.test(symDl.replace(/כהן,רחל,/, '')))
-    ? ok('קובץ ה-CSV שירד: שורת כותרות + 2 שורות בלבד')
-    : bad('קובץ ההורדה שגוי', [JSON.stringify(symDl)]);
+  const dlLines = symDl ? symDl.replace(/^\uFEFF/, '').split(/\r?\n/) : [];
+  (dlLines.length === 4 && dlLines[0] === 'שם משפחה,שם פרטי,מספר זהות,סמל ישן,סמל חדש'
+   && dlLines.includes('כהן,רחל,300000001,222222,111111')
+   && dlLines.includes('דוד,חנה,300000004,111111,"ח""מ"')
+   && dlLines.includes('ברוך,טובה,300000006,111111,'))
+    ? ok('קובץ ה-CSV שירד: כותרות + 3 שורות — כולל ח"מ ושורה עם סמל חדש ריק')
+    : bad('קובץ ההורדה שגוי', [JSON.stringify(dlLines)]);
   await p.evaluate(() => { const m = document.querySelector('#muni-mode'); m.value = 'update'; m.dispatchEvent(new Event('change')); });
   await p.evaluate(() => { DB.students = DB.students.filter(s => s.tz !== '300000006');
     const m = DB.students.find(s => s.tz === '012345678'); if (m) m.finished = false;
