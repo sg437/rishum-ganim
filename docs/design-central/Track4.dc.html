@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:"Heebo";src:url("../../fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Assistant";src:url("../../fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800;font-display:swap}
+body{margin:0}
+button{font-family:inherit;cursor:pointer}
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-thumb{background:#d5d5d1;border-radius:3px}
+*::-webkit-scrollbar-track{background:transparent}
+nav::-webkit-scrollbar{width:0;height:0}
+</style>
+</helmet>
+<div dir="rtl" style="width:1280px;height:712px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:#faf9f6;color:#17181a;font-family:Assistant,system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;accent-color:#bf3f10;border:1px solid #d9d8d3">
+
+  <header style="flex:0 0 auto;height:56px;display:flex;align-items:center;gap:14px;padding:0 20px;background:linear-gradient(180deg,#454b52 0%,#2f343a 100%);color:#fff;box-shadow:inset 0 1px 0 #626a73,0 1px 0 rgba(23,24,26,.12)">
+    <span style="display:flex;flex-direction:column;gap:3px;width:24px;flex:0 0 24px">
+      <span style="height:2px;background:#bf3f10"></span>
+      <span style="height:2px;background:#fff"></span>
+      <span style="height:2px;background:#5f6266"></span>
+    </span>
+    <span style="font-family:Heebo,system-ui,sans-serif;font-size:16px;font-weight:700;letter-spacing:-.01em">מרכז ניהול ארצי</span>
+    <span style="width:1px;height:20px;background:#697079"></span>
+    <span style="font-size:13px;color:#d6dbe0">מחלקת הרישום</span>
+    <span style="flex:1"></span>
+    <input type="text" value="חיפוש תיק: שם, ת״ז, טלפון, גן…" style="width:264px;height:32px;padding:0 10px;border:0;border-bottom:1px solid #757d86;background:transparent;color:#c4cbd2;font-family:inherit;font-size:13px" style-focus="outline:none;border-bottom:2px solid #bf3f10;color:#fff">
+    <button style="height:30px;padding:0 11px;border:1px solid #757d86;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.04));color:#fff;font-size:12.5px" style-hover="border-color:#a9b1ba">תשפ״ז</button>
+    <button style="height:30px;padding:0 11px;border:1px solid #757d86;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.04));color:#fff;font-size:12.5px" style-hover="border-color:#a9b1ba">6 ערים</button>
+    <span style="width:28px;height:28px;flex:0 0 28px;background:linear-gradient(180deg,#5b636b,#41474e);color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center">שג</span>
+  </header>
+
+  <div style="flex:1;min-height:0;display:flex">
+    <aside style="width:248px;flex:0 0 248px;display:flex;flex-direction:column;background:#f2f1ed;border-left:1px solid #e2e1dc">
+      <nav style="flex:1;overflow:auto;scrollbar-width:none;padding:16px 0;font-size:13.5px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;color:#5f6266;padding:0 16px 6px;display:flex;align-items:center;gap:7px"><span style="width:5px;height:5px;background:#bf3f10"></span>ראשי</div>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">לוח הבית</a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;color:#5f6266;padding:18px 16px 6px;display:flex;align-items:center;gap:7px"><span style="width:5px;height:5px;background:#c7c5bf"></span>רישום ושיבוץ</div>
+        <a href="#" style="display:block;padding:8px 16px;color:#17181a;text-decoration:none;font-weight:700;background:linear-gradient(180deg,#fff,#fbfaf7);box-shadow:inset -3px 0 0 #bf3f10,0 6px 14px -8px rgba(23,24,26,.35)">תלמידים ושיבוץ מרכזי</a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">עובדות</a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">מפת שיבוץ</a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">ייבוא מאקסל</a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;color:#5f6266;padding:18px 16px 6px;display:flex;align-items:center;gap:7px"><span style="width:5px;height:5px;background:#c7c5bf"></span>קשר והפצה</div>
+        <a href="#" style="display:flex;justify-content:space-between;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3"><span>מרכז הודעות</span><span style="font-weight:700;font-size:12px;color:#a13509">4</span></a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">הפצת שיבוץ · Smoove</a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">הפצה ופרסום</a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">ערוצי רישום</a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;color:#5f6266;padding:18px 16px 6px;display:flex;align-items:center;gap:7px"><span style="width:5px;height:5px;background:#c7c5bf"></span>בקרה וציות</div>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">בקרת משרד החינוך</a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">רישיון וסייעת ב׳</a>
+        <a href="#" style="display:flex;justify-content:space-between;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3"><span>פניות וערעורים</span><span style="font-weight:700;font-size:12px;color:#a13509">7</span></a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">חוזרי מנכ״ל</a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;color:#5f6266;padding:18px 16px 6px;display:flex;align-items:center;gap:7px"><span style="width:5px;height:5px;background:#c7c5bf"></span>ניהול</div>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">פילוחים ודוח להנהלה</a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">החלטות</a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">עוזר חכם</a>
+        <a href="#" style="display:block;padding:8px 16px;color:#4d5054;text-decoration:none" style-hover="background:#e9e8e3">הגדרות והרשאות</a>
+      </nav>
+      <div style="padding:11px 16px;border-top:1px solid #e2e1dc;font-size:11.5px;color:#5f6266">עודכן לפני 3 דקות</div>
+    </aside>
+
+    <main style="flex:1;min-width:0;display:flex;flex-direction:column;position:relative;background:linear-gradient(180deg,#fff 0,#faf9f6 260px)">
+      <div style="flex:0 0 auto;position:relative;background:#fff;border-bottom:1px solid #e8e8e5">
+        <div style="height:2px;background:#bf3f10"></div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr))">
+          <button style="position:relative;text-align:right;padding:20px 24px 16px;border:0;border-left:1px solid #e8e8e5;background:#fff" style-hover="background:#faf9f6">
+            <span style="position:absolute;top:-7px;right:22px;width:13px;height:13px;background:linear-gradient(180deg,#fff,#e7e5df);border:1px solid #c7c5bf;box-shadow:0 2px 0 #d4d2cb,0 4px 7px -3px rgba(23,24,26,.3)"></span>
+            <span style="display:flex;align-items:center;gap:9px">
+              <span style="font-family:Heebo,system-ui,sans-serif;font-size:28px;font-weight:700;line-height:1;color:transparent;-webkit-text-stroke:1.3px #5f6266">01</span>
+              <span style="font-size:12.5px;font-weight:700;white-space:nowrap;color:#4d5054">נרשמו במערכת</span>
+            </span>
+            <span style="display:block;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;line-height:1.1;margin-top:8px">1,412</span>
+          </button>
+          <button style="position:relative;text-align:right;padding:20px 24px 16px;border:0;border-left:1px solid #e8e8e5;background:#fff" style-hover="background:#faf9f6">
+            <span style="position:absolute;top:-7px;right:22px;width:13px;height:13px;background:linear-gradient(180deg,#fff,#e7e5df);border:1px solid #c7c5bf;box-shadow:0 2px 0 #d4d2cb,0 4px 7px -3px rgba(23,24,26,.3)"></span>
+            <span style="display:flex;align-items:center;gap:9px">
+              <span style="font-family:Heebo,system-ui,sans-serif;font-size:28px;font-weight:700;line-height:1;color:transparent;-webkit-text-stroke:1.3px #5f6266">02</span>
+              <span style="font-size:12.5px;font-weight:700;white-space:nowrap;color:#4d5054">נקלטו בעירייה</span>
+            </span>
+            <span style="display:block;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;line-height:1.1;margin-top:8px">1,203<span style="font-size:14px;color:#5f6266"> / 1,412</span></span>
+          </button>
+          <button style="position:relative;text-align:right;padding:22px 24px 18px;border:0;background:linear-gradient(180deg,#fff 0%,#fdfbf7 100%);box-shadow:0 10px 22px -12px rgba(23,24,26,.3),-1px 0 0 #e8e8e5,1px 0 0 #e8e8e5;z-index:1">
+            <span style="position:absolute;top:-11px;right:20px;width:19px;height:19px;background:linear-gradient(180deg,#d9552a,#b03509);border:1px solid #932c05;box-shadow:0 3px 0 #8c2b06,0 7px 14px -4px rgba(176,53,9,.55)"></span>
+            <span style="display:flex;align-items:center;gap:9px">
+              <span style="font-family:Heebo,system-ui,sans-serif;font-size:28px;font-weight:700;line-height:1;color:#bf3f10">03</span>
+              <span style="font-size:12.5px;font-weight:700;white-space:nowrap;color:#17181a">תחנת העבודה</span>
+            </span>
+            <span style="display:block;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;line-height:1.1;margin-top:8px;color:#bf3f10">366</span>
+          </button>
+          <button style="position:relative;text-align:right;padding:20px 24px 16px;border:0;background:#fff" style-hover="background:#faf9f6">
+            <span style="position:absolute;top:-7px;right:22px;width:13px;height:13px;background:linear-gradient(180deg,#fff,#e7e5df);border:1px solid #c7c5bf;box-shadow:0 2px 0 #d4d2cb,0 4px 7px -3px rgba(23,24,26,.3)"></span>
+            <span style="display:flex;align-items:center;gap:9px">
+              <span style="font-family:Heebo,system-ui,sans-serif;font-size:28px;font-weight:700;line-height:1;color:transparent;-webkit-text-stroke:1.3px #5f6266">04</span>
+              <span style="font-size:12.5px;font-weight:700;white-space:nowrap;color:#4d5054">תוקצבו במשרד</span>
+            </span>
+            <span style="display:block;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;line-height:1.1;margin-top:8px">1,118<span style="font-size:14px;color:#5f6266"> / 1,412</span></span>
+          </button>
+        </div>
+      </div>
+      <div style="flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:13px 24px;font-size:14.5px;white-space:nowrap;color:#4d5054">
+        <span>מציג</span>
+        <button style="border:0;border-bottom:1.5px solid #bf3f10;background:transparent;padding:0 1px 1px;color:#a13509;font-size:14.5px;font-weight:700">ממתינים לשיבוץ</button>
+        <span style="color:#5f6266">·</span>
+        <button style="border:0;border-bottom:1.5px solid #bf3f10;background:transparent;padding:0 1px 1px;color:#a13509;font-size:14.5px;font-weight:700">גיל 4</button>
+        <span style="color:#5f6266">·</span>
+        <button style="border:0;border-bottom:1.5px solid #17181a;background:transparent;padding:0 1px 1px;color:#17181a;font-size:14.5px;font-weight:700">6 ערים</button>
+        <span style="font-weight:700;color:#17181a">366 תיקים</span>
+        <span style="width:1px;height:16px;background:#e2e1dc;margin:0 4px"></span>
+        <button style="border:0;background:transparent;padding:0;color:#5f6266;font-size:13.5px;text-decoration:underline" style-hover="color:#17181a">נקה</button>
+        <span style="flex:1"></span>
+        <button style="height:31px;padding:0 11px;border:1px solid #17181a;background:#17181a;color:#fff;font-size:12.5px;font-weight:700">שנה סינון</button>
+        <button style="height:31px;padding:0 11px;border:1px solid #d5d5d1;background:#fff;color:#17181a;font-size:12.5px" style-hover="border-color:#17181a">עמודות</button>
+        <button style="height:31px;padding:0 11px;border:1px solid #d5d5d1;background:#fff;color:#17181a;font-size:12.5px" style-hover="border-color:#17181a">ייצוא</button>
+      </div>
+      <div style="flex:1;min-height:0;overflow:auto;scrollbar-width:thin;padding-bottom:82px;border-top:1px solid #e8e8e5">
+        <table style="width:100%;border-collapse:collapse;white-space:nowrap;font-size:14px">
+          <thead style="text-align:right;font-size:11px;font-weight:700;letter-spacing:.09em;color:#4d5054">
+            <tr>
+              <th style="position:sticky;top:0;z-index:2;height:36px;padding:0 24px 0 0;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1"><input type="checkbox"></th>
+              <th style="position:sticky;top:0;z-index:2;padding:0 8px;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1">שם</th>
+              <th style="position:sticky;top:0;z-index:2;padding:0 8px;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1">ת״ז</th>
+              <th style="position:sticky;top:0;z-index:2;padding:0 8px;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1">גיל</th>
+              <th style="position:sticky;top:0;z-index:2;padding:0 8px;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1">גן</th>
+              <th style="position:sticky;top:0;z-index:2;padding:0 8px;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1">שיבוץ</th>
+              <th style="position:sticky;top:0;z-index:2;padding:0 8px;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1">עירייה</th>
+              <th style="position:sticky;top:0;z-index:2;padding:0 8px;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1">נייד</th>
+              <th style="position:sticky;top:0;z-index:2;padding:0 8px;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1">מסמכים</th>
+              <th style="position:sticky;top:0;z-index:2;padding:0 24px 0 8px;background:#faf9f6;box-shadow:inset 0 -1px 0 #d5d5d1"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colSpan="10" style="height:32px;padding:0 24px;background:#f2f1ed;border-top:1px solid #e2e1dc;border-bottom:1px solid #e2e1dc">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="width:7px;height:7px;background:#bf3f10"></span>
+                  <span style="font-family:Heebo,system-ui,sans-serif;font-size:14px;font-weight:700">מודיעין עילית</span>
+                  <span style="font-size:12.5px;color:#4d5054">94 ממתינים · 76% משובצים</span>
+                  <span style="flex:1"></span>
+                  <span style="display:block;width:110px;height:4px;background:#e2e1dc"><span style="display:block;width:76%;height:4px;background:#1c6b45"></span></span>
+                </div>
+              </td>
+            </tr>
+            <tr style="height:44px;border-bottom:1px solid #eee;background:#fdefe8">
+              <td style="padding:0 24px 0 0;box-shadow:inset -3px 0 0 #bf3f10"><input type="checkbox" checked="checked"></td>
+              <td style="padding:0 8px;font-weight:700">חנה ברוכוביץ</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">213445671</td>
+              <td style="padding:0 8px">4</td>
+              <td style="padding:0 8px">בן הדקל</td>
+              <td style="padding:0 8px;color:#7a5104;font-weight:700">■ ממתינה</td>
+              <td style="padding:0 8px;color:#1c6b45;font-weight:700">■ קלוטה</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">050-4128877</td>
+              <td style="padding:0 8px;color:#4d5054">3/3</td>
+              <td style="padding:0 24px 0 8px;text-align:left"><button style="height:29px;padding:0 11px;border:1px solid #bf3f10;background:#bf3f10;color:#fff;font-weight:700;font-size:12px">קדם לתחנה 04 &rsaquo;</button></td>
+            </tr>
+            <tr style="height:44px;border-bottom:1px solid #eee;background:#fdefe8">
+              <td style="padding:0 24px 0 0;box-shadow:inset -3px 0 0 #bf3f10"><input type="checkbox" checked="checked"></td>
+              <td style="padding:0 8px;font-weight:700">שרה פרידמן</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">214553019</td>
+              <td style="padding:0 8px">4</td>
+              <td style="padding:0 8px;color:#a02c22;font-weight:700">■ ללא גן</td>
+              <td style="padding:0 8px;color:#5f6266">—</td>
+              <td style="padding:0 8px;color:#1c6b45;font-weight:700">■ קלוטה</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">050-6640912</td>
+              <td style="padding:0 8px;color:#a02c22;font-weight:700">1/3</td>
+              <td style="padding:0 24px 0 8px;text-align:left"><button style="height:29px;padding:0 11px;border:1px solid #bf3f10;background:#bf3f10;color:#fff;font-weight:700;font-size:12px">בחר גן &rsaquo;</button></td>
+            </tr>
+            <tr style="height:44px;border-bottom:1px solid #eee">
+              <td style="padding:0 24px 0 0"><input type="checkbox"></td>
+              <td style="padding:0 8px;font-weight:700">גיטל אייכלר</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">216004512</td>
+              <td style="padding:0 8px">4</td>
+              <td style="padding:0 8px">גן הרימון</td>
+              <td style="padding:0 8px;color:#7a5104;font-weight:700">■ ממתינה</td>
+              <td style="padding:0 8px;color:#1c6b45;font-weight:700">■ קלוטה</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">053-7712204</td>
+              <td style="padding:0 8px;color:#4d5054">3/3</td>
+              <td style="padding:0 24px 0 8px;text-align:left"><button style="height:29px;padding:0 11px;border:1px solid #d5d5d1;background:#fff;color:#17181a;font-size:12px" style-hover="border-color:#17181a">קדם &rsaquo;</button></td>
+            </tr>
+            <tr style="height:44px;border-bottom:1px solid #eee">
+              <td style="padding:0 24px 0 0"><input type="checkbox"></td>
+              <td style="padding:0 8px;font-weight:700">רייזל וכטפויגל</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">215330912</td>
+              <td style="padding:0 8px">4</td>
+              <td style="padding:0 8px">בן הדקל</td>
+              <td style="padding:0 8px;color:#7a5104;font-weight:700">■ ממתינה</td>
+              <td style="padding:0 8px;color:#5f6266;font-weight:700">□ טרם</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">050-7714488</td>
+              <td style="padding:0 8px;color:#4d5054">2/3</td>
+              <td style="padding:0 24px 0 8px"></td>
+            </tr>
+            <tr>
+              <td colSpan="10" style="height:32px;padding:0 24px;background:#f2f1ed;border-top:1px solid #e2e1dc;border-bottom:1px solid #e2e1dc">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="width:7px;height:7px;background:#bf3f10"></span>
+                  <span style="font-family:Heebo,system-ui,sans-serif;font-size:14px;font-weight:700">ביתר עילית</span>
+                  <span style="font-size:12.5px;color:#4d5054">58 ממתינים · 81% משובצים</span>
+                  <span style="flex:1"></span>
+                  <span style="display:block;width:110px;height:4px;background:#e2e1dc"><span style="display:block;width:81%;height:4px;background:#1c6b45"></span></span>
+                </div>
+              </td>
+            </tr>
+            <tr style="height:44px;border-bottom:1px solid #eee">
+              <td style="padding:0 24px 0 0"><input type="checkbox"></td>
+              <td style="padding:0 8px;font-weight:700">מרים לוינגר</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">214778230</td>
+              <td style="padding:0 8px">4</td>
+              <td style="padding:0 8px">אורות חיה</td>
+              <td style="padding:0 8px;color:#7a5104;font-weight:700">■ ממתינה</td>
+              <td style="padding:0 8px;color:#1c6b45;font-weight:700">■ קלוטה</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">052-7719044</td>
+              <td style="padding:0 8px;color:#4d5054">2/3</td>
+              <td style="padding:0 24px 0 8px"></td>
+            </tr>
+            <tr style="height:44px;border-bottom:1px solid #eee">
+              <td style="padding:0 24px 0 0"><input type="checkbox"></td>
+              <td style="padding:0 8px;font-weight:700">חיה מושקא לרנר</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">215773028</td>
+              <td style="padding:0 8px">4</td>
+              <td style="padding:0 8px">אורות חיה</td>
+              <td style="padding:0 8px;color:#7a5104;font-weight:700">■ ממתינה</td>
+              <td style="padding:0 8px;color:#1c6b45;font-weight:700">■ קלוטה</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">052-4470882</td>
+              <td style="padding:0 8px;color:#4d5054">3/3</td>
+              <td style="padding:0 24px 0 8px"></td>
+            </tr>
+            <tr style="height:44px;border-bottom:1px solid #eee">
+              <td style="padding:0 24px 0 0"><input type="checkbox"></td>
+              <td style="padding:0 8px;font-weight:700">טובה הופמן</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">216201377</td>
+              <td style="padding:0 8px">4</td>
+              <td style="padding:0 8px">אורות חיה</td>
+              <td style="padding:0 8px;color:#7a5104;font-weight:700">■ ממתינה</td>
+              <td style="padding:0 8px;color:#5f6266;font-weight:700">□ טרם</td>
+              <td style="padding:0 8px;font-family:ui-monospace,monospace" dir="ltr">058-4402219</td>
+              <td style="padding:0 8px;color:#4d5054">2/3</td>
+              <td style="padding:0 24px 0 8px"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="position:absolute;bottom:20px;right:50%;transform:translateX(50%);z-index:8;display:flex;align-items:center;gap:10px;padding:9px 12px 9px 16px;background:#17181a;color:#fff;box-shadow:0 8px 24px -6px rgba(23,24,26,.34),0 2px 6px rgba(23,24,26,.14)">
+        <span style="font-size:13px;font-weight:700">2 תיקים נבחרו</span>
+        <span style="width:1px;height:18px;background:#3a3e42"></span>
+        <button style="height:30px;padding:0 12px;border:1px solid #bf3f10;background:#bf3f10;color:#fff;font-size:12.5px;font-weight:700">שיבוץ מרכזי</button>
+        <button style="height:30px;padding:0 12px;border:1px solid #4a4f54;background:transparent;color:#eceae6;font-size:12.5px" style-hover="border-color:#9a9d9f">סמן שיבוץ סופי</button>
+        <button style="height:30px;padding:0 12px;border:1px solid #4a4f54;background:transparent;color:#eceae6;font-size:12.5px" style-hover="border-color:#9a9d9f">הודעה</button>
+        <button style="width:30px;height:30px;border:0;background:transparent;color:#9a9d9f;font-size:14px" style-hover="color:#fff">✕</button>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:712}}"></script>
+</body>
+</html>

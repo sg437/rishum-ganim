@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+@font-face{font-family:"Heebo";src:url("../../fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Assistant";src:url("../../fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800;font-display:swap}
+body{margin:0;background:#eceded}
+a{color:#131313}
+a:hover{color:#6b6b6b}
+</style>
+</helmet>
+
+<section dir="rtl" style="padding:44px;background:#eeeae1;color:#22221f;font-family:Assistant,system-ui,sans-serif">
+  <div style="max-width:1000px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#6b6860">סבב 7 · הקו המאוחד</div>
+    <h1 style="margin:8px 0 0;font-family:Heebo,system-ui,sans-serif;font-size:34px;font-weight:600;line-height:1.15;letter-spacing:-.02em">לוח הבית</h1>
+    <p style="margin:12px 0 0;font-size:16px;line-height:1.6;color:#4e4c46;max-width:68ch;text-wrap:pretty">שילוב של השניים: פס הדיו והמסילה מ-<a href="#5a">5a</a> על הבסיס החם והמעוגל של <a href="#6a">6a</a>, עם אייקוני קו עדינים (1.4px, שקיפות 75%) בכל פריט בסרגל. הפס עצמו עבר לגרפיט-מרווה, וקו המסילה שמתחתיו בירוק המותג. תוכן המסך: קוביות Bento — רישום ארצי לפי ערים, חריגות בשיבוץ, תורי עבודה ופעילות היום.</p>
+  </div>
+  <div id="7a" style="display:flex;flex-direction:column;gap:14px;margin-top:32px;width:1280px">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;border-radius:8px;background:#22221f;color:#fffefb">7a</span>
+      <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:600">לוח הבית · Bento</h2>
+    </div>
+    <dc-import name="Home" hint-size="1280px,760px"></dc-import>
+  </div>
+</section>
+
+<section dir="rtl" style="padding:44px;background:#e7e3da;color:#22221f;font-family:Assistant,system-ui,sans-serif;font-variant-numeric:tabular-nums">
+  <div style="max-width:1000px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#6b6860">סבב 6 · כיוון חדש</div>
+    <h1 style="margin:8px 0 0;font-family:Heebo,system-ui,sans-serif;font-size:34px;font-weight:600;line-height:1.15;letter-spacing:-.02em">מינימליזם חם ורך — קנבס השיבוץ</h1>
+    <p style="margin:12px 0 0;font-size:16px;line-height:1.6;color:#4e4c46;max-width:68ch;text-wrap:pretty">זה לב המערכת בשפה שתיארת. במקום דרופ-דאון, השיבוץ הוא קנבס: מאגר הממתינות בצד אחד, הגנים בצד השני, וגוררים ביניהם. הכרטיס שבגרירה מותיר צל מקווקו במאגר, והגן שמעליו נמצא הסמן נדלק בירוק מרווה ואומר מה יקרה. הרקע נייר שבור (‎#f4f2ed‎) ולא לבן בוהק, כל המשטחים בפינות 12–14px, והצללים רכים מאוד — שכבה שצפה, לא קופסה עם מסגרת.</p>
+    <div style="margin-top:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 32px;font-size:14.5px;line-height:1.6;color:#4e4c46">
+      <div><b style="color:#22221f">מדי קיבולת.</b> לכל גן פס רך: ירוק מרווה עד 85%, ענבר כשמתקרב לרף, חלמון-חימר כשחורג — 37/36 קורא "שיבוץ חסום" עוד לפני שגוררים.</div>
+      <div><b style="color:#22221f">חשיפה הדרגתית.</b> בכרטיס התלמידה רק שם, מועד ומצב מסמכים בנקודה צבעונית. לחיצה פותחת מגירה עם התיק המלא — בלי לצאת מהקנבס.</div>
+      <div><b style="color:#22221f">מיקרו-פידבק.</b> כל כרטיס עולה 1px בריחוף עם צל רך (140ms), והשיבוץ מאושר בטוסט כהה ומעוגל עם "ביטול" — פידבק חיובי מיד, בלי אנימציית ראווה.</div>
+      <div><b style="color:#22221f">מצב לילה.</b> הכפתור ☾ בפס העליון. הבסיס הכהה יהיה אפור-כחלחל (‎#1c2024‎) ולא שחור, עם אותו ירוק מרווה מובהר לניגודיות.</div>
+    </div>
+    <p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:#6b6860;max-width:68ch">בורר <b style="color:#22221f;font-weight:700">טבלה / קנבס שיבוץ</b> בראש המסך — הטבלה הצפופה נשארת לעבודה על אלפי רשומות, הקנבס לשיבוץ עצמו. אותו מסך, שני מצבים.</p>
+  </div>
+  <div id="6a" style="display:flex;flex-direction:column;gap:14px;margin-top:32px;width:1280px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;border-radius:8px;background:#22221f;color:#fffefb">6a</span>
+      <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:600;letter-spacing:-.015em">קנבס שיבוץ · גרירה</h2>
+    </div>
+    <dc-import name="Soft" hint-size="1280px,760px"></dc-import>
+  </div>
+</section>
+
+<section dir="rtl" style="padding:44px;background:#dfddd7;color:#17181a;font-family:Assistant,system-ui,sans-serif;font-variant-numeric:tabular-nums">
+  <div style="max-width:1000px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#4d5054">סבב 5 · עומק</div>
+    <h1 style="margin:8px 0 0;font-family:Heebo,system-ui,sans-serif;font-size:34px;font-weight:700;line-height:1.15;letter-spacing:-.025em">מסילה v4 — פס מובהר וצמתים מורמים</h1>
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 32px;font-size:14.5px;line-height:1.6;color:#4d5054">
+      <div><b style="color:#17181a">הפס הובהר.</b> מגרפיט כהה לגרדיאנט גרפיט־בהיר עם קו אור דק בקצה העליון. הטקסט הלבן עליו נשאר בניגודיות 11:1.</div>
+      <div><b style="color:#17181a">הצמתים מורמים.</b> כל צומת הוא אריח פיזי: גרדיאנט עדין, מסגרת 1px, קו כהה מתחתיו וצל רך — נראה מורם מהמסילה בלי שום transform תלת־מימדי.</div>
+      <div><b style="color:#17181a">התחנה הפעילה בולטת.</b> הצומת שלה גדול פי אחד וחצי, בצבע המבטא, והתא כולו מוגבה מעל שכניו עם צל רחב — הוא יוצא מהשורה של הארבע.</div>
+      <div><b style="color:#17181a">אור על הנייר.</b> גרדיאנט לבן־אל־נייר ב-260px העליונים של אזור התוכן, כך שהמסך נדלק מלמעלה ולא שוכב שטוח. אלמנט אחד, לא חוזר על עצמו.</div>
+      <div style="grid-column:1 / -1"><b style="color:#17181a">כותרות הסרגל.</b> ריבוע קטן לפני כל כותרת קבוצה — מבטא לקבוצה הפעילה, אפור לשאר — והפריט הנבחר הוא אריח לבן מוגבה. אותה שפה של הצמתים, גם בניווט.</div>
+    </div>
+  </div>
+  <div id="5a" style="display:flex;flex-direction:column;gap:14px;margin-top:32px;width:1280px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;background:#17181a;color:#fff">5a</span>
+      <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.02em">תלמידים ושיבוץ מרכזי</h2>
+    </div>
+    <dc-import name="Track4" hint-size="1280px,712px"></dc-import>
+  </div>
+</section>
+
+<section dir="rtl" style="padding:44px;background:#e9e7e2;color:#17181a;font-family:Assistant,system-ui,sans-serif;font-variant-numeric:tabular-nums">
+  <div style="max-width:1000px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#5f6266">סבב 4 · שפה ויזואלית</div>
+    <h1 style="margin:8px 0 0;font-family:Heebo,system-ui,sans-serif;font-size:34px;font-weight:700;line-height:1.15;letter-spacing:-.025em">מסילה v3 — הקו העיצובי</h1>
+    <p style="margin:12px 0 0;font-size:16px;line-height:1.6;color:#4d5054;max-width:68ch;text-wrap:pretty">אותה פריסה בדיוק כמו <a href="#3a">3a</a>, עם שפה ויזואלית שחוזרת בכל מסך במערכת — חמישה מרכיבים, כולם CSS פשוט בלי ספריות ובלי עומס על הרינדור:</p>
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 32px;max-width:1000px;font-size:14.5px;line-height:1.6;color:#4d5054">
+      <div><b style="color:#17181a">פס הדיו.</b> רצועה שחורה 56px לרוחב כל המערכת, נושאת את השם, השנה, היקף הערים והחיפוש. הרצועה זהה בכל מסך — היא החתימה של המרכזי, וגם מפרידה אותו מוחלטת מתוכנת הערים.</div>
+      <div><b style="color:#17181a">המסילה.</b> קו מבטא 2px ישר מתחת לפס הדיו, ועליו ארבעה צמתים — ריבוע קטן אפור לכל תחנה, וריבוע מבטא גדול לתחנה שאני עומד בה. זו התמצית של השם: המסך הוא נקודה על מסילה.</div>
+      <div><b style="color:#17181a">מספרים בקו מתאר.</b> מספרי התחנות 01–04 ב-Heebo 700 בקו מתאר בלבד, והתחנה הפעילה מלאה בצבע המבטא. אלמנט גרפי גדול שאינו מוסיף רעש ואינו צורך צבע.</div>
+      <div><b style="color:#17181a">אורות איתות.</b> הסטטוסים אינם תגיות מרובעות אלא ריבוע מלא + מילה בצבע הדיו של אותו מצב — מלא = קיים, חלול = טרם. שורה שלמה נקראת כלוח בקרה, ולא כאוסף כפתורים.</div>
+      <div style="grid-column:1 / -1"><b style="color:#17181a">מספרים בגופן מונו.</b> מספרי זהות וטלפונים בגופן מערכת חד-רווח, כך שהספרות מתיישרות בטור אחד ועין סורקת אותן במהירות. זו הטקסטורה שנותנת למסך את אופי חדר הבקרה.</div>
+    </div>
+  </div>
+  <div id="4a" style="display:flex;flex-direction:column;gap:14px;margin-top:32px;width:1280px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;background:#17181a;color:#fff">4a</span>
+      <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.02em">תלמידים ושיבוץ מרכזי</h2>
+    </div>
+    <dc-import name="Track3" hint-size="1280px,712px"></dc-import>
+  </div>
+</section>
+
+<section dir="rtl" style="padding:44px;background:#f3f2ef;color:#17181a;font-family:Assistant,system-ui,sans-serif;font-variant-numeric:tabular-nums">
+  <div style="max-width:1000px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#5f6266">סבב 3 · הכיוון שנבחר</div>
+    <h1 style="margin:8px 0 0;font-family:Heebo,system-ui,sans-serif;font-size:34px;font-weight:700;line-height:1.15;letter-spacing:-.025em">מסילה v2</h1>
+    <p style="margin:12px 0 0;font-size:16px;line-height:1.6;color:#4d5054;max-width:68ch;text-wrap:pretty">מבנה התחנות של <a href="#2a">2a</a>, עם ארבעת התיקונים שביקשת: הסרגל הובהר לגוון נייר חם (במקום פחם), הסינון עבר לקריאה כמשפט כמו ב-<a href="#2b">2b</a>, הטבלה מקובצת לפי עיר עם אחוז המשובצות בכל אחת, והטיפוגרפיה כולה עלתה למשקל 700 — כותרות, מספרי תחנה, שמות ותוויות עמודה. הגלגלות הוסתרו: בסרגל הצד אין גלגלת בכלל, ובטבלה היא דקה (6px) ובגוון הקו.</p>
+    <p style="margin:10px 0 0;font-size:15px;line-height:1.6;color:#5f6266;max-width:68ch">תורי העבודה והנתונים היומיים מ-<a href="#2c">2c</a> ירדו מהמסך הזה — מקומם בלוח הבית.</p>
+  </div>
+  <div id="3a" style="display:flex;flex-direction:column;gap:14px;margin-top:32px;width:1280px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;background:#17181a;color:#fff">3a</span>
+      <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.02em">תלמידים ושיבוץ מרכזי</h2>
+      <span style="font-size:15px;color:#4d5054">תחנה 03 · סינון כמשפט · חלוקה לפי ערים</span>
+    </div>
+    <dc-import name="Track2" hint-size="1280px,712px"></dc-import>
+  </div>
+</section>
+
+<section dir="rtl" style="padding:44px;background:#eceded;color:#131313;font-family:Assistant,system-ui,sans-serif;font-variant-numeric:tabular-nums">
+  <div style="max-width:1000px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#7a7a7a">שלב א׳ · סבב 2 · מבנה, לא צבע</div>
+    <h1 style="margin:8px 0 0;font-family:Heebo,system-ui,sans-serif;font-size:34px;font-weight:600;line-height:1.15;letter-spacing:-.025em">שלושה מבנים למסך תלמידים ושיבוץ מרכזי</h1>
+    <p style="margin:12px 0 0;font-size:16px;line-height:1.6;color:#3d3d3d;max-width:68ch;text-wrap:pretty">הסבב הראשון (<a href="Palettes.dc.html">שלוש הפלטות</a>) שינה רק צבע על אותו שלד: סרגל, שורת כרטיסי מחוונים, סרגל סינון, טבלה. השלד הזה נזרק. כאן שלושה מבנים שונים באמת — כל אחד מחליט אחרת מה המסך הזה בכלל: תחנת עבודה בתהליך, גיליון מקובץ לפי עיר, או מפתח שקט שממנו נפתחים תורי עבודה. אותם נתונים, אותה פונקציונליות, סרגל צד קבוע 248px בשלושתם, שכבה אחת פתוחה בכל מסך.</p>
+    <p style="margin:10px 0 0;font-size:15px;line-height:1.6;color:#6b6b6b;max-width:68ch">בחר לפי מזהה — <a href="#2a">2a</a>, <a href="#2b">2b</a>, <a href="#2c">2c</a> — או אמור מה לקחת מכל אחד.</p>
+  </div>
+
+  <div style="display:flex;gap:44px;flex-wrap:wrap;align-items:flex-start;margin-top:36px">
+
+    <div id="2a" style="display:flex;flex-direction:column;gap:14px;width:1280px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;background:#131313;color:#fff">2a</span>
+        <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:600;letter-spacing:-.02em">מְסִילָה</h2>
+        <span style="font-size:15px;color:#3d3d3d">תחנת עבודה בתוך תהליך, לא רשימה.</span>
+      </div>
+      <p style="margin:0;font-size:14.5px;line-height:1.65;color:#3d3d3d;max-width:100ch">ארבע התחנות של התיק — נרשם · נקלט בעירייה · שובץ · תוקצב — הן הניווט הראשי של המסך, פרושות כפס אחד רציף בלי כרטיסים, עם מספר ענק לכל תחנה ופס התקדמות דק. לוחצים על תחנה ורואים רק את התיקים שעומדים בה. כל שורה נושאת פעולה אחת קדימה (<span style="font-weight:600">קדם לתחנה 04</span>), ובחירת שורות מרימה סרגל פעולות מרחף כהה במקום להוסיף פס נוסף למסך. סרגל צד כהה, נייר לבן, מבטא כתום־חלוד יחיד. אין רדיוסים בכלל — פינות חדות, קווי שיער, וטיפוגרפיה שנושאת את ההיררכיה.</p>
+      <dc-import name="DirTrack" hint-size="1280px,924px"></dc-import>
+    </div>
+
+    <div id="2b" style="display:flex;flex-direction:column;gap:14px;width:1280px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;background:#131313;color:#fff">2b</span>
+        <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:600;letter-spacing:-.02em">לוּחַ</h2>
+        <span style="font-size:15px;color:#3d3d3d">גיליון מקובץ לפי עיר, והסינון הוא משפט.</span>
+      </div>
+      <p style="margin:0;font-size:14.5px;line-height:1.65;color:#3d3d3d;max-width:100ch">שבעת המונים אינם כרטיסים אלא שורת מד טיפוגרפית אחת מתחת לקו כבד, כמו ראש עיתון. הסינון נקרא כמשפט בעברית — <span style="font-weight:600">״מציג ממתינים לשיבוץ · גיל 4 · 6 ערים — 281 תיקים״</span> — כשכל חלק בו הוא כפתור מסומן בקו תחתון, וה-popover נפתח ממנו וממוקד בו. הטבלה עצמה מקובצת לפי עיר: לכל עיר פס כותרת עם מספר הממתינים ואחוז המשובצות, כך שהמבנה הארצי נראה בעין בלי לעבור לדוח. סרגל צד בגוון אבן, תוכן לבן, מבטא ירוק־דיו.</p>
+      <dc-import name="Board" hint-size="1280px,820px"></dc-import>
+    </div>
+
+    <div id="2c" style="display:flex;flex-direction:column;gap:14px;width:1280px">
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;background:#131313;color:#fff">2c</span>
+        <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:600;letter-spacing:-.02em">מַפְתֵּחַ</h2>
+        <span style="font-size:15px;color:#3d3d3d">המסך הבסיסי ריק. הנתונים נפתחים בשכבה.</span>
+      </div>
+      <p style="margin:0;font-size:14.5px;line-height:1.65;color:#3d3d3d;max-width:100ch">כברירת מחדל אין טבלה על המסך בכלל: חיפוש גדול אחד, חמישה תורי עבודה עם המספר שלהם, ועמודה שקטה של מה שקרה היום. בוחרים תור — והגיליון נפתח כשכבה מלאת־גובה מעל בסיס מעומעם, ונסגר ב-Esc. זו הקריאה המילולית ביותר של ״מסך בסיסי רגוע וריק, נתונים כבדים בשכבה מרחפת״. שחור־לבן כמעט מוחלט, והמבטא היחיד הוא צהוב סמן שיושב <span style="background:#ffd83d;padding:0 3px">מאחורי מספרים</span> ולא בטקסט עצמו — כך הוא אינו נושא מידע בצבע ואינו נופל בניגודיות.</p>
+      <dc-import name="Index" hint-size="1280px,820px"></dc-import>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:"Heebo";src:url("../../fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Assistant";src:url("../../fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800;font-display:swap}
+body{margin:0}
+button{font-family:inherit;cursor:pointer}
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-thumb{background:#dcd7cc;border-radius:3px}
+*::-webkit-scrollbar-track{background:transparent}
+nav::-webkit-scrollbar{width:0;height:0}
+</style>
+</helmet>
+<div dir="rtl" style="width:1280px;height:760px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:#f4f2ed;color:#22221f;font-family:Assistant,system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;accent-color:#2f5d4a;border:1px solid #e3dfd6;border-radius:14px">
+
+  <header style="flex:0 0 auto;height:60px;display:flex;align-items:center;gap:12px;padding:0 20px;background:#fffefb;border-bottom:1px solid #eae6dd">
+    <span style="width:30px;height:30px;flex:0 0 30px;border-radius:9px;background:#2f5d4a;color:#fffefb;font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center">מ</span>
+    <span style="font-family:Heebo,system-ui,sans-serif;font-size:15.5px;font-weight:600">מרכז ניהול ארצי</span>
+    <span style="font-size:13px;color:#6b6860">מחלקת הרישום</span>
+    <span style="flex:1"></span>
+    <input type="text" value="חיפוש תיק: שם, ת״ז, טלפון, גן…" style="width:280px;height:36px;padding:0 12px;border:1px solid #e3dfd6;border-radius:10px;background:#faf8f4;color:#6b6860;font-family:inherit;font-size:13.5px" style-focus="outline:2px solid #2f5d4a;outline-offset:1px;background:#fffefb;color:#22221f">
+    <button style="height:36px;padding:0 13px;border:1px solid #e3dfd6;border-radius:10px;background:#fffefb;color:#22221f;font-size:13px">תשפ״ז</button>
+    <button title="מצב לילה" style="width:36px;height:36px;border:1px solid #e3dfd6;border-radius:10px;background:#fffefb;color:#4e4c46;font-size:14px">☾</button>
+    <span style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:#e6efe9;color:#24483a;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">שג</span>
+  </header>
+
+  <div style="flex:1;min-height:0;display:flex">
+    <aside style="width:248px;flex:0 0 248px;display:flex;flex-direction:column;background:#fffefb;border-left:1px solid #eae6dd">
+      <nav style="flex:1;overflow:auto;scrollbar-width:none;padding:14px 12px;font-size:13.5px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:0 8px 6px">ראשי</div>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">לוח הבית</a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">רישום ושיבוץ</div>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#24483a;text-decoration:none;font-weight:700;background:#e6efe9">תלמידים ושיבוץ מרכזי</a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">עובדות</a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">מפת שיבוץ</a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">ייבוא מאקסל</a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">קשר והפצה</div>
+        <a href="#" style="display:flex;justify-content:space-between;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f"><span>מרכז הודעות</span><span style="font-weight:700;font-size:12px;color:#24483a">4</span></a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">הפצת שיבוץ · Smoove</a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">הפצה ופרסום</a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">ערוצי רישום</a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">בקרה וציות</div>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">בקרת משרד החינוך</a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">רישיון וסייעת ב׳</a>
+        <a href="#" style="display:flex;justify-content:space-between;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f"><span>פניות וערעורים</span><span style="font-weight:700;font-size:12px;color:#8a5b12">7</span></a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">חוזרי מנכ״ל</a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">ניהול</div>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">פילוחים ודוח להנהלה</a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">החלטות</a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">עוזר חכם</a>
+        <a href="#" style="display:block;padding:9px 12px;border-radius:10px;color:#4e4c46;text-decoration:none" style-hover="background:#f2efe8;color:#22221f">הגדרות והרשאות</a>
+      </nav>
+      <div style="padding:12px 16px;border-top:1px solid #eae6dd;font-size:11.5px;color:#6b6860">6 ערים · עודכן לפני 3 דקות</div>
+    </aside>
+
+    <main style="flex:1;min-width:0;display:flex;flex-direction:column;padding:18px 20px 20px;gap:14px">
+      <div style="flex:0 0 auto;display:flex;align-items:flex-end;gap:14px">
+        <div>
+          <h1 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:23px;font-weight:600;letter-spacing:-.015em">שיבוץ מרכזי · מודיעין עילית</h1>
+          <div style="margin-top:3px;font-size:13.5px;color:#6b6860">גוררים תלמידה מהמאגר אל הגן. השינוי נכתב לתיק בעיר ומופיע שם מיד.</div>
+        </div>
+        <span style="flex:1"></span>
+        <div style="display:flex;padding:3px;border-radius:11px;background:#e9e5dc">
+          <button style="height:32px;padding:0 15px;border:0;border-radius:8px;background:transparent;color:#4e4c46;font-size:13px;font-weight:600">טבלה</button>
+          <button style="height:32px;padding:0 15px;border:0;border-radius:8px;background:#fffefb;color:#22221f;font-size:13px;font-weight:700;box-shadow:0 1px 2px rgba(34,34,31,.06),0 2px 6px -2px rgba(34,34,31,.10)">קנבס שיבוץ</button>
+        </div>
+        <button style="height:36px;padding:0 14px;border:1px solid #e3dfd6;border-radius:10px;background:#fffefb;color:#22221f;font-size:13px">סינון · גיל 4</button>
+        <button style="height:36px;padding:0 15px;border:1px solid #2f5d4a;border-radius:10px;background:#2f5d4a;color:#fffefb;font-size:13px;font-weight:700">שיבוץ אוטומטי לפי קרבה</button>
+      </div>
+
+      <div style="flex:1;min-height:0;display:flex;gap:16px">
+        <section style="width:312px;flex:0 0 312px;display:flex;flex-direction:column;background:#fffefb;border:1px solid #eae6dd;border-radius:14px;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06)">
+          <div style="flex:0 0 auto;padding:14px 14px 12px;border-bottom:1px solid #f0ece4">
+            <div style="display:flex;align-items:baseline;gap:8px">
+              <span style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600">מאגר הממתינות</span>
+              <span style="font-size:12.5px;font-weight:700;padding:1px 8px;border-radius:999px;background:#f3edde;color:#8a5b12">281</span>
+            </div>
+            <div style="margin-top:3px;font-size:12.5px;color:#6b6860">גיל 4 · מודיעין עילית</div>
+          </div>
+          <div style="flex:1;min-height:0;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px dashed #cfc9bc;border-radius:12px;background:#faf8f4;color:#6b6860;font-size:13px">
+              <span style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;border:1px dashed #cfc9bc"></span>
+              <span>מרים לוינגר — בגרירה</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <span style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:#e6efe9;color:#24483a;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">חב</span>
+              <span style="flex:1;min-width:0"><span style="display:block;font-weight:700">חנה ברוכוביץ</span><span style="display:block;font-size:12px;color:#6b6860">מועד א׳ · מסמכים 3/3</span></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:#2f5d4a"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <span style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:#f8e5e1;color:#9d3227;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">שפ</span>
+              <span style="flex:1;min-width:0"><span style="display:block;font-weight:700">שרה פרידמן</span><span style="display:block;font-size:12px;color:#9d3227">מסמכים 1/3 · חסר נספח</span></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:#9d3227"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <span style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:#e6efe9;color:#24483a;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">גא</span>
+              <span style="flex:1;min-width:0"><span style="display:block;font-weight:700">גיטל אייכלר</span><span style="display:block;font-size:12px;color:#6b6860">מועד א׳ · מסמכים 3/3</span></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:#2f5d4a"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <span style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:#e6efe9;color:#24483a;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">רו</span>
+              <span style="flex:1;min-width:0"><span style="display:block;font-weight:700">רייזל וכטפויגל</span><span style="display:block;font-size:12px;color:#6b6860">מועד ב׳ · מסמכים 2/3</span></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:#8a5b12"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <span style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:#e6efe9;color:#24483a;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">טה</span>
+              <span style="flex:1;min-width:0"><span style="display:block;font-weight:700">טובה הופמן</span><span style="display:block;font-size:12px;color:#6b6860">מועד ב׳ · מסמכים 2/3</span></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:#8a5b12"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <span style="width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:#e6efe9;color:#24483a;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">נג</span>
+              <span style="flex:1;min-width:0"><span style="display:block;font-weight:700">נחמה גלינסקי</span><span style="display:block;font-size:12px;color:#6b6860">מועד ב׳ · מסמכים 3/3</span></span>
+              <span style="width:7px;height:7px;border-radius:50%;background:#2f5d4a"></span>
+            </div>
+          </div>
+          <div style="flex:0 0 auto;padding:11px 14px;border-top:1px solid #f0ece4;font-size:12px;color:#6b6860">לחיצה על כרטיס פותחת את התיק במגירה</div>
+        </section>
+        <section style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+          <div style="flex:0 0 auto;display:flex;align-items:baseline;gap:8px;padding:0 2px">
+            <span style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600">גני מודיעין עילית · גיל 4</span>
+            <span style="font-size:12.5px;white-space:nowrap;color:#6b6860">6 גנים · 194 מקומות · 27 פנויים</span>
+          </div>
+          <div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:10px">
+            <div style="position:relative;padding:14px 16px;border:2px dashed #2f5d4a;border-radius:14px;background:#eaf2ec;box-shadow:0 4px 12px -4px rgba(47,93,74,.18)">
+              <div style="display:block">
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:16px;font-weight:700;color:#24483a">אורות חיה</span>
+                <span style="display:block;font-size:12.5px;color:#3d6b58">גננת רחל אדלר</span>
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:9px">
+                <span style="flex:1;height:8px;border-radius:999px;background:#d4e3d9"><span style="display:block;width:66%;height:8px;border-radius:999px;background:#2f5d4a"></span></span>
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:13.5px;font-weight:700;color:#24483a">20 / 30</span>
+              </div>
+              <div style="margin-top:10px;font-size:13px;font-weight:700;color:#24483a">שחרר כאן · יתפנו 9 מקומות</div>
+            </div>
+            <div style="padding:14px 16px;border:1px solid #eae6dd;border-radius:14px;background:#fffefb;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06);transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <div style="display:block">
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:16px;font-weight:700">בן הדקל</span>
+                <span style="display:block;font-size:12.5px;color:#6b6860">גננת מרים שפירא</span>
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:9px">
+                <span style="flex:1;height:8px;border-radius:999px;background:#eee9df"><span style="display:block;width:92%;height:8px;border-radius:999px;background:#8a5b12"></span></span>
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:13.5px;font-weight:700;color:#8a5b12">33 / 36</span>
+              </div>
+              <div style="margin-top:10px;font-size:12.5px;color:#8a5b12">מתקרב לרף · 3 מקומות</div>
+            </div>
+            <div style="padding:14px 16px;border:1px solid #eae6dd;border-radius:14px;background:#fffefb;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06);transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <div style="display:block">
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:16px;font-weight:700">גן הרימון</span>
+                <span style="display:block;font-size:12.5px;color:#6b6860">גננת חוה לוי</span>
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:9px">
+                <span style="flex:1;height:8px;border-radius:999px;background:#f4e3df"><span style="display:block;width:100%;height:8px;border-radius:999px;background:#9d3227"></span></span>
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:13.5px;font-weight:700;color:#9d3227">37 / 36</span>
+              </div>
+              <div style="margin-top:10px;font-size:12.5px;color:#9d3227">חריגה מרף השיבוץ · שיבוץ חסום</div>
+            </div>
+            <div style="padding:14px 16px;border:1px solid #eae6dd;border-radius:14px;background:#fffefb;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06);transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <div style="display:block">
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:16px;font-weight:700">נחלת אסתר</span>
+                <span style="display:block;font-size:12.5px;color:#6b6860">גננת שרה גרוס</span>
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:9px">
+                <span style="flex:1;height:8px;border-radius:999px;background:#e4ece6"><span style="display:block;width:56%;height:8px;border-radius:999px;background:#2f5d4a"></span></span>
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:13.5px;font-weight:700">18 / 32</span>
+              </div>
+              <div style="margin-top:10px;font-size:12.5px;color:#6b6860">14 מקומות פנויים</div>
+            </div>
+            <div style="padding:14px 16px;border:1px solid #eae6dd;border-radius:14px;background:#fffefb;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06);transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <div style="display:block">
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:16px;font-weight:700">כרם הדס</span>
+                <span style="display:block;font-size:12.5px;color:#6b6860">גננת אסתר כהן</span>
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:9px">
+                <span style="flex:1;height:8px;border-radius:999px;background:#e4ece6"><span style="display:block;width:86%;height:8px;border-radius:999px;background:#2f5d4a"></span></span>
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:13.5px;font-weight:700">31 / 36</span>
+              </div>
+              <div style="margin-top:10px;font-size:12.5px;color:#6b6860">5 מקומות פנויים</div>
+            </div>
+            <div style="padding:14px 16px;border:1px solid #eae6dd;border-radius:14px;background:#fffefb;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06);transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1),0 2px 4px rgba(34,34,31,.05)">
+              <div style="display:block">
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:16px;font-weight:700">שערי בינה</span>
+                <span style="display:block;font-size:12.5px;color:#6b6860">גננת ברכה ויס</span>
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:9px">
+                <span style="flex:1;height:8px;border-radius:999px;background:#e4ece6"><span style="display:block;width:79%;height:8px;border-radius:999px;background:#2f5d4a"></span></span>
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:13.5px;font-weight:700">27 / 34</span>
+              </div>
+              <div style="margin-top:10px;font-size:12.5px;color:#6b6860">7 מקומות פנויים</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div style="position:absolute;bottom:20px;right:50%;transform:translateX(50%);z-index:9;display:flex;align-items:center;gap:12px;padding:11px 14px 11px 16px;border-radius:12px;background:#22221f;color:#fffefb;box-shadow:0 18px 40px -12px rgba(34,34,31,.4),0 4px 10px -4px rgba(34,34,31,.2)">
+    <span style="width:8px;height:8px;border-radius:50%;background:#7dc39f"></span>
+    <span style="font-size:13.5px">מרים לוינגר שובצה לגן <b style="font-weight:700">אורות חיה</b></span>
+    <button style="height:28px;padding:0 11px;border:1px solid #55534c;border-radius:8px;background:transparent;color:#fffefb;font-size:12.5px" style-hover="border-color:#8d8a82">ביטול</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:760}}"></script>
+</body>
+</html>

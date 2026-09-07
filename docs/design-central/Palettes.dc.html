@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+@font-face{font-family:"Heebo";src:url("../../fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:"Heebo";src:url("../../fonts/heebo-latin.woff2") format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215;}
+@font-face{font-family:"Assistant";src:url("../../fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800;font-display:swap;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:"Assistant";src:url("../../fonts/assistant-latin.woff2") format("woff2");font-weight:200 800;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215;}
+body{margin:0;background:#f0f1f3}
+a{color:#1e5f9e}
+a:hover{color:#17497a}
+</style>
+</helmet>
+
+<section dir="rtl" style="padding:40px;background:#f0f1f3;color:#16202b;font-family:Assistant,system-ui,sans-serif;font-variant-numeric:tabular-nums">
+  <div style="max-width:1200px;margin-bottom:8px">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#6b7889">שלב א׳ · מרכז ניהול ארצי</div>
+    <h1 style="margin:6px 0 0;font-family:Heebo,system-ui,sans-serif;font-size:34px;font-weight:700;line-height:1.2;letter-spacing:-.02em">שלוש פלטות למסך תלמידים ושיבוץ מרכזי</h1>
+    <p style="margin:10px 0 0;font-size:16px;line-height:1.6;color:#4a5768;max-width:70ch;text-wrap:pretty">אותה פריסה, אותם נתונים, אותה טיפוגרפיה — רק הצבע משתנה. הגופנים מקומיים מתיקיית <span dir="ltr">fonts/</span>: Heebo לכותרות ולמספרים גדולים, Assistant לטקסט. בשלושתן: סרגל צד קבוע 248px עם 17 מודולים בחמש קבוצות, ארבעה מחוונים ראשיים ושורת מונים שקטה, סרגל סינון שבו רק חיפוש ושני מסננים גלויים והשאר ב-popover, טבלה עם כותרת דביקה וגובה שורה קבוע 44px, ומגירת תיק פתוחה מעל בסיס מעומעם.</p>
+    <p style="margin:10px 0 0;font-size:15px;line-height:1.6;color:#6b7889;max-width:70ch">בחר פלטה לפי המזהה — <a href="#1a">1a</a>, <a href="#1b">1b</a> או <a href="#1c">1c</a> — ואמשיך לשלב ב׳ (מסמך המפרט).</p>
+  </div>
+
+  <div style="display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start;margin-top:32px">
+
+    <div id="1a" style="display:flex;flex-direction:column;gap:14px;width:1360px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;background:#16202b;color:#fff">1a</span>
+        <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.015em">פְּלָדָה</h2>
+        <span style="font-size:15px;color:#4a5768">כחול-פלדה תפעולי: אפור קריר, מבטא כחול כבד אחד, אפס חמימות — מסך של מחלקה שעובדת עם מספרים.</span>
+      </div>
+      <dc-import name="StudentsFrame" vars="{{ steel }}" hint-size="1360px,900px"></dc-import>
+      <div style="background:#fff;border:1px solid #dbe1e8;border-radius:10px;padding:18px 20px">
+        <div style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600;margin-bottom:12px">טוקני צבע · פלדה</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 24px">
+          <sc-for list="{{ steelTokens }}" as="t" hint-placeholder-count="21">
+            <div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #eef1f5">
+              <span style="width:22px;height:22px;flex:0 0 22px;border-radius:5px;overflow:hidden;border:1px solid rgba(20,32,44,.14)" ><span style="{{ t.sw }}"></span></span>
+              <span style="font-size:13px;font-weight:600;width:104px;flex:0 0 104px" dir="ltr">{{ t.n }}</span>
+              <span style="font-size:13px;width:74px;flex:0 0 74px;color:#4a5768" dir="ltr">{{ t.v }}</span>
+              <span style="font-size:12.5px;color:#6b7889;flex:1;min-width:0">{{ t.u }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600;margin:20px 0 12px;padding-top:16px;border-top:1px solid #eef1f5">עומק — עמעום וסולם צללות</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ steelDepth }}" as="t" hint-placeholder-count="3">
+            <div style="display:flex;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid #eef1f5">
+              <span style="font-size:13px;font-weight:600;width:104px;flex:0 0 104px" dir="ltr">{{ t.n }}</span>
+              <span style="font-size:13px;flex:1;min-width:0;color:#4a5768;word-break:break-word" dir="ltr">{{ t.v }}</span>
+              <span style="font-size:12.5px;color:#6b7889;width:280px;flex:0 0 280px">{{ t.u }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="display:flex;flex-direction:column;gap:14px;width:1360px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;background:#241f18;color:#fffdf9">1b</span>
+        <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.015em">נְיָר</h2>
+        <span style="font-size:15px;color:#4a5768">נייר חם: בסיס בז׳ שקט, דיו חום-שחור, מבטא נחושת. פחות "מסך", יותר תיקייה — נוח לעיניים בשעות ארוכות.</span>
+      </div>
+      <dc-import name="StudentsFrame" vars="{{ paper }}" hint-size="1360px,900px"></dc-import>
+      <div style="background:#fffdf9;border:1px solid #e2dbcd;border-radius:10px;padding:18px 20px">
+        <div style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600;margin-bottom:12px">טוקני צבע · נייר</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 24px">
+          <sc-for list="{{ paperTokens }}" as="t" hint-placeholder-count="21">
+            <div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #f1ece2">
+              <span style="width:22px;height:22px;flex:0 0 22px;border-radius:5px;overflow:hidden;border:1px solid rgba(36,31,24,.14)" ><span style="{{ t.sw }}"></span></span>
+              <span style="font-size:13px;font-weight:600;width:104px;flex:0 0 104px" dir="ltr">{{ t.n }}</span>
+              <span style="font-size:13px;width:74px;flex:0 0 74px;color:#564e41" dir="ltr">{{ t.v }}</span>
+              <span style="font-size:12.5px;color:#7a7060;flex:1;min-width:0">{{ t.u }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600;margin:20px 0 12px;padding-top:16px;border-top:1px solid #f1ece2">עומק — עמעום וסולם צללות</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ paperDepth }}" as="t" hint-placeholder-count="3">
+            <div style="display:flex;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid #f1ece2">
+              <span style="font-size:13px;font-weight:600;width:104px;flex:0 0 104px" dir="ltr">{{ t.n }}</span>
+              <span style="font-size:13px;flex:1;min-width:0;color:#564e41;word-break:break-word" dir="ltr">{{ t.v }}</span>
+              <span style="font-size:12.5px;color:#7a7060;width:280px;flex:0 0 280px">{{ t.u }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div id="1c" style="display:flex;flex-direction:column;gap:14px;width:1360px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:Heebo,system-ui,sans-serif;font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;background:#0e2226;color:#fff">1c</span>
+        <h2 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.015em">מַיִם</h2>
+        <span style="font-size:15px;color:#4a5768">טורקיז נקי: בסיס לבן-תכלת, מבטא ציאן כהה, ירוק וכתום מרוסנים לצידו. הקל והבהיר מהשלושה.</span>
+      </div>
+      <dc-import name="StudentsFrame" vars="{{ aqua }}" hint-size="1360px,900px"></dc-import>
+      <div style="background:#fff;border:1px solid #d3e1e4;border-radius:10px;padding:18px 20px">
+        <div style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600;margin-bottom:12px">טוקני צבע · מים</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 24px">
+          <sc-for list="{{ aquaTokens }}" as="t" hint-placeholder-count="21">
+            <div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #e9f1f3">
+              <span style="width:22px;height:22px;flex:0 0 22px;border-radius:5px;overflow:hidden;border:1px solid rgba(14,34,38,.14)" ><span style="{{ t.sw }}"></span></span>
+              <span style="font-size:13px;font-weight:600;width:104px;flex:0 0 104px" dir="ltr">{{ t.n }}</span>
+              <span style="font-size:13px;width:74px;flex:0 0 74px;color:#3f5559" dir="ltr">{{ t.v }}</span>
+              <span style="font-size:12.5px;color:#62787c;flex:1;min-width:0">{{ t.u }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600;margin:20px 0 12px;padding-top:16px;border-top:1px solid #e9f1f3">עומק — עמעום וסולם צללות</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ aquaDepth }}" as="t" hint-placeholder-count="3">
+            <div style="display:flex;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid #e9f1f3">
+              <span style="font-size:13px;font-weight:600;width:104px;flex:0 0 104px" dir="ltr">{{ t.n }}</span>
+              <span style="font-size:13px;flex:1;min-width:0;color:#3f5559;word-break:break-word" dir="ltr">{{ t.v }}</span>
+              <span style="font-size:12.5px;color:#62787c;width:280px;flex:0 0 280px">{{ t.u }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:36px;max-width:1360px;background:#fff;border:1px solid #dbe1e8;border-radius:10px;padding:20px 22px">
+    <div style="font-family:Heebo,system-ui,sans-serif;font-size:16px;font-weight:600;margin-bottom:10px">ניגודיות — נבדק בשלוש הפלטות</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 32px;font-size:14px;color:#4a5768;line-height:1.6">
+      <div>טקסט ראשי על משטח — 13:1 ומעלה (AAA)</div>
+      <div>טקסט משני על משטח — 7:1 ומעלה (AAA)</div>
+      <div>תווית מעומעמת על משטח — 4.6:1 ומעלה (AA)</div>
+      <div>מבטא על משטח לבן, וטקסט לבן על מבטא — 4.9:1 ומעלה (AA)</div>
+      <div>תגיות סטטוס: דיו מלא על רקע רך — 4.8:1 ומעלה (AA)</div>
+      <div>גבול הפרדה על משטח — 1.6:1 ומעלה (לא נושא טקסט)</div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  pal(p) {
+    return {
+      '--bg': p.bg, '--surface': p.surface, '--surface-2': p.surface2,
+      '--border': p.border, '--border-strong': p.borderStrong,
+      '--ink': p.ink, '--ink-soft': p.inkSoft, '--muted': p.muted,
+      '--accent': p.accent, '--accent-strong': p.accentStrong, '--accent-ink': p.accentInk,
+      '--accent-soft': p.accentSoft, '--on-accent': p.onAccent,
+      '--good': p.good, '--good-soft': p.goodSoft, '--live': p.good,
+      '--warn': p.warn, '--warn-soft': p.warnSoft,
+      '--bad': p.bad, '--bad-soft': p.badSoft,
+      '--scrim': p.scrim, '--sh-1': p.sh1, '--sh-3': p.sh3
+    };
+  }
+  depth(p) {
+    return [
+      { n: '--scrim', v: p.scrim, u: 'עמעום הבסיס מתחת לשכבה מרחפת' },
+      { n: '--sh-1', v: p.sh1, u: 'צל 1 — כרטיס וטבלה במנוחה' },
+      { n: '--sh-3', v: p.sh3, u: 'צל 3 — מגירה, מודאל' }
+    ];
+  }
+  rows(p) {
+    var d = [
+      ['--bg', p.bg, 'רקע האפליקציה מאחורי הכרטיסים'],
+      ['--surface', p.surface, 'משטח כרטיס, טבלה, סרגל צד, שכבה מרחפת'],
+      ['--surface-2', p.surface2, 'משטח שקוע: ריחוף שורה, פס פעולות, כותרת קבוצה'],
+      ['--border', p.border, 'קו הפרדה שקט: מסגרת כרטיס, קו בין שורות'],
+      ['--border-strong', p.borderStrong, 'מסגרת שדה קלט וכפתור משני, קו תחתון לכותרת טבלה'],
+      ['--ink', p.ink, 'טקסט ראשי, מספרים, כותרות'],
+      ['--ink-soft', p.inkSoft, 'טקסט משני, פריט ניווט לא נבחר, כותרת עמודה'],
+      ['--muted', p.muted, 'תווית, טקסט עזר, ערך ריק'],
+      ['--accent', p.accent, 'כפתור ראשי, מצב נבחר, פוקוס, מיון פעיל'],
+      ['--accent-strong', p.accentStrong, 'ריחוף ולחיצה על כפתור ראשי'],
+      ['--accent-ink', p.accentInk, 'טקסט מבטא על רקע רך (עובר AA בגודל טקסט)'],
+      ['--accent-soft', p.accentSoft, 'רקע פריט ניווט נבחר, שורה מסומנת, תגית מבטא'],
+      ['--on-accent', p.onAccent, 'טקסט על מבטא מלא'],
+      ['--good', p.good, 'הצלחה: משובצת, קלוטה, חי'],
+      ['--good-soft', p.goodSoft, 'רקע תגית הצלחה'],
+      ['--warn', p.warn, 'אזהרה: ממתינה, טרם נבדק'],
+      ['--warn-soft', p.warnSoft, 'רקע תגית אזהרה'],
+      ['--bad', p.bad, 'שגיאה: ללא גן, בלי ת״ז, מסמך חסר, פעולה הרסנית'],
+      ['--bad-soft', p.badSoft, 'רקע תגית שגיאה']
+    ];
+    return d.map(function(r) {
+      var isColor = /^#/.test(r[1]) || /^rgba/.test(r[1]);
+      return { n: r[0], v: r[1], u: r[2], sw: { display: 'block', width: '100%', height: '100%', background: isColor ? r[1] : p.surface2 } };
+    });
+  }
+  renderVals() {
+    var steel = {
+      bg: '#f4f6f8', surface: '#ffffff', surface2: '#eef1f5', border: '#dbe1e8', borderStrong: '#c3ccd6',
+      ink: '#16202b', inkSoft: '#4a5768', muted: '#6b7889',
+      accent: '#1e5f9e', accentStrong: '#17497a', accentInk: '#17497a', accentSoft: '#e6eff8', onAccent: '#ffffff',
+      good: '#10715a', goodSoft: '#e0f0ea', warn: '#8a5a06', warnSoft: '#fbf0dc', bad: '#a32a2a', badSoft: '#fbe4e4',
+      scrim: 'rgba(22,32,43,.28)',
+      sh1: '0 1px 2px rgba(20,32,44,.06)', sh3: '-14px 0 44px -10px rgba(20,32,44,.24)'
+    };
+    var paper = {
+      bg: '#f5f1e9', surface: '#fffdf9', surface2: '#f1ece2', border: '#e2dbcd', borderStrong: '#cdc3ae',
+      ink: '#241f18', inkSoft: '#564e41', muted: '#786e5e',
+      accent: '#8c531c', accentStrong: '#6e4014', accentInk: '#6e4014', accentSoft: '#f6ebda', onAccent: '#fffdf9',
+      good: '#2f6b46', goodSoft: '#e4eee3', warn: '#8a5a06', warnSoft: '#f7ecd6', bad: '#9c2f28', badSoft: '#f8e3df',
+      scrim: 'rgba(36,31,24,.26)',
+      sh1: '0 1px 2px rgba(60,45,20,.07)', sh3: '-14px 0 44px -10px rgba(60,45,20,.22)'
+    };
+    var aqua = {
+      bg: '#f1f7f8', surface: '#ffffff', surface2: '#e9f1f3', border: '#d3e1e4', borderStrong: '#b6cace',
+      ink: '#0e2226', inkSoft: '#3f5559', muted: '#5f757a',
+      accent: '#0a6d78', accentStrong: '#08545d', accentInk: '#08545d', accentSoft: '#dcf0f2', onAccent: '#ffffff',
+      good: '#0f7050', goodSoft: '#dcf0e7', warn: '#85560a', warnSoft: '#faeed5', bad: '#a02c2c', badSoft: '#fae2e2',
+      scrim: 'rgba(14,34,38,.26)',
+      sh1: '0 1px 2px rgba(10,40,45,.07)', sh3: '-14px 0 44px -10px rgba(10,40,45,.22)'
+    };
+    return {
+      steel: this.pal(steel), paper: this.pal(paper), aqua: this.pal(aqua),
+      steelTokens: this.rows(steel), paperTokens: this.rows(paper), aquaTokens: this.rows(aqua),
+      steelDepth: this.depth(steel), paperDepth: this.depth(paper), aquaDepth: this.depth(aqua)
+    };
+  }
+}
+</script>
+</body>
+</html>
