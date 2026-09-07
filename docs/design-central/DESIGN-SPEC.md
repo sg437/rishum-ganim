@@ -35,56 +35,67 @@ Vanilla JS, משתני CSS ב-:root, בלי ספריות ובלי build step.
 
 ═══ 1. גופנים ═══
 נטענים מקומית מ-fonts/ דרך @font-face (CSP: font-src 'self' data').
-לכל גופן שני פרצופים עם unicode-range — עברית ולטינית בנפרד, כדי שלא לטעון
-את הלטיני על מסך שכולו עברית.
-  @font-face{font-family:"Heebo";src:url("fonts/heebo-hebrew.woff2") format("woff2");
-             font-weight:100 900;font-display:swap;unicode-range:U+0590-05FF,U+FB1D-FB4F}
-  @font-face{font-family:"Heebo";src:url("fonts/heebo-latin.woff2") format("woff2");
-             font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF}
-  (אותו דבר ל-Assistant מ-assistant-hebrew.woff2 / assistant-latin.woff2)
+ארבעה פרצופים — עברית ולטינית לכל גופן — כדי שלא לטעון את הלטיני על מסך עברי.
+  עברית:  unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F
+  לטינית: unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,
+                        U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215
+  Heebo font-weight:100 900 · Assistant font-weight:200 800 · font-display:swap
 --font-head: "Heebo", system-ui, sans-serif      → כותרות, מספרים, שמות ערים
 --font-body: "Assistant", system-ui, sans-serif  → כל השאר
 --font-mono: ui-monospace, Menlo, monospace      → מספר זהות, טלפון, סמל מוסד בלבד
 :root { font-variant-numeric: tabular-nums }
-
-═══ 2. טוקני צבע — מצב בהיר ═══
---bg              #f4f2ed  רקע העמוד
---bg-wash         linear-gradient(180deg,#fbfaf7 0,#f4f2ed 220px)  רקע אזור התוכן
---surface         #fffefb  כרטיס, טבלה, סרגל צד, שכבה מרחפת
---surface-sunken  #faf8f4  כותרת טבלה, פוטר טבלה, פוטר מגירה
---surface-inset   #f7f5f0  ריחוף שורת טבלה, בלוק פנימי בכרטיס
---surface-hover   #f2efe8  ריחוף פריט ניווט בסרגל (הצללה קלה מ---surface-inset)
---surface-3       #e9e5dc  מסלול מד התקדמות, רקע בורר מקטעים
---ink             #22221f  טקסט ראשי, מספרים, כותרות
---ink-soft        #4e4c46  טקסט משני, פריט ניווט לא נבחר
---muted           #6b6860  תווית, טקסט עזר (5.5:1)
---muted-min       #75716a  הבהיר ביותר המותר לטקסט (4.8:1) — לא להבהיר מעבר
---border          #e3dfd6  מסגרת שדה קלט, כפתור משני, מסגרת המסך
---border-soft     #eae6dd  מסגרת כרטיס, מפריד בסרגל
---rule            #f1eee7  קו בין שורות טבלה
---brand           #2f5d4a  ירוק מרווה: מצב נבחר, פוקוס, מד תקין, המסילה
---brand-grad      linear-gradient(180deg,#3a6d58,#2b5544)  כפתור ראשי
-                  ריחוף: linear-gradient(180deg,#40775f,#2f5d4a)
---brand-ink       #24483a  טקסט מותג על רקע רך
---brand-soft      #e6efe9  פריט ניווט נבחר, chip פעיל, תגית מותג
---row-sel         #f2f6f2  שורת טבלה מסומנת
---warn            #8a5b12  ענבר: מתקרב לרף, ממתין
---warn-soft       #f6edd9
---danger          #8a3b28  חימר: חריגה מרף, בלי ת״ז, מסמך חסר, פעולה הרסנית
---danger-soft     #f6e2d9
---band-from       #3f4f48  פס הדיו — גרדיאנט מלמעלה
---band-to         #2b3630  פס הדיו — גרדיאנט מלמטה
---band-lit        #5d6f66  קו האור בקצה העליון (inset 0 1px 0)
---band-ink        #fffefb  · משני #d3dbd7 · גבול #6d7a74 · ריחוף #9db0a8
---band-accent     #8fc4a9  מבטא על הפס: פוקוס, פעולה ראשית בסרגל צף
---rail            #2f5d4a  קו המסילה 2px
---scrim-drawer    rgba(34,34,31,.28)
---scrim-modal     rgba(34,34,31,.32)
+═══ 2. טוקני צבע — מצב יום ═══
+השמות כאן הם השמות שבקוד (_chrome.js, על ה-body). לא להמציא שמות אחרים.
+--bg       #f4f2ed  רקע העמוד
+--wash     linear-gradient(180deg,#fbfaf7 0,#f4f2ed 220px)  רקע אזור התוכן
+--card     #fffefb  כרטיס, טבלה, סרגל צד, שכבה מרחפת
+--sunk     #faf8f4  כותרת טבלה, פוטר טבלה, פוטר מגירה, סרגל תחתון במובייל
+--inner    #f7f5f0  בלוק פנימי בכרטיס, אזור העלאת קובץ
+--hov      #f7f5f0  ריחוף שורת טבלה
+--navhov   #f2efe8  ריחוף פריט ניווט בסרגל
+--row      #f1eee7  קו בין שורות ומפריד פנימי בכרטיס
+--ink      #22221f  טקסט ראשי, מספרים, כותרות
+--ink2     #4e4c46  טקסט משני, פריט ניווט לא נבחר
+--ink3     #6b6860  תווית, טקסט עזר (5.5:1)
+--ink4     #75716a  הבהיר ביותר המותר לטקסט (4.8:1) — לא להבהיר מעבר
+--bd       #e3dfd6  מסגרת שדה קלט, כפתור משני, מסגרת המסך
+--bd2      #eae6dd  מסגרת כרטיס, מפריד בסרגל, רקע grid הנתונים
+--grn      #2f5d4a  ירוק מרווה: מצב נבחר, פוקוס, מד תקין, המסילה
+--grnink   #24483a  טקסט מותג על רקע רך; גם צבע קישור
+--grnsoft  #e6efe9  פריט ניווט נבחר, chip פעיל, בועת הודעה יוצאת
+--grnrow   #f2f6f2  שורת טבלה מסומנת, כרטיס גן נבחר, שיחה פתוחה
+--amb      #8a5b12  ענבר: מתקרב לרף, ממתין
+--ambbg    #f6edd9
+--cly      #8a3b28  חימר: חריגה, בלי ת״ז, מסמך חסר, פעולה הרסנית
+--clybg    #f6e2d9
+--ntr      #55524b  ניטרלי: תג ללא מטען
+--ntrbg    #eeece6
+--track    #e9e5dc  מסלול פס התקדמות, רקע בורר מקטעים
+--avbg     #eef1ec  אווטאר בטבלה · --avink #3d5a4d הדיו שבתוכו
+--chev     #a09b91  חץ ‹ בקצה שורה
+--sb       #dcd7cc  אגודל פס הגלילה (6px)
+כפתור ראשי: linear-gradient(180deg,#3a6d58,#2b5544)
+            ריחוף linear-gradient(180deg,#40775f,#2f5d4a)
+פס הדיו:    linear-gradient(180deg,#3f4f48,#2b3630) + inset 0 1px 0 #5d6f66
+            דיו #fffefb · משני #d3dbd7 · גבול #6d7a74 · ריחוף #9db0a8 · מבטא #8fc4a9
+scrim:      מגירה rgba(34,34,31,.28) · מודאל rgba(34,34,31,.32)
 
 מקסימום שני צבעי רקע למסך.
-גרדיאנטים מותרים רק ב: פס הדיו, כפתור ראשי, אווטאר, ה-wash של אזור התוכן,
-מילוי פסי התקדמות, ואריחי המספרים בתורי העבודה. בשום מקום אחר.
+גרדיאנטים מותרים רק ב: פס הדיו, כפתור ראשי, אווטאר, ה-wash, מילוי פסי
+התקדמות, ואריחי המספר. בשום מקום אחר.
 
+═══ 2.1 נורות סטטוס ═══
+ריבוע 8–9px, border-radius 2px, ולצידו טקסט ב---ink רגיל.
+--ok    #2f7d5a  משובץ · מקומות פנויים · שיחה חדשה
+--done  #24483a  אושר סופית · טופל
+--wait  #9b978d  ממתין לשיוך · כפילות ת״ז
+--warn  #c08a1f  מסמך או רישיון חסר · מתקרב לרף · ממתין לתשובה · פורמט שגוי
+--bad   #b4503c  חריגה מתקן · שדה חובה חסר
+אותן חמש נורות משרתות את כל התחומים — תלמידים, עובדות, גנים, שורות ייבוא
+ושיחות. אין להוסיף צבע שישי לתחום חדש; ממפים אותו לחמש הקיימות.
+כלל קשיח: הצבעים האלה הם לריבוע בלבד. --wait (2.9:1) ו---warn (3.0:1)
+נופלים מרף הטקסט, ולכן התווית לצידם תמיד ב---ink. אין להשתמש בהם לטקסט,
+לגבול דק, או כמידע יחיד — לכל מצב יש גם מילה.
 ═══ 2.1 נורות סטטוס ═══
 ריבוע 8px, border-radius 2px, ולצידו טקסט ב---ink רגיל.
   משובץ         #2f7d5a
@@ -97,17 +108,19 @@ Vanilla JS, משתני CSS ב-:root, בלי ספריות ובלי build step.
 לגבול דק, או כמידע יחיד — לכל מצב יש גם מילה.
 
 ═══ 3. טוקני צבע — מצב לילה ═══
-מוגדר, טרם מומש. [data-theme="dark"] דורס; כל השאר זהה.
---bg #1b1f1d · --surface #232826 · --surface-sunken #2b312e · --surface-inset #2f3532
---surface-3 #363d39 · --border #414a45 · --border-soft #333a36 · --rule #2f3532
---ink #eceae4 · --ink-soft #c2c7c2 · --muted #98a09b (5.1:1) · --muted-min #98a09b
---brand #7fbb9e (6.4:1) · --brand-ink #b9dccb · --brand-soft #24332c · --row-sel #26332d
---warn #d9a94a · --warn-soft #37301d · --danger #e08476 · --danger-soft #3a2622
---band-from #2b3630 · --band-to #1f2724 · --band-lit #46534d
---scrim-drawer rgba(0,0,0,.42) · --scrim-modal rgba(0,0,0,.48)
-כפתור המעבר: ☾ בפס העליון; נשמר ב-localStorage תחת hq-theme.
-ברירת מחדל: prefers-color-scheme.
-
+מומש. body[data-night] דורס; מתג ☾ בפס העליון; נשמר ב-localStorage תחת wr-night.
+--bg #202723 · --wash linear-gradient(180deg,#2b3630 0,#202723 220px)
+--card #2b3630 · --sunk #26302b · --inner #313d37 · --hov #313d37 · --navhov #31463c
+--row #354039 · --bd #3f4f48 · --bd2 #39463f
+--ink #fffefb · --ink2 #d3dbd7 · --ink3 #9db0a8 (5.5:1) · --ink4 #9db0a8
+--grn #8fc4a9 (6.4:1) · --grnink #8fc4a9 · --grnsoft #31463c · --grnrow #2d3b34
+--amb #d9a94a · --ambbg #3d3524 · --cly #e0917f (5.1:1) · --clybg #43302a
+--ntr #c9d3ce · --ntrbg #343d38 · --track #39463f
+--avbg #3d5a4d · --avink #d3dbd7 · --chev #7f8b85 · --sb #4a5a52
+--ok #4f9f78 · --done #8fc4a9 · --wait #9b978d · --warn #d9a94a · --bad #c9705c
+פס הדיו נשאר בערכיו הקבועים בשני המצבים — הוא כהה ממילא.
+במצב לילה --ink4 מתלכד עם --ink3, ו---grnink עם --grn. זו התנהגות מכוונת:
+אין מדרגה נוספת בכהה.
 ═══ 4. טיפוגרפיה — הסולם המלא ═══
 כותרת מסך (H1)  Heebo 600 · 23px · 1.2 · letter-spacing -.015em
 כותרת שכבה      Heebo 600 · 17px · 1.3    כותרת מגירה או מודאל
@@ -247,7 +260,32 @@ micro           Assistant 400 · 11.5px · 1.4
       ענבר   linear-gradient(180deg,#d9a94a,#8a5b12)  box-shadow:0 2px 0 #6f480d
       חימר   linear-gradient(180deg,#b4503c,#8a3b28)  box-shadow:0 2px 0 #6e2f20
     הגוון הכהה הוא ~80% מצבע הבסיס. אין משפחה רביעית.
-9.20 אייקוני ניווט: SVG מקומי 16×16, fill none, stroke currentColor, stroke-width 1.4,
+9.20 כרטיס גן (מפת שיבוץ): radius 12 · נורה 9px + שם 14.5px/600 +
+    "עיר · שכבה" 12.5px + יחס תפוסה 15px/700 Heebo · פס תפוסה 6px radius 999
+    על var(--track), מילוי var(--grn) ובחריגה var(--bad) · שורת תחתית 12.5px
+    var(--ink3): מקומות פנויים בצד אחד, גננת בשני.
+    נבחר: background var(--grnrow) + border var(--grn). grid שתי עמודות, gap 10px.
+9.21 בועת הודעה: radius 12 · padding 11px 13px · רוחב מקסימלי 74%.
+    נכנסת: var(--inner) + border var(--bd2) + דיו var(--ink), בתחילת השורה.
+    יוצאת: var(--grnsoft) + border var(--grn) + דיו var(--grnink), בסופה.
+    meta 11.5px var(--ink3) מתחת לבועה.
+9.22 שדה טקסט מרובה שורות: 3 שורות · padding 10px 12px · radius 10 ·
+    border 1px var(--bd) · resize:none · פוקוס כמו שדה חיפוש.
+9.23 תג ערוץ: גובה 20px · radius 6 · 11px/700.
+    אתר ההרשמה var(--grnsoft)/var(--grnink) · וואטסאפ var(--ambbg)/var(--amb) ·
+    טלפוני var(--clybg)/var(--cly) · מייל var(--ntrbg)/var(--ntr).
+9.24 פריט רשימת שיחות: min-height 44px · padding 11px 14px ·
+    border-bottom 1px var(--row) · נורה 9px + שולח 13.5px + שעה 11.5px +
+    נושא 13px + תקציר 12.5px חתוך + תג ערוץ + עיר.
+    חדשה = 700. פתוחה = background var(--grnrow).
+9.25 בורר שדה (מיפוי עמודות): 34px · radius 10 · border var(--bd) ·
+    chevron 12px ב-var(--ink3). שדה שלא מופה — דיו var(--ink4).
+9.26 אזור העלאת קובץ: var(--inner) + border 1px var(--bd) · radius 12 ·
+    padding 26px 18px · אייקון 28px var(--grn) · כותרת 15px/600 · הסבר 13px ·
+    כפתור ראשי. בלי מסגרת מקווקוות.
+9.27 תחנות כשלבי תהליך: התחנות הממוספרות של 8.3, בכרטיס 248px לצד התוכן,
+    כל תחנה כפתור שמחליף שלב. במובייל — chips 30px עם עיגול 22px בתוכן.
+9.28 אייקוני ניווט: SVG מקומי 16×16, fill none, stroke currentColor, stroke-width 1.4,
     linecap/linejoin round, opacity .75. גיאומטריים בלבד — בלי אילוסטרציות.
 
 ═══ 10. מצבי מסך ═══
@@ -280,6 +318,32 @@ micro           Assistant 400 · 11.5px · 1.4
          sheet כמעט מלא-מסך עם ידית גרירה; יעד קליק 44px; רספונסיבי עד 360px.
 רוחב תוכן מקסימלי: אין — הטבלה מתפרשת לכל הרוחב. טקסט רץ עד 68ch.
 שכבה אחת פתוחה בלבד בכל רגע.
+
+11.1 שלד המובייל — 390×844, בתוך אותו קובץ DC, מתחת לגרסת הדסקטופ,
+     עם תווית 11px/700/.08em מעל כל מסגרת. מסגרת זהה לדסקטופ.
+     [ פס הדיו 58px: תפריט 34px · כותרת + תת-שורה · חיפוש 34px · אווטאר 30px ]
+     [ מסילה 2px ]
+     [ padding 14px 14px 0 — כותרת או מדדים ]
+     [ שורת chips — גלילה אופקית, scrollbar-width:none ]
+     [ רשימת כרטיסים — גולל, padding 12px 14px 14px, gap 8px ]
+     [ סרגל תחתון — var(--sunk), border-top 1px var(--bd2), padding 12px 14px ]
+     פס הדיו במובייל: אותו גרדיאנט וצל פנימי; הלוגו והחיפוש הרחב מוחלפים
+     בכפתור תפריט 34px ובכפתור חיפוש 34px, שניהם border 1px #6d7a74 על
+     rgba(255,255,255,.08); כותרת 15.5px/600 Heebo ומתחתיה ההקשר 11.5px ב-#d3dbd7.
+     שורת טבלה הופכת לכרטיס: radius 12, border 1px var(--bd), צל כרטיס,
+     padding 12px 13px; שורה עליונה אווטאר 30px + שם 14px/600 + meta 12.5px +
+     חץ 14px; מפריד 1px var(--row) עם padding-top 10px; שורה תחתונה נורה +
+     טקסט 13px + meta בקצה.
+     מדדים: אותו grid נתונים בשלוש עמודות במקום ארבע, מונה 22px.
+     סרגל תחתון: כפתור ראשי 44px, לצידו משני 44px או ריבועי 44×44.
+     יעדי קליק 44px לכל פעולה עיקרית; chips נשארים 30px.
+     לא מופיע במובייל: מגירה, סרגל פעולות צף, טבלה רב-עמודתית, פאנל צד.
+
+11.2 רוחבי עמודות הטבלאות — מפורשים, לא אוטומטיים:
+     Students        38px 196px 108px 178px 146px 116px 1fr 30px
+     Staff           38px 190px 104px 116px 172px 150px 92px 1fr 30px
+     Import מיפוי    210px 220px 1fr 118px
+     Import שגיאות   58px 170px 118px 138px 1fr 104px
 
 ═══ 12. כללי RTL ═══
 dir="rtl" על ה-html. כל הפריסות ב-flex/grid עם gap — לא margin ולא inline flow.
@@ -317,7 +381,23 @@ prefers-reduced-motion: reduce → כל ה-transition ל-0ms.
 פוקוס מקלדת: outline 2px solid #9db0a8 (על הפס: #8fc4a9); outline-offset -1px.
 בשום מקום לא להסיר.
 
-═══ 16. כתיבה ותוכן ═══
+═══ 16. מימוש הקנבס ═══
+_chrome.js הוא מודול משותף ומקור האמת לקוד החוזר. אין לשכפל ממנו לתוך מסך:
+  HELMET       ארבעת ה-@font-face, כל טוקני היום והלילה על ה-body, reset,
+               scrollbar, סגנון nav a ו-a.
+  RIBBON       פס הדיו של הדסקטופ, כולל מתג הלילה.
+  ROOT_OPEN    שורש הקובץ.
+  NIGHT_LOGIC  componentDidMount + toggleNight מול localStorage.
+  GROUPS_NAV   חמש קבוצות הניווט: שם · קובץ יעד · נתיב SVG · תגית.
+_build.txt מחזיק את nav() · desktop() · mribbon() · mobile() שמרכיבים מסך.
+שורש הקובץ: עמודה עם gap:10px, padding:20px, width:max-content — תווית +
+מסגרת דסקטופ, ואחריהן תווית + מסגרת מובייל בתוך sc-if על prop showMobile.
+$preview = 1330×1680.
+props: showMobile (boolean, ברירת מחדל true); במסכים רב-שלביים גם enum
+לשלב הפתיחה (למשל startStep ב-Import).
+פריטי הסרגל מקושרים ב-href יחסי לקובץ המסך; מודול בלי מסך = href="#".
+
+═══ 17. כתיבה ותוכן ═══
 עברית עניינית. בלי סימני קריאה ובלי אימוג׳י.
 מספרים תמיד בפועל (1,284 · 82% · 43) — כל מספר במסך חייב להיות ניתן להסבר.
 אין נתוני מילוי.
@@ -368,3 +448,9 @@ prefers-reduced-motion: reduce → כל ה-transition ל-0ms.
 | 2026-09-07 | נוספה "כותרת שכבה" 17px — הופיעה ב-`Staff` ולא הייתה בסולם | Staff |
 | 2026-09-07 | 12px אוחד ל-12.5px בכל המסכים (45 מופעים) — שני גדלים לאותו תפקיד | אותו סבב |
 | 2026-09-07 | 9.19 — אריחי המספר תועדו כשלוש משפחות; `Staff` radius 5px→6px | אותו סבב |
+| 2026-09-07 | הקנבס עבר ל-CSS variables ב-`_chrome.js`. §2 ו-§3 נכתבו מחדש בשמות שבקוד | סבב Channels+Compliance+Distribution+Publishing |
+| 2026-09-07 | מצב לילה **מומש** — §3 הוחלף בערכים שרצים בפועל (שונים מאלה שתוכננו) | אותו סבב |
+| 2026-09-07 | נוסף 11.1 — שלד המובייל 390×844, ו-11.2 רוחבי העמודות | אותו סבב |
+| 2026-09-07 | נוספו 9.20–9.27: כרטיס גן, בועת הודעה, textarea, תג ערוץ, פריט שיחה, בורר שדה, אזור העלאה, תחנות כשלבים | אותו סבב |
+| 2026-09-07 | נוסף §16 מימוש הקנבס — `_chrome.js` כמקור אמת לקוד החוזר | אותו סבב |
+| 2026-09-07 | נוספו טוקנים: `--ntr`/`--ntrbg`, `--avbg`/`--avink`, `--chev`, `--sb`, `--track` | אותו סבב |

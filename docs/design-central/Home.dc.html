@@ -11,23 +11,24 @@
 <style>
 @font-face{font-family:"Heebo";src:url("../../fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900;font-display:swap}
 @font-face{font-family:"Assistant";src:url("../../fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800;font-display:swap}
-body{margin:0}
+body{margin:0;--bg:#f4f2ed;--wash:linear-gradient(180deg,#fbfaf7 0,#f4f2ed 220px);--card:#fffefb;--sunk:#faf8f4;--inner:#f7f5f0;--ink:#22221f;--ink2:#4e4c46;--ink3:#6b6860;--ink4:#75716a;--bd:#e3dfd6;--bd2:#eae6dd;--row:#f1eee7;--hov:#f7f5f0;--navhov:#f2efe8;--grn:#2f5d4a;--grnink:#24483a;--grnsoft:#e6efe9;--grnrow:#f2f6f2;--amb:#8a5b12;--ambbg:#f6edd9;--cly:#8a3b28;--clybg:#f6e2d9;--ntr:#55524b;--ntrbg:#eeece6;--track:#e9e5dc;--avbg:#eef1ec;--avink:#3d5a4d;--chev:#a09b91;--ok:#2f7d5a;--done:#24483a;--wait:#9b978d;--warn:#c08a1f;--bad:#b4503c;--sb:#dcd7cc;background:var(--bg)}
+body[data-night]{--bg:#202723;--wash:linear-gradient(180deg,#2b3630 0,#202723 220px);--card:#2b3630;--sunk:#26302b;--inner:#313d37;--ink:#fffefb;--ink2:#d3dbd7;--ink3:#9db0a8;--ink4:#9db0a8;--bd:#3f4f48;--bd2:#39463f;--row:#354039;--hov:#313d37;--navhov:#31463c;--grn:#8fc4a9;--grnink:#8fc4a9;--grnsoft:#31463c;--grnrow:#2d3b34;--amb:#d9a94a;--ambbg:#3d3524;--cly:#e0917f;--clybg:#43302a;--ntr:#c9d3ce;--ntrbg:#343d38;--track:#39463f;--avbg:#3d5a4d;--avink:#d3dbd7;--chev:#7f8b85;--ok:#4f9f78;--done:#8fc4a9;--wait:#9b978d;--warn:#d9a94a;--bad:#c9705c;--sb:#4a5a52}
 button{font-family:inherit;cursor:pointer}
 *::-webkit-scrollbar{width:6px;height:6px}
-*::-webkit-scrollbar-thumb{background:#dcd7cc;border-radius:3px}
+*::-webkit-scrollbar-thumb{background:var(--sb);border-radius:3px}
 *::-webkit-scrollbar-track{background:transparent}
 nav::-webkit-scrollbar{width:0;height:0}
-nav a{color:#4e4c46;text-decoration:none}
-nav a:hover{background:#f2efe8;color:#22221f}
+nav a{color:var(--ink2);text-decoration:none}
+nav a:hover{background:var(--navhov);color:var(--ink)}
 nav svg{flex:0 0 16px;opacity:.75;stroke-linecap:round;stroke-linejoin:round}
 </style>
 </helmet>
-<div dir="rtl" style="width:1280px;height:760px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:#f4f2ed;color:#22221f;font-family:Assistant,system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;accent-color:#2f5d4a;border:1px solid #e3dfd6;border-radius:14px">
+<div dir="rtl" style="width:1280px;height:760px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font-family:Assistant,system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;accent-color:var(--grn);border:1px solid var(--bd);border-radius:14px">
 
   <header style="flex:0 0 auto;height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);color:#fffefb;box-shadow:inset 0 1px 0 #5d6f66">
     <span style="display:flex;flex-direction:column;gap:3px;width:22px;flex:0 0 22px">
       <span style="height:2px;border-radius:1px;background:#8fc4a9"></span>
-      <span style="height:2px;border-radius:1px;background:#fffefb"></span>
+      <span style="height:2px;border-radius:1px;background:var(--card)"></span>
       <span style="height:2px;border-radius:1px;background:#7f8b85"></span>
     </span>
     <span style="font-family:Heebo,system-ui,sans-serif;font-size:15.5px;font-weight:600">מרכז ניהול ארצי</span>
@@ -36,100 +37,122 @@ nav svg{flex:0 0 16px;opacity:.75;stroke-linecap:round;stroke-linejoin:round}
     <span style="flex:1"></span>
     <input type="text" value="חיפוש תיק: שם, ת״ז, טלפון, גן…" style="width:280px;height:34px;padding:0 12px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#c9d3ce;font-family:inherit;font-size:13.5px" style-focus="outline:2px solid #8fc4a9;outline-offset:1px;color:#fffefb">
     <button style="height:34px;padding:0 13px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb;font-size:13px" style-hover="border-color:#9db0a8">תשפ״ז</button>
-    <button title="מצב לילה" style="width:34px;height:34px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb;font-size:14px" style-hover="border-color:#9db0a8">☾</button>
+    <button onClick="{{ toggleNight }}" title="מצב לילה" style="width:34px;height:34px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb;font-size:14px" style-hover="border-color:#9db0a8">{{ nightIcon }}</button>
     <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:linear-gradient(180deg,#5e6f67,#44534c);color:#fffefb;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center">שג</span>
   </header>
-  <div style="flex:0 0 auto;height:2px;background:#2f5d4a"></div>
+  <div style="flex:0 0 auto;height:2px;background:var(--grn)"></div>
 
   <div style="flex:1;min-height:0;display:flex">
-    <aside style="width:248px;flex:0 0 248px;display:flex;flex-direction:column;background:#fffefb;border-left:1px solid #eae6dd">
+    <aside style="width:248px;flex:0 0 248px;display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--bd2)">
       <nav style="flex:1;overflow:auto;scrollbar-width:none;padding:14px 12px;font-size:13.5px">
-        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:0 8px 6px">ראשי</div>
-        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;color:#24483a;text-decoration:none;font-weight:700;background:#e6efe9;box-shadow:0 1px 2px rgba(34,34,31,.05)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 6.5 8 2.5l5.5 4v7h-11z"/></svg><span style="flex:1">לוח הבית</span></a>
-        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">רישום ושיבוץ</div>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--ink3);padding:0 8px 6px">ראשי</div>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;color:var(--grnink);text-decoration:none;font-weight:700;background:var(--grnsoft);box-shadow:0 1px 2px rgba(34,34,31,.05)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 6.5 8 2.5l5.5 4v7h-11z"/></svg><span style="flex:1">לוח הבית</span></a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--ink3);padding:16px 8px 6px">רישום ושיבוץ</div>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4"/></svg><span style="flex:1">תלמידים ושיבוץ מרכזי</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5.5" cy="6" r="2"/><circle cx="10.5" cy="6" r="2"/><path d="M2 13c0-2 1.6-3 3.5-3S9 11 9 13M9.5 13c0-2 1.6-3 3.5-3"/></svg><span style="flex:1">עובדות</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14s4.5-4.2 4.5-7A4.5 4.5 0 0 0 3.5 7c0 2.8 4.5 7 4.5 7z"/><circle cx="8" cy="6.8" r="1.6"/></svg><span style="flex:1">מפת שיבוץ</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2.5v7M5.2 6.8 8 9.6l2.8-2.8M2.5 12.5h11"/></svg><span style="flex:1">ייבוא מאקסל</span></a>
-        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">קשר והפצה</div>
-        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4" width="12" height="8" rx="1.5"/><path d="M2.6 5 8 8.6 13.4 5"/></svg><span style="flex:1">מרכז הודעות</span><span style="font-weight:700;font-size:12.5px;color:#24483a">4</span></a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--ink3);padding:16px 8px 6px">קשר והפצה</div>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4" width="12" height="8" rx="1.5"/><path d="M2.6 5 8 8.6 13.4 5"/></svg><span style="flex:1">מרכז הודעות</span><span style="font-weight:700;font-size:12.5px;color:var(--grnink)">4</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13.5 2.5 2.5 7l4.3 1.7L8.5 13z"/></svg><span style="flex:1">הפצת שיבוץ · Smoove</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="1.6"/><path d="M4.6 4.6a4.8 4.8 0 0 0 0 6.8M11.4 4.6a4.8 4.8 0 0 1 0 6.8"/></svg><span style="flex:1">הפצה ופרסום</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="4" cy="4" r="1.8"/><circle cx="12" cy="8" r="1.8"/><circle cx="4" cy="12" r="1.8"/><path d="M5.6 5 10.4 7M5.6 11 10.4 9"/></svg><span style="flex:1">ערוצי רישום</span></a>
-        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">בקרה וציות</div>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--ink3);padding:16px 8px 6px">בקרה וציות</div>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 13.5h11M3.5 13.5v-6M12.5 13.5v-6M6.5 13.5v-6M9.5 13.5v-6M2 7.5 8 3l6 4.5z"/></svg><span style="flex:1">בקרת משרד החינוך</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6.5" r="3.2"/><path d="M5.6 9.6 5 14l3-1.5L11 14l-.6-4.4"/></svg><span style="flex:1">רישיון וסייעת ב׳</span></a>
-        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13.5 8.5c0 2.5-2.5 4.3-5.5 4.3-.8 0-1.5-.1-2.2-.3L3 13.5l.8-2.4A4.7 4.7 0 0 1 2.5 8.5C2.5 6 5 4.2 8 4.2s5.5 1.8 5.5 4.3z"/></svg><span style="flex:1">פניות וערעורים</span><span style="font-weight:700;font-size:12.5px;color:#8a5b12">7</span></a>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13.5 8.5c0 2.5-2.5 4.3-5.5 4.3-.8 0-1.5-.1-2.2-.3L3 13.5l.8-2.4A4.7 4.7 0 0 1 2.5 8.5C2.5 6 5 4.2 8 4.2s5.5 1.8 5.5 4.3z"/></svg><span style="flex:1">פניות וערעורים</span><span style="font-weight:700;font-size:12.5px;color:var(--amb)">7</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 2.5h5l3 3v10H4z"/><path d="M9 2.5v3h3M6 9h4M6 11.5h4"/></svg><span style="flex:1">חוזרי מנכ״ל</span></a>
-        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">ניהול</div>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--ink3);padding:16px 8px 6px">ניהול</div>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 13.5V9M6.5 13.5V4.5M10 13.5v-6M13.5 13.5v-9"/></svg><span style="flex:1">פילוחים ודוח להנהלה</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="5.5"/><path d="M5.6 8.2 7.4 10l3-3.6"/></svg><span style="flex:1">החלטות</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2.5 9.4 6.6 13.5 8 9.4 9.4 8 13.5 6.6 9.4 2.5 8l4.1-1.4z"/></svg><span style="flex:1">עוזר חכם</span></a>
         <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 5h11M2.5 11h11"/><circle cx="6" cy="5" r="1.6"/><circle cx="10" cy="11" r="1.6"/></svg><span style="flex:1">הגדרות והרשאות</span></a>
       </nav>
-      <div style="padding:12px 16px;border-top:1px solid #eae6dd;font-size:11.5px;color:#6b6860">6 ערים · עודכן לפני 3 דקות</div>
+      <div style="padding:12px 16px;border-top:1px solid var(--bd2);font-size:11.5px;color:var(--ink3)">6 ערים · עודכן לפני 3 דקות</div>
     </aside>
 
-    <main style="flex:1;min-width:0;display:flex;flex-direction:column;padding:18px 20px 20px;gap:14px;background:linear-gradient(180deg,#fbfaf7 0,#f4f2ed 220px)">
+    <main style="flex:1;min-width:0;display:flex;flex-direction:column;padding:18px 20px 20px;gap:14px;background:var(--wash)">
       <div style="flex:0 0 auto;display:flex;align-items:flex-end;gap:14px">
         <div>
           <h1 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:23px;font-weight:600;letter-spacing:-.015em">לוח הבית</h1>
-          <div style="margin-top:3px;font-size:13.5px;color:#6b6860">תמונת מצב של כל הערים · תשפ״ז · עודכן לפני 3 דקות</div>
+          <div style="margin-top:3px;font-size:13.5px;color:var(--ink3)">תמונת מצב של כל הערים · תשפ״ז · עודכן לפני 3 דקות</div>
         </div>
         <span style="flex:1"></span>
-        <button style="height:36px;padding:0 14px;border:1px solid #e3dfd6;border-radius:10px;background:#fffefb;color:#22221f;font-size:13px" style-hover="border-color:#2f5d4a">6 ערים נבחרו</button>
-        <button style="height:36px;padding:0 15px;border:1px solid #2f5d4a;border-radius:10px;background:#2f5d4a;color:#fffefb;font-size:13px;font-weight:700">דוח להנהלה</button>
+        <button style="height:36px;padding:0 14px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--ink);font-size:13px" style-hover="border-color:var(--grn)">6 ערים נבחרו</button>
+        <button style="height:36px;padding:0 15px;border:1px solid var(--grn);border-radius:10px;background:var(--grn);color:#fffefb;font-size:13px;font-weight:700">דוח להנהלה</button>
       </div>
       <div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:1fr 1fr;gap:12px">
-        <div style="grid-column:span 2;display:flex;flex-direction:column;padding:16px 18px;background:#fffefb;border:1px solid #eae6dd;border-radius:14px;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06)">
+        <div style="grid-column:span 2;display:flex;flex-direction:column;padding:16px 18px;background:var(--card);border:1px solid var(--bd2);border-radius:14px;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06)">
           <div style="display:flex;align-items:baseline;gap:10px">
             <span style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600">רישום ארצי</span>
-            <span style="font-size:12.5px;white-space:nowrap;color:#6b6860">4,308 תיקים · יעד 5,250</span>
+            <span style="font-size:12.5px;white-space:nowrap;color:var(--ink3)">4,308 תיקים · יעד 5,250</span>
             <span style="flex:1"></span>
-            <span style="font-family:Heebo,system-ui,sans-serif;font-size:30px;font-weight:700;line-height:1;color:#2f5d4a">82%</span>
+            <span style="font-family:Heebo,system-ui,sans-serif;font-size:30px;font-weight:700;line-height:1;color:var(--grn)">82%</span>
           </div>
-          <div style="margin-top:12px;height:10px;border-radius:999px;background:#e9e5dc"><span style="display:block;width:82%;height:10px;border-radius:999px;background:#2f5d4a"></span></div>
-          <div style="flex:1;min-height:0;margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 20px;align-content:center"><div><div style="display:flex;justify-content:space-between;font-size:13px"><span>מודיעין עילית</span><b>412</b></div><div style="margin-top:4px;height:6px;border-radius:999px;background:#e9e5dc"><span style="display:block;width:88%;height:6px;border-radius:999px;background:#2f5d4a"></span></div></div><div><div style="display:flex;justify-content:space-between;font-size:13px"><span>ביתר עילית</span><b>305</b></div><div style="margin-top:4px;height:6px;border-radius:999px;background:#e9e5dc"><span style="display:block;width:81%;height:6px;border-radius:999px;background:#2f5d4a"></span></div></div></div>
+          <div style="margin-top:12px;height:10px;border-radius:999px;background:var(--track)"><span style="display:block;width:82%;height:10px;border-radius:999px;background:var(--grn)"></span></div>
+          <div style="flex:1;min-height:0;margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 20px;align-content:center"><div><div style="display:flex;justify-content:space-between;font-size:13px"><span>מודיעין עילית</span><b>412</b></div><div style="margin-top:4px;height:6px;border-radius:999px;background:var(--track)"><span style="display:block;width:88%;height:6px;border-radius:999px;background:var(--grn)"></span></div></div><div><div style="display:flex;justify-content:space-between;font-size:13px"><span>ביתר עילית</span><b>305</b></div><div style="margin-top:4px;height:6px;border-radius:999px;background:var(--track)"><span style="display:block;width:81%;height:6px;border-radius:999px;background:var(--grn)"></span></div></div></div>
         </div>
-        <div style="display:flex;flex-direction:column;padding:16px 18px;background:#fffefb;border:1px solid #eae6dd;border-radius:14px;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06)">
+        <div style="display:flex;flex-direction:column;padding:16px 18px;background:var(--card);border:1px solid var(--bd2);border-radius:14px;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06)">
           <div style="display:flex;align-items:baseline;gap:8px">
             <span style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600">חריגות בשיבוץ</span>
-            <span style="font-size:12.5px;font-weight:700;padding:1px 8px;border-radius:999px;background:#f6e2d9;color:#8a3b28">4</span>
+            <span style="font-size:12.5px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--clybg);color:var(--cly)">4</span>
           </div>
           <div style="flex:1;min-height:0;margin-top:12px;display:flex;flex-direction:column;gap:11px">
-            <div style="display:flex;gap:8px"><span style="color:#8a3b28;font-weight:700">■</span><span><b style="display:block;font-size:13.5px">גן הרימון · 37/36</b><span style="font-size:12.5px;color:#6b6860">חריגה מרף השיבוץ · מודיעין עילית</span></span></div>
-            <div style="display:flex;gap:8px"><span style="color:#8a3b28;font-weight:700">■</span><span><b style="display:block;font-size:13.5px">31 רשומות שגויות</b><span style="font-size:12.5px;color:#6b6860">בלי ת״ז · השארות בלי מסמך</span></span></div>
-            <div style="display:flex;gap:8px"><span style="color:#8a5b12;font-weight:700">■</span><span><b style="display:block;font-size:13.5px">בן הדקל · 33/36</b><span style="font-size:12.5px;color:#6b6860">מתקרב לרף · 3 מקומות</span></span></div>
-            <div style="display:flex;gap:8px"><span style="color:#8a5b12;font-weight:700">■</span><span><b style="display:block;font-size:13.5px">רישיון · 2 גנים בחריגת גיל</b><span style="font-size:12.5px;color:#6b6860">רכסים · בית שמש</span></span></div>
+            <div style="display:flex;gap:8px"><span style="color:var(--cly);font-weight:700">■</span><span><b style="display:block;font-size:13.5px">גן הרימון · 37/36</b><span style="font-size:12.5px;color:var(--ink3)">חריגה מרף השיבוץ · מודיעין עילית</span></span></div>
+            <div style="display:flex;gap:8px"><span style="color:var(--cly);font-weight:700">■</span><span><b style="display:block;font-size:13.5px">31 רשומות שגויות</b><span style="font-size:12.5px;color:var(--ink3)">בלי ת״ז · השארות בלי מסמך</span></span></div>
+            <div style="display:flex;gap:8px"><span style="color:var(--amb);font-weight:700">■</span><span><b style="display:block;font-size:13.5px">בן הדקל · 33/36</b><span style="font-size:12.5px;color:var(--ink3)">מתקרב לרף · 3 מקומות</span></span></div>
+            <div style="display:flex;gap:8px"><span style="color:var(--amb);font-weight:700">■</span><span><b style="display:block;font-size:13.5px">רישיון · 2 גנים בחריגת גיל</b><span style="font-size:12.5px;color:var(--ink3)">רכסים · בית שמש</span></span></div>
           </div>
         </div>
-        <div style="grid-column:span 2;display:flex;flex-direction:column;padding:16px 18px;background:#fffefb;border:1px solid #eae6dd;border-radius:14px;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06)">
+        <div style="grid-column:span 2;display:flex;flex-direction:column;padding:16px 18px;background:var(--card);border:1px solid var(--bd2);border-radius:14px;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06)">
           <div style="display:flex;align-items:baseline;gap:8px">
             <span style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600">תורי עבודה</span>
-            <span style="font-size:12.5px;color:#6b6860">לחיצה פותחת את הרשימה במסך התלמידים</span>
+            <span style="font-size:12.5px;color:var(--ink3)">לחיצה פותחת את הרשימה במסך התלמידים</span>
           </div>
           <div style="flex:1;min-height:0;margin-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;align-content:start">
-            <button style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;text-align:right;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1)"><span style="width:11px;height:11px;flex:0 0 11px;border-radius:4px;background:linear-gradient(180deg,#d9a94a,#8a5b12);box-shadow:0 2px 0 #6f480d"></span><span style="font-family:Heebo,system-ui,sans-serif;font-size:22px;font-weight:700;width:56px;flex:0 0 56px">281</span><span style="flex:1;font-size:13.5px;font-weight:700">ממתינים לשיבוץ</span></button>
-            <button style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;text-align:right;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1)"><span style="width:11px;height:11px;flex:0 0 11px;border-radius:4px;background:linear-gradient(180deg,#b4503c,#8a3b28);box-shadow:0 2px 0 #6e2f20"></span><span style="font-family:Heebo,system-ui,sans-serif;font-size:22px;font-weight:700;width:56px;flex:0 0 56px">85</span><span style="flex:1;font-size:13.5px;font-weight:700">ללא גן</span></button>
-            <button style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;text-align:right;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1)"><span style="width:11px;height:11px;flex:0 0 11px;border-radius:4px;background:linear-gradient(180deg,#5f8a76,#2f5d4a);box-shadow:0 2px 0 #24483a"></span><span style="font-family:Heebo,system-ui,sans-serif;font-size:22px;font-weight:700;width:56px;flex:0 0 56px">209</span><span style="flex:1;font-size:13.5px;font-weight:700">טרם נקלטו בעירייה</span></button>
-            <button style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #eae6dd;border-radius:12px;background:#fffefb;text-align:right;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1)"><span style="width:11px;height:11px;flex:0 0 11px;border-radius:4px;background:linear-gradient(180deg,#5f8a76,#2f5d4a);box-shadow:0 2px 0 #24483a"></span><span style="font-family:Heebo,system-ui,sans-serif;font-size:22px;font-weight:700;width:56px;flex:0 0 56px">194</span><span style="flex:1;font-size:13.5px;font-weight:700">לא נבדקו במשרד החינוך</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--bd2);border-radius:12px;background:var(--card);text-align:right;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1)"><span style="width:11px;height:11px;flex:0 0 11px;border-radius:4px;background:linear-gradient(180deg,#d9a94a,#8a5b12);box-shadow:0 2px 0 #6f480d"></span><span style="font-family:Heebo,system-ui,sans-serif;font-size:22px;font-weight:700;width:56px;flex:0 0 56px">281</span><span style="flex:1;font-size:13.5px;font-weight:700">ממתינים לשיבוץ</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--bd2);border-radius:12px;background:var(--card);text-align:right;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1)"><span style="width:11px;height:11px;flex:0 0 11px;border-radius:4px;background:linear-gradient(180deg,#b4503c,#8a3b28);box-shadow:0 2px 0 #6e2f20"></span><span style="font-family:Heebo,system-ui,sans-serif;font-size:22px;font-weight:700;width:56px;flex:0 0 56px">85</span><span style="flex:1;font-size:13.5px;font-weight:700">ללא גן</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--bd2);border-radius:12px;background:var(--card);text-align:right;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1)"><span style="width:11px;height:11px;flex:0 0 11px;border-radius:4px;background:linear-gradient(180deg,#5f8a76,#2f5d4a);box-shadow:0 2px 0 var(--grnink)"></span><span style="font-family:Heebo,system-ui,sans-serif;font-size:22px;font-weight:700;width:56px;flex:0 0 56px">209</span><span style="flex:1;font-size:13.5px;font-weight:700">טרם נקלטו בעירייה</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--bd2);border-radius:12px;background:var(--card);text-align:right;transition:box-shadow 140ms ease,transform 140ms ease" style-hover="transform:translateY(-1px);box-shadow:0 4px 12px -4px rgba(34,34,31,.1)"><span style="width:11px;height:11px;flex:0 0 11px;border-radius:4px;background:linear-gradient(180deg,#5f8a76,#2f5d4a);box-shadow:0 2px 0 var(--grnink)"></span><span style="font-family:Heebo,system-ui,sans-serif;font-size:22px;font-weight:700;width:56px;flex:0 0 56px">194</span><span style="flex:1;font-size:13.5px;font-weight:700">לא נבדקו במשרד החינוך</span></button>
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;padding:16px 18px;background:#fffefb;border:1px solid #eae6dd;border-radius:14px;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06)">
+        <div style="display:flex;flex-direction:column;padding:16px 18px;background:var(--card);border:1px solid var(--bd2);border-radius:14px;box-shadow:0 1px 2px rgba(34,34,31,.04),0 1px 3px rgba(34,34,31,.06)">
           <div style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600">היום במערכת</div>
           <div style="flex:1;min-height:0;margin-top:12px;display:flex;flex-direction:column;gap:10px">
-            <div style="padding-bottom:10px;border-bottom:1px solid #f1eee7"><div style="font-size:13.5px">שובצו סופית <b>34</b> תיקים</div><div style="font-size:12.5px;color:#6b6860">מודיעין עילית · לפני 20 דקות</div></div>
-            <div style="padding-bottom:10px;border-bottom:1px solid #f1eee7"><div style="font-size:13.5px">ייבוא מאקסל · <b>128</b> שורות</div><div style="font-size:12.5px;color:#6b6860">אלעד · לפני שעה</div></div>
-            <div style="padding-bottom:10px;border-bottom:1px solid #f1eee7"><div style="font-size:13.5px">נפתחו <b>3</b> פניות חדשות</div><div style="font-size:12.5px;color:#6b6860">בית שמש · לפני שעתיים</div></div>
-            <div><div style="font-size:13.5px">נשלחו <b>412</b> הודעות שיבוץ</div><div style="font-size:12.5px;color:#6b6860">Smoove · אתמול</div></div>
+            <div style="padding-bottom:10px;border-bottom:1px solid var(--row)"><div style="font-size:13.5px">שובצו סופית <b>34</b> תיקים</div><div style="font-size:12.5px;color:var(--ink3)">מודיעין עילית · לפני 20 דקות</div></div>
+            <div style="padding-bottom:10px;border-bottom:1px solid var(--row)"><div style="font-size:13.5px">ייבוא מאקסל · <b>128</b> שורות</div><div style="font-size:12.5px;color:var(--ink3)">אלעד · לפני שעה</div></div>
+            <div style="padding-bottom:10px;border-bottom:1px solid var(--row)"><div style="font-size:13.5px">נפתחו <b>3</b> פניות חדשות</div><div style="font-size:12.5px;color:var(--ink3)">בית שמש · לפני שעתיים</div></div>
+            <div><div style="font-size:13.5px">נשלחו <b>412</b> הודעות שיבוץ</div><div style="font-size:12.5px;color:var(--ink3)">Smoove · אתמול</div></div>
           </div>
-          <div style="margin-top:12px;display:flex;align-items:center;gap:7px;font-size:12.5px;color:#6b6860"><span style="width:7px;height:7px;border-radius:50%;background:#2f5d4a"></span>4 מחוברות כרגע </div>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink3)"><span style="width:7px;height:7px;border-radius:50%;background:var(--grn)"></span>4 מחוברות כרגע </div>
         </div>
       </div>
     </main>
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:760}}"></script>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:760}}">
+class Component extends DCLogic {
+  state = { night: false };
+
+  componentDidMount() {
+    try { if (localStorage.getItem("wr-night") === "1") { document.body.dataset.night = "1"; this.setState({ night: true }); } } catch (e) {}
+  }
+  toggleNight() {
+    const n = !this.state.night;
+    if (n) document.body.dataset.night = "1"; else delete document.body.dataset.night;
+    try { localStorage.setItem("wr-night", n ? "1" : "0"); } catch (e) {}
+    this.setState({ night: n });
+  }
+
+  renderVals() {
+    return {
+      toggleNight: () => this.toggleNight(),
+      nightIcon: this.state.night ? "☀" : "☾",
+      true: true
+    };
+  }
+}
+</script>
 </body>
 </html>
