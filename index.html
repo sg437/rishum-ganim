@@ -4688,11 +4688,21 @@ function guideContent(){
         <li><b>אפשר לכוון כמה עמודות לאותו שדה</b> — למשל שתי עמודות דוא"ל בקובץ מול שדה דוא"ל אחד בתוכנה. הן מתמזגות, נלקח הערך הראשון שאינו ריק, והמסך מודיע על כך במפורש.</li>
         <li>עמודת <b>מספר זהות היא חובה</b> — היא מפתח ההתאמה.</li>
       </ul>
-      <h4>3. שני מצבים — "מה לעשות עם הרשימה"</h4>
+      <h4>3. שלושה מצבים — "מה לעשות עם הרשימה"</h4>
       <div class="gd-two">
         <div><h4>🔗 עדכון</h4>סימון "קלוט בעירייה" והשלמת פרטים חסרים. אפשר גם <b>לפתוח תיק חדש</b> לכל ת"ז שאינה בתוכנה, לפי <b>סוג החינוך</b> שנבחר להעלאה.</div>
         <div><h4>🔍 השוואת סמלי מוסד בלבד</h4><b>קריאה בלבד — לא משנה דבר בתוכנה.</b> מקבלים טבלת סיכום לפי כל סמל ופירוט מי הן, בלי לגעת בתיקים.</div>
       </div>
+      <div class="gd-two" style="margin-top:8px">
+        <div><h4>📤 אקסל שינויי סמל לעירייה</h4><b>קריאה בלבד — ולא נשמר דבר.</b> יוצא קובץ אחד לשליחה חזרה לעירייה, בדיוק חמש עמודות: <b>שם משפחה · שם פרטי · מספר זהות · סמל ישן · סמל חדש</b>. "סמל ישן" הוא הסמל שבקובץ העירייה, "סמל חדש" הוא הסמל של הגן שאליו היא משובצת אצלנו.</div>
+        <div><h4>מי יוצאת ומי לא</h4><ul style="margin:0;padding-inline-start:18px">
+          <li><b>יוצאת רק מי שיש אצלה שינוי</b> בין הסמל שבקובץ לסמל שאצלנו. מי שכבר באותו סמל — אינה בקובץ.</li>
+          <li>מי שאצלנו ב<b>חינוך מיוחד</b> — הסמל החדש שלה הוא <b>ח"מ</b> ולא מספר.</li>
+          <li>מי ש<b>אינה בתוכנה כלל</b>, או שאצלנו <b>סיימה</b> — <b>אינה יוצאת בכלל</b>. שתיהן מדווחות ברשימה נפרדת להורדה, כדי שיהיה ברור מה הושמט.</li>
+          <li>מי שבחינוך רגיל ו<b>אינה משובצת לגן</b> — אין לה סמל חדש, ולכן היא מדווחת בנפרד ואינה בקובץ.</li>
+        </ul></div>
+      </div>
+      <p class="gd-mut">מומלץ להוריד ב<b>🎨 אקסל</b> ולא ב-CSV: הוא שומר את מספר הזהות כטקסט ולא מאבד אפס מוביל. לצידו יש גם CSV ו<b>📎 שיתוף / הדפסה</b>.</p>
       <h4>4. מה מושלם בתיק — ומה לא</h4>
       <ul>
         <li>מושלמים: <b>תאריך לידה · שם האם · שם האב · שם משפחה · טלפון בית · נייד אב · נייד אם · דוא"ל · רחוב · מספר בניין · עיר</b>.</li>
@@ -11225,6 +11235,7 @@ function muniSectionHTML(descClass){
         <select id="muni-mode">
           <option value="update">עדכון — סימון "קלוט בעירייה" והשלמת פרטים חסרים</option>
           <option value="compare">השוואת סמלי מוסד בלבד — בלי לשנות דבר בתוכנה</option>
+          <option value="symbols">אקסל שינויי סמל לעירייה — רק מי שהסמל שלה השתנה</option>
         </select></div>
       <div class="field" id="muni-edu-wrap"><label>סוג החינוך של הרשימה</label>
         <select id="muni-edu">${EDU_TYPES.map(t=>`<option ${t===edu?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
@@ -11349,13 +11360,18 @@ function wireMuniSection(root, inModal){
      בהשוואה אין מה לבחור סוג חינוך ואין מה לפתוח תיקים, ולכן שני הפקדים
      האלה יורדים מהמסך — והכפתור אומר במפורש מה הוא עומד לעשות. */
   function syncMode(){
-    const cmp = q("#muni-mode").value === "compare";
+    const mode = q("#muni-mode").value;
+    const readOnly = mode === "compare" || mode === "symbols";
     const eduW=q("#muni-edu-wrap"), crW=q("#muni-create-wrap"), run=q("#muni-run"), hint=q("#muni-mode-hint");
-    if(eduW) eduW.style.display = cmp ? "none" : "";
-    if(crW)  crW.style.display  = cmp ? "none" : "";
-    if(run)  run.textContent    = cmp ? "📊 הפק סיכום לפי סמל מוסד" : "🔗 בצע התאמה, סמן והשלם פרטים";
-    if(hint) hint.innerHTML = cmp
+    if(eduW) eduW.style.display = readOnly ? "none" : "";
+    if(crW)  crW.style.display  = readOnly ? "none" : "";
+    if(run)  run.textContent    = mode==="compare" ? "📊 הפק סיכום לפי סמל מוסד"
+                                : mode==="symbols" ? "📤 הפק אקסל שינויי סמל"
+                                :                    "🔗 בצע התאמה, סמן והשלם פרטים";
+    if(hint) hint.innerHTML = mode==="compare"
       ? 'מעלים מספרי זהות עם עמודת <b>סמל מוסד</b> ומקבלים סיכום בלבד: כמה תלמידות בכל סמל אצלנו בתוכנה מול כמה ברשימת העירייה, ופירוט מי רשומה אצל מי בסמל אחר. <b>שום דבר בתוכנה לא משתנה</b> — לא סימון "קלוט", לא השלמת פרטים ולא פתיחת תיקים.'
+      : mode==="symbols"
+      ? 'מעלים את קובץ העירייה עם <b>מספר זהות</b> ו<b>סמל מוסד</b>, ויוצא אקסל אחד לשליחה חזרה לעירייה: <b>שם משפחה · שם פרטי · מספר זהות · סמל ישן · סמל חדש</b>. יוצאות רק מי שהסמל שלה השתנה; מי שאצלנו בחינוך מיוחד — הסמל החדש שלה הוא <b>ח"מ</b>; מי שאינה בתוכנה או סיימה אצלנו — <b>אינה יוצאת בכלל</b>. <b>שום דבר בתוכנה לא משתנה ולא נשמר.</b>'
       : 'סוג החינוך נקבע לתיקים החדשים שייפתחו (אם לא מופתה עמודת "סוג חינוך"). ההשלמה נעשית לפי ת"ז בכל התוכנה, בלי תלות בסוג החינוך. <b>סמל המוסד שבקובץ אינו נכנס לתיקים ואינו משנה שיבוץ</b> — הוא משמש להשוואה ולדיווח בלבד.';
   }
   q("#muni-mode").onchange=syncMode;
@@ -11547,6 +11563,111 @@ function wireMuniSection(root, inModal){
     if(!nums.length){ out.innerHTML=`<div class="empty">לא זוהו מספרי זהות בקלט. ודא/י שיש עמודת מספר זהות בטבלת המיפוי, או הדבק/י רשימת מספרים.</div>`; return; }
     const compare = q("#muni-mode").value==="compare";
     const byTz=new Map(); studentsOfYear().forEach(s=>{ const d=tzKey(s.tz); if(d && !byTz.has(d)) byTz.set(d,s); });
+
+    /* ============ מצב "אקסל שינויי סמל לעירייה" ============
+       הפקה בלבד — קריאה ולא כתיבה. אין סימון "קלוט", אין השלמת פרטים, אין
+       פתיחת תיקים, ואין שמירה של הרשימה ב-DB. התוצר הוא קובץ אחד לשליחה
+       חזרה לעירייה, בדיוק חמש עמודות:
+         שם משפחה · שם פרטי · מספר זהות · סמל ישן (מהקובץ) · סמל חדש (אצלנו)
+       הכללים:
+         • יוצאת רק מי שיש אצלה שינוי בין הסמל שבקובץ לסמל שאצלנו.
+         • מי שאצלנו בחינוך מיוחד — הסמל החדש שלה הוא "ח"מ" (ולא מספר).
+           ח"מ שונה מכל סמל מספרי, ולכן היא יוצאת ממילא — אלא אם בקובץ
+           העירייה כבר כתוב אצלה ח"מ, ואז אין מה לעדכן.
+         • מי שאינה בתוכנה כלל, או שמסומנת אצלנו "סיימה" — אינה יוצאת בכלל.
+         • מי שאצלנו בחינוך רגיל ואינה משובצת לגן — אין לה סמל חדש, ולכן
+           אי-אפשר לומר לעירייה למה לשנות. היא מדווחת בנפרד ואינה בקובץ. */
+    if(q("#muni-mode").value==="symbols"){
+      const chg=[];              // השורות שייצאו בקובץ
+      const notInSys=[];         // בקובץ ואינן בתוכנה — לא יוצאות
+      const finishedOut=[];      // בקובץ, ואצלנו סיימו — לא יוצאות
+      const noGan=[];            // בחינוך רגיל בלי שיבוץ — אין סמל חדש
+      let same=0, special=0;
+      nums.forEach(tz=>{
+        const rec=recs.get(tz)||{tz};
+        const oldSym=String(rec.symbol||"").trim();
+        const s=byTz.get(tzKey(tz));
+        if(!s){ notInSys.push({ tz, name:[rec.lastName,rec.firstName].filter(Boolean).join(" "), oldSym }); return; }
+        const last  = String(s.lastName ||"").trim() || String(rec.lastName ||"").trim();
+        const first = String(s.firstName||"").trim() || String(rec.firstName||"").trim();
+        const idOut = tzKey(s.tz) || tz;
+        if(s.finished){ finishedOut.push({ last, first, tz:idOut, oldSym }); return; }
+        const isSpecial = eduLabel(s)==='ח"מ';
+        const newSym = isSpecial ? 'ח"מ' : ganSymbolText(ganById(s.ganId));
+        if(!isSpecial && !newSym){ noGan.push({ last, first, tz:idOut, oldSym }); return; }
+        if(newSym===oldSym){ same++; return; }        // אין שינוי — לא בקובץ
+        if(isSpecial) special++;
+        chg.push({ last, first, tz:idOut, oldSym, newSym, special:isSpecial });
+      });
+      /* סדר הקובץ: לפי הסמל החדש (ח"מ בסוף), ובתוכו לפי שם משפחה ושם פרטי —
+         כך כל גן יושב ברצף אחד וקל לעבוד על הקובץ בעירייה. */
+      const heb=(a,b)=>String(a||"").localeCompare(String(b||""),"he");
+      chg.sort((a,b)=> (a.special?1:0)-(b.special?1:0) || heb(a.newSym,b.newSym) || heb(a.last,b.last) || heb(a.first,b.first));
+      const CHG_HEADERS=["שם משפחה","שם פרטי","מספר זהות","סמל ישן","סמל חדש"];
+      const chgRows=chg.map(r=>[r.last,r.first,r.tz,r.oldSym,r.newSym]);
+      const fileBase="שינויי סמל מוסד לעירייה — "+DB.activeYear;
+      const miniTbl=(title,btnId,fileName,headers,rows,note)=>rows.length?`
+        <div class="note" style="margin-top:12px">
+          <b>${title}</b>
+          <button class="btn ghost sm" id="${btnId}" type="button" style="margin-inline-start:8px">⬇️ הורדת הרשימה</button>
+          ${note?`<div class="hint" style="margin-top:4px">${note}</div>`:''}
+          ${tbl(`<thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>
+            ${rows.slice(0,60).map(r=>`<tr>${r.map(c=>`<td>${esc(c)||'—'}</td>`).join("")}</tr>`).join("")}
+          </tbody>`,220)}
+          ${rows.length>60?`<div class="hint">מוצגות 60 הראשונות מתוך ${rows.length} — הקובץ המלא בהורדה.</div>`:''}
+        </div>`:'';
+      const notInRows   = notInSys.map(r=>[r.tz,r.name,r.oldSym]);
+      const finishedRows= finishedOut.map(r=>[r.last,r.first,r.tz,r.oldSym]);
+      const noGanRows   = noGan.map(r=>[r.last,r.first,r.tz,r.oldSym]);
+      out.innerHTML=`
+        <div class="note">מצב <b>הפקת אקסל שינויי סמל</b> — הכול קריאה בלבד. שום דבר בתוכנה לא שונה ולא נשמר.</div>
+        <div class="stats" style="margin-top:10px">
+          <div class="stat hero"><div class="k">יוצאות באקסל — שינוי סמל</div><div class="v">${chg.length}</div></div>
+          <div class="stat"><div class="k">ברשימת העירייה</div><div class="v">${nums.length}</div></div>
+          <div class="stat"><div class="k">אותו סמל — אין שינוי</div><div class="v">${same}</div></div>
+          <div class="stat"><div class="k">מתוך היוצאות — ח"מ</div><div class="v">${special}</div></div>
+          <div class="stat"><div class="k">אינן בתוכנה — לא יוצאות</div><div class="v">${notInSys.length}</div></div>
+          <div class="stat"><div class="k">סיימו אצלנו — לא יוצאות</div><div class="v">${finishedOut.length}</div></div>
+          ${noGan.length?`<div class="stat bad"><div class="k">בלי שיבוץ — אין סמל חדש</div><div class="v">${noGan.length}</div></div>`:''}
+        </div>
+        ${(noTz&&noTz.length)?`<div class="note" style="margin-top:8px">${noTz.length} שורות בקובץ בלי מספר זהות — לא נספרו כלל. ההתאמה היא לפי ת"ז בלבד.</div>`:''}
+        ${chg.length?`
+          <div style="margin-top:14px">
+            <b>הקובץ לעירייה — ${chg.length} תלמידות שהסמל שלהן משתנה</b>
+            <div class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap">
+              <button class="btn" id="muni-symchg-xls" type="button">🎨 אקסל (שומר אפס מוביל בת"ז)</button>
+              <button class="btn ghost sm" id="muni-symchg-csv" type="button">⬇️ אקסל (CSV)</button>
+              <button class="btn ghost sm" id="muni-symchg-share" type="button">📎 שיתוף / הדפסה</button>
+            </div>
+            ${tbl(`<thead><tr>${CHG_HEADERS.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>
+              ${chg.map(r=>`<tr><td>${esc(r.last)||'—'}</td><td>${esc(r.first)||'—'}</td><td>${esc(r.tz)}</td>
+                <td>${esc(r.oldSym)||'<span class="hint">(ריק בקובץ)</span>'}</td>
+                <td style="font-weight:700">${r.special?'<span class="pill warn">ח"מ</span>':esc(r.newSym)}</td></tr>`).join("")}
+            </tbody>`,340)}
+            <div class="hint">"סמל ישן" — הסמל שבקובץ העירייה. "סמל חדש" — הסמל של הגן שאליו היא משובצת אצלנו${special?', או <b>ח"מ</b> למי שאצלנו בחינוך מיוחד':''}. מומלץ להוריד ב<b>🎨 אקסל</b> — הוא שומר את מספר הזהות כטקסט ולא מאבד אפס מוביל.</div>
+          </div>`:`<div class="empty" style="margin-top:12px">אין אף תלמידה שהסמל שלה משתנה. כל מי שנמצאה בתוכנה רשומה כבר באותו סמל שבקובץ העירייה.</div>`}
+        ${miniTbl(`${notInSys.length} מספרי זהות שבקובץ ואינם בתוכנה — לא נכללו בקובץ`,"muni-symchg-nf","",
+                  ['מספר זהות',"שם בקובץ העירייה","סמל בעירייה"],notInRows,
+                  'לפי ההגדרה שנקבעה — מי שאינה אצלנו אינה יוצאת בקובץ לעירייה.')}
+        ${miniTbl(`${finishedOut.length} תלמידות שבקובץ ואצלנו מסומנות "סיימה" — לא נכללו בקובץ`,"muni-symchg-fin","",
+                  ["שם משפחה","שם פרטי",'מספר זהות',"סמל בעירייה"],finishedRows,
+                  'לפי ההגדרה שנקבעה — מי שסיימה אצלנו אינה יוצאת בקובץ לעירייה.')}
+        ${miniTbl(`${noGan.length} תלמידות בחינוך רגיל בלי שיבוץ לגן — אין להן סמל חדש`,"muni-symchg-nogan","",
+                  ["שם משפחה","שם פרטי",'מספר זהות',"סמל בעירייה"],noGanRows,
+                  'אי-אפשר לומר לעירייה לאיזה סמל לשנות כל עוד אין שיבוץ אצלנו. אחרי השיבוץ אפשר להפיק שוב.')}`;
+      wireDownload("muni-symchg-csv", fileBase+".csv", CHG_HEADERS, chgRows);
+      wireShare("muni-symchg-share", { title:"שינויי סמל מוסד — לעירייה",
+        subtitle:["שנת "+DB.activeYear, chg.length+" תלמידות"].join(" · "),
+        headers:CHG_HEADERS, rows:chgRows, fileName:fileBase });
+      const xlsBtn=q("#muni-symchg-xls");
+      if(xlsBtn) xlsBtn.onclick=()=>{ tableToXls(fileBase+".xls", CHG_HEADERS, chgRows,
+        { title:`שינויי סמל מוסד — שנת ${DB.activeYear} · ${chg.length} תלמידות` }); toast("קובץ אקסל נוצר"); };
+      wireDownload("muni-symchg-nf", "בקובץ העירייה ואינן בתוכנה.csv", ['מספר זהות',"שם בקובץ העירייה","סמל בעירייה"], notInRows);
+      wireDownload("muni-symchg-fin", "בקובץ העירייה וסיימו אצלנו.csv", ["שם משפחה","שם פרטי",'מספר זהות',"סמל בעירייה"], finishedRows);
+      wireDownload("muni-symchg-nogan", "בלי שיבוץ אצלנו — אין סמל חדש.csv", ["שם משפחה","שם פרטי",'מספר זהות',"סמל בעירייה"], noGanRows);
+      toast(`${chg.length} שינויי סמל · ${same} בלי שינוי · ${notInSys.length+finishedOut.length} לא נכללו`);
+      return;
+    }
 
     /* ============ מצב השוואה בלבד ============
        לא נוגעים בנתונים: לא מסמנים "קלוט", לא משלימים פרטים, לא פותחים
