@@ -53,6 +53,7 @@ Vanilla JS, משתני CSS ב-:root, בלי ספריות ובלי build step.
 --surface         #fffefb  כרטיס, טבלה, סרגל צד, שכבה מרחפת
 --surface-sunken  #faf8f4  כותרת טבלה, פוטר טבלה, פוטר מגירה
 --surface-inset   #f7f5f0  ריחוף שורת טבלה, בלוק פנימי בכרטיס
+--surface-hover   #f2efe8  ריחוף פריט ניווט בסרגל (הצללה קלה מ---surface-inset)
 --surface-3       #e9e5dc  מסלול מד התקדמות, רקע בורר מקטעים
 --ink             #22221f  טקסט ראשי, מספרים, כותרות
 --ink-soft        #4e4c46  טקסט משני, פריט ניווט לא נבחר
@@ -109,6 +110,7 @@ Vanilla JS, משתני CSS ב-:root, בלי ספריות ובלי build step.
 
 ═══ 4. טיפוגרפיה — הסולם המלא ═══
 כותרת מסך (H1)  Heebo 600 · 23px · 1.2 · letter-spacing -.015em
+כותרת שכבה      Heebo 600 · 17px · 1.3    כותרת מגירה או מודאל
 כותרת סקציה     Heebo 600 · 15px · 1.4
 כותרת כרטיס     Heebo 600 · 14.5px · 1.4
 מספר גיבור      Heebo 700 · 30px · 1.05   לכל היותר אחד למסך — המדד הארצי
@@ -117,7 +119,7 @@ Vanilla JS, משתני CSS ב-:root, בלי ספריות ובלי build step.
 טקסט מודגש      Assistant 700 · 14px · 1.5
 טקסט משני       Assistant 400 · 13.5px · 1.5
 טבלה            Assistant 400 · 13px · 1.4
-meta            Assistant 400 · 12.5px · 1.45
+meta            Assistant 400 · 12.5px · 1.45   אין 12px — 12.5 או 11.5, לא ביניהם
 micro           Assistant 400 · 11.5px · 1.4
 תווית           Assistant 700 · 11px · 1.3 · letter-spacing .08em
 תווית סרגל      Assistant 700 · 10.5px · 1.3 · letter-spacing .12em
@@ -239,7 +241,13 @@ micro           Assistant 400 · 11.5px · 1.4
     מרכז-תחתון 18px · מונה נבחרים 13px/700 · הפעולה הראשית במסגרת var(--band-accent) · ✕.
 9.18 grid נתונים (זוגות מפתח/ערך): gap:1px על רקע var(--border-soft) —
     הקווים הם ה-gap, לא גבולות.
-9.19 אייקוני ניווט: SVG מקומי 16×16, fill none, stroke currentColor, stroke-width 1.4,
+9.19 אריחי מספר (תורי עבודה): ריבוע 11×11 radius 4, גרדיאנט אנכי + צל תחתון
+    קשיח 2px בגוון הכהה. שלוש משפחות בלבד, לפי מצב:
+      מותג   linear-gradient(180deg,#5f8a76,#2f5d4a)  box-shadow:0 2px 0 #24483a
+      ענבר   linear-gradient(180deg,#d9a94a,#8a5b12)  box-shadow:0 2px 0 #6f480d
+      חימר   linear-gradient(180deg,#b4503c,#8a3b28)  box-shadow:0 2px 0 #6e2f20
+    הגוון הכהה הוא ~80% מצבע הבסיס. אין משפחה רביעית.
+9.20 אייקוני ניווט: SVG מקומי 16×16, fill none, stroke currentColor, stroke-width 1.4,
     linecap/linejoin round, opacity .75. גיאומטריים בלבד — בלי אילוסטרציות.
 
 ═══ 10. מצבי מסך ═══
@@ -354,3 +362,9 @@ prefers-reduced-motion: reduce → כל ה-transition ל-0ms.
 | 2026-09-07 | מוזג `HANDOFF.md` — 13 ערכים. ראה "ההכרעות" למעלה | Home + Students |
 | 2026-09-07 | מספר גיבור 30px הופרד ממספר מונה 22px; `Students.dc.html` תוקן מ-21px ל-22px | Students |
 | 2026-09-07 | 2.1 — נאסר להשתמש בצבעי נורות הסטטוס לטקסט | בדיקת ניגודיות |
+| 2026-09-07 | `Import` ו-`PlacementMap` תוקנו מ-21px ל-22px (אותו סחף כמו ב-`Students`) | Staff+Import+Messages+PlacementMap |
+| 2026-09-07 | `Home` יושר לפלטה הממוזגת: אדום, רקע אדום, קווי מפריד ואריח החימר | אותו סבב |
+| 2026-09-07 | נוסף `--surface-hover #f2efe8` — היה בכל המסכים ולא במפרט | אותו סבב |
+| 2026-09-07 | נוספה "כותרת שכבה" 17px — הופיעה ב-`Staff` ולא הייתה בסולם | Staff |
+| 2026-09-07 | 12px אוחד ל-12.5px בכל המסכים (45 מופעים) — שני גדלים לאותו תפקיד | אותו סבב |
+| 2026-09-07 | 9.19 — אריחי המספר תועדו כשלוש משפחות; `Staff` radius 5px→6px | אותו סבב |

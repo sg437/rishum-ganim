@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:"Heebo";src:url("../../fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:"Heebo";src:url("../../fonts/heebo-latin.woff2") format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215;}
+@font-face{font-family:"Assistant";src:url("../../fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800;font-display:swap;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:"Assistant";src:url("../../fonts/assistant-latin.woff2") format("woff2");font-weight:200 800;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215;}
+body{margin:0;background:#f4f2ed}
+button{font-family:inherit;cursor:pointer}
+input,textarea{font-family:inherit}
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-thumb{background:#dcd7cc;border-radius:3px}
+*::-webkit-scrollbar-track{background:transparent}
+nav::-webkit-scrollbar{width:0;height:0}
+nav a{color:#4e4c46;text-decoration:none}
+nav a:hover{background:#f2efe8;color:#22221f}
+nav svg{flex:0 0 16px;opacity:.75;stroke-linecap:round;stroke-linejoin:round}
+a{color:#24483a}
+a:hover{color:#2f5d4a}
+</style>
+</helmet>
+
+<div dir="rtl" style="display:flex;flex-direction:column;gap:10px;padding:20px;background:#f4f2ed;color:#22221f;font-family:Assistant,system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;accent-color:#2f5d4a;width:max-content">
+
+<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#6b6860">מרכז הודעות · דסקטופ 1280×760</div>
+
+<div style="width:1280px;height:760px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:#f4f2ed;border:1px solid #e3dfd6;border-radius:14px">
+
+  <header style="flex:0 0 auto;height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);color:#fffefb;box-shadow:inset 0 1px 0 #5d6f66">
+    <span style="display:flex;flex-direction:column;gap:3px;width:22px;flex:0 0 22px">
+      <span style="height:2px;border-radius:1px;background:#8fc4a9"></span>
+      <span style="height:2px;border-radius:1px;background:#fffefb"></span>
+      <span style="height:2px;border-radius:1px;background:#7f8b85"></span>
+    </span>
+    <span style="font-family:Heebo,system-ui,sans-serif;font-size:15.5px;font-weight:600">מרכז ניהול ארצי</span>
+    <span style="width:1px;height:20px;background:#6d7a74"></span>
+    <span style="font-size:13px;color:#d3dbd7">מחלקת הרישום</span>
+    <span style="flex:1"></span>
+    <input type="text" value="חיפוש תיק: שם, ת״ז, טלפון, גן…" style="width:280px;height:34px;padding:0 12px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#c9d3ce;font-size:13.5px" style-focus="outline:2px solid #8fc4a9;outline-offset:1px;color:#fffefb">
+    <button style="height:34px;padding:0 13px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb;font-size:13px" style-hover="border-color:#9db0a8">תשפ״ז</button>
+    <button title="מצב לילה" style="width:34px;height:34px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb;font-size:14px" style-hover="border-color:#9db0a8">☾</button>
+    <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:linear-gradient(180deg,#5e6f67,#44534c);color:#fffefb;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center">שג</span>
+  </header>
+  <div style="flex:0 0 auto;height:2px;background:#2f5d4a"></div>
+
+  <div style="flex:1;min-height:0;display:flex">
+    <aside style="width:248px;flex:0 0 248px;display:flex;flex-direction:column;background:#fffefb;border-left:1px solid #eae6dd">
+      <nav style="flex:1;overflow:auto;scrollbar-width:none;padding:14px 12px;font-size:13.5px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:0 8px 6px">ראשי</div>
+        <a href="Home.dc.html" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 6.5 8 2.5l5.5 4v7h-11z"/></svg><span style="flex:1">לוח הבית</span></a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">רישום ושיבוץ</div>
+        <a href="Students.dc.html" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4"/></svg><span style="flex:1">תלמידים ושיבוץ מרכזי</span></a>
+        <a href="Staff.dc.html" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5.5" cy="6" r="2"/><circle cx="10.5" cy="6" r="2"/><path d="M2 13c0-2 1.6-3 3.5-3S9 11 9 13M9.5 13c0-2 1.6-3 3.5-3"/></svg><span style="flex:1">עובדות</span></a>
+        <a href="PlacementMap.dc.html" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 14s4.5-4.2 4.5-7A4.5 4.5 0 0 0 3.5 7c0 2.8 4.5 7 4.5 7z"/><circle cx="8" cy="6.8" r="1.6"/></svg><span style="flex:1">מפת שיבוץ</span></a>
+        <a href="Import.dc.html" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2.5v7M5.2 6.8 8 9.6l2.8-2.8M2.5 12.5h11"/></svg><span style="flex:1">ייבוא מאקסל</span></a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">קשר והפצה</div>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;color:#24483a;font-weight:700;background:#e6efe9;box-shadow:0 1px 2px rgba(34,34,31,.05)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4" width="12" height="8" rx="1.5"/><path d="M2.6 5 8 8.6 13.4 5"/></svg><span style="flex:1">מרכז הודעות</span><span style="font-weight:700;font-size:12.5px;color:#24483a">4</span></a>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13.5 2.5 2.5 7l4.3 1.7L8.5 13z"/></svg><span style="flex:1">הפצת שיבוץ · Smoove</span></a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">בקרה וציות</div>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 13.5h11M3.5 13.5v-6M12.5 13.5v-6M6.5 13.5v-6M9.5 13.5v-6M2 7.5 8 3l6 4.5z"/></svg><span style="flex:1">בקרת משרד החינוך</span></a>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6.5" r="3.2"/><path d="M5.6 9.6 5 14l3-1.5L11 14l-.6-4.4"/></svg><span style="flex:1">רישיון וסייעת ב׳</span><span style="font-weight:700;font-size:12.5px;color:#8a5b12">15</span></a>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13.5 8.5c0 2.5-2.5 4.3-5.5 4.3-.8 0-1.5-.1-2.2-.3L3 13.5l.8-2.4A4.7 4.7 0 0 1 2.5 8.5C2.5 6 5 4.2 8 4.2s5.5 1.8 5.5 4.3z"/></svg><span style="flex:1">פניות וערעורים</span><span style="font-weight:700;font-size:12.5px;color:#8a5b12">7</span></a>
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#6b6860;padding:16px 8px 6px">ניהול</div>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 13.5V9M6.5 13.5V4.5M10 13.5v-6M13.5 13.5v-9"/></svg><span style="flex:1">פילוחים ודוח להנהלה</span></a>
+        <a href="#" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 5h11M2.5 11h11"/><circle cx="6" cy="5" r="1.6"/><circle cx="10" cy="11" r="1.6"/></svg><span style="flex:1">הגדרות והרשאות</span></a>
+      </nav>
+      <div style="padding:12px 16px;border-top:1px solid #eae6dd;font-size:11.5px;color:#6b6860">6 ערים · עודכן לפני 3 דקות</div>
+    </aside>
+
+    <main style="flex:1;min-width:0;display:flex;flex-direction:column;background:linear-gradient(180deg,#fbfaf7 0,#f4f2ed 220px)">
+      <div style="flex:0 0 auto;display:flex;align-items:flex-end;gap:14px;padding:18px 20px 0">
+        <div>
+          <h1 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:23px;font-weight:600;letter-spacing:-.015em">מרכז הודעות</h1>
+          <div style="margin-top:3px;font-size:13.5px;color:#6b6860">24 שיחות פתוחות · 4 חדשות · 6 ממתינות לתשובה מעל 24 שעות</div>
+        </div>
+        <span style="flex:1"></span>
+        <button style="height:36px;padding:0 15px;display:flex;align-items:center;gap:8px;border:1px solid #2f5d4a;border-radius:10px;background:linear-gradient(180deg,#3a6d58,#2b5544);color:#fffefb;font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(34,34,31,.12)" style-hover="background:linear-gradient(180deg,#40775f,#2f5d4a)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>הודעה חדשה</button>
+        <button style="height:36px;padding:0 14px;border:1px solid #e3dfd6;border-radius:10px;background:#fffefb;color:#22221f;font-size:13px" style-hover="border-color:#2f5d4a">תבניות</button>
+      </div>
+
+      <div style="flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:14px 20px 0">
+        <sc-for list="{{ chips }}" as="chip" hint-placeholder-count="4">
+          <button onClick="{{ chip.pick }}" style="height:30px;padding:0 11px;display:flex;align-items:center;gap:7px;border:1px solid {{ chip.border }};border-radius:8px;background:{{ chip.bg }};font-size:12.5px;font-weight:{{ chip.weight }};color:#22221f" style-hover="border-color:#9db0a8"><span style="width:8px;height:8px;border-radius:2px;background:{{ chip.dot }}"></span>{{ chip.label }}<span style="color:#6b6860;font-weight:400">{{ chip.count }}</span></button>
+        </sc-for>
+        <span style="flex:1"></span>
+        <span style="font-size:12.5px;color:#6b6860">{{ shownLabel }}</span>
+      </div>
+
+      <div style="flex:1;min-height:0;display:flex;gap:14px;padding:12px 20px 16px">
+        <div style="width:326px;flex:0 0 326px;display:flex;flex-direction:column;background:#fffefb;border:1px solid #e3dfd6;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(34,34,31,.04)">
+          <div style="flex:0 0 auto;height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;background:#faf8f4;border-bottom:1px solid #e3dfd6;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#6b6860">
+            <span style="flex:1">שיחות</span><span>{{ threadCount }}</span>
+          </div>
+          <div style="flex:1;min-height:0;overflow:auto">
+            <sc-for list="{{ threads }}" as="t" hint-placeholder-count="7">
+              <button onClick="{{ t.pick }}" style="width:100%;display:flex;gap:10px;align-items:flex-start;min-height:44px;padding:11px 14px;border:0;border-bottom:1px solid #f1eee7;background:{{ t.bg }};text-align:right;color:#22221f" style-hover="background:#f7f5f0">
+                <span style="width:9px;height:9px;flex:0 0 9px;margin-top:5px;border-radius:2px;background:{{ t.dot }}"></span>
+                <span style="flex:1;min-width:0">
+                  <span style="display:flex;align-items:baseline;gap:8px">
+                    <span style="flex:1;min-width:0;font-size:13.5px;font-weight:{{ t.weight }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.who }}</span>
+                    <span style="font-size:11.5px;color:#6b6860">{{ t.time }}</span>
+                  </span>
+                  <span style="display:block;margin-top:1px;font-size:13px;font-weight:{{ t.weight }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.subject }}</span>
+                  <span style="display:block;margin-top:2px;font-size:12.5px;color:#6b6860;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.preview }}</span>
+                  <span style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                    <span style="height:20px;padding:0 7px;display:inline-flex;align-items:center;border-radius:6px;background:{{ t.chBg }};color:{{ t.chInk }};font-size:11px;font-weight:700">{{ t.channel }}</span>
+                    <span style="font-size:11.5px;color:#6b6860">{{ t.city }}</span>
+                  </span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:#fffefb;border:1px solid #e3dfd6;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(34,34,31,.04)">
+          <div style="flex:0 0 auto;padding:13px 16px;border-bottom:1px solid #eae6dd;display:flex;align-items:center;gap:10px">
+            <span style="min-width:0">
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="width:9px;height:9px;flex:0 0 9px;border-radius:2px;background:{{ open.dot }}"></span>
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600">{{ open.subject }}</span>
+              </span>
+              <span style="display:block;margin-top:2px;font-size:12.5px;color:#6b6860">{{ open.who }} · {{ open.channel }} · {{ open.city }}</span>
+            </span>
+            <span style="flex:1"></span>
+            <button style="height:30px;padding:0 12px;border:1px solid #e3dfd6;border-radius:8px;background:#fffefb;color:#22221f;font-size:12.5px" style-hover="border-color:#2f5d4a">העברה לטיפול</button>
+            <button style="height:30px;padding:0 12px;border:1px solid #2f5d4a;border-radius:8px;background:#fffefb;color:#24483a;font-size:12.5px;font-weight:700" style-hover="background:#e6efe9">סימון כטופל</button>
+          </div>
+
+          <div style="flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:11px 16px;background:#f7f5f0;border-bottom:1px solid #eae6dd">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#6b6860">תיק מקושר</span>
+            <span style="font-size:13.5px;font-weight:600">{{ open.caseName }}</span>
+            <span style="font-size:12.5px;color:#6b6860">ת״ז {{ open.caseId }} · {{ open.caseGan }}</span>
+            <span style="flex:1"></span>
+            <a href="Students.dc.html" style="font-size:12.5px;font-weight:700">פתיחת התיק</a>
+          </div>
+
+          <div style="flex:1;min-height:0;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ open.messages }}" as="m" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;align-items:{{ m.align }};gap:4px">
+                <div style="max-width:74%;padding:11px 13px;border-radius:12px;background:{{ m.bg }};border:1px solid {{ m.border }};color:{{ m.ink }};font-size:13.5px">{{ m.body }}</div>
+                <div style="font-size:11.5px;color:#6b6860">{{ m.meta }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="flex:0 0 auto;padding:12px 16px;border-top:1px solid #eae6dd;background:#faf8f4;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#6b6860">תבנית</span>
+              <sc-for list="{{ templates }}" as="tp" hint-placeholder-count="3">
+                <button onClick="{{ tp.pick }}" style="height:30px;padding:0 11px;border:1px solid #e3dfd6;border-radius:8px;background:#fffefb;color:#22221f;font-size:12.5px" style-hover="border-color:#2f5d4a">{{ tp.label }}</button>
+              </sc-for>
+            </div>
+            <textarea rows="3" value="{{ reply }}" onChange="{{ setReply }}" placeholder="כתיבת תשובה להורים" style="width:100%;box-sizing:border-box;resize:none;padding:10px 12px;border:1px solid #e3dfd6;border-radius:10px;background:#fffefb;color:#22221f;font-size:13.5px;line-height:1.5" style-focus="outline:2px solid #9db0a8;outline-offset:-1px;border-color:#2f5d4a"></textarea>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12.5px;color:#6b6860">{{ replyMeta }}</span>
+              <span style="flex:1"></span>
+              <button style="height:36px;padding:0 14px;border:1px solid #e3dfd6;border-radius:10px;background:#fffefb;color:#22221f;font-size:13px" style-hover="border-color:#2f5d4a">צירוף מסמך</button>
+              <button style="height:36px;padding:0 15px;display:flex;align-items:center;gap:8px;border:1px solid #2f5d4a;border-radius:10px;background:linear-gradient(180deg,#3a6d58,#2b5544);color:#fffefb;font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(34,34,31,.12)" style-hover="background:linear-gradient(180deg,#40775f,#2f5d4a)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5 2.5 7l4.3 1.7L8.5 13z"/></svg>שליחה</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<sc-if value="{{ showMobile }}" hint-placeholder-val="{{ true }}">
+<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#6b6860;margin-top:10px">מרכז הודעות · מובייל 390×844</div>
+<div style="width:390px;height:844px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:#f4f2ed;border:1px solid #e3dfd6;border-radius:14px">
+  <header style="flex:0 0 auto;height:58px;display:flex;align-items:center;gap:10px;padding:0 14px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);color:#fffefb;box-shadow:inset 0 1px 0 #5d6f66">
+    <button title="תפריט" style="width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb" style-hover="border-color:#9db0a8"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/></svg></button>
+    <span style="flex:1;min-width:0">
+      <span style="display:block;font-family:Heebo,system-ui,sans-serif;font-size:15.5px;font-weight:600">מרכז הודעות</span>
+      <span style="display:block;font-size:11.5px;color:#d3dbd7">24 שיחות · 4 חדשות</span>
+    </span>
+    <button title="חיפוש" style="width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb" style-hover="border-color:#9db0a8"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5"/></svg></button>
+    <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:linear-gradient(180deg,#5e6f67,#44534c);color:#fffefb;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center">שג</span>
+  </header>
+  <div style="flex:0 0 auto;height:2px;background:#2f5d4a"></div>
+
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:linear-gradient(180deg,#fbfaf7 0,#f4f2ed 220px)">
+    <div style="flex:0 0 auto;padding:14px 14px 0;display:flex;align-items:center;gap:6px;overflow:auto;scrollbar-width:none">
+      <sc-for list="{{ chips }}" as="chip" hint-placeholder-count="4">
+        <button onClick="{{ chip.pick }}" style="flex:0 0 auto;height:30px;padding:0 11px;display:flex;align-items:center;gap:7px;border:1px solid {{ chip.border }};border-radius:8px;background:{{ chip.bg }};font-size:12.5px;font-weight:{{ chip.weight }};color:#22221f"><span style="width:8px;height:8px;border-radius:2px;background:{{ chip.dot }}"></span>{{ chip.label }}<span style="color:#6b6860;font-weight:400">{{ chip.count }}</span></button>
+      </sc-for>
+    </div>
+    <div style="flex:1;min-height:0;overflow:auto;padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px">
+      <sc-for list="{{ threads }}" as="t" hint-placeholder-count="6">
+        <button onClick="{{ t.pick }}" style="flex:0 0 auto;width:100%;display:flex;gap:10px;align-items:flex-start;padding:12px 13px;background:{{ t.bg }};border:1px solid {{ t.borderM }};border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);text-align:right;color:#22221f">
+          <span style="width:9px;height:9px;flex:0 0 9px;margin-top:5px;border-radius:2px;background:{{ t.dot }}"></span>
+          <span style="flex:1;min-width:0">
+            <span style="display:flex;align-items:baseline;gap:8px">
+              <span style="flex:1;min-width:0;font-size:14px;font-weight:{{ t.weight }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.who }}</span>
+              <span style="font-size:11.5px;color:#6b6860">{{ t.time }}</span>
+            </span>
+            <span style="display:block;margin-top:1px;font-size:13.5px;font-weight:{{ t.weight }}">{{ t.subject }}</span>
+            <span style="display:block;margin-top:3px;font-size:12.5px;color:#6b6860">{{ t.preview }}</span>
+            <span style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #f1eee7">
+              <span style="height:20px;padding:0 7px;display:inline-flex;align-items:center;border-radius:6px;background:{{ t.chBg }};color:{{ t.chInk }};font-size:11px;font-weight:700">{{ t.channel }}</span>
+              <span style="font-size:11.5px;color:#6b6860">{{ t.city }}</span>
+              <span style="flex:1"></span>
+              <span style="font-size:12.5px;color:#24483a;font-weight:700">{{ t.cta }}</span>
+            </span>
+          </span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="flex:0 0 auto;padding:12px 14px;border-top:1px solid #eae6dd;background:#faf8f4;display:flex;gap:8px">
+      <button style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid #2f5d4a;border-radius:10px;background:linear-gradient(180deg,#3a6d58,#2b5544);color:#fffefb;font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(34,34,31,.12)" style-hover="background:linear-gradient(180deg,#40775f,#2f5d4a)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>הודעה חדשה</button>
+      <button style="height:44px;padding:0 14px;border:1px solid #e3dfd6;border-radius:10px;background:#fffefb;color:#4e4c46;font-size:13px" style-hover="border-color:#2f5d4a">תבניות</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1330,&quot;height&quot;:1680},&quot;showMobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;תצוגה&quot;}}">
+const THREADS = [
+  { who:"אביגיל רוזנברג · אמא", subject:"בקשה לשינוי גן", state:"new", channel:"אתר ההרשמה", city:"מודיעין עילית", time:"09:41",
+    preview:"שלום, קיבלנו שיבוץ לגן חורב אבל האח הגדול נמצא בגן הדסה",
+    caseName:"אביגיל רוזנברג", caseId:"325 884 117", caseGan:"גן חורב · כיתה ב׳",
+    messages:[
+      { dir:"in",  body:"שלום, קיבלנו שיבוץ לגן חורב אבל האח הגדול נמצא בגן הדסה. אפשר לשבץ את שתי הבנות באותו גן?", meta:"אביגיל רוזנברג · 07.09 09:41" },
+      { dir:"out", body:"שלום, הבקשה נרשמה. בגן הדסה כיתה ב׳ אין כרגע מקום פנוי; נעדכן עד 12.09 אם יתפנה מקום.", meta:"שרה גולן · 07.09 10:04 · נקראה" },
+      { dir:"in",  body:"תודה. אם לא יתפנה, נשמח להישאר ברשימת המתנה ולא לוותר על גן חורב.", meta:"אביגיל רוזנברג · 07.09 10:22" }
+    ] },
+  { who:"נועם בן־שחר · אבא", subject:"אישור מגורים", state:"new", channel:"וואטסאפ", city:"בית שמש", time:"08:58",
+    preview:"שלחתי חוזה שכירות במקום אישור מגורים, זה מספיק?",
+    caseName:"נועם בן־שחר", caseId:"327 145 902", caseGan:"גן מורשת · כיתה א׳",
+    messages:[
+      { dir:"in",  body:"שלחתי חוזה שכירות במקום אישור מגורים, זה מספיק?", meta:"נועם בן־שחר · 07.09 08:58" },
+      { dir:"out", body:"חוזה שכירות בתוקף מספיק, בתוספת חשבון ארנונה או חשמל מהחודשיים האחרונים.", meta:"שרה גולן · 07.09 09:12 · נקראה" }
+    ] },
+  { who:"מחלקת החינוך · אלעד", subject:"קובץ רישום חדש", state:"new", channel:"מייל", city:"אלעד", time:"אתמול",
+    preview:"מצורף קובץ 128 רשומות לקליטה, נא לעדכן על שגיאות",
+    caseName:"רישום_אלעד_תשפז.xlsx", caseId:"—", caseGan:"128 שורות",
+    messages:[
+      { dir:"in",  body:"מצורף קובץ 128 רשומות לקליטה. נא לעדכן אם יש שורות שנדחו כדי שנתקן במקור.", meta:"מרים ברוכי · 06.09 16:30" },
+      { dir:"out", body:"הקובץ נקלט לאימות. 97 שורות תקינות, 31 דורשות תיקון. דוח שגיאות יישלח היום.", meta:"שרה גולן · 07.09 09:20" }
+    ] },
+  { who:"שירה פרידמן · אמא", subject:"ערעור על שיבוץ", state:"wait", channel:"טלפוני", city:"ירושלים", time:"אתמול",
+    preview:"הגן המוצע רחוק מדי, מבקשת לבחון גן קרוב יותר",
+    caseName:"שירה פרידמן", caseId:"328 402 015", caseGan:"גן נריה · כיתה א׳",
+    messages:[
+      { dir:"in",  body:"הגן המוצע רחוק מדי מהבית, מבקשת לבחון גן קרוב יותר.", meta:"שירה פרידמן · 06.09 14:05" },
+      { dir:"out", body:"הבקשה הועברה לוועדת חריגים. תשובה תימסר עד 14.09.", meta:"שרה גולן · 06.09 15:40 · נקראה" }
+    ] },
+  { who:"רחל אביטן · גננת", subject:"תקן סייעת ב׳", state:"wait", channel:"מייל", city:"מודיעין עילית", time:"05.09",
+    preview:"בגן חורב 36 ילדים, מבקשת לבדוק זכאות לסייעת ב׳",
+    caseName:"גן חורב · כיתה ב׳", caseId:"—", caseGan:"36/36 משובצים",
+    messages:[
+      { dir:"in",  body:"בגן חורב 36 ילדים, מבקשת לבדוק זכאות לסייעת ב׳ לשנה זו.", meta:"רחל אביטן · 05.09 11:20" },
+      { dir:"out", body:"הבקשה נבדקת מול חוזר מנכ״ל; נדרש אישור מנהלת הרישום לפני העברה למשרד החינוך.", meta:"שרה גולן · 05.09 12:02 · נקראה" }
+    ] },
+  { who:"מלכה וייס · אמא", subject:"תשלום אגרת רישום", state:"done", channel:"אתר ההרשמה", city:"בני ברק", time:"04.09",
+    preview:"התשלום בוצע, מבקשת אישור שהתיק הושלם",
+    caseName:"מלכה וייס", caseId:"326 118 774", caseGan:"גן שילה · כיתה ב׳",
+    messages:[
+      { dir:"in",  body:"התשלום בוצע, מבקשת אישור שהתיק הושלם.", meta:"מלכה וייס · 04.09 09:15" },
+      { dir:"out", body:"התשלום נרשם והתיק הושלם. אישור השיבוץ נשלח למייל.", meta:"שרה גולן · 04.09 09:50 · נקראה" }
+    ] },
+  { who:"מחלקת החינוך · רכסים", subject:"שני גנים ללא סייעת", state:"wait", channel:"מייל", city:"רכסים", time:"03.09",
+    preview:"גן שילה וגן אלון פתחו שנה בלי סייעת מאושרת",
+    caseName:"רכסים · 2 גנים", caseId:"—", caseGan:"ממתין להקצאה",
+    messages:[
+      { dir:"in",  body:"גן שילה וגן אלון פתחו שנה בלי סייעת מאושרת. יש עובדות פנויות במערכת?", meta:"אורית דהן · 03.09 13:40" },
+      { dir:"out", body:"שושנה עמר פנויה ב־25% משרה; נדרש אישור להגדלת היקף ל־75%.", meta:"שרה גולן · 03.09 14:15 · נקראה" }
+    ] },
+  { who:"אליהו שטרן · אבא", subject:"עדכון טלפון", state:"done", channel:"וואטסאפ", city:"אשדוד", time:"02.09",
+    preview:"הטלפון בתיק שגוי, המספר הנכון מסתיים ב־7731",
+    caseName:"אליהו שטרן", caseId:"327 663 200", caseGan:"גן רימון · כיתה א׳",
+    messages:[
+      { dir:"in",  body:"הטלפון בתיק שגוי, המספר הנכון מסתיים ב־7731.", meta:"אליהו שטרן · 02.09 08:30" },
+      { dir:"out", body:"הפרטים עודכנו בתיק. תודה על העדכון.", meta:"שרה גולן · 02.09 08:44 · נקראה" }
+    ] }
+];
+
+const CHIPS = [
+  { key:"all",  label:"הכול",              dot:"#9db0a8" },
+  { key:"new",  label:"חדשות",             dot:"#2f7d5a" },
+  { key:"wait", label:"ממתינות לתשובה",    dot:"#c08a1f" },
+  { key:"done", label:"טופלו",             dot:"#24483a" }
+];
+
+const TEMPLATES = [
+  { key:"docs",  label:"בקשת מסמך חסר",   text:"שלום, כדי להשלים את התיק נדרש אישור מגורים מהחודשיים האחרונים. ניתן להעלות אותו באזור האישי." },
+  { key:"wait",  label:"רשימת המתנה",     text:"שלום, הבקשה נרשמה. אין כרגע מקום פנוי בגן המבוקש; התיק נמצא ברשימת המתנה ונעדכן בכל שינוי." },
+  { key:"place", label:"אישור שיבוץ",      text:"שלום, השיבוץ אושר סופית. פרטי הגן ומועד פתיחת השנה נשלחו למייל שבתיק." }
+];
+
+const CHANNEL = {
+  "אתר ההרשמה": { bg:"#e6efe9", ink:"#24483a" },
+  "וואטסאפ":     { bg:"#f6edd9", ink:"#8a5b12" },
+  "מייל":        { bg:"#eeece6", ink:"#55524b" },
+  "טלפוני":      { bg:"#f6e2d9", ink:"#8a3b28" }
+};
+
+class Component extends DCLogic {
+  state = { filter: "all", openIdx: 0, reply: "" };
+
+  list() {
+    const f = this.state.filter;
+    return THREADS.filter(t => f === "all" || t.state === f);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const counts = { all: THREADS.length };
+    CHIPS.slice(1).forEach(c => { counts[c.key] = THREADS.filter(t => t.state === c.key).length; });
+
+    const dotOf = st => st === "new" ? "#2f7d5a" : st === "wait" ? "#c08a1f" : "#24483a";
+
+    const threads = this.list().map(t => {
+      const i = THREADS.indexOf(t);
+      const isOpen = i === s.openIdx;
+      const ch = CHANNEL[t.channel] || CHANNEL["מייל"];
+      return {
+        who: t.who, subject: t.subject, preview: t.preview, time: t.time, city: t.city, channel: t.channel,
+        dot: dotOf(t.state),
+        weight: t.state === "new" ? "700" : "600",
+        bg: isOpen ? "#f2f6f2" : "#fffefb",
+        borderM: isOpen ? "#2f5d4a" : "#e3dfd6",
+        chBg: ch.bg, chInk: ch.ink,
+        cta: t.state === "done" ? "טופל" : "מענה",
+        pick: () => this.setState({ openIdx: i })
+      };
+    });
+
+    const t = THREADS[s.openIdx] || THREADS[0];
+    const open = {
+      subject: t.subject, who: t.who, channel: t.channel, city: t.city,
+      dot: dotOf(t.state),
+      caseName: t.caseName, caseId: t.caseId, caseGan: t.caseGan,
+      messages: t.messages.map(m => ({
+        body: m.body, meta: m.meta,
+        align: m.dir === "in" ? "flex-start" : "flex-end",
+        bg: m.dir === "in" ? "#f7f5f0" : "#e6efe9",
+        border: m.dir === "in" ? "#eae6dd" : "#2f5d4a",
+        ink: m.dir === "in" ? "#22221f" : "#24483a"
+      }))
+    };
+
+    return {
+      chips: CHIPS.map(c => ({
+        label: c.label, dot: c.dot, count: counts[c.key],
+        bg: s.filter === c.key ? "#e6efe9" : "#fffefb",
+        border: s.filter === c.key ? "#2f5d4a" : "#e3dfd6",
+        weight: s.filter === c.key ? "700" : "400",
+        pick: () => this.setState({ filter: c.key })
+      })),
+      threads,
+      threadCount: threads.length + " מתוך " + THREADS.length,
+      shownLabel: "זמן מענה חציוני 4 שעות · יעד המחלקה 8 שעות",
+      open,
+      templates: TEMPLATES.map(tp => ({ label: tp.label, pick: () => this.setState({ reply: tp.text }) })),
+      reply: s.reply,
+      setReply: e => this.setState({ reply: e.target.value }),
+      replyMeta: s.reply ? s.reply.length + " תווים · נשלח בשם מחלקת הרישום" : "התשובה תישלח בערוץ שממנו נכתבה הפנייה",
+      showMobile: this.props.showMobile !== false,
+      true: true
+    };
+  }
+}
+</script>
+</body>
+</html>
