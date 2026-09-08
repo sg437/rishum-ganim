@@ -19,6 +19,10 @@
 | `Publishing.dc.html` | הפצה ופרסום. |
 | `Channels.dc.html` | ערוצי רישום. |
 | `Compliance.dc.html` | בקרת משרד החינוך. |
+| `Licensing.dc.html` | רישיון וסייעת ב׳. |
+| `Appeals.dc.html` | פניות וערעורים. |
+| `Circulars.dc.html` | חוזרי מנכ״ל. |
+| `Analytics.dc.html` | פילוחים ודוח להנהלה. |
 | `Directions.dc.html` | דף השפה החזותית: סרט, מסילה, תחנות, נורות סטטוס. |
 | `_chrome.js` | מודול משותף: HELMET, RIBBON, טוקנים, לוגיקת הלילה, קבוצות הניווט. מקור האמת לקוד החוזר. |
 | `_build.txt` | הפונקציות שמרכיבות מסך: nav · desktop · mribbon · mobile. |

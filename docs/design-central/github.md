@@ -3,19 +3,22 @@ branch: main
 path: management.html
 
 ## Last sync
-date: 2026-09-07T07:05:00Z
+
+date: 2026-09-08T05:52:00Z
 
 ### Updated in this project
-- קרא את `management.html` (עיצוב "רקיע", מודול תלמידים ושיבוץ מרכזי, CSP וגופנים) כבסיס לזהות עיצובית חדשה
-- ייבא את `management.html` ואת גופני `fonts/` (Assistant · Heebo) לפרויקט
-- נוצר קנבס העיצוב של המרכזי ב-`docs/design-central/` — שלוש פלטות למסך תלמידים
+
+- נבנו ארבעה מסכים חדשים למרכז הניהול הארצי: רישיון וסייעת ב׳, פניות וערעורים, חוזרי מנכ״ל, פילוחים ודוח להנהלה
+- התוכן נגזר מ-`docs/CENTRAL_GUIDE.md` (סעיפים 10, 11, 13, 15) ומ-`docs/CENTRAL_REQUIREMENTS.md`
+- הכרום (סרט, מסילה, סרגל, שכבת הטוקנים, מצב לילה) נבנה מחדש לפי מפרט Warm Rail v3
+- הועתקו `fonts/` (Heebo + Assistant, hebrew/latin woff2)
 
 ## Screen map
-| מסך בפרויקט | קבצים במאגר |
+
+| מסך בפרויקט | מקור בריפו |
 | --- | --- |
-| docs/design-central/Palettes.dc.html | management.html (שורות 36–746 טוקנים, 3389 רשימת מודולים) |
-| docs/design-central/StudentsFrame.dc.html | management.html (שורות 1340–1356, 3696–3880 מודול students), fonts/ |
-| docs/design-central/Staff.dc.html | management.html (רשימת מודולים · עובדות), fonts/ |
-| docs/design-central/PlacementMap.dc.html | management.html (רשימת מודולים · מפת שיבוץ), fonts/ |
-| docs/design-central/Import.dc.html | management.html (רשימת מודולים · ייבוא מאקסל), fonts/ |
-| docs/design-central/Messages.dc.html | management.html (רשימת מודולים · מרכז הודעות), fonts/ |
+| `docs/design-central/Licensing.dc.html` | `docs/CENTRAL_GUIDE.md` §13, `docs/CENTRAL_REQUIREMENTS.md` 3.2–3.3 |
+| `docs/design-central/Appeals.dc.html` | `docs/CENTRAL_GUIDE.md` §10, `docs/CENTRAL_REQUIREMENTS.md` 2.3 |
+| `docs/design-central/Circulars.dc.html` | `docs/CENTRAL_GUIDE.md` §15, `docs/CENTRAL_REQUIREMENTS.md` 3.1 |
+| `docs/design-central/Analytics.dc.html` | `docs/CENTRAL_GUIDE.md` §11, `docs/CENTRAL_REQUIREMENTS.md` 4.1–4.2 |
+| `fonts/` | `fonts/` |
