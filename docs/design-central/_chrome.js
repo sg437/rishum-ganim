@@ -2,4 +2,46 @@ export const HELMET = "<helmet>\n<style>\n@font-face{font-family:\"Heebo\";src:u
 export const RIBBON = "  <header style=\"flex:0 0 auto;height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);color:#fffefb;box-shadow:inset 0 1px 0 #5d6f66\">\n    <span style=\"display:flex;flex-direction:column;gap:3px;width:22px;flex:0 0 22px\">\n      <span style=\"height:2px;border-radius:1px;background:#8fc4a9\"></span>\n      <span style=\"height:2px;border-radius:1px;background:#fffefb\"></span>\n      <span style=\"height:2px;border-radius:1px;background:#7f8b85\"></span>\n    </span>\n    <span style=\"font-family:Heebo,system-ui,sans-serif;font-size:15.5px;font-weight:600\">מרכז ניהול ארצי</span>\n    <span style=\"width:1px;height:20px;background:#6d7a74\"></span>\n    <span style=\"font-size:13px;color:#d3dbd7\">מחלקת הרישום</span>\n    <span style=\"flex:1\"></span>\n    <input type=\"text\" value=\"חיפוש תיק: שם, ת״ז, טלפון, גן…\" style=\"width:280px;height:34px;padding:0 12px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#c9d3ce;font-size:13.5px\" style-focus=\"outline:2px solid #8fc4a9;outline-offset:1px;color:#fffefb\">\n    <button style=\"height:34px;padding:0 13px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb;font-size:13px\" style-hover=\"border-color:#9db0a8\">תשפ״ז</button>\n    <button onClick=\"{{ toggleNight }}\" title=\"מצב לילה\" style=\"width:34px;height:34px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb;font-size:14px\" style-hover=\"border-color:#9db0a8\">{{ nightIcon }}</button>\n    <span style=\"width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:linear-gradient(180deg,#5e6f67,#44534c);color:#fffefb;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center\">שג</span>\n  </header>\n  <div style=\"flex:0 0 auto;height:2px;background:var(--grn)\"></div>";
 export const ROOT_OPEN = "<div dir=\"rtl\" style=\"display:flex;flex-direction:column;gap:10px;padding:20px;background:var(--bg);color:var(--ink);font-family:Assistant,system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;accent-color:#2f5d4a;width:max-content\">";
 export const NIGHT_LOGIC = "  componentDidMount() {\n    try { if (localStorage.getItem(\"wr-night\") === \"1\") { document.body.dataset.night = \"1\"; this.setState({ night: true }); } } catch (e) {}\n  }\n  toggleNight() {\n    const n = !this.state.night;\n    if (n) document.body.dataset.night = \"1\"; else delete document.body.dataset.night;\n    try { localStorage.setItem(\"wr-night\", n ? \"1\" : \"0\"); } catch (e) {}\n    this.setState({ night: n });\n  }";
-export const GROUPS_NAV = [["ראשי",[["לוח הבית","Home.dc.html","<path d=\"M2.5 6.5 8 2.5l5.5 4v7h-11z\"/>",null]]],["רישום ושיבוץ",[["תלמידים ושיבוץ מרכזי","Students.dc.html","<circle cx=\"8\" cy=\"5.5\" r=\"2.5\"/><path d=\"M3 13.5c0-2.5 2.2-4 5-4s5 1.5 5 4\"/>",null],["עובדות","Staff.dc.html","<circle cx=\"5.5\" cy=\"6\" r=\"2\"/><circle cx=\"10.5\" cy=\"6\" r=\"2\"/><path d=\"M2 13c0-2 1.6-3 3.5-3S9 11 9 13M9.5 13c0-2 1.6-3 3.5-3\"/>",null],["מפת שיבוץ","PlacementMap.dc.html","<path d=\"M8 14s4.5-4.2 4.5-7A4.5 4.5 0 0 0 3.5 7c0 2.8 4.5 7 4.5 7z\"/><circle cx=\"8\" cy=\"6.8\" r=\"1.6\"/>",null],["ייבוא מאקסל","Import.dc.html","<path d=\"M8 2.5v7M5.2 6.8 8 9.6l2.8-2.8M2.5 12.5h11\"/>",null]]],["קשר והפצה",[["מרכז הודעות","Messages.dc.html","<rect x=\"2\" y=\"4\" width=\"12\" height=\"8\" rx=\"1.5\"/><path d=\"M2.6 5 8 8.6 13.4 5\"/>",["4","grn"]],["הפצת שיבוץ · Smoove","Distribution.dc.html","<path d=\"M13.5 2.5 2.5 7l4.3 1.7L8.5 13z\"/>",null],["הפצה ופרסום","Publishing.dc.html","<path d=\"M3 6.5h3l5-3v9l-5-3H3z\"/><path d=\"M12.5 5.8a3 3 0 0 1 0 4.4\"/>",null],["ערוצי רישום","Channels.dc.html","<path d=\"M2.5 3.5h11l-4.2 5v4.5L6.7 11.5V8.5z\"/>",null]]],["בקרה וציות",[["בקרת משרד החינוך","Compliance.dc.html","<path d=\"M2.5 13.5h11M3.5 13.5v-6M12.5 13.5v-6M6.5 13.5v-6M9.5 13.5v-6M2 7.5 8 3l6 4.5z\"/>",null],["רישיון וסייעת ב׳","#","<circle cx=\"8\" cy=\"6.5\" r=\"3.2\"/><path d=\"M5.6 9.6 5 14l3-1.5L11 14l-.6-4.4\"/>",["15","amb"]],["פניות וערעורים","#","<path d=\"M13.5 8.5c0 2.5-2.5 4.3-5.5 4.3-.8 0-1.5-.1-2.2-.3L3 13.5l.8-2.4A4.7 4.7 0 0 1 2.5 8.5C2.5 6 5 4.2 8 4.2s5.5 1.8 5.5 4.3z\"/>",["7","amb"]]]],["ניהול",[["פילוחים ודוח להנהלה","#","<path d=\"M3 13.5V9M6.5 13.5V4.5M10 13.5v-6M13.5 13.5v-9\"/>",null],["הגדרות והרשאות","#","<path d=\"M2.5 5h11M2.5 11h11\"/><circle cx=\"6\" cy=\"5\" r=\"1.6\"/><circle cx=\"10\" cy=\"11\" r=\"1.6\"/>",null]]]];
+// מקור האמת לסרגל: 8 קבוצות, 32 פריטים. זהה למה שמוטבע בכל מסך.
+export const P = (...d) => d;
+export const ICONS = {
+  home: P('M3 10.5 12 4l9 6.5', 'M6 9.5V20h12V9.5'),
+  bell: P('M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6', 'M10 19a2 2 0 0 0 4 0'),
+  student: P('M12 4 3 8l9 4 9-4-9-4', 'M6.5 10.5V15c0 1.5 2.7 3 5.5 3s5.5-1.5 5.5-3v-4.5'),
+  reg: P('M6 3h12v18H6z', 'M9 8h6', 'M9 12h6', 'M9 16h3'),
+  chan: P('M12 4v6', 'M6 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M18 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M12 10 6 14', 'M12 10l6 4'),
+  imp: P('M12 4v10', 'M8 11l4 4 4-4', 'M4 19h16'),
+  horn: P('M4 10v4h4l8 4V6l-8 4H4Z', 'M18 9a3 3 0 0 1 0 6'),
+  place: P('M4 5h8v8H4z', 'M14 9h6', 'M17.5 5.5 21 9l-3.5 3.5'),
+  map: P('M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 7', 'M9 4v13', 'M15 7v12.5'),
+  send: P('M4 12 20 4l-4 16-4-6-8-2Z'),
+  scale: P('M12 4v14', 'M6 8h12', 'M6 8 4 14h4L6 8', 'M18 8l-2 6h4l-2-6'),
+  city: P('M3 21h18', 'M5 21V7l6-3v17', 'M11 21V11h8v10', 'M14.5 15h2'),
+  staff: P('M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M3 20c0-3 2.5-5 5-5s5 2 5 5', 'M16 8h5', 'M16 12h5', 'M16 16h5'),
+  act: P('M6 3v18', 'M6 4h11l-2.5 4L17 12H6'),
+  globe: P('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18', 'M3 12h18', 'M12 3c2.5 2.5 3.8 5.6 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.6-3.8-9S9.5 5.5 12 3'),
+  pct: P('M5 19 19 5', 'M7.5 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5', 'M16.5 20.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5'),
+  chart: P('M4 20V10', 'M10 20V4', 'M16 20v-7', 'M2 20h20'),
+  lic: P('M5 4h11l3 3v13H5Z', 'M8 10h8', 'M8 14h5'),
+  gov: P('M3 9 12 4l9 5', 'M6 9v9', 'M10 9v9', 'M14 9v9', 'M18 9v9', 'M3 20h18'),
+  msg: P('M4 6h16v10H9l-5 4V6Z'),
+  circ: P('M6 4h9l3 3v13H6Z', 'M9 11h6', 'M9 15h4'),
+  shield: P('M12 4 4 8v4c0 4.5 3.5 7 8 8 4.5-1 8-3.5 8-8V8l-8-4'),
+  cog: P('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M12 3v2', 'M12 19v2', 'M3 12h2', 'M19 12h2', 'M5.6 5.6 7 7', 'M17 17l1.4 1.4', 'M18.4 5.6 17 7', 'M7 17l-1.4 1.4'),
+  bot: P('M5 6h14v10H9l-4 3V6Z', 'M9.5 11h.01', 'M14.5 11h.01'),
+  book: P('M4 5c2.5-1 5-1 8 .5 3-1.5 5.5-1.5 8-.5v13c-2.5-1-5-1-8 .5-3-1.5-5.5-1.5-8-.5z', 'M12 5.5v13'),
+  clock: P('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18', 'M12 7v5l3.5 2')
+};
+export const icon = k => React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', style: { opacity: .75, flex: 'none' } }, ICONS[k].map((d, i) => React.createElement('path', { key: i, d })));
+
+export const NAV = [
+  { label: 'דף הבית', items: [['לוח הבית', 'Home.dc.html', 'home']] },
+  { label: 'רישום וקליטה', items: [['תלמידים ושיבוץ מרכזי', 'Students.dc.html', 'student'], ['מערכת רישום', 'Registration.dc.html', 'reg'], ['ערוצי רישום', 'Channels.dc.html', 'chan'], ['ייבוא מאקסל', 'Import.dc.html', 'imp'], ['הפצה ופרסום', 'Publishing.dc.html', 'horn']] },
+  { label: 'שיבוץ והפצה', items: [['שיבוץ ילדים', 'Place.dc.html', 'place'], ['מפת שיבוץ', 'PlacementMap.dc.html', 'map'], ['הפצת שיבוץ · Smoove', 'Distribution.dc.html', 'send'], ['פניות וערעורים', 'Appeals.dc.html', 'scale']] },
+  { label: 'ערים וצוות', items: [['ערים וגנים', 'Cities.dc.html', 'city'], ['עובדות', 'Staff.dc.html', 'staff'], ['פעילויות ותוכניות', 'Activities.dc.html', 'act']] },
+  { label: 'בקרה ודוחות', items: [['סקירה לאומית', 'Overview.dc.html', 'globe'], ['אחוזים ותפוסות', 'Reports.dc.html', 'pct'], ['פילוחים ודוח להנהלה', 'Analytics.dc.html', 'chart'], ['דורש טיפול', 'Triage.dc.html', 'bell'], ['רישיון וסייעת ב׳', 'Licensing.dc.html', 'lic'], ['בקרת משרד החינוך', 'Compliance.dc.html', 'gov']] },
+  { label: 'תקשורת', items: [['מרכז הודעות', 'Messages.dc.html', 'msg'], ['חוזרי מנכ״ל', 'Circulars.dc.html', 'circ']] },
+  { label: 'ניהול', items: [['החלטות וחומרים', 'Decisions.dc.html', 'shield'], ['הגדרות והרשאות', 'Settings.dc.html', 'cog'], ['עוזר חכם', 'Assistant.dc.html', 'bot'], ['מדריך', 'Guide.dc.html', 'book']] },
+  { label: 'יופעל בהמשך', soon: true, items: [['כרטיסי משפחה', 'Soon.dc.html', 'clock'], ['פורטל הורים', 'Soon.dc.html', 'clock'], ['סליקה ותשלומים', 'Soon.dc.html', 'clock'], ['ניהול מסמכים', 'Soon.dc.html', 'clock'], ['שעות ושכר', 'Soon.dc.html', 'clock'], ['האפיון', 'Soon.dc.html', 'clock'], ['התוכנית', 'Soon.dc.html', 'clock']] }
+];
+export const navVals = here => NAV.map(g => ({ label: g.label, soon: !!g.soon, normal: !g.soon, items: g.items.map(it => ({ label: it[0], href: it[1], icon: icon(it[2]), on: it[0] === here, off: it[0] !== here })) }));

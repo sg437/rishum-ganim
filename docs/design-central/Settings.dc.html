@@ -55,15 +55,21 @@ a{color:var(--grnink);text-decoration:none}a:hover{color:var(--grn)}
   <div style="flex:1;min-height:0;display:flex">
     <aside style="width:248px;flex:none;background:var(--card);border-left:1px solid var(--bd2);display:flex;flex-direction:column">
       <nav style="flex:1;min-height:0;overflow-y:auto;padding:6px 8px;scrollbar-width:none">
-        <sc-for list="{{ nav }}" as="g" hint-placeholder-count="5">
+        <sc-for list="{{ nav }}" as="g" hint-placeholder-count="8">
           <div style="padding-bottom:2px">
-            <div style="font:700 10.5px/1 Assistant;letter-spacing:.12em;color:var(--ink4);padding:12px 12px 6px">{{ g.label }}</div>
+            <sc-if value="{{ g.soon }}" hint-placeholder-val="{{ false }}">
+              <div style="height:1px;background:var(--bd2);margin:10px 12px 0"></div>
+              <div style="font:700 10.5px/1 Assistant;letter-spacing:.12em;color:var(--ink4);padding:12px 12px 6px">{{ g.label }}</div>
+            </sc-if>
+            <sc-if value="{{ g.normal }}" hint-placeholder-val="{{ true }}">
+              <div style="font:700 10.5px/1 Assistant;letter-spacing:.12em;color:var(--ink3);padding:12px 12px 6px">{{ g.label }}</div>
+            </sc-if>
             <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
               <sc-if value="{{ it.on }}" hint-placeholder-val="{{ false }}">
-                <a href="{{ it.href }}" style="background:var(--grnsoft);color:var(--grnink);font-weight:700;box-shadow:0 1px 2px rgba(34,34,31,.04)">{{ it.icon }}<span>{{ it.label }}</span></a>
+                <a href="{{ it.href }}" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;font:700 13.5px/1 Assistant;color:var(--grnink);text-decoration:none;background:var(--grnsoft);box-shadow:0 1px 2px rgba(34,34,31,.04)">{{ it.icon }}<span style="flex:1">{{ it.label }}</span></a>
               </sc-if>
               <sc-if value="{{ it.off }}" hint-placeholder-val="{{ true }}">
-                <a href="{{ it.href }}">{{ it.icon }}<span>{{ it.label }}</span></a>
+                <a href="{{ it.href }}" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;font:400 13.5px/1 Assistant;color:var(--ink2);text-decoration:none" style-hover="background:var(--navhov);color:var(--ink)">{{ it.icon }}<span style="flex:1">{{ it.label }}</span></a>
               </sc-if>
             </sc-for>
           </div>
@@ -301,32 +307,45 @@ const ICONS = {
   home: P('M3 10.5 12 4l9 6.5', 'M6 9.5V20h12V9.5'),
   bell: P('M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6', 'M10 19a2 2 0 0 0 4 0'),
   student: P('M12 4 3 8l9 4 9-4-9-4', 'M6.5 10.5V15c0 1.5 2.7 3 5.5 3s5.5-1.5 5.5-3v-4.5'),
-  staff: P('M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M3 20c0-3 2.5-5 5-5s5 2 5 5', 'M16 8h5', 'M16 12h5', 'M16 16h5'),
-  map: P('M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 7', 'M9 4v13', 'M15 7v12.5'),
-  imp: P('M12 4v10', 'M8 11l4 4 4-4', 'M4 19h16'),
-  msg: P('M4 6h16v10H9l-5 4V6Z'),
-  send: P('M4 12 20 4l-4 16-4-6-8-2Z'),
-  horn: P('M4 10v4h4l8 4V6l-8 4H4Z', 'M18 9a3 3 0 0 1 0 6'),
+  reg: P('M6 3h12v18H6z', 'M9 8h6', 'M9 12h6', 'M9 16h3'),
   chan: P('M12 4v6', 'M6 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M18 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M12 10 6 14', 'M12 10l6 4'),
-  gov: P('M3 9 12 4l9 5', 'M6 9v9', 'M10 9v9', 'M14 9v9', 'M18 9v9', 'M3 20h18'),
-  lic: P('M5 4h11l3 3v13H5Z', 'M8 10h8', 'M8 14h5'),
+  imp: P('M12 4v10', 'M8 11l4 4 4-4', 'M4 19h16'),
+  horn: P('M4 10v4h4l8 4V6l-8 4H4Z', 'M18 9a3 3 0 0 1 0 6'),
+  place: P('M4 5h8v8H4z', 'M14 9h6', 'M17.5 5.5 21 9l-3.5 3.5'),
+  map: P('M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 7', 'M9 4v13', 'M15 7v12.5'),
+  send: P('M4 12 20 4l-4 16-4-6-8-2Z'),
   scale: P('M12 4v14', 'M6 8h12', 'M6 8 4 14h4L6 8', 'M18 8l-2 6h4l-2-6'),
-  circ: P('M6 4h9l3 3v13H6Z', 'M9 11h6', 'M9 15h4'),
+  city: P('M3 21h18', 'M5 21V7l6-3v17', 'M11 21V11h8v10', 'M14.5 15h2'),
+  staff: P('M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M3 20c0-3 2.5-5 5-5s5 2 5 5', 'M16 8h5', 'M16 12h5', 'M16 16h5'),
+  act: P('M6 3v18', 'M6 4h11l-2.5 4L17 12H6'),
+  globe: P('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18', 'M3 12h18', 'M12 3c2.5 2.5 3.8 5.6 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.6-3.8-9S9.5 5.5 12 3'),
+  pct: P('M5 19 19 5', 'M7.5 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5', 'M16.5 20.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5'),
   chart: P('M4 20V10', 'M10 20V4', 'M16 20v-7', 'M2 20h20'),
+  lic: P('M5 4h11l3 3v13H5Z', 'M8 10h8', 'M8 14h5'),
+  gov: P('M3 9 12 4l9 5', 'M6 9v9', 'M10 9v9', 'M14 9v9', 'M18 9v9', 'M3 20h18'),
+  msg: P('M4 6h16v10H9l-5 4V6Z'),
+  circ: P('M6 4h9l3 3v13H6Z', 'M9 11h6', 'M9 15h4'),
   shield: P('M12 4 4 8v4c0 4.5 3.5 7 8 8 4.5-1 8-3.5 8-8V8l-8-4'),
+  cog: P('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M12 3v2', 'M12 19v2', 'M3 12h2', 'M19 12h2', 'M5.6 5.6 7 7', 'M17 17l1.4 1.4', 'M18.4 5.6 17 7', 'M7 17l-1.4 1.4'),
   bot: P('M5 6h14v10H9l-4 3V6Z', 'M9.5 11h.01', 'M14.5 11h.01'),
-  cog: P('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M12 3v2', 'M12 19v2', 'M3 12h2', 'M19 12h2', 'M5.6 5.6 7 7', 'M17 17l1.4 1.4', 'M18.4 5.6 17 7', 'M7 17l-1.4 1.4')
+  book: P('M4 5c2.5-1 5-1 8 .5 3-1.5 5.5-1.5 8-.5v13c-2.5-1-5-1-8 .5-3-1.5-5.5-1.5-8-.5z', 'M12 5.5v13'),
+  clock: P('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18', 'M12 7v5l3.5 2')
 };
 const icon = k => React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', style: { opacity: .75, flex: 'none' } }, ICONS[k].map((d, i) => React.createElement('path', { key: i, d })));
 
 const NAV = [
-  { label: 'ראשי', items: [['לוח הבית', 'Home.dc.html', 'home'], ['דורש טיפול', 'Triage.dc.html', 'bell']] },
-  { label: 'רישום ושיבוץ', items: [['תלמידים ושיבוץ מרכזי', 'Students.dc.html', 'student'], ['עובדות', '#', 'staff'], ['מפת שיבוץ', '#', 'map'], ['ייבוא מאקסל', '#', 'imp']] },
-  { label: 'קשר והפצה', items: [['מרכז הודעות', '#', 'msg'], ['הפצת שיבוץ · Smoove', '#', 'send'], ['הפצה ופרסום', '#', 'horn'], ['ערוצי רישום', '#', 'chan']] },
-  { label: 'בקרה וציות', items: [['בקרת משרד החינוך', '#', 'gov'], ['רישיון וסייעת ב׳', '#', 'lic'], ['פניות וערעורים', '#', 'scale'], ['חוזרי מנכ״ל', '#', 'circ']] },
-  { label: 'ניהול', items: [['פילוחים ודוח להנהלה', '#', 'chart'], ['החלטות וחומרים', 'Decisions.dc.html', 'shield'], ['עוזר חכם', 'Assistant.dc.html', 'bot'], ['הגדרות והרשאות', 'Settings.dc.html', 'cog']] }
+  { label: 'דף הבית', items: [['לוח הבית', 'Home.dc.html', 'home']] },
+  { label: 'רישום וקליטה', items: [['תלמידים ושיבוץ מרכזי', 'Students.dc.html', 'student'], ['מערכת רישום', 'Registration.dc.html', 'reg'], ['ערוצי רישום', 'Channels.dc.html', 'chan'], ['ייבוא מאקסל', 'Import.dc.html', 'imp'], ['הפצה ופרסום', 'Publishing.dc.html', 'horn']] },
+  { label: 'שיבוץ והפצה', items: [['שיבוץ ילדים', 'Place.dc.html', 'place'], ['מפת שיבוץ', 'PlacementMap.dc.html', 'map'], ['הפצת שיבוץ · Smoove', 'Distribution.dc.html', 'send'], ['פניות וערעורים', 'Appeals.dc.html', 'scale']] },
+  { label: 'ערים וצוות', items: [['ערים וגנים', 'Cities.dc.html', 'city'], ['עובדות', 'Staff.dc.html', 'staff'], ['פעילויות ותוכניות', 'Activities.dc.html', 'act']] },
+  { label: 'בקרה ודוחות', items: [['סקירה לאומית', 'Overview.dc.html', 'globe'], ['אחוזים ותפוסות', 'Reports.dc.html', 'pct'], ['פילוחים ודוח להנהלה', 'Analytics.dc.html', 'chart'], ['דורש טיפול', 'Triage.dc.html', 'bell'], ['רישיון וסייעת ב׳', 'Licensing.dc.html', 'lic'], ['בקרת משרד החינוך', 'Compliance.dc.html', 'gov']] },
+  { label: 'תקשורת', items: [['מרכז הודעות', 'Messages.dc.html', 'msg'], ['חוזרי מנכ״ל', 'Circulars.dc.html', 'circ']] },
+  { label: 'ניהול', items: [['החלטות וחומרים', 'Decisions.dc.html', 'shield'], ['הגדרות והרשאות', 'Settings.dc.html', 'cog'], ['עוזר חכם', 'Assistant.dc.html', 'bot'], ['מדריך', 'Guide.dc.html', 'book']] },
+  { label: 'יופעל בהמשך', soon: true, items: [['כרטיסי משפחה', 'Soon.dc.html', 'clock'], ['פורטל הורים', 'Soon.dc.html', 'clock'], ['סליקה ותשלומים', 'Soon.dc.html', 'clock'], ['ניהול מסמכים', 'Soon.dc.html', 'clock'], ['שעות ושכר', 'Soon.dc.html', 'clock'], ['האפיון', 'Soon.dc.html', 'clock'], ['התוכנית', 'Soon.dc.html', 'clock']] }
 ];
+const navVals = here => NAV.map(g => ({ label: g.label, soon: !!g.soon, normal: !g.soon, items: g.items.map(it => ({ label: it[0], href: it[1], icon: icon(it[2]), on: it[0] === here, off: it[0] !== here })) }));
 const HERE = 'הגדרות והרשאות';
+
 
 const TABS = [['ספים ובקרה', ''], ['הרשאות', 7], ['משתמשים', 7], ['מרשם ערים', 6], ['יומן פעולות', 412]];
 
@@ -392,7 +411,7 @@ class Component extends DCLogic {
       mobile: this.props.showMobile !== false,
       nightGlyph: this.state.night ? '☀' : '☾',
       toggleNight: () => this.setNight(!this.state.night),
-      nav: NAV.map(g => ({ label: g.label, items: g.items.map(it => ({ label: it[0], href: it[1], icon: icon(it[2]), on: it[0] === HERE, off: it[0] !== HERE })) })),
+      nav: navVals(HERE),
       tabs: TABS.map(t => ({ label: t[0], n: t[1], on: t[0] === tab, off: t[0] !== tab, pick: () => this.setState({ tab: t[0] }) })),
       isThresholds: tab === 'ספים ובקרה',
       isPerms: tab === 'הרשאות',

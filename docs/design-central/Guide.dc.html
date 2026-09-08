@@ -22,11 +22,12 @@ nav a{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10p
 nav a:hover{background:var(--navhov);color:var(--ink)}
 a{color:var(--grnink);text-decoration:none}a:hover{color:var(--grn)}
 :focus-visible{outline:2px solid #9db0a8;outline-offset:-1px}
+@media print{body{background:#fff}nav,aside,header,[data-noprint]{display:none !important}details{break-inside:avoid}}
 </style>
 </helmet>
 <div dir="rtl" style="display:flex;flex-direction:column;gap:10px;padding:20px;width:max-content;font-family:Assistant,sans-serif">
 
-<div style="font:700 11px/1 Assistant;letter-spacing:.08em;color:var(--ink4)">לוח הבית · דסקטופ <span dir="ltr">1280×760</span></div>
+<div style="font:700 11px/1 Assistant;letter-spacing:.08em;color:var(--ink4)">מדריך · דסקטופ <span dir="ltr">1280×760</span></div>
 <div style="position:relative;width:1280px;height:760px;border:1px solid var(--bd);border-radius:14px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column">
 
   <div style="height:58px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);box-shadow:inset 0 1px 0 #5d6f66">
@@ -78,94 +79,47 @@ a{color:var(--grnink);text-decoration:none}a:hover{color:var(--grn)}
       <div style="flex:none;padding:10px 14px;border-top:1px solid var(--bd2);font:400 12.5px/1 Assistant;color:var(--ink4)">6 ערים · עודכן לפני 3 דקות</div>
     </aside>
 
+
     <main style="flex:1;min-width:0;overflow-y:auto;background:var(--wash);padding:18px 20px 16px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding-bottom:14px">
         <div style="display:flex;flex-direction:column;gap:4px">
-          <h1 style="margin:0;font:600 23px/1.2 Heebo,sans-serif;letter-spacing:-.015em;color:var(--ink)">לוח הבית</h1>
-          <div style="font:400 13.5px/1.4 Assistant;color:var(--ink3)">שנת תשפ״ז · שש ערים · נכון להיום, 07.09</div>
+          <h1 style="margin:0;font:600 23px/1.2 Heebo,sans-serif;letter-spacing:-.015em;color:var(--ink)">מדריך</h1>
+          <div style="font:400 13.5px/1.4 Assistant;color:var(--ink3)">סעיף לכל מודול במחלקת הרישום, ומפת הדרישות שמראה איפה כל דרישה יושבת.</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex:none">
-          <button style="height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--ink2);font:700 13.5px/1 Assistant;cursor:pointer">שמירת מצבה</button>
-          <button style="height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--grn);background:linear-gradient(180deg,#3a6d58,#2b5544);box-shadow:0 1px 2px rgba(34,34,31,.12);color:#fffefb;font:700 13.5px/1 Assistant;cursor:pointer">דוח להנהלה</button>
-        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex:none"><div style="position:relative;width:230px"><input placeholder="חיפוש במדריך…" style="width:100%;height:34px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--ink);font:400 13px/1 Assistant;padding:0 32px 0 12px;outline:none"><span style="position:absolute;right:10px;top:10px;width:14px;height:14px;border-radius:999px;border:1.4px solid var(--ink3);display:block"></span></div><button onClick="{{ toggleAll }}" style="height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--ink2);font:700 13.5px/1 Assistant;cursor:pointer">{{ allLabel }}</button><button style="height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--grn);background:linear-gradient(180deg,#3a6d58,#2b5544);box-shadow:0 1px 2px rgba(34,34,31,.12);color:#fffefb;font:700 13.5px/1 Assistant;cursor:pointer">הדפסה</button></div>
       </div>
-
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;padding-bottom:12px">
-        <div style="background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);padding:16px;display:flex;flex-direction:column;gap:14px">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
-            <div>
-              <div style="font:600 15px/1 Heebo,sans-serif;color:var(--ink);padding-bottom:6px">רישום ארצי</div>
-              <div style="display:flex;align-items:baseline;gap:10px">
-                <div style="font:700 30px/1 Heebo,sans-serif;color:var(--ink)">82%</div>
-                <div style="font:400 13.5px/1 Assistant;color:var(--ink3)">4,308 תיקים מתוך יעד 5,250</div>
-              </div>
-            </div>
-            <div style="font:400 12.5px/1.4 Assistant;color:var(--grnink);text-align:left;flex:none">+128 מהמצבה<br>של 01.09</div>
-          </div>
-          <div style="height:10px;border-radius:999px;background:var(--track);overflow:hidden">
-            <div style="width:82%;height:100%;background:var(--grn)"></div>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--bd2);border:1px solid var(--bd2);border-radius:12px;overflow:hidden">
-            <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="4">
-              <div style="background:var(--card);padding:12px 14px;display:flex;flex-direction:column;gap:4px">
-                <div style="font:400 11.5px/1 Assistant;color:var(--ink4)">{{ m.label }}</div>
-                <div style="display:flex;align-items:baseline;gap:8px">
-                  <div style="font:700 22px/1 Heebo,sans-serif;color:var(--ink)">{{ m.value }}</div>
-                  <div style="font:400 12.5px/1 Assistant;color:var(--ink4)">{{ m.note }}</div>
+      <div style="display:flex;flex-direction:column;gap:12px;max-width:68ch">
+        <sc-for list="{{ sections }}" as="s" hint-placeholder-count="8">
+          <details open="{{ s.open }}" style="background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);padding:0;overflow:hidden">
+            <summary style="min-height:44px;display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer;list-style:none">
+              <span style="width:9px;height:9px;border-radius:2px;flex:none;background:{{ s.lamp }}"></span>
+              <span style="flex:1;font:600 14.5px/1.3 Heebo,sans-serif;color:var(--ink)">{{ s.title }}</span>
+              <span style="font:400 12.5px/1 Assistant;color:var(--ink4)">{{ s.key }}</span>
+            </summary>
+            <div style="padding:0 16px 14px;border-top:1px solid var(--row);display:flex;flex-direction:column;gap:8px">
+              <div style="font:400 13.5px/1.6 Assistant;color:var(--ink2);padding-top:12px">{{ s.body }}</div>
+              <sc-for list="{{ s.points }}" as="pt" hint-placeholder-count="3">
+                <div style="display:flex;gap:9px;padding:5px 0">
+                  <span style="width:8px;height:8px;border-radius:2px;flex:none;background:var(--grn);margin-top:6px"></span>
+                  <div style="font:400 13.5px/1.45 Assistant;color:var(--ink2)">{{ pt.t }}</div>
                 </div>
-              </div>
-            </sc-for>
-          </div>
-        </div>
+              </sc-for>
+            </div>
+          </details>
+        </sc-for>
 
-        <div style="background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);padding:16px;display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;align-items:baseline;justify-content:space-between">
-            <div style="font:600 15px/1 Heebo,sans-serif;color:var(--ink)">חריגות בשיבוץ</div>
-            <a href="Triage.dc.html" style="font:400 12.5px/1 Assistant">כל הדגלים</a>
+        <div style="background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);overflow:hidden">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--bd2)">
+            <div style="font:600 15px/1 Heebo,sans-serif;color:var(--ink)">מפת הדרישות של מחלקת הרישום</div>
+            <div style="font:400 13px/1.45 Assistant;color:var(--ink3);padding-top:4px">איפה כל דרישה יושבת.</div>
           </div>
-          <sc-for list="{{ exceptions }}" as="e" hint-placeholder-count="5">
-            <div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--row)">
-              <span style="width:9px;height:9px;border-radius:2px;flex:none;background:{{ e.lamp }}"></span>
-              <div style="flex:1;min-width:0"><div style="font:400 13.5px/1.3 Assistant;color:var(--ink)">{{ e.label }}</div><div style="font:400 11.5px/1.3 Assistant;color:var(--ink4)">{{ e.note }}</div></div>
-              <div style="flex:none;font:700 15px/1 Heebo,sans-serif;color:var(--ink)">{{ e.n }}</div>
+          <sc-for list="{{ reqs }}" as="r" hint-placeholder-count="10">
+            <div style="min-height:44px;display:grid;grid-template-columns:1fr 190px;align-items:center;gap:12px;border-bottom:1px solid var(--row);padding:9px 16px" style-hover="background:var(--hov)">
+              <div style="font:400 13.5px/1.45 Assistant;color:var(--ink2)">{{ r.need }}</div>
+              <div style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:2px;flex:none;background:var(--grn)"></span><a href="{{ r.href }}" style="font:600 13px/1.3 Assistant">{{ r.where }}</a></div>
             </div>
           </sc-for>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px">
-        <div style="background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);padding:16px;display:flex;flex-direction:column;gap:10px">
-          <div style="font:600 15px/1 Heebo,sans-serif;color:var(--ink)">תורי עבודה</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <button style="text-align:right;border:0;cursor:pointer;border-radius:9px;padding:12px 14px;background:linear-gradient(180deg,#b4503c,#8a3b28);box-shadow:0 2px 0 #6e2f20;display:flex;align-items:center;justify-content:space-between;gap:12px">
-              <div><div style="font:700 13.5px/1.2 Assistant;color:#fffefb">שיבוץ מרכזי</div><div style="font:400 12.5px/1.3 Assistant;color:#f6e2d9">ממתינות בלי גן</div></div>
-              <div style="font:700 22px/1 Heebo,sans-serif;color:#fffefb">144</div>
-            </button>
-            <button style="text-align:right;border:0;cursor:pointer;border-radius:9px;padding:12px 14px;background:linear-gradient(180deg,#d9a94a,#8a5b12);box-shadow:0 2px 0 #6f480d;display:flex;align-items:center;justify-content:space-between;gap:12px">
-              <div><div style="font:700 13.5px/1.2 Assistant;color:#fffefb">מסמכים חסרים</div><div style="font:400 12.5px/1.3 Assistant;color:#f6edd9">כולל 5 מסמכי השארות</div></div>
-              <div style="font:700 22px/1 Heebo,sans-serif;color:#fffefb">205</div>
-            </button>
-            <button style="text-align:right;border:0;cursor:pointer;border-radius:9px;padding:12px 14px;background:linear-gradient(180deg,#5f8a76,#2f5d4a);box-shadow:0 2px 0 #24483a;display:flex;align-items:center;justify-content:space-between;gap:12px">
-              <div><div style="font:700 13.5px/1.2 Assistant;color:#fffefb">אישור שיבוץ סופי</div><div style="font:400 12.5px/1.3 Assistant;color:#e6efe9">מוכנות לאישור</div></div>
-              <div style="font:700 22px/1 Heebo,sans-serif;color:#fffefb">94</div>
-            </button>
-          </div>
-        </div>
-
-        <div style="background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);display:flex;flex-direction:column;overflow:hidden">
-          <div style="flex:none;display:flex;align-items:baseline;justify-content:space-between;padding:16px 16px 10px">
-            <div style="font:600 15px/1 Heebo,sans-serif;color:var(--ink)">היום במערכת</div>
-            <div style="font:400 12.5px/1 Assistant;color:var(--ink4)">4 משתמשות מחוברות</div>
-          </div>
-          <div style="flex:1;min-height:0;overflow-y:auto;padding:0 16px 12px">
-            <sc-for list="{{ today }}" as="t" hint-placeholder-count="6">
-              <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--row)">
-                <div style="width:44px;flex:none;font:400 12.5px/1.4 Assistant;color:var(--ink4)">{{ t.time }}</div>
-                <div style="flex:1;min-width:0;font:400 13px/1.4 Assistant;color:var(--ink2)">{{ t.text }}</div>
-                <div style="flex:none;font:400 12.5px/1.4 Assistant;color:var(--ink4)">{{ t.who }}</div>
-              </div>
-            </sc-for>
-          </div>
+          <div style="height:40px;display:flex;align-items:center;padding:0 16px;background:var(--sunk);font:400 12.5px/1 Assistant;color:var(--ink3)">שש־עשרה דרישות · כולן מכוסות</div>
         </div>
       </div>
     </main>
@@ -173,14 +127,14 @@ a{color:var(--grnink);text-decoration:none}a:hover{color:var(--grn)}
 </div>
 
 <sc-if value="{{ mobile }}" hint-placeholder-val="{{ true }}">
-<div style="font:700 11px/1 Assistant;letter-spacing:.08em;color:var(--ink4);padding-top:10px">לוח הבית · מובייל <span dir="ltr">390×844</span></div>
+<div style="font:700 11px/1 Assistant;letter-spacing:.08em;color:var(--ink4);padding-top:10px">מדריך · מובייל <span dir="ltr">390×844</span></div>
 <div style="width:390px;height:844px;border:1px solid var(--bd);border-radius:14px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column">
   <div style="height:58px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);box-shadow:inset 0 1px 0 #5d6f66">
     <div style="display:flex;align-items:center;gap:10px">
       <button style="width:34px;height:34px;border-radius:8px;border:1px solid #6d7a74;background:rgba(255,255,255,.08);color:#d3dbd7;font:400 14px/1 Assistant;cursor:pointer">☰</button>
       <div style="display:flex;flex-direction:column;gap:2px">
-        <div style="font:600 15.5px/1.1 Heebo,sans-serif;color:#fffefb">לוח הבית</div>
-        <div style="font:400 11.5px/1 Assistant;color:#d3dbd7">תשפ״ז · 6 ערים · 07.09</div>
+        <div style="font:600 15.5px/1.1 Heebo,sans-serif;color:#fffefb">מדריך</div>
+        <div style="font:400 11.5px/1 Assistant;color:#d3dbd7">מרכז ניהול ארצי · תשפ״ז</div>
       </div>
     </div>
     <div style="display:flex;gap:8px">
@@ -190,58 +144,26 @@ a{color:var(--grnink);text-decoration:none}a:hover{color:var(--grn)}
   </div>
   <div style="height:2px;flex:none;background:var(--grn)"></div>
   <div style="flex:1;min-height:0;overflow-y:auto;background:var(--wash);padding:14px 14px 10px;display:flex;flex-direction:column;gap:12px">
-    <div style="flex:none;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);padding:14px 13px;display:flex;flex-direction:column;gap:12px">
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
-        <div>
-          <div style="font:600 14.5px/1 Heebo,sans-serif;color:var(--ink);padding-bottom:6px">רישום ארצי</div>
-          <div style="display:flex;align-items:baseline;gap:8px">
-            <div style="font:700 22px/1 Heebo,sans-serif;color:var(--ink)">82%</div>
-            <div style="font:400 12.5px/1 Assistant;color:var(--ink3)">4,308 מתוך 5,250</div>
-          </div>
-        </div>
-        <div style="font:400 12.5px/1 Assistant;color:var(--grnink);flex:none">+128 מהמצבה</div>
-      </div>
-      <div style="height:6px;border-radius:999px;background:var(--track);overflow:hidden"><div style="width:82%;height:100%;background:var(--grn)"></div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bd2);border:1px solid var(--bd2);border-radius:12px;overflow:hidden;flex:none">
-      <sc-for list="{{ metricsM }}" as="m" hint-placeholder-count="3">
-        <div style="background:var(--card);padding:10px 12px;display:flex;flex-direction:column;gap:4px">
-          <div style="font:400 11.5px/1 Assistant;color:var(--ink4)">{{ m.label }}</div>
-          <div style="font:700 22px/1 Heebo,sans-serif;color:var(--ink)">{{ m.value }}</div>
-        </div>
-      </sc-for>
+    <div style="flex:none;position:relative">
+      <input placeholder="חיפוש במדריך…" style="width:100%;height:44px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--ink);font:400 14px/1 Assistant;padding:0 34px 0 12px;outline:none">
+      <span style="position:absolute;right:12px;top:15px;width:14px;height:14px;border-radius:999px;border:1.4px solid var(--ink3);display:block"></span>
     </div>
     <div style="flex:none;display:flex;flex-direction:column;gap:10px">
-      <button style="text-align:right;border:0;cursor:pointer;border-radius:9px;padding:12px 14px;background:linear-gradient(180deg,#b4503c,#8a3b28);box-shadow:0 2px 0 #6e2f20;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px">
-        <div><div style="font:700 13.5px/1.2 Assistant;color:#fffefb">שיבוץ מרכזי</div><div style="font:400 12.5px/1.3 Assistant;color:#f6e2d9">ממתינות בלי גן</div></div>
-        <div style="font:700 22px/1 Heebo,sans-serif;color:#fffefb">144</div>
-      </button>
-      <button style="text-align:right;border:0;cursor:pointer;border-radius:9px;padding:12px 14px;background:linear-gradient(180deg,#d9a94a,#8a5b12);box-shadow:0 2px 0 #6f480d;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px">
-        <div><div style="font:700 13.5px/1.2 Assistant;color:#fffefb">מסמכים חסרים</div><div style="font:400 12.5px/1.3 Assistant;color:#f6edd9">כולל 5 מסמכי השארות</div></div>
-        <div style="font:700 22px/1 Heebo,sans-serif;color:#fffefb">205</div>
-      </button>
-      <button style="text-align:right;border:0;cursor:pointer;border-radius:9px;padding:12px 14px;background:linear-gradient(180deg,#5f8a76,#2f5d4a);box-shadow:0 2px 0 #24483a;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px">
-        <div><div style="font:700 13.5px/1.2 Assistant;color:#fffefb">אישור שיבוץ סופי</div><div style="font:400 12.5px/1.3 Assistant;color:#e6efe9">מוכנות לאישור</div></div>
-        <div style="font:700 22px/1 Heebo,sans-serif;color:#fffefb">94</div>
-      </button>
-    </div>
-    <div style="flex:none;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);padding:14px 13px">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;padding-bottom:6px">
-        <div style="font:600 14.5px/1 Heebo,sans-serif;color:var(--ink)">חריגות בשיבוץ</div>
-        <a href="Triage.dc.html" style="font:400 12.5px/1 Assistant">כל הדגלים</a>
-      </div>
-      <sc-for list="{{ exceptionsM }}" as="e" hint-placeholder-count="4">
-        <div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--row)">
-          <span style="width:9px;height:9px;border-radius:2px;flex:none;background:{{ e.lamp }}"></span>
-          <div style="flex:1;min-width:0;font:400 13.5px/1.3 Assistant;color:var(--ink)">{{ e.label }}</div>
-          <div style="flex:none;font:700 15px/1 Heebo,sans-serif;color:var(--ink)">{{ e.n }}</div>
-        </div>
+      <sc-for list="{{ sections }}" as="s" hint-placeholder-count="6">
+        <details style="background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);overflow:hidden">
+          <summary style="min-height:44px;display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;list-style:none">
+            <span style="width:9px;height:9px;border-radius:2px;flex:none;background:{{ s.lamp }}"></span>
+            <span style="flex:1;font:600 14px/1.3 Assistant;color:var(--ink)">{{ s.title }}</span>
+            <span style="font:400 12.5px/1 Assistant;color:var(--ink4)">{{ s.key }}</span>
+          </summary>
+          <div style="padding:12px 13px 13px;border-top:1px solid var(--row);font:400 13.5px/1.6 Assistant;color:var(--ink2)">{{ s.body }}</div>
+        </details>
       </sc-for>
     </div>
   </div>
   <div style="flex:none;display:flex;gap:8px;padding:10px 14px 14px;background:var(--card);border-top:1px solid var(--bd2)">
-    <button style="flex:1;height:44px;border-radius:10px;border:1px solid var(--grn);background:linear-gradient(180deg,#3a6d58,#2b5544);box-shadow:0 1px 2px rgba(34,34,31,.12);color:#fffefb;font:700 13.5px/1 Assistant;cursor:pointer">דוח להנהלה</button>
-    <button style="width:44px;height:44px;flex:none;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--ink2);font:400 15px/1 Assistant;cursor:pointer">⇩</button>
+    <button style="flex:1;height:44px;border-radius:10px;border:1px solid var(--grn);background:linear-gradient(180deg,#3a6d58,#2b5544);box-shadow:0 1px 2px rgba(34,34,31,.12);color:#fffefb;font:700 13.5px/1 Assistant;cursor:pointer">הדפסה</button>
+    <button onClick="{{ toggleAll }}" style="width:44px;height:44px;flex:none;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--ink2);font:400 15px/1 Assistant;cursor:pointer">⌄</button>
   </div>
 </div>
 </sc-if>
@@ -291,28 +213,35 @@ const NAV = [
   { label: 'יופעל בהמשך', soon: true, items: [['כרטיסי משפחה', 'Soon.dc.html', 'clock'], ['פורטל הורים', 'Soon.dc.html', 'clock'], ['סליקה ותשלומים', 'Soon.dc.html', 'clock'], ['ניהול מסמכים', 'Soon.dc.html', 'clock'], ['שעות ושכר', 'Soon.dc.html', 'clock'], ['האפיון', 'Soon.dc.html', 'clock'], ['התוכנית', 'Soon.dc.html', 'clock']] }
 ];
 const navVals = here => NAV.map(g => ({ label: g.label, soon: !!g.soon, normal: !g.soon, items: g.items.map(it => ({ label: it[0], href: it[1], icon: icon(it[2]), on: it[0] === here, off: it[0] !== here })) }));
-const HERE = 'לוח הבית';
+const HERE = 'מדריך';
 
-
-const EXC = [
-  ['גנים מעל תקן הרישיון', '12', 'bad', 'הגדול ביותר: גן אורנים, 41'],
-  ['זכאים לסייעת ב׳ בלי סייעת', '9', 'warn', 'סף 30 בנות'],
-  ['ממתינות מעל 14 יום', '81', 'warn', 'בעיקר בית שמש וירושלים'],
-  ['תיקים ללא גן', '144', 'wait', 'שיבוץ מרכזי פתוח'],
-  ['שיבוצים סופיים החודש', '1,047', 'ok', 'מתוך 3,679 משובצות']
+const SECTIONS = [
+  ['תלמידים ושיבוץ מרכזי', 'students', 'ok', 'כל התיקים הפעילים בשש הערים. שינוי שיבוץ נכתב ישירות לתיק בתוכנת העיר.', ['טאבים: כל התיקים · חריגים · רשימת המתנה', 'תיק תלמידה נפתח במגירה עם תחנות ממוספרות', 'הרצת שיבוץ אוטומטי פותחת מודאל אישור']],
+  ['מערכת רישום', 'registration', 'ok', 'ערוץ הרישום הארצי, קליטה בערים ומצב המשפך.', ['רצועת מצב: חי · טוען · שגיאה', 'משפך: התחילו · השלימו · ממתינים לאישור · אושרו אוטומטית', 'אופן הקליטה — דיגיטלית בעיר מול משרד ראשי']],
+  ['שיבוץ ילדים', 'place', 'warn', 'תור הממתינים לשיבוץ מרכזי, עם הצעת המערכת לכל ילדה.', ['סדר התור לפי דירוג במסגרת', 'אח או אחות בגן מסומנים כקרבה', 'אפס הדמיה מחזיר את התור למצב הפתיחה']],
+  ['ערים וגנים', 'cities', 'ok', 'שתי רמות: כרטיס עיר עם טבלת הגנים, וצלילה לכרטיס גן.', ['כרטיס גן: צוות, תלמידים, פעילויות', 'סטטוס הרישיון מוצג בכל שורת גן', 'חזרה לרשימת הגנים בכפתור, לא בסגירת מודאל']],
+  ['פעילויות ותוכניות', 'activities', 'ok', 'משתתפות בשלוש הקייטנות, לפי עיר ולפי כל הרשת.', ['בורר: הכל · כל הרשת · לפי עיר', 'חנוכה · ניסן · סוף שנה']],
+  ['סקירה לאומית', 'overview', 'ok', 'תמונת המצב של כל הרשת, נקראת חי מתוכנות שש הערים.', ['שמונה מדדים ארציים', 'פילוח חינוך ופילוח גיל', 'טבלת ערים עם ממתינים לשיבוץ']],
+  ['אחוזים ותפוסות', 'reports', 'warn', 'מלאות הגנים, מועדי הרישום והתוכניות.', ['סינון לפי חינוך ולפי עיר', 'גן מעל התקן מסומן בפס אדום', 'גנים מלאים — 92% ומעלה']],
+  ['עובדות', 'staff', 'ok', 'מאגר העובדות של הרשת, שיוך לגנים ורישיונות.', ['סינון לפי תפקיד ולפי עיר', 'כרטיס עובדת נפתח במגירה']],
+  ['בקרת משרד החינוך', 'ministry', 'warn', 'הצלבת המצבה מול מצבת המשרד ושידור הדוח.', ['ארבעה מקורות נתונים', 'אי־התאמות לתיקון לפני שידור']],
+  ['מדריך', 'guide', 'ok', 'המסמך הזה. סעיף לכל מודול ומפת הדרישות.', ['חיפוש חופשי בכל הסעיפים', 'פתח הכל פותח את כל הסעיפים', 'הדפסה מוציאה את הגוף בלי הסרגל']]
 ];
-
-const TODAY = [
-  ['09:30', 'יעל אדלר נכנסה למרכזי', 'הרשאות'],
-  ['09:15', 'העוזר הפיק רשימת השארות בלי מסמך · בית שמש', 'רבקה כהן'],
-  ['08:52', '12 תיקים שובצו לגן שקד, בית שמש', 'רבקה כהן'],
-  ['08:40', 'ייבוא מאקסל · 86 תיקים נפתחו באשדוד', 'חני שטרן'],
-  ['08:12', 'הצלבת מצבת משרד החינוך · מודיעין עילית', 'שרה פרידמן'],
-  ['07:55', 'דיוור שיבוץ נשלח · 412 נמענים בירושלים', 'נעמי גולד']
+const REQS = [
+  ['רישום ילדה חדשה בכל אחד מארבעת ערוצי הרישום', 'ערוצי רישום', 'Channels.dc.html'],
+  ['קליטת רשימות מהערים בקובץ אקסל', 'ייבוא מאקסל', 'Import.dc.html'],
+  ['שיבוץ מרכזי לילדות שאין להן גן', 'שיבוץ ילדים', 'Place.dc.html'],
+  ['אישור שיבוץ סופי וכתיבתו לתיק בעיר', 'תלמידים ושיבוץ מרכזי', 'Students.dc.html'],
+  ['מעקב אחר תפוסת הגנים וסף הרישיון', 'אחוזים ותפוסות', 'Reports.dc.html'],
+  ['דיווח מצבה למשרד החינוך והצלבתה', 'בקרת משרד החינוך', 'Compliance.dc.html'],
+  ['טיפול בפניות ובערעורי הורים', 'פניות וערעורים', 'Appeals.dc.html'],
+  ['דיוור שיבוץ להורים ואימות מסירה', 'הפצת שיבוץ · Smoove', 'Distribution.dc.html'],
+  ['הפצת חוזרי מנכ״ל ואישורי קבלה', 'חוזרי מנכ״ל', 'Circulars.dc.html'],
+  ['דוח תקופתי להנהלה', 'פילוחים ודוח להנהלה', 'Analytics.dc.html']
 ];
 
 class Component extends DCLogic {
-  state = { night: false };
+  state = { night: false, all: false };
 
   componentDidMount() {
     try { if (localStorage.getItem('wr-night') === '1') { document.body.dataset.night = '1'; this.setState({ night: true }); } } catch (e) {}
@@ -325,21 +254,20 @@ class Component extends DCLogic {
   }
 
   renderVals() {
-    const exceptions = EXC.map(e => ({ label: e[0], n: e[1], lamp: 'var(--' + e[2] + ')', note: e[3] }));
+    const all = this.state.all;
     return {
       mobile: this.props.showMobile !== false,
       nightGlyph: this.state.night ? '☀' : '☾',
       toggleNight: () => this.setNight(!this.state.night),
       nav: navVals(HERE),
-      metrics: [
-        { label: 'משובצות', value: '3,679', note: '85%' },
-        { label: 'ממתינות', value: '629', note: '' },
-        { label: 'ללא גן', value: '144', note: '' },
-        { label: 'נקלטו היום', value: '87', note: '' }
-      ],
-      metricsM: [{ label: 'משובצות', value: '3,679' }, { label: 'ממתינות', value: '629' }, { label: 'ללא גן', value: '144' }],
-      exceptions, exceptionsM: exceptions.slice(0, 4),
-      today: TODAY.map(t => ({ time: t[0], text: t[1], who: t[2] }))
+      allLabel: all ? 'סגור הכל' : 'פתח הכל',
+      toggleAll: () => this.setState({ all: !all }),
+      sections: SECTIONS.map((s, i) => ({
+        title: s[0], key: s[1], lamp: 'var(--' + s[2] + ')', body: s[3],
+        points: s[4].map(t => ({ t })),
+        open: all || i === 0 ? true : undefined
+      })),
+      reqs: REQS.map(r => ({ need: r[0], where: r[1], href: r[2] }))
     };
   }
 }
