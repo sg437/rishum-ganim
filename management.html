@@ -430,26 +430,79 @@
   .legend .li{display:flex; align-items:center; gap:8px}
   .legend .sw{width:9px; height:9px; border-radius:2px; flex:0 0 auto}
 
-  /* ---- מסכי ההדמיה (הבית הישן, התוכנית, שעות, פורטל) — עד שיתורגמו ---- */
-  .home-hero,.plan-hero,.hero-live{background:var(--card); border:1px solid var(--bd); border-radius:12px; box-shadow:0 1px 2px rgba(34,34,31,.04); padding:16px}
-  .home-hero .greet{font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--ink3)}
-  .home-hero h1,.plan-hero h1{font-size:23px; font-weight:600; margin-top:6px}
-  .home-hero h1 .em{color:var(--grnink)}
-  .home-hero .lede,.plan-hero .lede{margin-top:8px; font-size:13.5px; color:var(--ink3); max-width:70ch}
+  /* ---- לוח הבית (docs/design-central/Home.dc.html) ---- */
+  .hm-actions{display:flex; align-items:center; gap:8px; flex:none}
+  .hm-grid{display:grid; grid-template-columns:2fr 1fr; gap:12px; padding-bottom:12px}
+  .hm-grid.b{grid-template-columns:1fr 2fr; padding-bottom:0}
+  .hm-grid>*{min-width:0}
+  .hm-card{background:var(--card); border:1px solid var(--bd); border-radius:12px; box-shadow:0 1px 2px rgba(34,34,31,.04); padding:16px; display:flex; flex-direction:column; gap:12px}
+  .hm-title{font-family:"Heebo",system-ui,sans-serif; font-size:15px; font-weight:600; line-height:1; color:var(--ink)}
+  .hm-head{display:flex; align-items:flex-start; justify-content:space-between; gap:16px}
+  .hm-head.base{align-items:baseline}
+  .hm-hero-row{display:flex; align-items:baseline; gap:10px; padding-top:6px}
+  .hm-hero{font-family:"Heebo",system-ui,sans-serif; font-size:30px; font-weight:700; line-height:1; color:var(--ink)}
+  .hm-hero-note{font-size:13.5px; line-height:1; color:var(--ink3)}
+  .hm-delta{font-size:12.5px; line-height:1.4; color:var(--grnink); text-align:left; flex:none}
+  .hm-delta.ntr{color:var(--ink4)}
+  .hm-bar{height:10px; border-radius:999px; background:var(--track); overflow:hidden}
+  .hm-bar i{display:block; height:100%; background:var(--grn)}
+  .hm-metrics{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--bd2); border:1px solid var(--bd2); border-radius:12px; overflow:hidden}
+  .hm-metric{background:var(--card); padding:12px 14px; display:flex; flex-direction:column; gap:4px; min-width:0}
+  .hm-metric .l{font-size:11.5px; line-height:1; color:var(--ink4)}
+  .hm-metric .v{display:flex; align-items:baseline; gap:8px}
+  .hm-metric .v b{font-family:"Heebo",system-ui,sans-serif; font-size:22px; font-weight:700; line-height:1; color:var(--ink)}
+  .hm-metric .v span{font-size:12.5px; line-height:1; color:var(--ink4)}
+  .hm-link{font-size:12.5px; line-height:1; background:none; border:0; padding:0; color:var(--grnink); cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+  .hm-link:hover{color:var(--grn)}
+  .hm-list{display:flex; flex-direction:column}
+  .hm-exc{display:flex; align-items:center; gap:9px; padding:7px 0; border:0; border-bottom:1px solid var(--row); background:none; width:100%; text-align:right; color:inherit; cursor:pointer}
+  .hm-exc:last-child{border-bottom:0}
+  .hm-exc[disabled]{cursor:default}
+  .hm-exc .lamp{width:9px; height:9px}
+  .hm-exc .b{flex:1; min-width:0}
+  .hm-exc .t{font-size:13.5px; line-height:1.3; color:var(--ink)}
+  .hm-exc .s{font-size:11.5px; line-height:1.3; color:var(--ink4)}
+  .hm-exc .n{font-family:"Heebo",system-ui,sans-serif; font-size:15px; font-weight:700; line-height:1; color:var(--ink); flex:none}
+  .hm-tiles{display:flex; flex-direction:column; gap:10px}
+  .hm-tile{text-align:right; border:0; cursor:pointer; border-radius:9px; padding:12px 14px; min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:12px; color:#fffefb}
+  .hm-tile.cly{background:linear-gradient(180deg,#b4503c,#8a3b28); box-shadow:0 2px 0 #6e2f20}
+  .hm-tile.amb{background:linear-gradient(180deg,#d9a94a,#8a5b12); box-shadow:0 2px 0 #6f480d}
+  .hm-tile.grn{background:linear-gradient(180deg,#5f8a76,#2f5d4a); box-shadow:0 2px 0 #24483a}
+  .hm-tile .t{font-size:13.5px; font-weight:700; line-height:1.2}
+  .hm-tile .s{font-size:12.5px; line-height:1.3}
+  .hm-tile.cly .s{color:#f6e2d9} .hm-tile.amb .s{color:#f6edd9} .hm-tile.grn .s{color:#e6efe9}
+  .hm-tile .n{font-family:"Heebo",system-ui,sans-serif; font-size:22px; font-weight:700; line-height:1}
+  .hm-tile:active{transform:translateY(1px)}
+  .hm-tile[disabled]{cursor:default}
+  .hm-today{padding:0; overflow:hidden}
+  .hm-today .hm-head{padding:16px 16px 10px; flex:none}
+  .hm-today .hm-list{flex:1; min-height:0; overflow-y:auto; padding:0 16px 12px; max-height:340px}
+  .hm-row{display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--row)}
+  .hm-row:last-child{border-bottom:0}
+  .hm-row .tm{width:44px; flex:none; font-size:12.5px; line-height:1.4; color:var(--ink4)}
+  .hm-row .tx{flex:1; min-width:0; font-size:13px; line-height:1.4; color:var(--ink2)}
+  .hm-row .who{flex:none; font-size:12.5px; line-height:1.4; color:var(--ink4); max-width:40%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .hm-meta{font-size:12.5px; line-height:1; color:var(--ink4)}
+  .hm-empty{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink3); padding:8px 0}
+  .hm-bottom{display:none}
+  .hm-skel{height:120px; border-radius:12px; background:var(--inner); margin-bottom:12px}
+  @media (max-width:900px){ .hm-grid,.hm-grid.b{grid-template-columns:1fr} }
+  @media (max-width:1019px){
+    .hm-card{padding:14px 13px}
+    .hm-hero{font-size:22px} .hm-bar{height:6px} .hm-delta br{display:none} .hm-hero-note{font-size:12.5px}
+    .hm-metrics{grid-template-columns:repeat(3,1fr)} .hm-metric.m4{display:none}
+    .hm-title{font-size:14.5px}
+    .hm-actions{display:none}
+    .hm-bottom{display:flex; gap:8px; position:sticky; bottom:0; margin:12px -14px -10px; padding:10px 14px 14px; background:var(--card); border-top:1px solid var(--bd2)}
+    .hm-bottom .btn-primary{flex:1; height:44px}
+    .hm-bottom:empty{display:none}
+  }
+  /* ---- מסכי ההדמיה (התוכנית, שעות, פורטל) — עד שיתורגמו ---- */
+  .plan-hero,.hero-live{background:var(--card); border:1px solid var(--bd); border-radius:12px; box-shadow:0 1px 2px rgba(34,34,31,.04); padding:16px}
+  .plan-hero h1{font-size:23px; font-weight:600; margin-top:6px}
+  .plan-hero .lede{margin-top:8px; font-size:13.5px; color:var(--ink3); max-width:70ch}
   .plan-hero .meta{margin-top:12px; font-size:12.5px; color:var(--ink4)}
   .plan-hero .meta b{color:var(--ink2)}
-  .home-hero .ticker{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr)); gap:1px; background:var(--bd2); border:1px solid var(--bd2); border-radius:12px; overflow:hidden; margin-top:14px}
-  .home-hero .tk{background:var(--card); padding:12px 14px; display:flex; flex-direction:column; gap:4px}
-  .home-hero .tk b{font-family:"Heebo",system-ui,sans-serif; font-size:22px; font-weight:700; line-height:1}
-  .home-hero .tk span{font-size:11.5px; color:var(--ink4)}
-  .home-hero .tk.live b{color:var(--grnink)}
-  .portals{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(226px,100%),1fr)); gap:12px; margin-top:12px}
-  .portal{text-align:right; border:1px solid var(--bd); background:var(--card); border-radius:12px; box-shadow:0 1px 2px rgba(34,34,31,.04); padding:14px 16px; cursor:pointer; display:flex; flex-direction:column; gap:6px; transition:transform .14s, box-shadow .14s}
-  .portal:hover{border-color:var(--grn)}
-  .portal .pic{width:30px; height:30px; border-radius:9px; display:grid; place-items:center; font-size:15px; background:var(--inner); border:1px solid var(--bd2)}
-  .portal .ph{font-family:"Heebo",system-ui,sans-serif; font-weight:600; font-size:14.5px}
-  .portal .pd{font-size:13px; color:var(--ink3); line-height:1.4; flex:1}
-  .portal .pv{font-size:12.5px; font-weight:700; color:var(--grnink); display:inline-flex; align-items:center; gap:6px}
   .hero-live .hl-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr)); gap:14px}
   .hl-stat .l{font-size:11.5px; color:var(--ink4); display:flex; align-items:center; gap:6px}
   .hl-stat .v{font-family:"Heebo",system-ui,sans-serif; font-size:22px; font-weight:700; margin-top:4px; line-height:1}
@@ -691,13 +744,15 @@
 
   <!-- ================= HOME ================= -->
   <section class="view active" id="view-home" role="tabpanel">
-    <div class="home-hero">
-      <div class="greet" id="greet">ברוכים הבאים</div>
-      <h1>כל עיר, כל גן, כל עובדת — <span class="em">במקום אחד</span></h1>
-      <p class="lede">מרכז הבקרה הארצי של רשת גני הילדות. הנתונים זורמים חי מכל הערים — מספרים, פילוחים, פעילויות, ובקרוב גם שעות ושכר. בחרו יעד מהתפריט או מהשערים למטה.</p>
-      <div class="ticker" id="homeTicker"></div>
+    <div class="view-head">
+      <div>
+        <h2>לוח הבית</h2>
+        <div class="sub" id="homeSub"></div>
+      </div>
+      <div class="hm-actions" id="homeActions"></div>
     </div>
-    <div class="portals" id="portals"></div>
+    <div id="homeBody"></div>
+    <div class="hm-bottom" id="homeBottom"></div>
   </section>
 
   <!-- ================= PLAN ================= -->
@@ -2977,33 +3032,92 @@ try{
     {v:'hours',ic:'★',h:'שעות ושכר · חי',d:'שעות זורמות חי מכל עובדת → שכר אוטומטי.',cls:'p-live p-star',live:true,stat:function(){return LIVE.length+' מחוברות כעת'}},
     {v:'spec',ic:'📋',h:'האפיון',d:'9 המודולים, מטרות המערכת ומה כבר חי בהדמיה.',cls:'p-star',stat:function(){return '9 מודולים'}}
   ];
-  function renderHome(){
-    var hr=new Date().getHours();
-    var g = hr<11?'בוקר טוב':(hr<15?'צהריים טובים':(hr<19?'אחר הצהריים טובים':'ערב טוב'));
-    $('#greet').textContent=g+' · מרכז הבקרה';
-    $('#homeTicker').innerHTML=(LIVEMODE?[
-      {b:CITIES.length,s:'ערים ברשת'},
-      {b:he(TOT.gan),s:'גנים פעילים'},
-      {b:he(TOT.students),s:'תלמידים רשומים'},
-      {b:he(TOT.unplaced),s:'ממתינים לשיבוץ'},
-      {b:he(TOT.online),s:'מחוברים כעת',live:true}
-    ]:[
-      {b:CITIES.length,s:'ערים ברשת'},
-      {b:he(TOT.gan),s:'גנים'},
-      {b:he(TOT.students),s:'תלמידות'},
-      {b:he(TOT.staff),s:'עובדות'},
-      {b:he(LIVE.length),s:'מחוברות כעת',live:true}
-    ]).map(function(t){return '<div class="tk'+(t.live?' live':'')+'"><b>'+t.b+'</b><span>'+t.s+'</span></div>';}).join('');
-    $('#portals').innerHTML=PORTALS.filter(function(p){ return !(LIVEMODE && DEMO_VIEWS[p.v]) && !(!LIVEMODE && p.onlyLive); }).map(function(p){
-      return '<button class="portal '+(p.cls||'')+'" data-view="'+p.v+'">'+
-        '<div class="pic">'+p.ic+'</div>'+
-        '<div class="ph">'+p.h+'</div>'+
-        '<div class="pd">'+p.d+'</div>'+
-        '<div class="pv">'+(p.live?'<span style="width:7px;height:7px;border-radius:50%;background:var(--live);display:inline-block"></span> ':'')+p.stat()+' ←</div>'+
-      '</button>';
-    }).join('');
+  /* ---------- לוח הבית — לפי docs/design-central/Home.dc.html ----------
+     כל מספר כאן ניתן להסבר: בחי — מתיקי הערים ומאחסון המרכזי (H); בהדמיה — מנתוני
+     הדוגמה. אין יעד רישום במערכת, ולכן מספר הגיבור הוא חלק המשובצות מכלל התיקים. */
+  function homeData(){
+    var H=window.__hq, live=!!(LIVEMODE && H);
+    var d={ live:live, total:TOT.students, placed:0, waiting:0, nogan:0, over14:0, docs:0, license:TOT.licenseIssues||0, assistB:0, today:TOT.todayNew||0, online:TOT.online||0, delta:null, year:'', exc:[], log:[], th:{license:35,assistantB:30} };
+    var now=Date.now();
+    if(live){
+      var cs=H.cities(); d.th=H.thresholds();
+      var stu=H.allStudents(cs).filter(function(x){ return !x.finished; }); d.total=stu.length;
+      stu.forEach(function(x){
+        if(!x.ganId) d.nogan++; else if(x.placed===false){ d.waiting++; var t=new Date(x.createdAt||0).getTime(); if(t && now-t>14*86400000) d.over14++; } else d.placed++;
+        var dc=x.docs||{}; if(!(dc.nispach&&dc.idCopy&&dc.takanon)) d.docs++;
+      });
+      d.license=0; H.allGans(cs).forEach(function(g){ var ls=H.licenseState(g); if(ls.code==='over'||ls.code==='over-th') d.license++; var ab=H.assistantBState(g); if(ab&&ab.eligible&&!ab.has) d.assistB++; });
+      var snaps=(H.HQ().snapshots||[]).slice().sort(function(x,y){ return (y.at||0)-(x.at||0); }); var last=snaps[0];
+      if(last&&last.totals&&typeof last.totals.n==='number') d.delta={ n:d.total-last.totals.n, when:H.fmtD(last.at) };
+      cs.forEach(function(c){ if(!d.year && c.year) d.year=c.year; });
+      var AL={place:'שיבוץ מרכזי',import:'ייבוא מאקסל',ministry:'הצלבת מצבת משרד החינוך'};
+      (H.HQ().audit||[]).forEach(function(x){ if(sameDay(x.at)) d.log.push({ at:x.at, text:(AL[x.action]||x.action||'')+(x.detail?' · '+x.detail:''), who:x.by||'' }); });
+      cs.forEach(function(c){ (c.visitors||[]).forEach(function(v){ if(sameDay(v.ts)) d.log.push({ at:v.ts, text:(v.last||'פעילות')+' · '+c.name, who:v.name||v.email||'' }); }); });
+      d.log.sort(function(x,y){ return (y.at||0)-(x.at||0); }); d.log=d.log.slice(0,8);
+    } else {
+      d.nogan=UNPLACED.length; d.placed=Math.max(0, d.total-d.nogan);
+      for(var i=0;i<6;i++){ var ev=feedEvent(); d.log.push({ at:now-i*7*60000, text:ev.tx.replace(/<[^>]+>/g,'')+' · '+ev.mt.replace(' · עכשיו',''), who:'' }); }
+      d.online=LIVE.length;
+    }
+    return d;
   }
-  $('#portals').addEventListener('click',function(e){var b=e.target.closest('.portal'); if(b) switchTab(b.dataset.view);});
+  function sameDay(v){ if(!v) return false; var t=new Date(v); if(isNaN(t)) return false; var n=new Date(); return t.getFullYear()===n.getFullYear()&&t.getMonth()===n.getMonth()&&t.getDate()===n.getDate(); }
+  function hmTime(t){ var x=new Date(t); return isNaN(x)?'':x.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
+  function renderHome(){
+    var d=homeData(), H=window.__hq;
+    var can=function(m){ return d.live && H && H.perm(m)!=='none'; };
+    var n=new Date(), dd=String(n.getDate()).padStart(2,'0')+'.'+String(n.getMonth()+1).padStart(2,'0');
+    $('#homeSub').textContent=(d.year?'שנת '+d.year+' · ':'')+CITIES.length+' ערים · '+(d.live?'נכון להיום, '+dd:'הדמיה · נתוני דוגמה');
+    var reports=can('breakdowns');
+    $('#homeActions').innerHTML=reports?'<button type="button" class="btn-ghost" data-hm-tab="snap">שמירת מצבה</button><button type="button" class="btn-primary" data-hm-tab="mgmt">דוח להנהלה</button>':'';
+    $('#homeBottom').innerHTML=reports?'<button type="button" class="btn-primary" data-hm-tab="mgmt">דוח להנהלה</button>':'';
+    var p=pct(d.placed,d.total);
+    var stuGo=can('students');
+    var exc=[
+      {t:'גנים מעל תקן הרישיון', n:d.license, lamp:'bad', s:'מול מכסת הרישיון בכרטיס הגן', go:'license'},
+      {t:'זכאיות לסייעת ב׳ בלי סייעת', n:d.assistB, lamp:'warn', s:'סף '+d.th.assistantB+' בנות', go:'license', liveOnly:true},
+      {t:'ממתינות מעל 14 יום', n:d.over14, lamp:'warn', s:'משובצות לגן, השיבוץ טרם אושר', go:'students', f:{place:'waiting'}, liveOnly:true},
+      {t:'תיקים ללא גן', n:d.nogan, lamp:'wait', s:'שיבוץ מרכזי פתוח', go:'students', f:{place:'nogan'}},
+      {t:'שיבוצים סופיים', n:d.placed, lamp:'ok', s:'מתוך '+he(d.total)+' תיקים', go:'students', f:{place:'placed'}}
+    ].filter(function(e){ return d.live || !e.liveOnly; });
+    var tiles=[
+      {c:'cly', t:'שיבוץ מרכזי', s:'ממתינות בלי גן', n:d.nogan, f:{place:'nogan'}},
+      {c:'amb', t:'מסמכים חסרים', s:'תיקים עם מסמך חסר', n:d.docs, f:{flag:'nodocs'}, liveOnly:true},
+      {c:'grn', t:'אישור שיבוץ סופי', s:'משובצות לגן, ממתינות לאישור', n:d.waiting, f:{place:'waiting'}}
+    ].filter(function(t){ return d.live || !t.liveOnly; });
+    var goAttr=function(go,f){ var ok=go==='students'?stuGo:can(go); return ok?' data-hm-go="'+go+'" data-hm-f="'+escH(JSON.stringify(f||{}))+'"':' disabled'; };
+    $('#homeBody').innerHTML=
+      '<div class="hm-grid">'+
+        '<div class="hm-card">'+
+          '<div class="hm-head"><div><div class="hm-title">שיבוץ ארצי</div><div class="hm-hero-row"><div class="hm-hero">'+p+'%</div><div class="hm-hero-note">'+he(d.placed)+' משובצות מתוך '+he(d.total)+' תיקים</div></div></div>'+
+          (d.delta?'<div class="hm-delta'+(d.delta.n?'':' ntr')+'">'+(d.delta.n>0?'+':'')+he(d.delta.n)+' מהמצבה<br>של '+escH(d.delta.when)+'</div>':'')+'</div>'+
+          '<div class="hm-bar"><i style="width:'+p+'%"></i></div>'+
+          '<div class="hm-metrics">'+[
+            {l:'משובצות', v:he(d.placed), s:p+'%'},
+            {l:'ממתינות לאישור', v:he(d.waiting), s:''},
+            {l:'ללא גן', v:he(d.nogan), s:''},
+            {l:'נקלטו היום', v:he(d.today), s:'', cls:' m4'}
+          ].map(function(m){ return '<div class="hm-metric'+(m.cls||'')+'"><div class="l">'+m.l+'</div><div class="v"><b>'+m.v+'</b>'+(m.s?'<span>'+m.s+'</span>':'')+'</div></div>'; }).join('')+'</div>'+
+        '</div>'+
+        '<div class="hm-card">'+
+          '<div class="hm-head base"><div class="hm-title">חריגות בשיבוץ</div>'+(can('followups')?'<button type="button" class="hm-link" data-hm-go="followups">כל הדגלים</button>':'')+'</div>'+
+          '<div class="hm-list">'+exc.map(function(e){ return '<button type="button" class="hm-exc"'+goAttr(e.go,e.f)+'><span class="lamp '+e.lamp+'"></span><span class="b"><span class="t" style="display:block">'+e.t+'</span><span class="s" style="display:block">'+e.s+'</span></span><span class="n">'+he(e.n)+'</span></button>'; }).join('')+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="hm-grid b">'+
+        '<div class="hm-card"><div class="hm-title">תורי עבודה</div><div class="hm-tiles">'+tiles.map(function(t){ return '<button type="button" class="hm-tile '+t.c+'"'+goAttr('students',t.f)+'><span><span class="t" style="display:block">'+t.t+'</span><span class="s" style="display:block">'+t.s+'</span></span><span class="n">'+he(t.n)+'</span></button>'; }).join('')+'</div></div>'+
+        '<div class="hm-card hm-today">'+
+          '<div class="hm-head base"><div class="hm-title">היום במערכת</div><div class="hm-meta">'+he(d.online)+' '+(d.online===1?'משתמשת מחוברת':'משתמשות מחוברות')+'</div></div>'+
+          '<div class="hm-list">'+(d.log.length?d.log.map(function(r){ return '<div class="hm-row"><div class="tm">'+hmTime(r.at)+'</div><div class="tx">'+escH(r.text)+'</div>'+(r.who?'<div class="who" title="'+escH(r.who)+'">'+escH(r.who)+'</div>':'')+'</div>'; }).join(''):'<div class="hm-empty"><span class="lamp wait"></span>עדיין אין פעילות היום</div>')+'</div>'+
+        '</div>'+
+      '</div>';
+    $$('#view-home [data-hm-go]').forEach(function(b){ b.addEventListener('click',function(){
+      var go=b.dataset.hmGo, f=null; try{ f=b.dataset.hmF?JSON.parse(b.dataset.hmF):null; }catch(e){}
+      if(go==='students' && window.__hqStudents){ window.__hqStudents.filterTo(Object.assign({ place:'', flag:'' }, f||{})); }
+      switchTab(go);
+    }); });
+    $$('#view-home [data-hm-tab]').forEach(function(b){ b.addEventListener('click',function(){ if(window.__hqReports&&window.__hqReports.openTab) window.__hqReports.openTab(b.dataset.hmTab); else switchTab('breakdowns'); }); });
+  }
 
   /* ---------- FLOATING WINDOWS ---------- */
   function spawnWindows(){
@@ -3100,7 +3214,7 @@ try{
     $('#kpiRow').innerHTML='<div class="card kpi"><div class="kl">טוען נתונים מהערים…</div><div class="kv">⏳</div></div>';
     $('#cityTable tbody').innerHTML='<tr><td colspan="6" class="live-note">ממתינים לנתונים הראשונים מהערים…</td></tr>';
     $('#cityDetail').innerHTML=''; $('#ganDetail').innerHTML='';
-    $('#homeTicker').innerHTML='<div class="tk"><b>⏳</b><span>טוען נתונים מהערים</span></div>';
+    $('#homeSub').textContent='טוען נתונים מהערים'; $('#homeBody').innerHTML='<div class="hm-skel"></div><div class="hm-skel"></div><div class="hm-skel"></div>';
   }
   function renderLiveErrors(){
     var host=$('#liveErrors');
@@ -4557,7 +4671,7 @@ function xlsToRows(buf){
     $$('[data-snap-del]').forEach(function(x){ x.addEventListener('click',function(){ if(H.confirmBox('למחוק את המצבה?')) H.remove('snapshots', x.dataset.snapDel); }); });
   }
   H.reg('breakdowns', render);
-  window.__hqReports={ stats:stats, errors:errorsFor, showErrors:function(){ TAB='errors'; C.switchTab('breakdowns'); } };
+  window.__hqReports={ stats:stats, errors:errorsFor, showErrors:function(){ TAB='errors'; C.switchTab('breakdowns'); }, openTab:function(t){ TAB=t; if(C.view==='breakdowns') render(); else C.switchTab('breakdowns'); } };
 })();
 </script>
 
