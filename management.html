@@ -657,6 +657,46 @@
   .empty-card .lampt{color:var(--ink3)}
   @media (max-width:1019px){ .wl .w{flex-wrap:wrap; gap:6px 10px} .wl .w .nm,.wl .w .ct,.wl .w .gn{width:auto} .wl .w .nt{flex-basis:100%} }
 
+  .proc{display:grid; grid-template-columns:248px 1fr; gap:12px; align-items:start}
+  .proc-steps{padding:16px 12px 12px; display:flex; flex-direction:column; gap:10px}
+  .proc-steps .hm-title{padding:0 4px}
+  .proc-steps .steps .s{width:100%; border:0; background:none; text-align:right; cursor:pointer; color:var(--ink3); font-family:inherit}
+  .proc-steps .steps .s.done,.proc-steps .steps .s.on{color:var(--ink)}
+  .proc-steps .steps .s:hover{background:var(--navhov)}
+  .proc-steps .steps .s.on:hover{background:var(--grnrow)}
+  .proc-foot{border-top:1px solid var(--bd2); padding:12px 4px 0}
+  .proc-main{min-width:0}
+  @media (max-width:1019px){ .proc{grid-template-columns:1fr} .proc-steps .steps{flex-direction:row; gap:6px; overflow-x:auto; counter-reset:st} .proc-steps .steps .s{min-height:30px; padding:2px 10px 2px 4px; border:1px solid var(--bd); border-radius:8px; align-items:center; font-size:13px; font-weight:400; white-space:nowrap} .proc-steps .steps .s::before{width:22px; height:22px; font:600 12px/20px "Heebo",system-ui,sans-serif} .proc-steps .steps .s::after{display:none} .proc-steps .steps .s>span{padding-top:0} .proc-steps .steps .s small{display:none} .proc-steps .steps .s.on{border-color:var(--grn); background:var(--grnsoft); color:var(--grnink); font-weight:700} }
+  .msgs{display:grid; grid-template-columns:minmax(280px,1fr) 1.6fr; gap:12px; align-items:start}
+  .msgs-list .hm-list{max-height:none}
+  .thr{display:flex; flex-direction:column; gap:4px; width:100%; text-align:right; border:0; border-bottom:1px solid var(--row); background:none; color:inherit; padding:11px 14px; min-height:44px; cursor:pointer; font-family:inherit}
+  .thr:hover{background:var(--hov)}
+  .thr.on{background:var(--grnrow)}
+  .thr .a{display:flex; align-items:center; gap:8px}
+  .thr .who{font-size:13.5px; font-weight:700; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .thr .tm{font-size:11.5px; color:var(--ink4); flex:none}
+  .thr .sj{font-size:13px; color:var(--ink)}
+  .thr .pv{font-size:12.5px; color:var(--ink3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .thr .mt{display:flex; align-items:center; gap:8px; margin-top:2px}
+  .msgs-main{display:flex; flex-direction:column; overflow:hidden}
+  .msgs-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:16px 16px 12px; border-bottom:1px solid var(--bd2)}
+  .msgs-body{padding:14px 16px; display:flex; flex-direction:column}
+  .msgs-foot{display:flex; gap:8px; align-items:center; padding:12px 16px; background:var(--sunk); border-top:1px solid var(--bd2)}
+  .bubble{border-radius:12px; padding:11px 13px; max-width:74%; font-size:13.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word}
+  .bubble.in{background:var(--inner); border:1px solid var(--bd2); color:var(--ink); align-self:flex-end}
+  .bubble.out{background:var(--grnsoft); border:1px solid var(--grn); color:var(--grnink); align-self:flex-start}
+  .bubble .bm{font-size:11.5px; color:var(--ink4); margin-top:6px; white-space:normal}
+  #cmPrev{max-width:none; align-self:stretch}
+  @media (max-width:1019px){ .msgs{grid-template-columns:1fr} }
+  .setgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px}
+  .setf .l{font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--ink3); margin-bottom:6px}
+  .setf .row{display:flex; align-items:center; gap:8px}
+  .setf .txtin.num{width:88px; text-align:center; font-family:"Heebo",system-ui,sans-serif; font-size:15px; font-weight:600; padding:0 8px}
+  .setf .u{font-size:13px; color:var(--ink3)}
+  .setf .n{font-size:12.5px; color:var(--ink4); margin-top:4px}
+  #orgAdmin[data-show="cities"]>.card:nth-child(2),#orgAdmin[data-show="users"]>.card:nth-child(1){display:none}
+  @media (max-width:1019px){ .setgrid{grid-template-columns:1fr} .setf .txtin.num{width:72px; height:44px} }
+
   /* ---- מגירת פרטים (406px משמאל) ---- */
   .hq-overlay{position:fixed; inset:0; background:rgba(34,34,31,.28); z-index:79; display:none}
   .hq-overlay.open{display:block}
@@ -4606,11 +4646,13 @@ function xlsToRows(buf){
     if(!H.canEdit('import')){ host.innerHTML=H.roNote('import'); return; }
     var cs=H.cities(); if(!IMP.cityId && cs.length) IMP.cityId=cs[0].id;
     var c=H.cityById(IMP.cityId);
-    host.innerHTML='<div class="card pad" style="margin-bottom:14px"><div class="sec-title">1 · לאיזו עיר ולאיזו שנה</div><div class="hq-toolbar" style="margin-top:8px"><select class="txtin" id="impCity">'+cs.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===IMP.cityId?' selected':'')+'>'+esc(x.name)+' · '+esc(x.year||'—')+' · '+he(x.students)+' תיקים</option>'; }).join('')+'</select>'+
+    host.innerHTML='<div class="proc"><div class="card proc-steps" id="impSteps"></div><div class="proc-main">'+
+      '<div class="card pad" style="margin-bottom:14px"><div class="sec-title">1 · לאיזו עיר ולאיזו שנה</div><div class="hq-toolbar" style="margin-top:8px"><select class="txtin" id="impCity">'+cs.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===IMP.cityId?' selected':'')+'>'+esc(x.name)+' · '+esc(x.year||'—')+' · '+he(x.students)+' תיקים</option>'; }).join('')+'</select>'+
       '<span class="hq-count">התיקים נפתחים בשנת הרישום הפעילה של העיר ('+esc(c?c.year:'')+'). גנים שבקובץ מותאמים לגני העיר לפי שם / סמל / גננת.</span></div>'+
       '<div class="frm" style="margin-top:10px"><label class="chk"><input type="checkbox" id="impReg"'+(IMP.opts.regByUs?' checked':'')+'> סמן את כולם "נרשמה על ידינו"</label><label class="chk"><input type="checkbox" id="impAbs"'+(IMP.opts.absorbed?' checked':'')+'> סמן את כולם "קלוט בעירייה" (כבוי כברירת מחדל — רק העירייה קובעת)</label><label class="chk"><input type="checkbox" id="impTz"'+(IMP.opts.tzaharon?' checked':'')+'> סמן את כולם כרשומים לצהרון</label><label class="chk"><input type="checkbox" id="impDup"'+(IMP.opts.skipDup?' checked':'')+'> דלג על ת"ז שכבר קיימת בעיר</label><label>חינוך (כשאין עמודה)<select class="txtin" id="impEdu"><option value="רגיל">רגיל</option><option value=\'ח"מ\''+(IMP.opts.edu==='ח"מ'?' selected':'')+'>חינוך מיוחד</option></select></label><label>מועד (כשאין עמודה)<select class="txtin" id="impPer">'+['א','ב','ג','סופי'].map(function(p){ return '<option'+(IMP.opts.period===p?' selected':'')+'>'+p+'</option>'; }).join('')+'</select></label></div></div>'+
       '<div class="card pad" style="margin-bottom:14px"><div class="sec-title">2 · הקובץ</div><div class="hq-toolbar" style="margin-top:8px"><input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt" class="txtin"><button class="btn-ghost" id="impTemplate"> תבנית לאקסל</button><span class="hq-count">או להדביק מאקסל:</span></div><textarea class="txtin" id="impPaste" rows="4" style="width:100%" placeholder="הדבקה ישירה מאקסל (כולל שורת כותרות)…"></textarea><div class="hq-toolbar" style="margin-top:8px;margin-bottom:0"><button class="btn-ghost" id="impPasteBtn">קריאת ההדבקה</button><span class="hq-count" id="impFileNote">'+esc(IMP.fileName?('נקרא: '+IMP.fileName):'')+'</span></div></div>'+
-      '<div id="impMap"></div><div id="impPreview"></div>';
+      '<div id="impMap"></div><div id="impPreview"></div></div></div>';
+    impSteps();
     $('#impCity').addEventListener('change',function(){ IMP.cityId=this.value; render(); });
     $('#impReg').addEventListener('change',function(){ IMP.opts.regByUs=this.checked; preview(); });
     $('#impAbs').addEventListener('change',function(){ IMP.opts.absorbed=this.checked; preview(); });
@@ -4634,6 +4676,21 @@ function xlsToRows(buf){
       setRows(parseTable(decodeFileText(buf)));
     };
     r.readAsArrayBuffer(file);
+  }
+  function impSteps(){
+    var host=$('#impSteps'); if(!host) return;
+    var c=H.cityById(IMP.cityId); var mapped=IMP.map?IMP.map.filter(Boolean).length:0, cols=IMP.rows?(IMP.rows[0]||[]).length:0;
+    var b=IMP.rows?build():null;
+    var st=[
+      ['עיר ושנה', c?(c.name+' · '+(c.year||'')):'בחירת עיר', 'done'],
+      ['הקובץ', IMP.rows?((IMP.fileName||'קובץ')+' · '+he(IMP.rows.length-1)+' שורות'):'העלאה או הדבקה מאקסל', IMP.rows?'done':'on'],
+      ['מיפוי עמודות', IMP.rows?(he(mapped)+' מתוך '+he(cols)+' עמודות מופו'):'אחרי קריאת הקובץ', IMP.rows?(mapped?'done':'on'):''],
+      ['אימות וקליטה', b?(he(b.list.length)+' ייפתחו · '+he(b.dup)+' כפולות'):'תצוגה מקדימה לפני הכתיבה', b?'on':'']
+    ];
+    host.innerHTML='<div class="hm-title">שלבי הייבוא</div><div class="steps">'+st.map(function(x,i){ return '<button type="button" class="s '+x[2]+'" data-imp-step="'+i+'"><span>'+x[0]+'<small>'+esc(x[1])+'</small></span></button>'; }).join('')+'</div>'+
+      '<div class="proc-foot"><div class="hq-count">'+(c?'התיקים נפתחים בשנת הרישום הפעילה של '+esc(c.name)+' ('+esc(c.year||'')+'). מה שכבר קיים לפי ת״ז אינו נדרס.':'')+'</div></div>';
+    var targets=['impCity','impFile','impMap','impPreview'];
+    $$('#impSteps [data-imp-step]').forEach(function(bt){ bt.addEventListener('click',function(){ var el=$('#'+targets[+bt.dataset.impStep]); if(el&&el.scrollIntoView) el.scrollIntoView({ block:'start', behavior:'smooth' }); }); });
   }
   function setRows(rows){ IMP.rows=rows; var hdr=rows[0]||[]; IMP.map=hdr.map(function(h){ return HMAP[normHeader(h)]||''; }); var n=$('#impFileNote'); if(n) n.textContent='נקרא: '+IMP.fileName+' · '+(rows.length-1)+' שורות · '+hdr.length+' עמודות'; renderMap(); }
   function renderMap(){
@@ -4684,6 +4741,7 @@ function xlsToRows(buf){
       go.disabled=true; go.textContent='מייבא…';
       LIVE.addStudents(b.city.id, b.city.year, b.list).then(function(n){ toast('✓ נפתחו '+n+' תיקים ב'+b.city.name); LIVE.hqSet('imports', null, { cityId:b.city.id, cityName:b.city.name, year:b.city.year, n:n, file:IMP.fileName, dup:b.dup, noGan:b.noGan, ids:b.list.map(function(s){ return s.id; }).slice(0,2000) }); LIVE.hqAudit('import', b.city.name+' · '+n+' תיקים · '+IMP.fileName); IMP.rows=null; IMP.fileName=''; render(); }).catch(function(e){ toast('הייבוא נכשל: '+H.hqErr(e)); go.disabled=false; go.textContent=' ייבוא'; });
     });
+    impSteps();
   }
   H.reg('import', render);
   window.__hqImport={ readRows:function(file,cb){ var r=new FileReader(); r.onload=function(){ var buf=r.result,u8=new Uint8Array(buf); var sig=function(a,b,c,d){ return u8[0]===a&&u8[1]===b&&u8[2]===c&&u8[3]===d; }; if(sig(0x50,0x4B,0x03,0x04)){ xlsxToRows(buf).then(function(res){ cb(res.rows); }).catch(function(){ toast('לא ניתן לקרוא xlsx'); }); return; } if(sig(0xD0,0xCF,0x11,0xE0)){ try{ cb(xlsToRows(buf).rows); }catch(e){ toast('לא ניתן לקרוא xls'); } return; } cb(parseTable(decodeFileText(buf))); }; r.readAsArrayBuffer(file); }, parseTable:parseTable, normHeader:normHeader, normDateVal:normDateVal };
@@ -4839,7 +4897,7 @@ function xlsToRows(buf){
   "use strict";
   var H=window.__hq; if(!H) return;
   var $=H.$, $$=H.$$, esc=H.esc, he=H.he, toast=H.toast, C=H.C, LIVE=H.LIVE;
-  var M={ aud:'parents', ch:'email', subject:'', body:'', tpl:'', pf:{ gan:'', age:'', edu:'', period:'', place:'', muni:'', prog:'' }, sf:{ role:'', ctx:'' }, mf:{ kind:'' }, manual:'', preset:null };
+  var M={ aud:'parents', ch:'email', subject:'', body:'', tpl:'', openLog:null, pf:{ gan:'', age:'', edu:'', period:'', place:'', muni:'', prog:'' }, sf:{ role:'', ctx:'' }, mf:{ kind:'' }, manual:'', preset:null };
   var VARS=[['{{שם הילדה}}',function(s){ return H.stuName(s); }],['{{שם משפחה}}',function(s){ return s.lastName||''; }],['{{שם האם}}',function(s){ return s.motherName||''; }],['{{שם האב}}',function(s){ return s.fatherName||''; }],['{{גן}}',function(s){ return s.gan||''; }],['{{סמל גן}}',function(s){ return s.ganSym||''; }],['{{גננת}}',function(s){ return s._teacher||''; }],['{{כתובת הגן}}',function(s){ return s._ganAddr||''; }],['{{עיר}}',function(s){ return s.cityName||''; }],['{{גיל}}',function(s){ return s.age||''; }],['{{שנה}}',function(s){ return s.year||''; }],['{{תאריך}}',function(){ return new Date().toLocaleDateString('he-IL'); }]];
   var PRESETS=[
     {t:'הודעת שיבוץ סופי',s:'שיבוץ {{שם הילדה}} לשנת {{שנה}}',m:'להורי {{שם הילדה}} שלום רב,\nשמחים להודיע כי {{שם הילדה}} שובצה לגן {{גן}} (סמל {{סמל גן}}), {{כתובת הגן}}, גננת: {{גננת}}.\nפרטים נוספים יישלחו לקראת פתיחת שנת הלימודים.\nבברכה, מחלקת הרישום'},
@@ -4878,28 +4936,46 @@ function xlsToRows(buf){
     var roles={}; H.allStaff().forEach(function(m){ if(m.role) roles[m.role]=1; });
     var opt=function(grp,name,cur,opts){ return '<select class="txtin" data-g="'+grp+'" data-f="'+name+'">'+opts.map(function(o){ return '<option value="'+esc(o[0])+'"'+(String(cur)===String(o[0])?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('')+'</select>'; };
     var log=(H.HQ().campaigns||[]).slice().sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); }).slice(0,30);
-    wrap.innerHTML=H.roNote('comm')+'<div class="grid-2" style="grid-template-columns:1.2fr 1fr;margin-top:0"><div class="card pad">'+
-      '<div class="sec-title">1 · למי</div><div class="hq-toolbar" style="margin-top:8px">'+H.citySelHTML('cmCitySel')+'<div class="chips">'+[['parents','הורים'],['staff','צוות וגננות'],['managers','רכזים, מנהלים ואנשי קשר'],['manual','רשימה ידנית']].map(function(a){ return '<button class="chipbtn" data-aud="'+a[0]+'" aria-pressed="'+(M.aud===a[0]&&!M.preset)+'">'+a[1]+'</button>'; }).join('')+(M.preset?'<span class="tag acc">רשימה שהגיעה ממסך אחר · '+M.preset.length+' <button class="btn-mini" id="cmPresetX">✕</button></span>':'')+'</div></div>'+
-      (M.preset?'':(M.aud==='parents'?'<div class="hq-toolbar">'+opt('pf','gan',M.pf.gan,[['','גן: הכל']].concat(Object.keys(gans).sort(function(a,b){ return H.sortHe(gans[a],gans[b]); }).map(function(k){ return [k,gans[k]]; })))+opt('pf','age',M.pf.age,[['','גיל: הכל'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6']])+opt('pf','edu',M.pf.edu,[['','חינוך: הכל'],['רגיל','רגיל'],['ח"מ','ח"מ']])+opt('pf','period',M.pf.period,[['','מועד: הכל'],['א','א׳'],['ב','ב׳'],['ג','ג׳'],['סופי','סופי']])+opt('pf','place',M.pf.place,[['','שיבוץ: הכל'],['placed','משובצים סופית'],['waiting','ממתינים'],['nogan','ללא גן']])+opt('pf','muni',M.pf.muni,[['','עירייה: הכל'],['1','קלוטים'],['0','טרם']])+opt('pf','prog',M.pf.prog,[['','תוכנית: הכל'],['tzaharon','צהרון'],['campHanukkah','קייטנת חנוכה'],['campNisan','קייטנת ניסן'],['campEndYear','קייטנת סוף שנה']])+'</div>'
-        :(M.aud==='staff'?'<div class="hq-toolbar">'+opt('sf','role',M.sf.role,[['','תפקיד: הכל']].concat(Object.keys(roles).sort(H.sortHe).map(function(r){ return [r,r]; })))+opt('sf','ctx',M.sf.ctx,[['','שיבוץ: הכל'],['activity','משובצים לגן'],['tzaharon','צהרונים']])+'</div>'
-        :(M.aud==='managers'?'<div class="hq-toolbar">'+opt('mf','kind',M.mf.kind,[['','הכל'],['coordinator','רכזי ערים'],['intake','אחראיות קליטה'],['manager','מנהלי ערים'],['users','משתמשי תוכנות הערים'],['teachers','גננות (לפי שיבוץ)'],['mgmt','ספר הטלפונים של ההנהלה בערים'],['other','אנשי קשר נוספים']])+'<span class="hq-count">אנשי הקשר מוגדרים ב"ערוצי רישום ואחראיות קליטה"</span></div>'
-        :'<textarea class="txtin" id="cmManual" rows="3" style="width:100%" placeholder="כתובות מייל או טלפונים, מופרדים בפסיק או בשורה">'+esc(M.manual)+'</textarea>'))))+
-      '<div class="hq-count" style="margin:6px 0 10px">קהל היעד: <b>'+he(list.length)+'</b> נמענים · '+he(withEmail)+' עם מייל · '+he(withPhone)+' עם טלפון <button class="btn-mini" id="cmShowList">רשימה</button></div>'+
-      '<div class="sec-title">2 · ערוץ</div><div class="chips" style="margin:8px 0 12px">'+[['email',' מייל (דרך הגשר)'],['whatsapp',' וואטסאפ'],['sms',' SMS'],['copy',' העתקת רשימה']].map(function(c){ return '<button class="chipbtn" data-ch="'+c[0]+'" aria-pressed="'+(M.ch===c[0])+'">'+c[1]+'</button>'; }).join('')+'</div>'+
-      '<div class="sec-title">3 · תוכן</div><div class="chips" style="margin:8px 0">'+PRESETS.map(function(p,i){ return '<button class="btn-mini" data-tpl="'+i+'">'+esc(p.t)+'</button>'; }).join('')+'</div>'+
-      (M.ch==='email'?'<input class="txtin" id="cmSubject" placeholder="נושא" value="'+esc(M.subject)+'" style="width:100%;margin-bottom:8px">':'')+
-      '<textarea class="txtin" id="cmBody" rows="7" style="width:100%">'+esc(M.body)+'</textarea><div class="hq-count" style="margin-top:6px">שדות מיזוג: '+VARS.map(function(v){ return '<code>'+esc(v[0])+'</code>'; }).join(' ')+'</div>'+
-      '<div class="sec-h">תצוגה מקדימה (נמען ראשון)</div><div class="ai-m bot" style="max-width:none" id="cmPrev">'+esc(list.length?merge(M.body,list[0].rec):M.body)+'</div>'+
-      '<div class="hq-toolbar" style="margin-top:12px;margin-bottom:0"><button class="btn-primary" id="cmSend"'+H.ro('comm')+'>'+(M.ch==='email'?' שליחת מייל ל-'+he(withEmail):(M.ch==='copy'?' העתקה':'פתיחת מצב ידני ('+he(withPhone)+')'))+'</button><button class="btn-ghost" id="cmTest">שליחת בדיקה אליי</button></div></div>'+
-      '<div class="card pad"><div class="sec-title">יומן שליחות של המרכזי</div><div class="feed" id="cmLog" style="margin-top:8px">'+(log.length?log.map(function(l){ return '<div class="ev reg"><div class="ic">'+(l.channel==='email'?'':(l.channel==='whatsapp'?'':(l.channel==='sms'?'':'')))+'</div><div><div class="tx"><b>'+esc(l.subject||l.aud||'')+'</b> · '+he(l.n||0)+' נמענים'+(l.sent!=null?' · נשלחו '+he(l.sent)+(l.failed?' · נכשלו '+l.failed:''):'')+'</div><div class="mt">'+esc(H.fmtDT(l.createdAt))+' · '+esc(l.createdBy||'')+' · '+esc(l.audLabel||'')+'</div></div></div>'; }).join(''):'<div class="hq-count">עדיין לא נשלחו הודעות מהמרכזי.</div>')+'</div>'+
-      '<div class="sec-h">שליחות אחרונות מתוכנות הערים</div><div class="feed" style="max-height:220px">'+(function(){ var arr=[]; H.selCities().forEach(function(c){ (c.settings.msgLog||[]).forEach(function(l){ arr.push(Object.assign({ city:c.name }, l)); }); }); arr.sort(function(a,b){ return (b.ts||b.at||0)-(a.ts||a.at||0); }); return arr.slice(0,15).map(function(l){ return '<div class="ev"><div class="ic"></div><div><div class="tx">'+esc(l.city)+' · '+esc(l.subject||l.tpl||l.channel||'הודעה')+(l.n?' · '+l.n+' נמענים':'')+'</div><div class="mt">'+esc(H.fmtDT(l.ts||l.at))+'</div></div></div>'; }).join('')||'<div class="hq-count">אין יומן בערים שנבחרו.</div>'; })()+'</div></div></div>';
+    var CH_L={email:'מייל',whatsapp:'וואטסאפ',sms:'SMS',copy:'העתקה',smoove:'Smoove'};
+    var openLog=M.openLog!=null?log.filter(function(l){ return l.id===M.openLog; })[0]:null;
+    var sub=$('#commSub'); if(sub) sub.textContent=he(log.length)+' דיוורים מהמרכזי · '+he(list.length)+' נמענים בקהל הנוכחי · '+he(withEmail)+' עם מייל';
+    var acts=$('#commActions'); if(acts) acts.innerHTML='<button type="button" class="btn-ghost" id="cmTplBtn">תבניות</button><button type="button" class="btn-primary" id="cmNew">הודעה חדשה</button>';
+    wrap.innerHTML=H.roNote('comm')+'<div class="msgs">'+
+      '<div class="tcard msgs-list"><div class="thead-bar"><div>דיוורים</div><div>'+he(log.length)+'</div></div><div class="hm-list" style="padding:0">'+(log.length?log.map(function(l){ return '<button type="button" class="thr'+(openLog&&openLog.id===l.id?' on':'')+'" data-log="'+esc(l.id||'')+'"><span class="a"><span class="lamp '+(l.failed&&!l.sent?'bad':(l.sent!=null?(l.n&&l.sent>=l.n?'done':'ok'):'wait'))+'"></span><span class="who">'+esc(l.audLabel||l.aud||'')+'</span><span class="tm">'+esc(H.fmtD(l.createdAt))+'</span></span><span class="sj">'+esc(l.subject||'(בלי נושא)')+'</span><span class="pv">'+esc(String(l.body||'').replace(/\s+/g,' ').slice(0,90))+'</span><span class="mt"><span class="tag '+(l.channel==='email'?'acc':(l.channel==='whatsapp'?'spc':''))+'">'+esc(CH_L[l.channel]||l.channel||'')+'</span><span class="hq-count">'+he(l.n||0)+' נמענים'+(l.sent!=null?' · נשלחו '+he(l.sent):'')+(l.failed?' · נכשלו '+he(l.failed):'')+'</span></span></button>'; }).join(''):'<div class="hm-empty" style="padding:14px"><span class="lamp wait"></span>עדיין לא נשלחו הודעות מהמרכזי.</div>')+'</div>'+
+        '<div class="tfoot"><div>שליחות אחרונות מתוכנות הערים</div></div><div class="feed" style="max-height:200px;padding:0 14px">'+(function(){ var arr=[]; H.selCities().forEach(function(c){ (c.settings.msgLog||[]).forEach(function(l){ arr.push(Object.assign({ city:c.name }, l)); }); }); arr.sort(function(a,b){ return (b.ts||b.at||0)-(a.ts||a.at||0); }); return arr.slice(0,10).map(function(l){ return '<div class="ev"><div class="ic"></div><div><div class="tx">'+esc(l.city)+' · '+esc(l.subject||l.tpl||l.channel||'הודעה')+(l.n?' · '+l.n+' נמענים':'')+'</div><div class="mt">'+esc(H.fmtDT(l.ts||l.at))+'</div></div></div>'; }).join('')||'<div class="hq-count" style="padding:10px 0">אין יומן בערים שנבחרו.</div>'; })()+'</div></div>'+
+      '<div class="card msgs-main">'+
+        (openLog?'<div class="msgs-head"><div><div class="hm-title">'+esc(openLog.subject||'(בלי נושא)')+'</div><div class="hq-count" style="margin-top:4px">'+esc(openLog.audLabel||'')+' · '+esc(CH_L[openLog.channel]||'')+' · '+esc(H.fmtDT(openLog.createdAt))+' · '+esc(openLog.createdBy||'')+'</div></div><div class="hm-actions"><button type="button" class="btn-mini" id="cmReuse">שימוש כתבנית</button><button type="button" class="btn-mini" id="cmCloseLog" aria-label="סגירה">✕</button></div></div>'+
+          '<div class="msgs-body"><div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">'+[['נמענים',openLog.n||0],['נשלחו',openLog.sent!=null?openLog.sent:'—'],['נכשלו',openLog.failed||0]].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+(typeof k[1]==='number'?he(k[1]):k[1])+'</div></div>'; }).join('')+'</div>'+
+          '<div class="bubble out">'+esc(openLog.body||'')+'<div class="bm">'+esc(openLog.createdBy||'')+' · '+esc(H.fmtDT(openLog.createdAt))+'</div></div>'+
+          ((openLog.errors||[]).length?'<div class="req bad" style="margin-top:12px"><div class="l">נכשלו</div><div class="t">'+he(openLog.errors.length)+' שליחות</div><div class="d" dir="ltr" style="text-align:right">'+esc(openLog.errors.slice(0,10).map(function(e){ return typeof e==='string'?e:(e.to||e.email||JSON.stringify(e)); }).join(', '))+'</div></div>':'')+'</div>'
+        :'<div class="msgs-head"><div><div class="hm-title">הודעה חדשה</div><div class="hq-count" style="margin-top:4px">קהל היעד: <b>'+he(list.length)+'</b> נמענים · '+he(withEmail)+' עם מייל · '+he(withPhone)+' עם טלפון <button type="button" class="btn-mini" id="cmShowList">רשימה</button></div></div></div>'+
+          '<div class="msgs-body">'+
+          '<div class="eyebrow" style="margin-bottom:8px">למי</div><div class="hq-toolbar">'+H.citySelHTML('cmCitySel')+'<div class="chips">'+[['parents','הורים'],['staff','צוות וגננות'],['managers','רכזים, מנהלים ואנשי קשר'],['manual','רשימה ידנית']].map(function(a){ return '<button type="button" class="chipbtn" data-aud="'+a[0]+'" aria-pressed="'+(M.aud===a[0]&&!M.preset)+'">'+a[1]+'</button>'; }).join('')+(M.preset?'<span class="tag acc">רשימה ממסך אחר · '+M.preset.length+' <button type="button" class="btn-mini" id="cmPresetX" style="height:20px;padding:0 6px;margin-inline-start:4px">✕</button></span>':'')+'</div></div>'+
+          (M.preset?'':(M.aud==='parents'?'<div class="hq-toolbar">'+opt('pf','gan',M.pf.gan,[['','גן: הכל']].concat(Object.keys(gans).sort(function(a,b){ return H.sortHe(gans[a],gans[b]); }).map(function(k){ return [k,gans[k]]; })))+opt('pf','age',M.pf.age,[['','גיל: הכל'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6']])+opt('pf','edu',M.pf.edu,[['','חינוך: הכל'],['רגיל','רגיל'],['ח"מ','ח"מ']])+opt('pf','period',M.pf.period,[['','מועד: הכל'],['א','א׳'],['ב','ב׳'],['ג','ג׳'],['סופי','סופי']])+opt('pf','place',M.pf.place,[['','שיבוץ: הכל'],['placed','משובצים סופית'],['waiting','ממתינים'],['nogan','ללא גן']])+opt('pf','muni',M.pf.muni,[['','עירייה: הכל'],['1','קלוטים'],['0','טרם']])+opt('pf','prog',M.pf.prog,[['','תוכנית: הכל'],['tzaharon','צהרון'],['campHanukkah','קייטנת חנוכה'],['campNisan','קייטנת ניסן'],['campEndYear','קייטנת סוף שנה']])+'</div>'
+            :(M.aud==='staff'?'<div class="hq-toolbar">'+opt('sf','role',M.sf.role,[['','תפקיד: הכל']].concat(Object.keys(roles).sort(H.sortHe).map(function(r){ return [r,r]; })))+opt('sf','ctx',M.sf.ctx,[['','שיבוץ: הכל'],['activity','משובצים לגן'],['tzaharon','צהרונים']])+'</div>'
+            :(M.aud==='managers'?'<div class="hq-toolbar">'+opt('mf','kind',M.mf.kind,[['','הכל'],['coordinator','רכזי ערים'],['intake','אחראיות קליטה'],['manager','מנהלי ערים'],['users','משתמשי תוכנות הערים'],['teachers','גננות (לפי שיבוץ)'],['mgmt','ספר הטלפונים של ההנהלה בערים'],['other','אנשי קשר נוספים']])+'<span class="hq-count">אנשי הקשר מוגדרים ב"ערוצי רישום"</span></div>'
+            :'<textarea class="txtin" id="cmManual" rows="3" style="width:100%" placeholder="כתובות מייל או טלפונים, מופרדים בפסיק או בשורה">'+esc(M.manual)+'</textarea>'))))+
+          '<div class="eyebrow" style="margin:12px 0 8px">ערוץ</div><div class="chips">'+[['email','מייל (דרך הגשר)'],['whatsapp','וואטסאפ'],['sms','SMS'],['copy','העתקת רשימה']].map(function(c){ return '<button type="button" class="chipbtn" data-ch="'+c[0]+'" aria-pressed="'+(M.ch===c[0])+'">'+c[1]+'</button>'; }).join('')+'</div>'+
+          '<div class="eyebrow" style="margin:12px 0 8px">תוכן</div><div class="chips" style="margin-bottom:8px">'+PRESETS.map(function(p,i){ return '<button type="button" class="chipbtn" data-tpl="'+i+'" aria-pressed="'+(M.tpl===i)+'">'+esc(p.t)+'</button>'; }).join('')+'</div>'+
+          (M.ch==='email'?'<input class="txtin" id="cmSubject" placeholder="נושא" value="'+esc(M.subject)+'" style="width:100%;margin-bottom:8px">':'')+
+          '<textarea class="txtin" id="cmBody" rows="7" style="width:100%">'+esc(M.body)+'</textarea><div class="hq-count" style="margin-top:6px">שדות מיזוג: '+VARS.map(function(v){ return '<code>'+esc(v[0])+'</code>'; }).join(' ')+'</div>'+
+          '<div class="eyebrow" style="margin:12px 0 8px">תצוגה מקדימה · נמען ראשון</div><div class="bubble out" id="cmPrev">'+esc(list.length?merge(M.body,list[0].rec):M.body)+'</div>'+
+          '</div><div class="msgs-foot"><button type="button" class="btn-primary" id="cmSend"'+H.ro('comm')+'>'+(M.ch==='email'?'שליחת מייל ל-'+he(withEmail):(M.ch==='copy'?'העתקה':'פתיחת מצב ידני ('+he(withPhone)+')'))+'</button><button type="button" class="btn-ghost" id="cmTest">שליחת בדיקה אליי</button></div>')+
+      '</div></div>';
+    var bb;
+    if((bb=$('#cmNew'))) bb.addEventListener('click',function(){ M.openLog=null; M.subject=''; M.body=''; M.tpl=''; M.preset=null; render(); });
+    if((bb=$('#cmTplBtn'))) bb.addEventListener('click',function(){ H.modal('תבניות', '<div class="kv">'+PRESETS.map(function(p,i){ return '<div class="r"><span class="k"><b style="color:var(--ink)">'+esc(p.t)+'</b><br>'+esc(p.s)+'</span><span class="v"><button type="button" class="btn-mini" data-tpl-pick="'+i+'">שימוש</button></span></div>'; }).join('')+'</div>', '<button type="button" class="btn-ghost" id="cmT-c">סגירה</button>'); $('#cmT-c').addEventListener('click',H.closeModal); $$('[data-tpl-pick]').forEach(function(x){ x.addEventListener('click',function(){ var p=PRESETS[+x.dataset.tplPick]; M.subject=p.s; M.body=p.m; M.tpl=+x.dataset.tplPick; M.openLog=null; H.closeModal(); render(); }); }); });
+    $$('#hqComm [data-log]').forEach(function(x){ x.addEventListener('click',function(){ M.openLog=x.dataset.log; render(); }); });
+    if((bb=$('#cmCloseLog'))) bb.addEventListener('click',function(){ M.openLog=null; render(); });
+    if((bb=$('#cmReuse'))) bb.addEventListener('click',function(){ M.subject=openLog.subject||''; M.body=openLog.body||''; M.ch=openLog.channel==='smoove'?'email':(openLog.channel||'email'); M.openLog=null; render(); });
+    if(openLog) return;
     H.wireCitySel('cmCitySel', render);
     $$('#hqComm [data-aud]').forEach(function(b){ b.addEventListener('click',function(){ M.aud=b.dataset.aud; M.preset=null; render(); }); });
     var px=$('#cmPresetX'); if(px) px.addEventListener('click',function(){ M.preset=null; render(); });
     $$('#hqComm [data-g]').forEach(function(s){ s.addEventListener('change',function(){ M[s.dataset.g][s.dataset.f]=s.value; render(); }); });
     var man=$('#cmManual'); if(man) man.addEventListener('input',H.debounce(function(){ M.manual=man.value; render(); },400));
     $$('#hqComm [data-ch]').forEach(function(b){ b.addEventListener('click',function(){ M.ch=b.dataset.ch; render(); }); });
-    $$('#hqComm [data-tpl]').forEach(function(b){ b.addEventListener('click',function(){ var p=PRESETS[+b.dataset.tpl]; M.subject=p.s; M.body=p.m; render(); }); });
+    $$('#hqComm [data-tpl]').forEach(function(b){ b.addEventListener('click',function(){ var p=PRESETS[+b.dataset.tpl]; M.subject=p.s; M.body=p.m; M.tpl=+b.dataset.tpl; render(); }); });
     var sb=$('#cmSubject'); if(sb) sb.addEventListener('input',function(){ M.subject=sb.value; });
     $('#cmBody').addEventListener('input',function(){ M.body=this.value; var l=recipients(); $('#cmPrev').textContent=l.length?merge(M.body,l[0].rec):M.body; });
     $('#cmShowList').addEventListener('click',function(){ var l=recipients(); H.modal('קהל היעד · '+l.length, H.tableHTML('cmListT',[{l:'שם',v:function(r){ return r.name; }},{l:'פירוט',v:function(r){ return r.sub; }},{l:'מייל',v:function(r){ return r.email; },ltr:true},{l:'טלפון',v:function(r){ return r.phone; },ltr:true}], l, { style:'max-height:60vh' }), '<button class="btn-ghost" id="cmL-x"> אקסל</button><button class="btn-ghost" id="cmL-c">סגירה</button>', true); $('#cmL-c').addEventListener('click',H.closeModal); $('#cmL-x').addEventListener('click',function(){ H.exportXLS('נמענים '+H.todayISO(),['שם','פירוט','מייל','טלפון'],l.map(function(r){ return [r.name,r.sub,r.email,r.phone]; })); }); });
@@ -5032,7 +5108,7 @@ function xlsToRows(buf){
   window.__hqReq={ add:addRequest, open:openRequest };
 
   /* ===== רישיון וסייעת ב׳ ===== */
-  var LSTATES=[['open','פתוח — טרם טופל'],['requested','הוגשה בקשה להגדלת רישיון'],['approved','אושר — הרישיון הוגדל'],['rejected','נדחה'],['moved','נפתר — ילדים הועברו'],['handled','טופל אחרת']];
+  var LSTATES=[['open','נדרשת הגדלת רישיון — טרם טופל'],['requested','הוגשה בקשה להגדלת רישיון'],['approved','אושר — הרישיון הוגדל'],['rejected','נדחה'],['moved','נפתר — ילדים הועברו'],['handled','טופל אחרת']];
   var BSTATES=[['open','זכאי — טרם הוגש'],['requested','הוגשה בקשה למשרד החינוך'],['approved','אושר'],['rejected','נדחה'],['appeal','הוגש תיק לוועדת ערר'],['assigned','שובצה סייעת ב׳'],['na','לא רלוונטי']];
   function issues(cs){
     var out=[];
@@ -5049,22 +5125,112 @@ function xlsToRows(buf){
       H.save('flags', H.flagId(kind,g.cityId,g.id), Object.assign(o,{ kind:kind, cityId:g.cityId, cityName:g.cityName, ganId:g.id, ganName:g.name, snapshot:g.enrolled, licenseCap:g.licenseCap||0, log:log }), '✓ עודכן');
     });
   }
+  var LC={ tab:'license', chip:'all', sel:{} };
+  var CARE_DONE={approved:1,moved:1,handled:1,rejected:1,assigned:1,na:1};
+  function stLabel(kind, st){ var states=kind==='license'?LSTATES:BSTATES; return (states.filter(function(x){ return x[0]===st; })[0]||[])[1]||st||''; }
+  function licRows(cs){
+    var th=H.thresholds();
+    return H.allGans(cs).filter(function(g){ return g.on; }).map(function(g){
+      var ls=H.licenseState(g), ab=H.assistantBState(g)||{};
+      var fl=H.flagFor('license',g.cityId,g.id), fb=H.flagFor('assistantB',g.cityId,g.id);
+      var licOver=ls.code==='over'||ls.code==='over-th';
+      var licActive=licOver && !(fl&&CARE_DONE[fl.status]&&fl.snapshot===g.enrolled);
+      var abStatus=(fb&&fb.status)||(ab.has?'assigned':'open');
+      var abActive=!!ab.eligible && !ab.has && !(fb&&(fb.status==='approved'||fb.status==='na'||fb.status==='rejected'));
+      var kind=licOver?'license':(ab.eligible?'assistantB':'');
+      var flag=kind==='license'?fl:fb;
+      var status=kind==='license'?((fl&&fl.status)||'open'):(kind?abStatus:'');
+      return { g:g, ls:ls, ab:ab, fl:fl, fb:fb, licOver:licOver, licActive:licActive, abStatus:abStatus, abActive:abActive, kind:kind, flag:flag, status:status, active:licActive||abActive, cap:g.licenseCap||th.license, key:g.cityId+'|'+g.id };
+    });
+  }
+  function licLamp(r){ var c=r.ls.code; return c==='over'||c==='over-th'?H.lamp('bad','חריגה מהתקן'):(c==='near'?H.lamp('warn','תקן מלא או מתקרב'):H.lamp('ok','מקומות פנויים')); }
+  function abLamp(r){ var ab=r.ab; if(!ab.eligible) return H.lamp('wait', ab.mandatory?'לא רלוונטי · גן חובה':(ab.girls===0?'לא רלוונטי · גן בנים':'לא רלוונטי'), true); var st=r.abStatus; if(st==='assigned'||st==='approved') return H.lamp('ok', st==='assigned'?'זכאי · שובצה':'זכאי · אושר'); if(st==='requested'||st==='appeal') return H.lamp('warn', st==='appeal'?'זכאי · ועדת ערר':'זכאי · הוגשה בקשה'); if(st==='na'||st==='rejected') return H.lamp('wait', stLabel('assistantB',st), true); return H.lamp('bad','זכאי · טרם הוגש'); }
+  function careCell(r){ if(!r.kind) return '<span class="hq-count">—</span>'; var f=r.flag||{}; var lab=stLabel(r.kind, r.status); var done=CARE_DONE[r.status]; return H.cell2(H.lamp(done?'done':(r.status==='open'?'bad':'warn'), lab), (f.owner?esc(f.owner):'')+(f.date?(f.owner?' · ':'')+esc(H.fmtDate(f.date)):'')+(f.ref?' · אסמכתא '+esc(f.ref):'')); }
+  var LIC_COLS=[
+    { l:'', v:function(r){ return ''; }, h:function(r){ return '<input type="checkbox" class="lc-ck" data-k="'+esc(r.key)+'"'+(LC.sel[r.key]?' checked':'')+' aria-label="בחירה">'; } },
+    { l:'גן', v:function(r){ return r.g.name; }, h:function(r){ return '<span class="nm"><span class="avatar">'+esc(H.initials(r.g.name.replace(/^גן\s+/,'')))+'</span>'+H.cell2(esc(r.g.name)+(r.g.gender?' · '+esc(r.g.gender):'')+(r.g.age?' '+esc(r.g.age):''), (r.g.sym?'סמל '+esc(r.g.sym):'')+(r.g.teacher?(r.g.sym?' · ':'')+esc(r.g.teacher):''))+'</span>'; } },
+    { l:'עיר', v:function(r){ return r.g.cityName; } },
+    { l:'רשומים / מכסה', v:function(r){ return r.g.enrolled; }, num:true, h:function(r){ var p=Math.min(100,Math.round(r.g.enrolled/(r.cap||1)*100)); return '<span dir="ltr" style="display:block;text-align:right;font-family:Heebo,system-ui,sans-serif;font-weight:600">'+r.g.enrolled+' / '+r.cap+'</span><span class="fillbar" style="margin-top:4px;min-width:0"><i style="width:'+p+'%;background:'+(r.licOver?'var(--bad)':'var(--grn)')+'"></i></span>'; } },
+    { l:'מצב הרישיון', v:function(r){ return r.ls.code; }, h:licLamp },
+    { l:'סייעת ב׳', v:function(r){ return r.abStatus; }, h:abLamp },
+    { l:'טיפול', v:function(r){ return stLabel(r.kind, r.status); }, h:function(r){ return careCell(r)+(r.kind&&H.canEdit('license')?' <button type="button" class="btn-mini" data-fl="'+esc(r.kind+'|'+r.g.cityId+'|'+r.g.id)+'" style="margin-inline-start:8px">עדכון טיפול</button>':''); } },
+    { l:'', v:function(){ return ''; }, h:function(){ return '‹'; }, chev:true }
+  ];
+  var LST={ sort:{i:3,d:-1} };
+  function licFiltered(rows){
+    var t=LC.tab, c=LC.chip;
+    var out=rows.filter(function(r){ if(t==='license') return r.licOver||r.ls.code==='near'; if(t==='assistantB') return !!r.ab.eligible; return r.active; });
+    return out.filter(function(r){
+      if(c==='over') return r.licOver;
+      if(c==='noasst') return r.abActive;
+      if(c==='requested') return r.status==='requested'||r.status==='appeal';
+      if(c==='done') return !!r.kind && !!CARE_DONE[r.status];
+      return true;
+    });
+  }
   function renderLicense(){
     var host=$('#hqLicense'); if(!host||offline(host,'license')) return;
-    var th=H.thresholds(); var all=issues(H.selCities()); var lic=all.filter(function(x){ return x.kind==='license'; }), asb=all.filter(function(x){ return x.kind==='assistantB'; });
-    var row=function(it){ var g=it.g; var states=it.kind==='license'?LSTATES:BSTATES; var lab=(states.filter(function(s){ return s[0]===it.status; })[0]||[])[1]||it.status; return '<div class="flag-row '+(it.active?'sev-high':'sev-ok')+'"><div class="fi">'+(it.kind==='license'?'':'')+'</div><div><div class="ft">'+esc(g.name)+' <span class="hq-count">'+esc(g.cityName)+' · גיל '+esc(g.age)+(g.gender?' · '+esc(g.gender):'')+'</span></div><div class="fs">'+(it.kind==='license'?esc(it.state.label)+' · '+g.enrolled+' רשומים':('בגן '+it.ab.girls+' בנות (סף '+th.assistantB+')'+(it.ab.has?' · סייעת ב׳ משובצת':' · <b>אין סייעת ב׳ משובצת</b>')))+' · <b>'+esc(lab)+'</b>'+(it.flag&&it.flag.owner?' · '+esc(it.flag.owner):'')+(it.flag&&it.flag.note?'<br>'+esc(it.flag.note):'')+'</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn-mini" data-fl="'+esc(it.kind+'|'+g.cityId+'|'+g.id)+'"'+H.ro('license')+'>עדכון טיפול</button><button class="btn-mini" data-gan="'+esc(g.cityId+'|'+g.id)+'">תלמידי הגן</button></div></div>'; };
-    host.innerHTML=H.roNote('license')+'<div class="kpis" style="margin-bottom:14px">'+[{l:'נדרשת הגדלת רישיון',v:he(lic.filter(function(x){ return x.active; }).length),s:he(lic.length)+' גנים מעל המכסה בסך הכל',cls:'kaccent'},{l:'זכאים לסייעת ב׳ ללא סייעת',v:he(asb.filter(function(x){ return x.active; }).length),s:he(asb.length)+' זכאים בסך הכל',cls:'kaccent'},{l:'סף רישיון כללי',v:th.license,s:'כשאין מכסה בכרטיס הגן'},{l:'סף סייעת ב׳',v:th.assistantB,s:'בנות בגן, לא גן חובה'}].map(H.kpiHTML).join('')+'</div>'+
-      '<div class="hq-toolbar">'+H.citySelHTML('lcCitySel')+'<span class="hq-count">הספים נקבעים ב"הגדרות והרשאות". גן שחזר מתחת למכסה — יורד מהרשימה לבד; גן שסומן "טופל" וחזר לחרוג — קופץ שוב.</span></div>'+
-      '<div class="grid-2" style="grid-template-columns:1fr 1fr;margin-top:0"><div class="card pad"><div class="sec-title"> גנים שצריכים הגדלת רישיון <span class="hq-count">'+lic.length+'</span></div>'+(lic.sort(function(a,b){ return (b.active-a.active)||(b.state.over-a.state.over); }).map(row).join('')||'<div class="hq-count" style="padding:12px 0">אין חריגות רישיון בערים שנבחרו </div>')+'</div>'+
-      '<div class="card pad"><div class="sec-title"> סייעת ב׳ — זכאות ומעקב מול משרד החינוך <span class="hq-count">'+asb.length+'</span></div>'+(asb.sort(function(a,b){ return (b.active-a.active)||(b.ab.girls-a.ab.girls); }).map(row).join('')||'<div class="hq-count" style="padding:12px 0">אין גנים מעל סף סייעת ב׳ בערים שנבחרו.</div>')+'</div></div>';
+    var th=H.thresholds(); var cs=H.selCities(); var rows=licRows(cs);
+    var nLic=rows.filter(function(r){ return r.licOver; }).length, nAb=rows.filter(function(r){ return r.ab.eligible; }).length, nCare=rows.filter(function(r){ return r.active; }).length;
+    var list=H.sortRows(licFiltered(rows), LIC_COLS, LST.sort);
+    var yr=''; cs.forEach(function(c){ if(!yr&&c.year) yr=c.year; });
+    var sub=$('#licenseSub'); if(sub) sub.textContent=he(cs.length)+' ערים'+(yr?' · '+yr:'')+' · סף רישיון כללי '+th.license+' · סף סייעת ב׳ '+th.assistantB+' בנות';
+    var selN=Object.keys(LC.sel).filter(function(k){ return LC.sel[k]; }).length;
+    var chips=[['all','הכול',rows.filter(function(r){ return r.kind; }).length,'ntr'],['over','חריגה מהתקן',nLic,'bad'],['noasst','זכאי בלי סייעת ב׳',rows.filter(function(r){ return r.abActive; }).length,'bad'],['requested','הוגשה בקשה',rows.filter(function(r){ return r.status==='requested'||r.status==='appeal'; }).length,'warn'],['done','טופל',rows.filter(function(r){ return r.kind&&CARE_DONE[r.status]; }).length,'ok']];
+    host.innerHTML=H.roNote('license')+
+      '<div class="tabs" role="tablist">'+[['license','הגדלת רישיון',nLic],['assistantB','סייעת ב׳',nAb],['care','טיפול נדרש',nCare]].map(function(t){ return '<button type="button" class="tab" role="tab" data-tab="'+t[0]+'" aria-selected="'+(LC.tab===t[0]?'true':'false')+'">'+t[1]+' <span class="n">'+he(t[2])+'</span></button>'; }).join('')+(nCare?'<span class="tag cly">'+he(nCare)+' לטיפול</span>':'')+'</div>'+
+      '<div class="hq-toolbar">'+H.citySelHTML('lcCitySel')+'<div class="chips">'+chips.map(function(c){ return '<button type="button" class="chipbtn" data-chip="'+c[0]+'" aria-pressed="'+(LC.chip===c[0]?'true':'false')+'"><i class="lamp '+c[3]+'" style="width:8px;height:8px"></i>'+c[1]+' <span class="hq-count">'+he(c[2])+'</span></button>'; }).join('')+'</div></div>'+
+      '<div id="lcTableHost">'+H.tableHTML('lcT', LIC_COLS, list, { clickable:true, rowAttr:function(r){ return 'data-k="'+esc(r.key)+'"'; }, sort:LST.sort, widths:['38px','196px','108px','178px','146px','116px','1fr','30px'], foot:'<div>'+he(list.length)+' מוצגים · '+he(nLic)+' גנים חורגים ממכסת הרישיון · '+he(nAb)+' זכאים לסייעת ב׳</div><div class="acts"><button type="button" class="btn-mini" id="lcExpList">ייצוא הרשימה</button></div>', fab:selN>0, empty:'אין גנים בסינון הזה. גן שחזר מתחת למכסה יורד מהרשימה לבד.' })+'</div>'+
+      (selN?'<div class="fab" id="lcFab"><span>'+he(selN)+' גנים נבחרו</span>'+(H.canEdit('license')?'<button type="button" class="btn main" id="lcBulk">עדכון טיפול לנבחרים</button>':'')+'<button type="button" class="btn" id="lcBulkExp">ייצוא</button><button type="button" class="btn x" id="lcSelNone" aria-label="ביטול הבחירה">✕</button></div>':'');
     H.wireCitySel('lcCitySel', renderLicense);
-    $$('#hqLicense [data-fl]').forEach(function(b){ b.addEventListener('click',function(){ var k=b.dataset.fl.split('|'); var it=all.filter(function(x){ return x.kind===k[0]&&x.g.cityId===k[1]&&x.g.id===k[2]; })[0]; if(it) editFlag(it); }); });
-    $$('#hqLicense [data-gan]').forEach(function(b){ b.addEventListener('click',function(){ window.__hqStudents.filterTo({ gan:b.dataset.gan }); C.switchTab('students'); }); });
+    $$('#hqLicense .tab[data-tab]').forEach(function(b){ b.addEventListener('click',function(){ LC.tab=b.dataset.tab; renderLicense(); }); });
+    $$('#hqLicense [data-chip]').forEach(function(b){ b.addEventListener('click',function(){ LC.chip=b.dataset.chip; renderLicense(); }); });
+    H.wireSort('lcT', LST, renderLicense);
+    var byKey={}; rows.forEach(function(r){ byKey[r.key]=r; });
+    var exportRows=function(l){ H.exportXLS('רישיון וסייעת ב׳ '+H.todayISO(),['עיר','גן','סמל','גננת','רשומים','מכסה','מצב הרישיון','סייעת ב׳','טיפול','אחראי/ת','תאריך','אסמכתא','הערות'],l.map(function(r){ var f=r.flag||{}; return [r.g.cityName,r.g.name,r.g.sym,r.g.teacher,r.g.enrolled,r.cap,r.ls.label,r.ab.eligible?stLabel('assistantB',r.abStatus):'לא רלוונטי',stLabel(r.kind,r.status),f.owner||'',H.fmtDate(f.date||''),f.ref||'',f.note||'']; }),'רישיון'); };
+    var b;
+    if((b=$('#lcExpList'))) b.addEventListener('click',function(){ exportRows(list); });
+    if((b=$('#lcBulkExp'))) b.addEventListener('click',function(){ exportRows(rows.filter(function(r){ return LC.sel[r.key]; })); });
+    if((b=$('#lcSelNone'))) b.addEventListener('click',function(){ LC.sel={}; renderLicense(); });
+    if((b=$('#lcBulk'))) b.addEventListener('click',function(){ var l=rows.filter(function(r){ return LC.sel[r.key]&&r.kind; }); if(!l.length){ toast('לנבחרים אין דגל לטיפול'); return; } bulkFlag(l); });
+    $$('#lcT .lc-ck').forEach(function(cb){ cb.addEventListener('change',function(){ LC.sel[cb.dataset.k]=cb.checked; renderLicense(); }); });
+    $$('#lcT tbody tr[data-k]').forEach(function(tr){ tr.addEventListener('click',function(e){ if(e.target.classList.contains('lc-ck')||e.target.closest('[data-fl]')) return; openGanFlag(byKey[tr.dataset.k]); }); });
+    $$('#hqLicense [data-fl]').forEach(function(bt){ bt.addEventListener('click',function(e){ e.stopPropagation(); var k=bt.dataset.fl.split('|'); var r=byKey[k[1]+'|'+k[2]]; if(r) editFlag(issueOf(r, k[0])); }); });
+    var acts=$('#licenseActions'); if(acts){ acts.innerHTML='<button type="button" class="btn-ghost" id="lcExp">ייצוא לאקסל</button>'+(H.canEdit('license')?'<button type="button" class="btn-primary" id="lcCare">עדכון טיפול</button>':''); $('#lcExp').addEventListener('click',function(){ exportRows(list); }); var lc=$('#lcCare'); if(lc) lc.addEventListener('click',function(){ var l=rows.filter(function(r){ return LC.sel[r.key]&&r.kind; }); if(!l.length){ toast('סמנו גנים ברשימה, או לחצו על שורה לעדכון גן אחד'); return; } bulkFlag(l); }); }
+  }
+  function issueOf(r, kind){ return kind==='license'?{ kind:'license', g:r.g, state:r.ls, flag:r.fl, status:(r.fl&&r.fl.status)||'open' }:{ kind:'assistantB', g:r.g, ab:r.ab, flag:r.fb, status:r.abStatus }; }
+  function bulkFlag(l){
+    var kind=l[0].kind; var states=kind==='license'?LSTATES:BSTATES;
+    H.promptForm('עדכון טיפול · '+l.length+' גנים', [{k:'status',l:'מצב הטיפול',t:'select',opts:states},{k:'owner',l:'אחראי/ת',v:H.me()},{k:'date',l:'תאריך',t:'date'},{k:'ref',l:'אסמכתא'},{k:'note',l:'הערות',t:'textarea'}], function(o){
+      var chain=Promise.resolve();
+      l.forEach(function(r){ var it=issueOf(r, r.kind); var f=it.flag||{}; var st=it.kind==='license'?LSTATES:BSTATES; var log=(f.log||[]).slice(); log.push({ at:Date.now(), by:H.me(), text:(st.filter(function(x){ return x[0]===o.status; })[0]||[])[1]+(o.note?' · '+o.note:'') });
+        chain=chain.then(function(){ return H.save('flags', H.flagId(it.kind,r.g.cityId,r.g.id), Object.assign({}, o, { kind:it.kind, cityId:r.g.cityId, cityName:r.g.cityName, ganId:r.g.id, ganName:r.g.name, snapshot:r.g.enrolled, licenseCap:r.g.licenseCap||0, log:log }), null); }); });
+      chain.then(function(){ LC.sel={}; toast('✓ עודכן ל-'+l.length+' גנים'); });
+    }, 'עדכון');
+  }
+  function openGanFlag(r){
+    if(!r) return; var g=r.g, th=H.thresholds();
+    var kv=function(list){ return '<div class="kv">'+list.map(function(x){ return '<div class="r"><span class="k">'+esc(x[0])+'</span><span class="v'+(x[1]?'':' empty')+'">'+(x[1]?x[1]:'—')+'</span></div>'; }).join('')+'</div>'; };
+    var fl=r.fl||{}, fb=r.fb||{};
+    var log=[].concat((fl.log||[]).map(function(x){ return Object.assign({ kind:'רישיון' }, x); }), (fb.log||[]).map(function(x){ return Object.assign({ kind:'סייעת ב׳' }, x); })).sort(function(a,b){ return (b.at||0)-(a.at||0); });
+    var body=
+      '<div class="kpis" style="grid-template-columns:repeat(2,1fr)">'+[['רשומים / מכסה','<span dir="ltr">'+g.enrolled+' / '+r.cap+'</span>'],['בנות בגן',he(r.ab.girls||0)],['גיל · חינוך',esc(String(g.age||'—'))+' · '+(g.edu==='spc'?'חינוך מיוחד':'רגיל')],['צוות בגן',he((g.roster||[]).length)]].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+k[1]+'</div></div>'; }).join('')+'</div>'+
+      (r.licActive?'<div class="req bad"><div class="l">נדרש</div><div class="t">הגשת בקשה להגדלת רישיון</div><div class="d">'+g.enrolled+' רשומים מול מכסת רישיון '+r.cap+' — חריגה של '+r.ls.over+'. הדגל יישאר עד עדכון טיפול.</div></div>':'')+
+      (r.abActive?'<div class="req bad"><div class="l">נדרש</div><div class="t">סייעת ב׳ · זכאי וטרם הוגש</div><div class="d">'+r.ab.girls+' בנות בגן מול סף '+th.assistantB+', והגן אינו גן חובה — ולכן זכאי לסייעת ב׳. אין סייעת ב׳ משובצת.</div></div>':'')+
+      '<div><div class="sec-h">מצב הרישיון</div>'+kv([['מצב',licLamp(r)],['פירוט',esc(r.ls.label)],['טיפול',r.licOver?H.lamp(CARE_DONE[fl.status]?'done':(fl.status&&fl.status!=='open'?'warn':'bad'), stLabel('license', fl.status||'open')):''],['אחראי/ת',esc(fl.owner||'')],['תאריך · אסמכתא',[fl.date?H.fmtDate(fl.date):'',fl.ref].filter(Boolean).map(esc).join(' · ')],['הערות',esc(fl.note||'')]])+'</div>'+
+      '<div><div class="sec-h">סייעת ב׳</div>'+kv([['מצב',abLamp(r)],['בנות בגן · סף',he(r.ab.girls||0)+' · '+th.assistantB],['אחראי/ת',esc(fb.owner||'')],['תאריך · אסמכתא',[fb.date?H.fmtDate(fb.date):'',fb.ref].filter(Boolean).map(esc).join(' · ')],['הערות',esc(fb.note||'')]])+'</div>'+
+      '<div><div class="sec-h">יומן טיפול</div>'+(log.length?'<div class="timeline">'+log.map(function(x){ return '<div class="ti"><span class="d">'+esc(H.fmtD(x.at))+'</span><div>'+esc(x.kind)+' · '+esc(x.text||'')+(x.by?' <span class="hq-count">'+esc(x.by)+'</span>':'')+'</div></div>'; }).join('')+'</div>':'<div class="hq-count">אין עדכוני טיפול עדיין.</div>')+'</div>';
+    var foot=(H.canEdit('license')?(r.licOver?'<button class="btn-primary" id="gf-lic" style="flex:1">עדכון טיפול · רישיון</button>':'')+(r.ab.eligible?'<button class="'+(r.licOver?'btn-ghost':'btn-primary')+'" id="gf-ab"'+(r.licOver?'':' style="flex:1"')+'>עדכון טיפול · סייעת ב׳</button>':''):'')+'<button class="btn-ghost" id="gf-stu">תלמידי הגן</button>';
+    H.openDrawer(g.name+(g.gender?' · '+g.gender:'')+(g.age?' '+g.age:''), body, foot, { label:'כרטיס גן · רישיון וסייעת ב׳', meta:esc(g.cityName)+(g.sym?' · סמל מוסד <span dir="ltr">'+esc(g.sym)+'</span>':'')+(g.teacher?' · גננת '+esc(g.teacher):'') });
+    var b;
+    if((b=$('#gf-lic'))) b.addEventListener('click',function(){ editFlag(issueOf(r,'license')); });
+    if((b=$('#gf-ab'))) b.addEventListener('click',function(){ editFlag(issueOf(r,'assistantB')); });
+    if((b=$('#gf-stu'))) b.addEventListener('click',function(){ window.__hqStudents.filterTo({ gan:g.cityId+'|'+g.id }); C.switchTab('students'); });
   }
   H.reg('license', renderLicense);
 
   /* ===== בקרת משרד החינוך ===== */
-  var MOE={ cityId:'', only:'' };
+  var MOE={ cityId:'', only:'', step:2, sel:{} };
   function moeDoc(cityId){ return (H.HQ().ministry||[]).filter(function(m){ return m.id===cityId; })[0]||{ students:{} }; }
   function setStatus(s){
     var r=H.ministryRec(s)||{};
@@ -5073,23 +5239,65 @@ function xlsToRows(buf){
       H.save('ministry', s.cityId, { cityName:s.cityName, students:st }, '✓ עודכן').then(function(){ H.closeDrawer(); });
     });
   }
+  function moeLamp(st){ return st==='ok'?H.lamp('done','מתוקצב/ת'):(st==='missing'?H.lamp('bad','לא נקלט/ה'):(st==='error'?H.lamp('warn','שגוי'):(st==='pending'?H.lamp('wait','בבדיקה'):H.lamp('wait','לא נבדק',true)))); }
   function renderMinistry(){
     var host=$('#hqMinistry'); if(!host||offline(host,'ministry')) return;
     var cs=H.cities(); if(!MOE.cityId&&cs.length) MOE.cityId=cs[0].id; var c=H.cityById(MOE.cityId); if(!c){ host.innerHTML=''; return; }
     var d=moeDoc(c.id); var stu=(c.stuFull||[]).filter(function(s){ return !s.finished; });
-    var rows=stu.map(function(s){ var r=H.ministryRec(s); return { s:s, r:r, st:r?r.status:'none' }; });
+    var rows=stu.map(function(s){ var r=H.ministryRec(s); return { s:s, r:r, st:r?r.status:'none', key:s.id }; });
     var cnt=function(k){ return rows.filter(function(x){ return x.st===k; }).length; };
+    var nIssues=cnt('missing')+cnt('error'), nOpen=nIssues+cnt('pending'), nNone=cnt('none');
     var list=rows.filter(function(x){ return !MOE.only||x.st===MOE.only; });
-    host.innerHTML=H.roNote('ministry')+'<div class="hq-toolbar"><select class="txtin" id="moeCity">'+cs.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===MOE.cityId?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('')+'</select><span class="hq-count">בדיקה אחרונה: '+esc(d.checkedAt?H.fmtDT(d.checkedAt)+' · '+(d.file||''):'טרם הועלתה מצבה')+'</span><span class="sp"></span><label class="btn-primary" style="cursor:pointer"'+(H.canEdit('ministry')?'':' aria-disabled="true"')+'> העלאת מצבת משרד החינוך (אקסל עם ת״ז)<input type="file" id="moeFile" accept=".xlsx,.xls,.csv,.txt" hidden'+H.ro('ministry')+'></label><button class="btn-ghost" id="moeExp"> אקסל</button></div>'+
-      '<div class="kpis" style="margin-bottom:14px">'+[{l:'תיקים בעיר',v:he(rows.length)},{l:'נקלטו ומתוקצבים',v:he(cnt('ok')),cls:'kaccent'},{l:'לא נקלטו',v:he(cnt('missing')),cls:cnt('missing')?'kaccent':''},{l:'שגויים',v:he(cnt('error'))},{l:'בבדיקה',v:he(cnt('pending'))},{l:'לא נבדקו',v:he(cnt('none'))},{l:'במצבה ואינם אצלנו',v:he((d.extra||[]).length),s:'ת"ז במשרד החינוך בלי תיק בעיר'}].map(H.kpiHTML).join('')+'</div>'+
-      '<div class="card pad"><div class="hq-toolbar"><div class="chips">'+[['','הכל'],['missing','לא נקלטו'],['error','שגויים'],['pending','בבדיקה'],['ok','מתוקצבים'],['none','לא נבדקו']].map(function(o){ return '<button class="chipbtn" data-only="'+o[0]+'" aria-pressed="'+(MOE.only===o[0])+'">'+o[1]+'</button>'; }).join('')+'</div><span class="hq-count">לחיצה על שורה — עדכון מצב וטיפול מול הרכז/ת</span></div>'+
-      H.tableHTML('moeT',[{l:'מצב',v:function(x){ return x.st; },h:function(x){ return x.st==='ok'?H.lamp('done','מתוקצב/ת'):(x.st==='missing'?H.lamp('bad','לא נקלט/ה'):(x.st==='error'?H.lamp('warn','שגוי'):(x.st==='pending'?H.lamp('wait','בבדיקה'):H.lamp('wait','לא נבדק',true)))); }},{l:'תלמיד/ה',v:function(x){ return H.stuName(x.s); },h:function(x){ return '<span class="strong">'+esc(H.stuName(x.s))+'</span>'; }},{l:'ת"ז',v:function(x){ return x.s.tz; },ltr:true},{l:'גן',v:function(x){ return x.s.gan; }},{l:'סמל',v:function(x){ return x.s.ganSym; }},{l:'עירייה',v:function(x){ return H.yn(x.s.absorbedMunicipality); }},{l:'הבעיה / הערה',v:function(x){ return x.r?x.r.note||'':''; }},{l:'לטיפול מול',v:function(x){ return x.r?x.r.owner||'':''; }},{l:'עודכן',v:function(x){ return x.r?H.fmtD(x.r.at):''; }}], list, { clickable:true, rowAttr:function(x){ return 'data-id="'+esc(x.s.id)+'"'; } })+
-      ((d.extra||[]).length?'<div class="sec-h">במצבת משרד החינוך ואינם בתוכנה ('+(d.extra||[]).length+')</div><div class="hq-count">'+esc((d.extra||[]).slice(0,80).join(', '))+((d.extra||[]).length>80?'…':'')+'</div>':'')+'</div>';
-    $('#moeCity').addEventListener('change',function(){ MOE.cityId=this.value; renderMinistry(); });
+    var selN=Object.keys(MOE.sel).filter(function(k){ return MOE.sel[k]; }).length;
+    var canE=H.canEdit('ministry');
+    var sub=$('#ministrySub'); if(sub) sub.textContent=esc(c.name)+(c.year?' · '+c.year:'')+' · '+(d.checkedAt?'הצלבה אחרונה '+H.fmtD(d.checkedAt):'טרם הועלתה מצבה')+' · '+he(nOpen)+' אי־התאמות פתוחות';
+    var steps=[
+      { n:1, t:'מצבת המשרד', s:d.checkedAt?(d.file||'קובץ')+' · '+he(d.fileRows||0)+' שורות':'טרם הועלתה מצבה לעיר הזאת', state:d.checkedAt?'done':(MOE.step===1?'on':'') },
+      { n:2, t:'בדיקת אי־התאמות', s:he(nIssues)+' לתיקון · '+he(cnt('pending'))+' בבדיקה', state:MOE.step===2?'on':(d.checkedAt&&nIssues===0?'done':'') },
+      { n:3, t:'מתוקצבים ודיווח', s:he(cnt('ok'))+' מתוקצבים מתוך '+he(rows.length), state:MOE.step===3?'on':(d.checkedAt&&nOpen===0?'done':'') }
+    ];
+    var chips=[['','הכל',rows.length,'ntr'],['missing','לא נקלטו',cnt('missing'),'bad'],['error','שגויים',cnt('error'),'warn'],['pending','בבדיקה',cnt('pending'),'wait'],['ok','מתוקצבים',cnt('ok'),'done'],['none','לא נבדקו',nNone,'wait']];
+    var COLS=[
+      { l:'', v:function(){ return ''; }, h:function(x){ return '<input type="checkbox" class="moe-ck" data-k="'+esc(x.key)+'"'+(MOE.sel[x.key]?' checked':'')+' aria-label="בחירה">'; } },
+      { l:'מצב', v:function(x){ return x.st; }, h:function(x){ return moeLamp(x.st); } },
+      { l:'תלמיד/ה', v:function(x){ return H.stuName(x.s); }, h:function(x){ return H.nameCell(H.stuName(x.s)); } },
+      { l:'ת"ז', v:function(x){ return x.s.tz; }, ltr:true },
+      { l:'גן', v:function(x){ return x.s.gan; }, h:function(x){ return H.cell2(esc(x.s.gan||'—'), x.s.ganSym?'סמל '+esc(x.s.ganSym):''); } },
+      { l:'עירייה', v:function(x){ return x.s.absorbedMunicipality?'קלוט':'טרם'; }, h:function(x){ return x.s.absorbedMunicipality?H.lamp('ok','קלוט/ה'):H.lamp('wait','טרם',true); } },
+      { l:'הבעיה ומה נדרש', v:function(x){ return x.r?x.r.note||'':''; }, h:function(x){ return x.r?H.cell2(esc(x.r.note||'—'), x.r.owner?'לטיפול מול '+esc(x.r.owner):''):'<span class="hq-count">—</span>'; } },
+      { l:'עודכן', v:function(x){ return x.r?x.r.at:0; }, h:function(x){ return x.r&&x.r.at?'<span class="hq-count">'+esc(H.fmtD(x.r.at))+'</span>':'<span class="hq-count">—</span>'; } },
+      { l:'', v:function(){ return ''; }, h:function(){ return '‹'; }, chev:true }
+    ];
+    var okList=rows.filter(function(x){ return x.st==='ok'; });
+    host.innerHTML=H.roNote('ministry')+
+      '<div class="hq-toolbar"><select class="txtin" id="moeCity" aria-label="עיר">'+cs.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===MOE.cityId?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('')+'</select><span class="hq-count">'+(d.checkedAt?'בדיקה אחרונה: '+esc(H.fmtDT(d.checkedAt))+' · '+esc(d.file||''):'טרם הועלתה מצבה')+'</span></div>'+
+      '<div class="proc"><div class="card proc-steps"><div class="hm-title">שלבי הבקרה</div><div class="steps">'+steps.map(function(st){ return '<button type="button" class="s '+st.state+'" data-step="'+st.n+'"><span>'+st.t+'<small>'+st.s+'</small></span></button>'; }).join('')+'</div>'+
+        '<div class="proc-foot"><label class="btn-ghost" style="width:100%;cursor:pointer">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'<input type="file" id="moeFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"'+(canE?'':' disabled')+'></label><div class="hq-count" style="margin-top:8px">אקסל עם עמודת ת״ז, ואם יש — סמל מוסד. ההצלבה מסמנת מתוקצבים, לא נקלטו, וסמל שונה.</div></div></div>'+
+      '<div class="proc-main">'+
+        (MOE.step===1?'<div class="kpis" style="margin-bottom:12px">'+[['תיקים בעיר',rows.length,''],['במצבת המשרד',d.fileRows||0,d.file||'—'],['במצבה ואינם אצלנו',(d.extra||[]).length,'ת״ז במשרד בלי תיק בעיר'],['לא נבדקו',nNone,'תיקים בלי ת״ז או לפני הצלבה']].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+he(k[1])+'</div>'+(k[2]?'<div class="ks">'+esc(String(k[2]))+'</div>':'')+'</div>'; }).join('')+'</div>'+
+          '<div class="card pad"><div class="sec-title">מקורות הנתונים</div><div class="sec-note" style="margin:4px 0 8px">ההצלבה משווה את תיקי העיר מול מצבת משרד החינוך לפי ת״ז</div><div class="kv">'+[['תיקי '+c.name,he(rows.length)+' תיקים פעילים · '+(c.year||'')],['מצבת משרד החינוך',d.checkedAt?esc(d.file||'קובץ')+' · '+he(d.fileRows||0)+' שורות · '+esc(H.fmtDT(d.checkedAt)):'טרם הועלתה'],['סימונים ידניים',he(rows.filter(function(x){ return x.r&&!x.r.auto; }).length)+' תיקים']].map(function(r){ return '<div class="r"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>'; }).join('')+'</div>'+
+          ((d.extra||[]).length?'<div class="req" style="margin-top:12px"><div class="l">לבדיקה</div><div class="t">'+he((d.extra||[]).length)+' ת״ז במצבת המשרד ואינם בתוכנה</div><div class="d" dir="ltr" style="text-align:right">'+esc((d.extra||[]).slice(0,60).join(', '))+((d.extra||[]).length>60?'…':'')+'</div></div>':'')+'</div>'
+        :MOE.step===3?'<div class="kpis" style="margin-bottom:12px">'+[['מתוקצבים',cnt('ok'),H.pct(cnt('ok'),rows.length)+'%'],['לא נקלטו',cnt('missing'),''],['שגויים',cnt('error'),''],['בבדיקה',cnt('pending'),'']].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+he(k[1])+'</div>'+(k[2]?'<div class="ks">'+k[2]+'</div>':'')+'</div>'; }).join('')+'</div>'+
+          H.tableHTML('moeOkT', COLS.slice(1,6).concat([COLS[7]]), okList, { widths:['116px','196px','108px','178px','92px','1fr'], foot:'<div>'+he(okList.length)+' מתוקצבים · '+esc(c.name)+'</div><div class="acts"><button type="button" class="btn-mini" id="moeExpOk">ייצוא לאקסל</button></div>', empty:'עדיין אין תיקים מתוקצבים בעיר הזאת.' })
+        :'<div class="chips" style="margin-bottom:12px">'+chips.map(function(o){ return '<button type="button" class="chipbtn" data-only="'+o[0]+'" aria-pressed="'+(MOE.only===o[0]?'true':'false')+'"><i class="lamp '+o[3]+'" style="width:8px;height:8px"></i>'+o[1]+' <span class="hq-count">'+he(o[2])+'</span></button>'; }).join('')+'</div>'+
+          H.tableHTML('moeT', COLS, list, { clickable:true, rowAttr:function(x){ return 'data-id="'+esc(x.s.id)+'"'; }, widths:['38px','116px','190px','104px','172px','92px','1fr','92px','30px'], foot:'<div>'+he(list.length)+' מוצגים · '+he(nOpen)+' אי־התאמות פתוחות</div><div class="acts"><button type="button" class="btn-mini" id="moeExp">ייצוא לאקסל</button></div>', fab:selN>0, empty:'אין תיקים בסינון הזה.' }))+
+      '</div></div>'+
+      (selN?'<div class="fab" id="moeFab"><span>'+he(selN)+' תיקים נבחרו</span>'+(canE?'<button type="button" class="btn main" id="moeBulkOk">סימון כמתוקצבים</button><button type="button" class="btn" id="moeBulkPend">סימון בבדיקה</button>':'')+'<button type="button" class="btn x" id="moeSelNone" aria-label="ביטול הבחירה">✕</button></div>':'');
+    $('#moeCity').addEventListener('change',function(){ MOE.cityId=this.value; MOE.sel={}; renderMinistry(); });
+    $$('#hqMinistry [data-step]').forEach(function(b){ b.addEventListener('click',function(){ MOE.step=+b.dataset.step; renderMinistry(); }); });
     $$('#hqMinistry [data-only]').forEach(function(b){ b.addEventListener('click',function(){ MOE.only=b.dataset.only; renderMinistry(); }); });
-    $$('#moeT tbody tr[data-id]').forEach(function(tr){ tr.addEventListener('click',function(){ var s=H.findStudent(c.id, tr.dataset.id); if(s){ if(H.canEdit('ministry')) setStatus(s); else window.__hqStudents.open(c.id, s.id); } }); });
-    $('#moeExp').addEventListener('click',function(){ H.exportXLS('בקרת משרד החינוך '+c.name+' '+H.todayISO(),['מצב','תלמיד/ה','ת"ז','גן','סמל','קלוט בעירייה','הערה','לטיפול מול'],list.map(function(x){ return [H.ministryLabel(x.s),H.stuName(x.s),x.s.tz,x.s.gan,x.s.ganSym,H.yn(x.s.absorbedMunicipality),x.r?x.r.note||'':'',x.r?x.r.owner||'':'']; }),'בקרת משרד החינוך · '+c.name); });
+    $$('#moeT .moe-ck').forEach(function(cb){ cb.addEventListener('change',function(){ MOE.sel[cb.dataset.k]=cb.checked; renderMinistry(); }); });
+    $$('#moeT tbody tr[data-id]').forEach(function(tr){ tr.addEventListener('click',function(e){ if(e.target.classList.contains('moe-ck')) return; var s=H.findStudent(c.id, tr.dataset.id); if(s){ if(canE) setStatus(s); else window.__hqStudents.open(c.id, s.id); } }); });
+    var expRows=function(l){ H.exportXLS('בקרת משרד החינוך '+c.name+' '+H.todayISO(),['מצב','תלמיד/ה','ת"ז','גן','סמל','קלוט בעירייה','הערה','לטיפול מול'],l.map(function(x){ return [H.ministryLabel(x.s),H.stuName(x.s),x.s.tz,x.s.gan,x.s.ganSym,H.yn(x.s.absorbedMunicipality),x.r?x.r.note||'':'',x.r?x.r.owner||'':'']; }),'בקרת משרד החינוך'); };
+    var b;
+    if((b=$('#moeExp'))) b.addEventListener('click',function(){ expRows(list); });
+    if((b=$('#moeExpOk'))) b.addEventListener('click',function(){ expRows(okList); });
+    if((b=$('#moeSelNone'))) b.addEventListener('click',function(){ MOE.sel={}; renderMinistry(); });
+    var bulk=function(status){ var l=rows.filter(function(x){ return MOE.sel[x.key]; }); if(!l.length) return; var st=Object.assign({}, d.students||{}); l.forEach(function(x){ var k=H.tzKey(x.s.tz)||('id:'+x.s.id); st[k]=Object.assign({}, st[k]||{}, { name:H.stuName(x.s), sid:x.s.id, status:status, at:Date.now(), by:H.me() }); }); H.save('ministry', c.id, { cityName:c.name, students:st }, '✓ עודכנו '+l.length+' תיקים').then(function(){ MOE.sel={}; }); };
+    if((b=$('#moeBulkOk'))) b.addEventListener('click',function(){ bulk('ok'); });
+    if((b=$('#moeBulkPend'))) b.addEventListener('click',function(){ bulk('pending'); });
     var f=$('#moeFile'); if(f) f.addEventListener('change',function(){ var file=this.files&&this.files[0]; if(!file) return; window.__hqImport.readRows(file,function(rows){ crossCheck(c, rows, file.name); }); });
+    var acts=$('#ministryActions'); if(acts){ acts.innerHTML='<button type="button" class="btn-ghost" id="moeExpHead">ייצוא לאקסל</button>'+(canE?'<button type="button" class="btn-primary" id="moeUpHead">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'</button>':''); $('#moeExpHead').addEventListener('click',function(){ expRows(rows); }); var u=$('#moeUpHead'); if(u) u.addEventListener('click',function(){ var fi=$('#moeFile'); if(fi) fi.click(); }); }
   }
   function crossCheck(c, rows, fileName){
     if(!rows.length){ toast('הקובץ ריק'); return; }
@@ -5219,20 +5427,46 @@ function xlsToRows(buf){
   var $=H.$, $$=H.$$, esc=H.esc, he=H.he, toast=H.toast, C=H.C, LIVE=H.LIVE;
 
   /* ===== הגדרות (נוסף מעל מסך "הרשאות עבודה" הקיים) ===== */
+  var SET={ tab:'th' };
   function renderSettings(){
-    var host=$('#hqSettings'); var perms=$('#view-perms');
-    if(!host){ host=document.createElement('div'); host.id='hqSettings'; var anchor=$('#orgAdmin'); anchor.parentNode.insertBefore(host, anchor); }
-    if(!C.live){ host.innerHTML=''; return; }
-    var st=H.HQ().settings||{}; var th=H.thresholds(); var perms_=st.perms||{}; var org=C.org||{ users:{} };
-    var hqUsers=Object.keys(org.users||{}).filter(function(em){ return org.users[em].hq; }).sort(); (LIVE.isOwner(H.me())?[H.me()]:[]).forEach(function(em){ if(hqUsers.indexOf(em)<0) hqUsers.push(em); });
+    var host=$('#hqSettings'); var org=$('#orgAdmin');
+    if(!host){ host=document.createElement('div'); host.id='hqSettings'; org.parentNode.insertBefore(host, org); }
+    var acts=$('#permsActions');
+    if(!C.live){ host.innerHTML=''; if(acts) acts.innerHTML=''; if(org){ org.hidden=false; org.removeAttribute('data-show'); } return; }
+    var st=H.HQ().settings||{}; var th=H.thresholds(); var perms_=st.perms||{}; var orgD=C.org||{ users:{} };
+    var hqUsers=Object.keys(orgD.users||{}).filter(function(em){ return orgD.users[em].hq; }).sort(); (LIVE.isOwner(H.me())?[H.me()]:[]).forEach(function(em){ if(hqUsers.indexOf(em)<0) hqUsers.push(em); });
     var canP=H.isOwner()||H.canEdit('perms');
-    host.innerHTML='<div class="card pad" style="margin-bottom:14px"><div class="sec-title"> ספים ובקרה</div><div class="sec-note" style="margin:6px 0">הספים קובעים מה קופץ ב"דורש טיפול" וב"רישיון וסייעת ב׳".</div><div class="frm"><label>סף רישיון כללי (ילדים בגן, כשאין מכסה בכרטיס הגן)<input class="txtin" type="number" id="thLic" value="'+th.license+'"'+(canP?'':' disabled')+'></label><label>סף סייעת ב׳ (בנות בגן)<input class="txtin" type="number" id="thB" value="'+th.assistantB+'"'+(canP?'':' disabled')+'></label><label>ימים לתשובה על פנייה<input class="txtin" type="number" id="thReq" value="'+th.requestDays+'"'+(canP?'':' disabled')+'></label></div><div class="hq-toolbar" style="margin:8px 0 0"><button class="btn-primary" id="thSave"'+(canP?'':' disabled')+'> שמירה</button></div></div>'+
-      '<div class="card pad" style="margin-bottom:14px"><div class="sec-title"> מה כל אחד/ת יכול/ה לערוך במרכזי <span class="hq-count">משתמשי מרכז בלבד · בעלי המערכת תמיד הכל</span></div><div class="sec-note" style="margin:6px 0">עריכה = לעבוד במודול · צפייה = לראות בלי לשנות · אין = המסך מוסתר. משתמש/ת בלי שורה — עריכה בכל המודולים. ההרשאות כאן הן בממשק; בשרת כל משתמש/ת מרכז מורשה לכתוב (ראה docs/SECURITY.md).</div>'+
-      (hqUsers.length?'<div class="hq-scroll" style="max-height:50vh"><table class="hq-table" style="min-width:auto"><thead><tr><th>משתמש/ת</th>'+H.MODULES.map(function(m){ return '<th style="font-size:.7rem">'+esc(m[1])+'</th>'; }).join('')+'</tr></thead><tbody>'+hqUsers.map(function(em){ var own=LIVE.isOwner(em); var row=perms_[em]||{}; return '<tr><td dir="ltr" style="text-align:right">'+esc(em)+(own?' <span class="pill ok">בעלים</span>':'')+(em===H.me()?' <span class="pill off">אני</span>':'')+'</td>'+H.MODULES.map(function(m){ if(own) return '<td class="live-note">הכל</td>'; var v=row[m[0]]||'edit'; return '<td><select class="txtin perm-sel" data-em="'+esc(em)+'" data-m="'+m[0]+'" style="min-height:30px;padding:2px 6px;font-size:.78rem"'+(canP?'':' disabled')+'><option value="edit"'+(v==='edit'?' selected':'')+'>עריכה</option><option value="view"'+(v==='view'?' selected':'')+'>צפייה</option><option value="none"'+(v==='none'?' selected':'')+'>אין</option></select></td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table></div>':'<div class="hq-count">אין עדיין משתמשי מרכז במרשם (מלבד הבעלים). מוסיפים למטה — "הוספת משתמש/ת" בלי עיר = מרכז.</div>')+'</div>'+
-      '<div class="card pad" style="margin-bottom:14px"><div class="sec-title"> יומן פעולות המרכזי <span class="hq-count">שיבוץ מרכזי, ייבוא, הצלבות</span></div><div class="feed" style="margin-top:8px;max-height:260px">'+((H.HQ().audit||[]).slice().sort(function(a,b){ return (b.at||0)-(a.at||0); }).slice(0,40).map(function(a){ return '<div class="ev"><div class="ic">'+(({place:'',import:'',ministry:''})[a.action]||'')+'</div><div><div class="tx">'+esc(a.detail||a.action)+'</div><div class="mt">'+esc(H.fmtDT(a.at))+' · '+esc(a.by||'')+'</div></div></div>'; }).join('')||'<div class="hq-count">עדיין אין פעולות.</div>')+'</div></div>';
-    $('#thSave').addEventListener('click',function(){ H.saveSettings({ thresholds:{ license:+$('#thLic').value||35, assistantB:+$('#thB').value||30, requestDays:+$('#thReq').value||7 } }); });
+    var cs=H.cities(); var gans=H.allGans(cs);
+    var nLic=gans.filter(function(g){ var l=H.licenseState(g); return l.code==='over'||l.code==='over-th'; }).length;
+    var nNear=gans.filter(function(g){ return H.licenseState(g).code==='near'; }).length;
+    var nAb=gans.filter(function(g){ var ab=H.assistantBState(g); return ab&&ab.eligible&&!ab.has; }).length;
+    var now=Date.now(); var nLate=(H.HQ().requests||[]).filter(function(r){ return r.status!=='closed' && ((r.due&&new Date(r.due).getTime()<now)||(now-(r.createdAt||now))>th.requestDays*86400000); }).length;
+    var audit=(H.HQ().audit||[]).slice().sort(function(a,b){ return (b.at||0)-(a.at||0); }); var month=audit.filter(function(a){ return now-(a.at||0)<30*86400000; });
+    var AL={place:'שיבוץ מרכזי',import:'ייבוא מאקסל',ministry:'הצלבת מצבת משרד החינוך'};
+    var cityUsers=Object.keys(orgD.users||{}).length;
+    var tabs=[['th','ספים ובקרה',null],['perms','הרשאות',hqUsers.length],['users','משתמשים',cityUsers],['cities','מרשם ערים',(orgD.cities||[]).length],['log','יומן פעולות',month.length]];
+    var numField=function(id,label,val,unit,note){ return '<div class="setf"><div class="l">'+label+'</div><div class="row"><input class="txtin num" type="number" id="'+id+'" value="'+val+'"'+(canP?'':' disabled')+'><span class="u">'+unit+'</span></div><div class="n">'+note+'</div></div>'; };
+    host.innerHTML='<div class="tabs" role="tablist">'+tabs.map(function(t){ return '<button type="button" class="tab" role="tab" data-tab="'+t[0]+'" aria-selected="'+(SET.tab===t[0]?'true':'false')+'">'+t[1]+(t[2]!=null?' <span class="n">'+he(t[2])+'</span>':'')+'</button>'; }).join('')+'</div>'+
+      '<div data-pane="th"'+(SET.tab==='th'?'':' hidden')+'>'+
+        '<div class="card pad" style="margin-bottom:12px"><div class="sec-title">ספים ובקרה</div><div class="sec-note" style="margin:4px 0 12px">הספים קובעים מתי גן או פנייה נכנסים לרשימת "דורש טיפול". שינוי חל על כל הערים.</div><div class="setgrid">'+numField('thLic','סף רישיון כללי',th.license,'ילדים בגן','כשאין מכסת רישיון בכרטיס הגן')+numField('thB','סף סייעת ב׳',th.assistantB,'בנות בגן','גן שאינו גן חובה')+numField('thReq','יעד לתשובה על פנייה',th.requestDays,'ימי עבודה','פנייה שעברה את היעד נצבעת "באיחור"')+'</div>'+
+          '<div class="req" id="thDirty" hidden><div class="l">נדרש</div><div class="t">שמירה כדי להחיל את הספים</div><div class="d">עד השמירה הדגלים ממשיכים לפי הערכים השמורים.</div></div></div>'+
+        '<div class="card pad"><div class="sec-title">מה נדלק בעקבות הספים <span class="hq-count">כרגע, בערכים השמורים</span></div><div class="kpis" style="margin-top:10px">'+[['גנים מעל סף הרישיון',nLic,'נדרשת הגדלת רישיון'],['על גבול הרישיון',nNear,'מקום אחד או פחות'],['זכאים לסייעת ב׳ בלי סייעת',nAb,'סף '+th.assistantB+' בנות'],['פניות מעבר ליעד',nLate,th.requestDays+' ימי עבודה']].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+he(k[1])+'</div><div class="ks">'+k[2]+'</div></div>'; }).join('')+'</div></div>'+
+      '</div>'+
+      '<div data-pane="perms"'+(SET.tab==='perms'?'':' hidden')+'><div class="card pad"><div class="sec-title">מה כל אחד/ת יכול/ה לערוך במרכזי <span class="hq-count">משתמשי מרכז בלבד · בעלי המערכת תמיד הכל</span></div><div class="sec-note" style="margin:4px 0 10px">עריכה = לעבוד במודול · צפייה = לראות בלי לשנות · אין = המסך מוסתר. משתמש/ת בלי שורה — עריכה בכל המודולים. ההרשאות כאן הן בממשק; בשרת כל משתמש/ת מרכז מורשה לכתוב (ראה docs/SECURITY.md).</div>'+
+        (hqUsers.length?'<div class="hq-scroll" style="max-height:50vh"><table class="hq-table" style="min-width:auto"><thead><tr><th>משתמש/ת</th>'+H.MODULES.map(function(m){ return '<th>'+esc(m[1])+'</th>'; }).join('')+'</tr></thead><tbody>'+hqUsers.map(function(em){ var own=LIVE.isOwner(em); var row=perms_[em]||{}; return '<tr><td dir="ltr" style="text-align:right"><span class="nm"><span class="avatar">'+esc(H.initials((orgD.users[em]&&orgD.users[em].name)||em))+'</span><span>'+esc(em)+'</span></span>'+(own?' '+H.lamp('done','בעלים'):'')+(em===H.me()?' <span class="hq-count">אני</span>':'')+'</td>'+H.MODULES.map(function(m){ if(own) return '<td>'+H.lamp('done','הכל')+'</td>'; var v=row[m[0]]||'edit'; return '<td><span class="lampt"><i class="lamp '+(v==='edit'?'ok':(v==='view'?'wait':'bad'))+'"></i><select class="txtin perm-sel" data-em="'+esc(em)+'" data-m="'+m[0]+'" style="height:30px;padding:0 26px 0 8px;font-size:13px"'+(canP?'':' disabled')+'><option value="edit"'+(v==='edit'?' selected':'')+'>עריכה</option><option value="view"'+(v==='view'?' selected':'')+'>צפייה</option><option value="none"'+(v==='none'?' selected':'')+'>אין</option></select></span></td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table></div>':'<div class="hq-count">אין עדיין משתמשי מרכז במרשם (מלבד הבעלים). מוסיפים בלשונית "משתמשים" — משתמש/ת בלי עיר = מרכז.</div>')+
+        '<div class="tfoot" style="margin:12px -16px -16px;border-radius:0 0 12px 12px"><div>בעלי המערכת רואים ועורכים הכל · משתמש/ת בלי שורה מקבל/ת עריכה בכל המודולים</div><div class="acts"><button type="button" class="btn-mini" data-tab-go="users">הוספת משתמש/ת</button></div></div></div></div>'+
+      '<div data-pane="log"'+(SET.tab==='log'?'':' hidden')+'><div class="tcard"><div class="thead-bar"><div>יומן פעולות המרכזי</div><div>30 הימים האחרונים</div></div><div class="hm-list" style="padding:0 16px">'+(audit.length?audit.slice(0,60).map(function(x){ return '<div class="hm-row"><div class="tm">'+esc(H.fmtD(x.at))+'</div><div class="tx">'+esc(AL[x.action]||x.action||'')+(x.detail?' · '+esc(x.detail):'')+'</div><div class="who" title="'+esc(x.by||'')+'">'+esc(x.by||'')+'</div></div>'; }).join(''):'<div class="hm-empty"><span class="lamp wait"></span>עדיין אין פעולות.</div>')+'</div><div class="tfoot"><div>'+he(month.length)+' פעולות בחודש · שיבוצים, ייבואים והצלבות</div><div class="acts"><button type="button" class="btn-mini" id="auditExp">ייצוא היומן</button></div></div></div></div>';
+    if(org){ var showOrg=SET.tab==='users'||SET.tab==='cities'; org.hidden=!showOrg; if(showOrg) org.setAttribute('data-show', SET.tab); else org.removeAttribute('data-show'); }
+    if(acts) acts.innerHTML=(SET.tab==='th'&&canP?'<button type="button" class="btn-ghost" id="thReset">ביטול שינויים</button><button type="button" class="btn-primary" id="thSave">שמירת ההגדרות</button>':'');
+    var dirty=function(){ var d=(+$('#thLic').value!==th.license)||(+$('#thB').value!==th.assistantB)||(+$('#thReq').value!==th.requestDays); var el=$('#thDirty'); if(el) el.hidden=!d; };
+    ['#thLic','#thB','#thReq'].forEach(function(sel){ var el=$(sel); if(el) el.addEventListener('input', dirty); });
+    var b;
+    if((b=$('#thSave'))) b.addEventListener('click',function(){ H.saveSettings({ thresholds:{ license:+$('#thLic').value||35, assistantB:+$('#thB').value||30, requestDays:+$('#thReq').value||7 } }); });
+    if((b=$('#thReset'))) b.addEventListener('click',function(){ $('#thLic').value=th.license; $('#thB').value=th.assistantB; $('#thReq').value=th.requestDays; dirty(); });
+    if((b=$('#auditExp'))) b.addEventListener('click',function(){ H.exportXLS('יומן המרכזי '+H.todayISO(),['תאריך','פעולה','פירוט','מי'],audit.map(function(x){ return [H.fmtDT(x.at),AL[x.action]||x.action||'',x.detail||'',x.by||'']; }),'יומן'); });
+    $$('#hqSettings .tab[data-tab]').forEach(function(t){ t.addEventListener('click',function(){ SET.tab=t.dataset.tab; renderSettings(); }); });
+    $$('#hqSettings [data-tab-go]').forEach(function(t){ t.addEventListener('click',function(){ SET.tab=t.dataset.tabGo; renderSettings(); }); });
     $$('.perm-sel',host).forEach(function(sel){ sel.addEventListener('change',function(){ var next=JSON.parse(JSON.stringify(perms_)); next[sel.dataset.em]=next[sel.dataset.em]||{}; next[sel.dataset.em][sel.dataset.m]=sel.value; H.saveSettings({ perms:next }, '✓ ההרשאה נשמרה'); }); });
-    H.hoist('perms', ['thSave']);
   }
   H.reg('perms', renderSettings);
 
