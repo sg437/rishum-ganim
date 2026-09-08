@@ -1,0 +1,21 @@
+{
+  "id": "./management.html",
+  "name": "מרכז ניהול ארצי · מחלקת הרישום",
+  "short_name": "ארצי",
+  "description": "המרכזי — מחלקת הרישום: כל הערים, תלמידים, שיבוץ מרכזי, בקרה ודוחות.",
+  "start_url": "./management.html",
+  "scope": "./management.html",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "orientation": "any",
+  "background_color": "#f4f2ed",
+  "theme_color": "#2b3630",
+  "lang": "he",
+  "dir": "rtl",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "central-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "central-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "central-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

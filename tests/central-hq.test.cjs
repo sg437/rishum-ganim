@@ -23,6 +23,9 @@ let html=fs.readFileSync(path.join(ROOT,'management.html'),'utf8');
 html=html.replace(/<meta http-equiv="Content-Security-Policy"[\s\S]*?>/,'');
 html=html.replace(/https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.5\/firebase-[a-z-]+\.js/g,'./fbstub.js');
 fs.writeFileSync(path.join(TMP,'management.html'),html);
+/* קובצי ה-PWA של המרכזי (service worker, manifest, אייקונים) — הדף רושם/טוען אותם בעלייה,
+   ו-404 עליהם היה נרשם כשגיאת דף */
+['sw.js','manifest-central.webmanifest','central-icon-192.png','central-icon-512.png','central-apple-touch-icon.png'].forEach(f=>fs.copyFileSync(path.join(ROOT,f),path.join(TMP,f)));
 /* --- Firebase מדומה: מסמכים בזיכרון, onSnapshot מיידי, טרנזקציה אמיתית על המסמך --- */
 fs.writeFileSync(path.join(TMP,'fbstub.js'),`
 const noop=()=>{};
@@ -50,7 +53,7 @@ export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}
 const PORT=8741;
 const server=require('http').createServer((req,res)=>{
   const f=path.join(TMP, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/,''));
-  try{ const body=fs.readFileSync(f); const ct=f.endsWith('.js')?'text/javascript':'text/html; charset=utf-8'; res.writeHead(200,{'Content-Type':ct}); res.end(body); }
+  try{ const body=fs.readFileSync(f); const ct=f.endsWith('.js')?'text/javascript':f.endsWith('.webmanifest')?'application/manifest+json':f.endsWith('.png')?'image/png':'text/html; charset=utf-8'; res.writeHead(200,{'Content-Type':ct}); res.end(body); }
   catch(e){ res.writeHead(404); res.end('nf'); }
 });
 /* --- נתוני דוגמה: שתי ערים, במבנה שתוכנת העיר כותבת (תיקים דחוסים) --- */
