@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:"Heebo";src:url("../../fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:"Heebo";src:url("../../fonts/heebo-latin.woff2") format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215;}
+@font-face{font-family:"Assistant";src:url("../../fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800;font-display:swap;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:"Assistant";src:url("../../fonts/assistant-latin.woff2") format("woff2");font-weight:200 800;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215;}
+body{margin:0;--bg:#f4f2ed;--wash:linear-gradient(180deg,#fbfaf7 0,#f4f2ed 220px);--card:#fffefb;--sunk:#faf8f4;--inner:#f7f5f0;--ink:#22221f;--ink2:#4e4c46;--ink3:#6b6860;--ink4:#75716a;--bd:#e3dfd6;--bd2:#eae6dd;--row:#f1eee7;--hov:#f7f5f0;--navhov:#f2efe8;--grn:#2f5d4a;--grnink:#24483a;--grnsoft:#e6efe9;--grnrow:#f2f6f2;--amb:#8a5b12;--ambbg:#f6edd9;--cly:#8a3b28;--clybg:#f6e2d9;--ntr:#55524b;--ntrbg:#eeece6;--track:#e9e5dc;--avbg:#eef1ec;--avink:#3d5a4d;--chev:#a09b91;--ok:#2f7d5a;--done:#24483a;--wait:#9b978d;--warn:#c08a1f;--bad:#b4503c;--sb:#dcd7cc;background:var(--bg)}
+body[data-night]{--bg:#202723;--wash:linear-gradient(180deg,#2b3630 0,#202723 220px);--card:#2b3630;--sunk:#26302b;--inner:#313d37;--ink:#fffefb;--ink2:#d3dbd7;--ink3:#9db0a8;--ink4:#9db0a8;--bd:#3f4f48;--bd2:#39463f;--row:#354039;--hov:#313d37;--navhov:#31463c;--grn:#8fc4a9;--grnink:#8fc4a9;--grnsoft:#31463c;--grnrow:#2d3b34;--amb:#d9a94a;--ambbg:#3d3524;--cly:#e0917f;--clybg:#43302a;--ntr:#c9d3ce;--ntrbg:#343d38;--track:#39463f;--avbg:#3d5a4d;--avink:#d3dbd7;--chev:#7f8b85;--ok:#4f9f78;--done:#8fc4a9;--wait:#9b978d;--warn:#d9a94a;--bad:#c9705c;--sb:#4a5a52}
+button{font-family:inherit;cursor:pointer}
+input,textarea{font-family:inherit}
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-thumb{background:var(--sb);border-radius:3px}
+*::-webkit-scrollbar-track{background:transparent}
+nav::-webkit-scrollbar{width:0;height:0}
+nav a{color:var(--ink2);text-decoration:none}
+nav a:hover{background:var(--navhov);color:var(--ink)}
+nav svg{flex:0 0 16px;opacity:.75;stroke-linecap:round;stroke-linejoin:round}
+a{color:var(--grnink)}
+a:hover{color:var(--grn)}
+</style>
+</helmet>
+
+<div dir="rtl" style="display:flex;flex-direction:column;gap:10px;padding:20px;background:var(--bg);color:var(--ink);font-family:Assistant,system-ui,sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;accent-color:var(--grn);width:max-content">
+
+<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink3)">מרכז הודעות · דסקטופ 1280×760</div>
+
+<div style="width:1280px;height:760px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--bd);border-radius:14px">
+
+  <header style="flex:0 0 auto;height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);color:#fffefb;box-shadow:inset 0 1px 0 #5d6f66">
+    <span style="display:flex;flex-direction:column;gap:3px;width:22px;flex:0 0 22px">
+      <span style="height:2px;border-radius:1px;background:#8fc4a9"></span>
+      <span style="height:2px;border-radius:1px;background:var(--card)"></span>
+      <span style="height:2px;border-radius:1px;background:#7f8b85"></span>
+    </span>
+    <span style="font-family:Heebo,system-ui,sans-serif;font-size:15.5px;font-weight:600">מרכז ניהול ארצי</span>
+    <span style="width:1px;height:20px;background:#6d7a74"></span>
+    <span style="font-size:13px;color:#d3dbd7">מחלקת הרישום</span>
+    <span style="flex:1"></span>
+    <input type="text" value="חיפוש תיק: שם, ת״ז, טלפון, גן…" style="width:280px;height:34px;padding:0 12px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#c9d3ce;font-size:13.5px" style-focus="outline:2px solid #8fc4a9;outline-offset:1px;color:#fffefb">
+    <button style="height:34px;padding:0 13px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb;font-size:13px" style-hover="border-color:#9db0a8">תשפ״ז</button>
+    <button onClick="{{ toggleNight }}" title="מצב לילה" style="width:34px;height:34px;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb;font-size:14px" style-hover="border-color:#9db0a8">{{ nightIcon }}</button>
+    <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:linear-gradient(180deg,#5e6f67,#44534c);color:#fffefb;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center">שג</span>
+  </header>
+  <div style="flex:0 0 auto;height:2px;background:var(--grn)"></div>
+
+  <div style="flex:1;min-height:0;display:flex">
+    <aside style="width:248px;flex:0 0 248px;display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--bd2)">
+      <nav style="flex:1;min-height:0;overflow-y:auto;padding:6px 8px;scrollbar-width:none">
+        <sc-for list="{{ nav }}" as="g" hint-placeholder-count="8">
+          <div style="padding-bottom:2px">
+            <sc-if value="{{ g.soon }}" hint-placeholder-val="{{ false }}">
+              <div style="height:1px;background:var(--bd2);margin:10px 12px 0"></div>
+              <div style="font:700 10.5px/1 Assistant;letter-spacing:.12em;color:var(--ink4);padding:12px 12px 6px">{{ g.label }}</div>
+            </sc-if>
+            <sc-if value="{{ g.normal }}" hint-placeholder-val="{{ true }}">
+              <div style="font:700 10.5px/1 Assistant;letter-spacing:.12em;color:var(--ink3);padding:12px 12px 6px">{{ g.label }}</div>
+            </sc-if>
+            <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+              <sc-if value="{{ it.on }}" hint-placeholder-val="{{ false }}">
+                <a href="{{ it.href }}" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;font:700 13.5px/1 Assistant;color:var(--grnink);text-decoration:none;background:var(--grnsoft);box-shadow:0 1px 2px rgba(34,34,31,.04)">{{ it.icon }}<span style="flex:1">{{ it.label }}</span></a>
+              </sc-if>
+              <sc-if value="{{ it.off }}" hint-placeholder-val="{{ true }}">
+                <a href="{{ it.href }}" style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;font:400 13.5px/1 Assistant;color:var(--ink2);text-decoration:none" style-hover="background:var(--navhov);color:var(--ink)">{{ it.icon }}<span style="flex:1">{{ it.label }}</span></a>
+              </sc-if>
+            </sc-for>
+          </div>
+        </sc-for>
+      </nav>
+      <div style="padding:12px 16px;border-top:1px solid var(--bd2);font-size:11.5px;color:var(--ink3)">6 ערים · עודכן לפני 3 דקות</div>
+    </aside>
+
+    <main style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--wash)">
+      <div style="flex:0 0 auto;display:flex;align-items:flex-end;gap:14px;padding:18px 20px 0">
+        <div>
+          <h1 style="margin:0;font-family:Heebo,system-ui,sans-serif;font-size:23px;font-weight:600;letter-spacing:-.015em">מרכז הודעות</h1>
+          <div style="margin-top:3px;font-size:13.5px;color:var(--ink3)">24 שיחות פתוחות · 4 חדשות · 6 ממתינות לתשובה מעל 24 שעות</div>
+        </div>
+        <span style="flex:1"></span>
+        <button style="height:36px;padding:0 15px;display:flex;align-items:center;gap:8px;border:1px solid var(--grn);border-radius:10px;background:linear-gradient(180deg,#3a6d58,#2b5544);color:#fffefb;font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(34,34,31,.12)" style-hover="background:linear-gradient(180deg,#40775f,#2f5d4a)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>הודעה חדשה</button>
+        <button style="height:36px;padding:0 14px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--ink);font-size:13px" style-hover="border-color:var(--grn)">תבניות</button>
+      </div>
+
+      <div style="flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:14px 20px 0">
+        <sc-for list="{{ chips }}" as="chip" hint-placeholder-count="4">
+          <button onClick="{{ chip.pick }}" style="height:30px;padding:0 11px;display:flex;align-items:center;gap:7px;border:1px solid {{ chip.border }};border-radius:8px;background:{{ chip.bg }};font-size:12.5px;font-weight:{{ chip.weight }};color:var(--ink)" style-hover="border-color:#9db0a8"><span style="width:8px;height:8px;border-radius:2px;background:{{ chip.dot }}"></span>{{ chip.label }}<span style="color:var(--ink3);font-weight:400">{{ chip.count }}</span></button>
+        </sc-for>
+        <span style="flex:1"></span>
+        <span style="font-size:12.5px;color:var(--ink3)">{{ shownLabel }}</span>
+      </div>
+
+      <div style="flex:1;min-height:0;display:flex;gap:14px;padding:12px 20px 16px">
+        <div style="width:326px;flex:0 0 326px;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(34,34,31,.04)">
+          <div style="flex:0 0 auto;height:38px;display:flex;align-items:center;gap:8px;padding:0 14px;background:var(--sunk);border-bottom:1px solid var(--bd);font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--ink3)">
+            <span style="flex:1">שיחות</span><span>{{ threadCount }}</span>
+          </div>
+          <div style="flex:1;min-height:0;overflow:auto">
+            <sc-for list="{{ threads }}" as="t" hint-placeholder-count="7">
+              <button onClick="{{ t.pick }}" style="width:100%;display:flex;gap:10px;align-items:flex-start;min-height:44px;padding:11px 14px;border:0;border-bottom:1px solid var(--row);background:{{ t.bg }};text-align:right;color:var(--ink)" style-hover="background:var(--inner)">
+                <span style="width:9px;height:9px;flex:0 0 9px;margin-top:5px;border-radius:2px;background:{{ t.dot }}"></span>
+                <span style="flex:1;min-width:0">
+                  <span style="display:flex;align-items:baseline;gap:8px">
+                    <span style="flex:1;min-width:0;font-size:13.5px;font-weight:{{ t.weight }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.who }}</span>
+                    <span style="font-size:11.5px;color:var(--ink3)">{{ t.time }}</span>
+                  </span>
+                  <span style="display:block;margin-top:1px;font-size:13px;font-weight:{{ t.weight }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.subject }}</span>
+                  <span style="display:block;margin-top:2px;font-size:12.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.preview }}</span>
+                  <span style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                    <span style="height:20px;padding:0 7px;display:inline-flex;align-items:center;border-radius:6px;background:{{ t.chBg }};color:{{ t.chInk }};font-size:11px;font-weight:700">{{ t.channel }}</span>
+                    <span style="font-size:11.5px;color:var(--ink3)">{{ t.city }}</span>
+                  </span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(34,34,31,.04)">
+          <div style="flex:0 0 auto;padding:13px 16px;border-bottom:1px solid var(--bd2);display:flex;align-items:center;gap:10px">
+            <span style="min-width:0">
+              <span style="display:flex;align-items:center;gap:8px">
+                <span style="width:9px;height:9px;flex:0 0 9px;border-radius:2px;background:{{ open.dot }}"></span>
+                <span style="font-family:Heebo,system-ui,sans-serif;font-size:15px;font-weight:600">{{ open.subject }}</span>
+              </span>
+              <span style="display:block;margin-top:2px;font-size:12.5px;color:var(--ink3)">{{ open.who }} · {{ open.channel }} · {{ open.city }}</span>
+            </span>
+            <span style="flex:1"></span>
+            <button style="height:30px;padding:0 12px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--ink);font-size:12.5px" style-hover="border-color:var(--grn)">העברה לטיפול</button>
+            <button style="height:30px;padding:0 12px;border:1px solid var(--grn);border-radius:8px;background:var(--card);color:var(--grnink);font-size:12.5px;font-weight:700" style-hover="background:var(--grnsoft)">סימון כטופל</button>
+          </div>
+
+          <div style="flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--inner);border-bottom:1px solid var(--bd2)">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ink3)">תיק מקושר</span>
+            <span style="font-size:13.5px;font-weight:600">{{ open.caseName }}</span>
+            <span style="font-size:12.5px;color:var(--ink3)">ת״ז {{ open.caseId }} · {{ open.caseGan }}</span>
+            <span style="flex:1"></span>
+            <a href="Students.dc.html" style="font-size:12.5px;font-weight:700">פתיחת התיק</a>
+          </div>
+
+          <div style="flex:1;min-height:0;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ open.messages }}" as="m" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;align-items:{{ m.align }};gap:4px">
+                <div style="max-width:74%;padding:11px 13px;border-radius:12px;background:{{ m.bg }};border:1px solid {{ m.border }};color:{{ m.ink }};font-size:13.5px">{{ m.body }}</div>
+                <div style="font-size:11.5px;color:var(--ink3)">{{ m.meta }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="flex:0 0 auto;padding:12px 16px;border-top:1px solid var(--bd2);background:var(--sunk);display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ink3)">תבנית</span>
+              <sc-for list="{{ templates }}" as="tp" hint-placeholder-count="3">
+                <button onClick="{{ tp.pick }}" style="height:30px;padding:0 11px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--ink);font-size:12.5px" style-hover="border-color:var(--grn)">{{ tp.label }}</button>
+              </sc-for>
+            </div>
+            <textarea rows="3" value="{{ reply }}" onChange="{{ setReply }}" placeholder="כתיבת תשובה להורים" style="width:100%;box-sizing:border-box;resize:none;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--ink);font-size:13.5px;line-height:1.5" style-focus="outline:2px solid #9db0a8;outline-offset:-1px;border-color:var(--grn)"></textarea>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12.5px;color:var(--ink3)">{{ replyMeta }}</span>
+              <span style="flex:1"></span>
+              <button style="height:36px;padding:0 14px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--ink);font-size:13px" style-hover="border-color:var(--grn)">צירוף מסמך</button>
+              <button style="height:36px;padding:0 15px;display:flex;align-items:center;gap:8px;border:1px solid var(--grn);border-radius:10px;background:linear-gradient(180deg,#3a6d58,#2b5544);color:#fffefb;font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(34,34,31,.12)" style-hover="background:linear-gradient(180deg,#40775f,#2f5d4a)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5 2.5 7l4.3 1.7L8.5 13z"/></svg>שליחה</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<sc-if value="{{ showMobile }}" hint-placeholder-val="{{ true }}">
+<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink3);margin-top:10px">מרכז הודעות · מובייל 390×844</div>
+<div style="width:390px;height:844px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--bd);border-radius:14px">
+  <header style="flex:0 0 auto;height:58px;display:flex;align-items:center;gap:10px;padding:0 14px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);color:#fffefb;box-shadow:inset 0 1px 0 #5d6f66">
+    <button title="תפריט" style="width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb" style-hover="border-color:#9db0a8"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/></svg></button>
+    <span style="flex:1;min-width:0">
+      <span style="display:block;font-family:Heebo,system-ui,sans-serif;font-size:15.5px;font-weight:600">מרכז הודעות</span>
+      <span style="display:block;font-size:11.5px;color:#d3dbd7">24 שיחות · 4 חדשות</span>
+    </span>
+    <button title="חיפוש" style="width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb" style-hover="border-color:#9db0a8"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5"/></svg></button>
+    <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:linear-gradient(180deg,#5e6f67,#44534c);color:#fffefb;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center">שג</span>
+  </header>
+  <div style="flex:0 0 auto;height:2px;background:var(--grn)"></div>
+
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:var(--wash)">
+    <div style="flex:0 0 auto;padding:14px 14px 0;display:flex;align-items:center;gap:6px;overflow:auto;scrollbar-width:none">
+      <sc-for list="{{ chips }}" as="chip" hint-placeholder-count="4">
+        <button onClick="{{ chip.pick }}" style="flex:0 0 auto;height:30px;padding:0 11px;display:flex;align-items:center;gap:7px;border:1px solid {{ chip.border }};border-radius:8px;background:{{ chip.bg }};font-size:12.5px;font-weight:{{ chip.weight }};color:var(--ink)"><span style="width:8px;height:8px;border-radius:2px;background:{{ chip.dot }}"></span>{{ chip.label }}<span style="color:var(--ink3);font-weight:400">{{ chip.count }}</span></button>
+      </sc-for>
+    </div>
+    <div style="flex:1;min-height:0;overflow:auto;padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px">
+      <sc-for list="{{ threads }}" as="t" hint-placeholder-count="6">
+        <button onClick="{{ t.pick }}" style="flex:0 0 auto;width:100%;display:flex;gap:10px;align-items:flex-start;padding:12px 13px;background:{{ t.bg }};border:1px solid {{ t.borderM }};border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);text-align:right;color:var(--ink)">
+          <span style="width:9px;height:9px;flex:0 0 9px;margin-top:5px;border-radius:2px;background:{{ t.dot }}"></span>
+          <span style="flex:1;min-width:0">
+            <span style="display:flex;align-items:baseline;gap:8px">
+              <span style="flex:1;min-width:0;font-size:14px;font-weight:{{ t.weight }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.who }}</span>
+              <span style="font-size:11.5px;color:var(--ink3)">{{ t.time }}</span>
+            </span>
+            <span style="display:block;margin-top:1px;font-size:13.5px;font-weight:{{ t.weight }}">{{ t.subject }}</span>
+            <span style="display:block;margin-top:3px;font-size:12.5px;color:var(--ink3)">{{ t.preview }}</span>
+            <span style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--row)">
+              <span style="height:20px;padding:0 7px;display:inline-flex;align-items:center;border-radius:6px;background:{{ t.chBg }};color:{{ t.chInk }};font-size:11px;font-weight:700">{{ t.channel }}</span>
+              <span style="font-size:11.5px;color:var(--ink3)">{{ t.city }}</span>
+              <span style="flex:1"></span>
+              <span style="font-size:12.5px;color:var(--grnink);font-weight:700">{{ t.cta }}</span>
+            </span>
+          </span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="flex:0 0 auto;padding:12px 14px;border-top:1px solid var(--bd2);background:var(--sunk);display:flex;gap:8px">
+      <button style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--grn);border-radius:10px;background:linear-gradient(180deg,#3a6d58,#2b5544);color:#fffefb;font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(34,34,31,.12)" style-hover="background:linear-gradient(180deg,#40775f,#2f5d4a)"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>הודעה חדשה</button>
+      <button style="height:44px;padding:0 14px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--ink2);font-size:13px" style-hover="border-color:var(--grn)">תבניות</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1330,&quot;height&quot;:1680},&quot;showMobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;תצוגה&quot;}}">
+const P = (...d) => d;
+const ICONS = {
+  home: P('M3 10.5 12 4l9 6.5', 'M6 9.5V20h12V9.5'),
+  bell: P('M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6', 'M10 19a2 2 0 0 0 4 0'),
+  student: P('M12 4 3 8l9 4 9-4-9-4', 'M6.5 10.5V15c0 1.5 2.7 3 5.5 3s5.5-1.5 5.5-3v-4.5'),
+  reg: P('M6 3h12v18H6z', 'M9 8h6', 'M9 12h6', 'M9 16h3'),
+  chan: P('M12 4v6', 'M6 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M18 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M12 10 6 14', 'M12 10l6 4'),
+  imp: P('M12 4v10', 'M8 11l4 4 4-4', 'M4 19h16'),
+  horn: P('M4 10v4h4l8 4V6l-8 4H4Z', 'M18 9a3 3 0 0 1 0 6'),
+  place: P('M4 5h8v8H4z', 'M14 9h6', 'M17.5 5.5 21 9l-3.5 3.5'),
+  map: P('M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 7', 'M9 4v13', 'M15 7v12.5'),
+  send: P('M4 12 20 4l-4 16-4-6-8-2Z'),
+  scale: P('M12 4v14', 'M6 8h12', 'M6 8 4 14h4L6 8', 'M18 8l-2 6h4l-2-6'),
+  city: P('M3 21h18', 'M5 21V7l6-3v17', 'M11 21V11h8v10', 'M14.5 15h2'),
+  staff: P('M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M3 20c0-3 2.5-5 5-5s5 2 5 5', 'M16 8h5', 'M16 12h5', 'M16 16h5'),
+  act: P('M6 3v18', 'M6 4h11l-2.5 4L17 12H6'),
+  globe: P('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18', 'M3 12h18', 'M12 3c2.5 2.5 3.8 5.6 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.6-3.8-9S9.5 5.5 12 3'),
+  pct: P('M5 19 19 5', 'M7.5 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5', 'M16.5 20.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5'),
+  chart: P('M4 20V10', 'M10 20V4', 'M16 20v-7', 'M2 20h20'),
+  lic: P('M5 4h11l3 3v13H5Z', 'M8 10h8', 'M8 14h5'),
+  gov: P('M3 9 12 4l9 5', 'M6 9v9', 'M10 9v9', 'M14 9v9', 'M18 9v9', 'M3 20h18'),
+  msg: P('M4 6h16v10H9l-5 4V6Z'),
+  circ: P('M6 4h9l3 3v13H6Z', 'M9 11h6', 'M9 15h4'),
+  shield: P('M12 4 4 8v4c0 4.5 3.5 7 8 8 4.5-1 8-3.5 8-8V8l-8-4'),
+  cog: P('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6', 'M12 3v2', 'M12 19v2', 'M3 12h2', 'M19 12h2', 'M5.6 5.6 7 7', 'M17 17l1.4 1.4', 'M18.4 5.6 17 7', 'M7 17l-1.4 1.4'),
+  bot: P('M5 6h14v10H9l-4 3V6Z', 'M9.5 11h.01', 'M14.5 11h.01'),
+  book: P('M4 5c2.5-1 5-1 8 .5 3-1.5 5.5-1.5 8-.5v13c-2.5-1-5-1-8 .5-3-1.5-5.5-1.5-8-.5z', 'M12 5.5v13'),
+  clock: P('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18', 'M12 7v5l3.5 2')
+};
+const icon = k => React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', style: { opacity: .75, flex: 'none' } }, ICONS[k].map((d, i) => React.createElement('path', { key: i, d })));
+
+const NAV = [
+  { label: 'דף הבית', items: [['לוח הבית', 'Home.dc.html', 'home']] },
+  { label: 'רישום וקליטה', items: [['תלמידים ושיבוץ מרכזי', 'Students.dc.html', 'student'], ['מערכת רישום', 'Registration.dc.html', 'reg'], ['ערוצי רישום', 'Channels.dc.html', 'chan'], ['ייבוא מאקסל', 'Import.dc.html', 'imp'], ['הפצה ופרסום', 'Publishing.dc.html', 'horn']] },
+  { label: 'שיבוץ והפצה', items: [['שיבוץ ילדים', 'Place.dc.html', 'place'], ['מפת שיבוץ', 'PlacementMap.dc.html', 'map'], ['הפצת שיבוץ · Smoove', 'Distribution.dc.html', 'send'], ['פניות וערעורים', 'Appeals.dc.html', 'scale']] },
+  { label: 'ערים וצוות', items: [['ערים וגנים', 'Cities.dc.html', 'city'], ['עובדות', 'Staff.dc.html', 'staff'], ['פעילויות ותוכניות', 'Activities.dc.html', 'act']] },
+  { label: 'בקרה ודוחות', items: [['סקירה לאומית', 'Overview.dc.html', 'globe'], ['אחוזים ותפוסות', 'Reports.dc.html', 'pct'], ['פילוחים ודוח להנהלה', 'Analytics.dc.html', 'chart'], ['דורש טיפול', 'Triage.dc.html', 'bell'], ['רישיון וסייעת ב׳', 'Licensing.dc.html', 'lic'], ['בקרת משרד החינוך', 'Compliance.dc.html', 'gov']] },
+  { label: 'תקשורת', items: [['מרכז הודעות', 'Messages.dc.html', 'msg'], ['חוזרי מנכ״ל', 'Circulars.dc.html', 'circ']] },
+  { label: 'ניהול', items: [['החלטות וחומרים', 'Decisions.dc.html', 'shield'], ['הגדרות והרשאות', 'Settings.dc.html', 'cog'], ['עוזר חכם', 'Assistant.dc.html', 'bot'], ['מדריך', 'Guide.dc.html', 'book']] },
+  { label: 'יופעל בהמשך', soon: true, items: [['כרטיסי משפחה', 'Soon.dc.html', 'clock'], ['פורטל הורים', 'Soon.dc.html', 'clock'], ['סליקה ותשלומים', 'Soon.dc.html', 'clock'], ['ניהול מסמכים', 'Soon.dc.html', 'clock'], ['שעות ושכר', 'Soon.dc.html', 'clock'], ['האפיון', 'Soon.dc.html', 'clock'], ['התוכנית', 'Soon.dc.html', 'clock']] }
+];
+const navVals = here => NAV.map(g => ({ label: g.label, soon: !!g.soon, normal: !g.soon, items: g.items.map(it => ({ label: it[0], href: it[1], icon: icon(it[2]), on: it[0] === here, off: it[0] !== here })) }));
+const HERE = 'מרכז הודעות';
+
+const THREADS = [
+  { who:"אביגיל רוזנברג · אמא", subject:"בקשה לשינוי גן", state:"new", channel:"אתר ההרשמה", city:"מודיעין עילית", time:"09:41",
+    preview:"שלום, קיבלנו שיבוץ לגן חורב אבל האח הגדול נמצא בגן הדסה",
+    caseName:"אביגיל רוזנברג", caseId:"325 884 117", caseGan:"גן חורב · כיתה ב׳",
+    messages:[
+      { dir:"in",  body:"שלום, קיבלנו שיבוץ לגן חורב אבל האח הגדול נמצא בגן הדסה. אפשר לשבץ את שתי הבנות באותו גן?", meta:"אביגיל רוזנברג · 07.09 09:41" },
+      { dir:"out", body:"שלום, הבקשה נרשמה. בגן הדסה כיתה ב׳ אין כרגע מקום פנוי; נעדכן עד 12.09 אם יתפנה מקום.", meta:"שרה גולן · 07.09 10:04 · נקראה" },
+      { dir:"in",  body:"תודה. אם לא יתפנה, נשמח להישאר ברשימת המתנה ולא לוותר על גן חורב.", meta:"אביגיל רוזנברג · 07.09 10:22" }
+    ] },
+  { who:"נועם בן־שחר · אבא", subject:"אישור מגורים", state:"new", channel:"וואטסאפ", city:"בית שמש", time:"08:58",
+    preview:"שלחתי חוזה שכירות במקום אישור מגורים, זה מספיק?",
+    caseName:"נועם בן־שחר", caseId:"327 145 902", caseGan:"גן מורשת · כיתה א׳",
+    messages:[
+      { dir:"in",  body:"שלחתי חוזה שכירות במקום אישור מגורים, זה מספיק?", meta:"נועם בן־שחר · 07.09 08:58" },
+      { dir:"out", body:"חוזה שכירות בתוקף מספיק, בתוספת חשבון ארנונה או חשמל מהחודשיים האחרונים.", meta:"שרה גולן · 07.09 09:12 · נקראה" }
+    ] },
+  { who:"מחלקת החינוך · אלעד", subject:"קובץ רישום חדש", state:"new", channel:"מייל", city:"אלעד", time:"אתמול",
+    preview:"מצורף קובץ 128 רשומות לקליטה, נא לעדכן על שגיאות",
+    caseName:"רישום_אלעד_תשפז.xlsx", caseId:"—", caseGan:"128 שורות",
+    messages:[
+      { dir:"in",  body:"מצורף קובץ 128 רשומות לקליטה. נא לעדכן אם יש שורות שנדחו כדי שנתקן במקור.", meta:"מרים ברוכי · 06.09 16:30" },
+      { dir:"out", body:"הקובץ נקלט לאימות. 97 שורות תקינות, 31 דורשות תיקון. דוח שגיאות יישלח היום.", meta:"שרה גולן · 07.09 09:20" }
+    ] },
+  { who:"שירה פרידמן · אמא", subject:"ערעור על שיבוץ", state:"wait", channel:"טלפוני", city:"ירושלים", time:"אתמול",
+    preview:"הגן המוצע רחוק מדי, מבקשת לבחון גן קרוב יותר",
+    caseName:"שירה פרידמן", caseId:"328 402 015", caseGan:"גן נריה · כיתה א׳",
+    messages:[
+      { dir:"in",  body:"הגן המוצע רחוק מדי מהבית, מבקשת לבחון גן קרוב יותר.", meta:"שירה פרידמן · 06.09 14:05" },
+      { dir:"out", body:"הבקשה הועברה לוועדת חריגים. תשובה תימסר עד 14.09.", meta:"שרה גולן · 06.09 15:40 · נקראה" }
+    ] },
+  { who:"רחל אביטן · גננת", subject:"תקן סייעת ב׳", state:"wait", channel:"מייל", city:"מודיעין עילית", time:"05.09",
+    preview:"בגן חורב 36 ילדים, מבקשת לבדוק זכאות לסייעת ב׳",
+    caseName:"גן חורב · כיתה ב׳", caseId:"—", caseGan:"36/36 משובצים",
+    messages:[
+      { dir:"in",  body:"בגן חורב 36 ילדים, מבקשת לבדוק זכאות לסייעת ב׳ לשנה זו.", meta:"רחל אביטן · 05.09 11:20" },
+      { dir:"out", body:"הבקשה נבדקת מול חוזר מנכ״ל; נדרש אישור מנהלת הרישום לפני העברה למשרד החינוך.", meta:"שרה גולן · 05.09 12:02 · נקראה" }
+    ] },
+  { who:"מלכה וייס · אמא", subject:"תשלום אגרת רישום", state:"done", channel:"אתר ההרשמה", city:"בני ברק", time:"04.09",
+    preview:"התשלום בוצע, מבקשת אישור שהתיק הושלם",
+    caseName:"מלכה וייס", caseId:"326 118 774", caseGan:"גן שילה · כיתה ב׳",
+    messages:[
+      { dir:"in",  body:"התשלום בוצע, מבקשת אישור שהתיק הושלם.", meta:"מלכה וייס · 04.09 09:15" },
+      { dir:"out", body:"התשלום נרשם והתיק הושלם. אישור השיבוץ נשלח למייל.", meta:"שרה גולן · 04.09 09:50 · נקראה" }
+    ] },
+  { who:"מחלקת החינוך · רכסים", subject:"שני גנים ללא סייעת", state:"wait", channel:"מייל", city:"רכסים", time:"03.09",
+    preview:"גן שילה וגן אלון פתחו שנה בלי סייעת מאושרת",
+    caseName:"רכסים · 2 גנים", caseId:"—", caseGan:"ממתין להקצאה",
+    messages:[
+      { dir:"in",  body:"גן שילה וגן אלון פתחו שנה בלי סייעת מאושרת. יש עובדות פנויות במערכת?", meta:"אורית דהן · 03.09 13:40" },
+      { dir:"out", body:"שושנה עמר פנויה ב־25% משרה; נדרש אישור להגדלת היקף ל־75%.", meta:"שרה גולן · 03.09 14:15 · נקראה" }
+    ] },
+  { who:"אליהו שטרן · אבא", subject:"עדכון טלפון", state:"done", channel:"וואטסאפ", city:"אשדוד", time:"02.09",
+    preview:"הטלפון בתיק שגוי, המספר הנכון מסתיים ב־7731",
+    caseName:"אליהו שטרן", caseId:"327 663 200", caseGan:"גן רימון · כיתה א׳",
+    messages:[
+      { dir:"in",  body:"הטלפון בתיק שגוי, המספר הנכון מסתיים ב־7731.", meta:"אליהו שטרן · 02.09 08:30" },
+      { dir:"out", body:"הפרטים עודכנו בתיק. תודה על העדכון.", meta:"שרה גולן · 02.09 08:44 · נקראה" }
+    ] }
+];
+
+const CHIPS = [
+  { key:"all",  label:"הכול",              dot:"#9db0a8" },
+  { key:"new",  label:"חדשות",             dot:"var(--ok)" },
+  { key:"wait", label:"ממתינות לתשובה",    dot:"var(--warn)" },
+  { key:"done", label:"טופלו",             dot:"var(--grnink)" }
+];
+
+const TEMPLATES = [
+  { key:"docs",  label:"בקשת מסמך חסר",   text:"שלום, כדי להשלים את התיק נדרש אישור מגורים מהחודשיים האחרונים. ניתן להעלות אותו באזור האישי." },
+  { key:"wait",  label:"רשימת המתנה",     text:"שלום, הבקשה נרשמה. אין כרגע מקום פנוי בגן המבוקש; התיק נמצא ברשימת המתנה ונעדכן בכל שינוי." },
+  { key:"place", label:"אישור שיבוץ",      text:"שלום, השיבוץ אושר סופית. פרטי הגן ומועד פתיחת השנה נשלחו למייל שבתיק." }
+];
+
+const CHANNEL = {
+  "אתר ההרשמה": { bg:"var(--grnsoft)", ink:"var(--grnink)" },
+  "וואטסאפ":     { bg:"var(--ambbg)", ink:"var(--amb)" },
+  "מייל":        { bg:"var(--ntrbg)", ink:"var(--ntr)" },
+  "טלפוני":      { bg:"var(--clybg)", ink:"var(--cly)" }
+};
+
+class Component extends DCLogic {
+  state = { filter: "all", openIdx: 0, reply: "" , night: false };
+
+  componentDidMount() {
+    try { if (localStorage.getItem("wr-night") === "1") { document.body.dataset.night = "1"; this.setState({ night: true }); } } catch (e) {}
+  }
+  toggleNight() {
+    const n = !this.state.night;
+    if (n) document.body.dataset.night = "1"; else delete document.body.dataset.night;
+    try { localStorage.setItem("wr-night", n ? "1" : "0"); } catch (e) {}
+    this.setState({ night: n });
+  }
+
+  list() {
+    const f = this.state.filter;
+    return THREADS.filter(t => f === "all" || t.state === f);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const counts = { all: THREADS.length };
+    CHIPS.slice(1).forEach(c => { counts[c.key] = THREADS.filter(t => t.state === c.key).length; });
+
+    const dotOf = st => st === "new" ? "var(--ok)" : st === "wait" ? "var(--warn)" : "var(--grnink)";
+
+    const threads = this.list().map(t => {
+      const i = THREADS.indexOf(t);
+      const isOpen = i === s.openIdx;
+      const ch = CHANNEL[t.channel] || CHANNEL["מייל"];
+      return {
+      nav: navVals(HERE),
+        who: t.who, subject: t.subject, preview: t.preview, time: t.time, city: t.city, channel: t.channel,
+        dot: dotOf(t.state),
+        weight: t.state === "new" ? "700" : "600",
+        bg: isOpen ? "var(--grnrow)" : "#fffefb",
+        borderM: isOpen ? "var(--grn)" : "var(--bd)",
+        chBg: ch.bg, chInk: ch.ink,
+        cta: t.state === "done" ? "טופל" : "מענה",
+        pick: () => this.setState({ openIdx: i })
+      };
+    });
+
+    const t = THREADS[s.openIdx] || THREADS[0];
+    const open = {
+      subject: t.subject, who: t.who, channel: t.channel, city: t.city,
+      dot: dotOf(t.state),
+      caseName: t.caseName, caseId: t.caseId, caseGan: t.caseGan,
+      messages: t.messages.map(m => ({
+        body: m.body, meta: m.meta,
+        align: m.dir === "in" ? "flex-start" : "flex-end",
+        bg: m.dir === "in" ? "var(--inner)" : "var(--grnsoft)",
+        border: m.dir === "in" ? "var(--bd2)" : "var(--grn)",
+        ink: m.dir === "in" ? "var(--ink)" : "var(--grnink)"
+      }))
+    };
+
+    return {
+      chips: CHIPS.map(c => ({
+        label: c.label, dot: c.dot, count: counts[c.key],
+        bg: s.filter === c.key ? "var(--grnsoft)" : "#fffefb",
+        border: s.filter === c.key ? "var(--grn)" : "var(--bd)",
+        weight: s.filter === c.key ? "700" : "400",
+        pick: () => this.setState({ filter: c.key })
+      })),
+      threads,
+      threadCount: threads.length + " מתוך " + THREADS.length,
+      shownLabel: "זמן מענה חציוני 4 שעות · יעד המחלקה 8 שעות",
+      open,
+      templates: TEMPLATES.map(tp => ({ label: tp.label, pick: () => this.setState({ reply: tp.text }) })),
+      reply: s.reply,
+      setReply: e => this.setState({ reply: e.target.value }),
+      replyMeta: s.reply ? s.reply.length + " תווים · נשלח בשם מחלקת הרישום" : "התשובה תישלח בערוץ שממנו נכתבה הפנייה",
+      showMobile: this.props.showMobile !== false,
+      toggleNight: () => this.toggleNight(),
+      nightIcon: this.state.night ? "☀" : "☾",
+      true: true
+    };
+  }
+}
+</script>
+</body>
+</html>

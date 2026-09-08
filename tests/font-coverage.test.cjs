@@ -194,7 +194,11 @@ const bad=(m,d)=>{ fail++; console.log('❌ '+m); (d||[]).forEach(x=>console.log
     const ctx=await browser.newContext();
     const q=await ctx.newPage();
     const extra=[];
-    q.on('request',r=>{ const u=r.url(); if(/ui-lab\.(css|js)|\/fonts\//.test(u)) extra.push(u.split('/').pop()); });
+    /* המרכזי (management.html) טוען את גופני העיצוב שלו בעצמו, מ-fonts/ דרך
+       @font-face משלו (docs/design-central) — זה לא ui-lab. ההפרדה שנבדקת
+       כאן היא מהקוד של תוכנת הערים: ui-lab.css / ui-lab.js. */
+    const isCentral=/^management\.html/.test(page);
+    q.on('request',r=>{ const u=r.url(); if(/ui-lab\.(css|js)/.test(u) || (!isCentral && /\/fonts\//.test(u))) extra.push(u.split('/').pop()); });
     await q.goto(base+page,{waitUntil:'load'});
     await q.waitForTimeout(700);
     const cls=await q.evaluate(()=>document.documentElement.className);

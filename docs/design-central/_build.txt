@@ -1,0 +1,32 @@
+
+function nav(active){
+  let out = "";
+  GROUPS_NAV.forEach(function(g, gi){
+    var label = g[0], items = g[1];
+    out += '\n        <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--ink3);padding:' + (gi===0?"0 8px 6px":"16px 8px 6px") + '">' + label + '</div>';
+    items.forEach(function(it){
+      var name = it[0], href = it[1], icon = it[2], badge = it[3];
+      var on = name === active;
+      var st = on
+        ? 'display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;color:var(--grnink);font-weight:700;background:var(--grnsoft);box-shadow:0 1px 2px rgba(34,34,31,.05)'
+        : 'display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px';
+      var b = badge ? '<span style="font-weight:700;font-size:12.5px;color:var(--' + (badge[1]==="grn"?"grnink":"amb") + ')">' + badge[0] + '</span>' : "";
+      out += '\n        <a href="' + (on?"#":href) + '" style="' + st + '"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">' + icon + '</svg><span style="flex:1">' + name + '</span>' + b + '</a>';
+    });
+  });
+  return out;
+}
+function desktop(active, label, mainInner, overlays){
+  return '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink3)">' + label + '</div>\n\n<div style="width:1280px;height:760px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--bd);border-radius:14px">\n\n' + RIBBON + '\n\n  <div style="flex:1;min-height:0;display:flex">\n    <aside style="width:248px;flex:0 0 248px;display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--bd2)">\n      <nav style="flex:1;overflow:auto;scrollbar-width:none;padding:14px 12px;font-size:13.5px">' + nav(active) + '\n      </nav>\n      <div style="padding:12px 16px;border-top:1px solid var(--bd2);font-size:11.5px;color:var(--ink3)">6 ערים · עודכן לפני 3 דקות</div>\n    </aside>\n\n' + mainInner + '\n  </div>\n' + (overlays || "") + '\n</div>';
+}
+function mribbon(title){
+  return '  <header style="flex:0 0 auto;height:58px;display:flex;align-items:center;gap:10px;padding:0 14px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);color:#fffefb;box-shadow:inset 0 1px 0 #5d6f66">\n    <button title="תפריט" style="width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb" style-hover="border-color:#9db0a8"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/></svg></button>\n    <span style="flex:1;min-width:0">\n      <span style="display:block;font-family:Heebo,system-ui,sans-serif;font-size:15.5px;font-weight:600">' + title + '</span>\n      <span style="display:block;font-size:11.5px;color:#d3dbd7">מרכז ניהול ארצי · תשפ״ז</span>\n    </span>\n    <button title="חיפוש" style="width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;border:1px solid #6d7a74;border-radius:10px;background:rgba(255,255,255,.08);color:#fffefb" style-hover="border-color:#9db0a8"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5"/></svg></button>\n    <span style="width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:linear-gradient(180deg,#5e6f67,#44534c);color:#fffefb;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center">שג</span>\n  </header>\n  <div style="flex:0 0 auto;height:2px;background:var(--grn)"></div>';
+}
+function mobile(label, title, inner){
+  return '<sc-if value="{{ showMobile }}" hint-placeholder-val="{{ true }}">\n<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink3);margin-top:10px">' + label + '</div>\n<div style="width:390px;height:844px;position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--bd);border-radius:14px">\n' + mribbon(title) + '\n' + inner + '\n</div>\n</sc-if>';
+}
+function file(bodyInner, logic, props){
+  var p = JSON.stringify(props).replace(/"/g, "&quot;");
+  return '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<' + 'script src="./support.js"></' + 'script>\n</head>\n<body>\n<x-dc>\n' + HELMET + '\n\n' + ROOT_OPEN + '\n\n' + bodyInner + '\n\n</div>\n</x-dc>\n<' + 'script type="text/x-dc" data-dc-script data-props="' + p + '">\n' + logic + '\n</' + 'script>\n</body>\n</html>';
+}
+return { nav: nav, desktop: desktop, mobile: mobile, file: file, HELMET: HELMET, RIBBON: RIBBON, ROOT_OPEN: ROOT_OPEN, NIGHT_LOGIC: NIGHT_LOGIC };
