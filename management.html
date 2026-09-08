@@ -90,7 +90,7 @@
 
   /* ---- בסיס ---- */
   *{box-sizing:border-box}
-  html,body{margin:0; overflow-x:hidden}
+  html,body{margin:0; overflow-x:clip}
   body{
     background:var(--bg); color:var(--ink); direction:rtl; min-height:100vh;
     font-family:"Assistant",system-ui,sans-serif; font-size:14px; line-height:1.5;
@@ -688,7 +688,7 @@
   .bubble .bm{font-size:11.5px; color:var(--ink4); margin-top:6px; white-space:normal}
   #cmPrev{max-width:none; align-self:stretch}
   @media (max-width:1019px){ .msgs{grid-template-columns:1fr} }
-  .setgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px}
+  .setgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr)); gap:12px; margin-bottom:12px}
   .setf .l{font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--ink3); margin-bottom:6px}
   .setf .row{display:flex; align-items:center; gap:8px}
   .setf .txtin.num{width:88px; text-align:center; font-family:"Heebo",system-ui,sans-serif; font-size:15px; font-weight:600; padding:0 8px}
@@ -3152,7 +3152,7 @@ try{
     var d={ live:live, total:TOT.students, placed:0, waiting:0, nogan:0, over14:0, docs:0, license:TOT.licenseIssues||0, assistB:0, today:TOT.todayNew||0, online:TOT.online||0, delta:null, year:'', exc:[], log:[], th:{license:35,assistantB:30} };
     var now=Date.now();
     if(live){
-      var cs=H.cities(); d.th=H.thresholds();
+      var cs=H.cities(); d.th=H.thresholds(); d.target=d.th.regTarget||0;
       var stu=H.allStudents(cs).filter(function(x){ return !x.finished; }); d.total=stu.length;
       stu.forEach(function(x){
         if(!x.ganId) d.nogan++; else if(x.placed===false){ d.waiting++; var t=new Date(x.createdAt||0).getTime(); if(t && now-t>14*86400000) d.over14++; } else d.placed++;
@@ -3183,7 +3183,7 @@ try{
     var reports=can('breakdowns');
     $('#homeActions').innerHTML=reports?'<button type="button" class="btn-ghost" data-hm-tab="snap">שמירת מצבה</button><button type="button" class="btn-primary" data-hm-tab="mgmt">דוח להנהלה</button>':'';
     $('#homeBottom').innerHTML=reports?'<button type="button" class="btn-primary" data-hm-tab="mgmt">דוח להנהלה</button>':'';
-    var p=pct(d.placed,d.total);
+    var hasT=d.live&&d.target>0; var p=hasT?pct(d.total,d.target):pct(d.placed,d.total);
     var stuGo=can('students');
     var exc=[
       {t:'גנים מעל תקן הרישיון', n:d.license, lamp:'bad', s:'מול מכסת הרישיון בכרטיס הגן', go:'license'},
@@ -3201,7 +3201,7 @@ try{
     $('#homeBody').innerHTML=
       '<div class="hm-grid">'+
         '<div class="hm-card">'+
-          '<div class="hm-head"><div><div class="hm-title">שיבוץ ארצי</div><div class="hm-hero-row"><div class="hm-hero">'+p+'%</div><div class="hm-hero-note">'+he(d.placed)+' משובצות מתוך '+he(d.total)+' תיקים</div></div></div>'+
+          '<div class="hm-head"><div><div class="hm-title">'+(hasT?'רישום ארצי':'שיבוץ ארצי')+'</div><div class="hm-hero-row"><div class="hm-hero">'+p+'%</div><div class="hm-hero-note">'+(hasT?he(d.total)+' תיקים מתוך יעד '+he(d.target):he(d.placed)+' משובצות מתוך '+he(d.total)+' תיקים')+'</div></div></div>'+
           (d.delta?'<div class="hm-delta'+(d.delta.n?'':' ntr')+'">'+(d.delta.n>0?'+':'')+he(d.delta.n)+' מהמצבה<br>של '+escH(d.delta.when)+'</div>':'')+'</div>'+
           '<div class="hm-bar"><i style="width:'+p+'%"></i></div>'+
           '<div class="hm-metrics">'+[
@@ -3801,7 +3801,7 @@ try{
   function findStudent(cityId, id){ var c=cityById(cityId); if(!c) return null; return (c.stuFull||[]).filter(function(s){ return s.id===id; })[0]||null; }
 
   /* ---------- ספי בקרה (רישיון / סייעת ב׳) — הגדרות המרכזי ---------- */
-  function thresholds(){ var t=(HQ.settings&&HQ.settings.thresholds)||{}; return { license:+t.license||35, assistantB:+t.assistantB||30, requestDays:+t.requestDays||7 }; }
+  function thresholds(){ var t=(HQ.settings&&HQ.settings.thresholds)||{}; return { license:+t.license||35, assistantB:+t.assistantB||30, requestDays:+t.requestDays||7, regTarget:+t.regTarget||0 }; }
   function licenseState(g){
     var cap=g.licenseCap||0, th=thresholds().license;
     if(!g.on) return { code:'off', label:'כבוי', over:0 };
@@ -5448,7 +5448,7 @@ function xlsToRows(buf){
     var numField=function(id,label,val,unit,note){ return '<div class="setf"><div class="l">'+label+'</div><div class="row"><input class="txtin num" type="number" id="'+id+'" value="'+val+'"'+(canP?'':' disabled')+'><span class="u">'+unit+'</span></div><div class="n">'+note+'</div></div>'; };
     host.innerHTML='<div class="tabs" role="tablist">'+tabs.map(function(t){ return '<button type="button" class="tab" role="tab" data-tab="'+t[0]+'" aria-selected="'+(SET.tab===t[0]?'true':'false')+'">'+t[1]+(t[2]!=null?' <span class="n">'+he(t[2])+'</span>':'')+'</button>'; }).join('')+'</div>'+
       '<div data-pane="th"'+(SET.tab==='th'?'':' hidden')+'>'+
-        '<div class="card pad" style="margin-bottom:12px"><div class="sec-title">ספים ובקרה</div><div class="sec-note" style="margin:4px 0 12px">הספים קובעים מתי גן או פנייה נכנסים לרשימת "דורש טיפול". שינוי חל על כל הערים.</div><div class="setgrid">'+numField('thLic','סף רישיון כללי',th.license,'ילדים בגן','כשאין מכסת רישיון בכרטיס הגן')+numField('thB','סף סייעת ב׳',th.assistantB,'בנות בגן','גן שאינו גן חובה')+numField('thReq','יעד לתשובה על פנייה',th.requestDays,'ימי עבודה','פנייה שעברה את היעד נצבעת "באיחור"')+'</div>'+
+        '<div class="card pad" style="margin-bottom:12px"><div class="sec-title">ספים ובקרה</div><div class="sec-note" style="margin:4px 0 12px">הספים קובעים מתי גן או פנייה נכנסים לרשימת "דורש טיפול". שינוי חל על כל הערים.</div><div class="setgrid">'+numField('thLic','סף רישיון כללי',th.license,'ילדים בגן','כשאין מכסת רישיון בכרטיס הגן')+numField('thB','סף סייעת ב׳',th.assistantB,'בנות בגן','גן שאינו גן חובה')+numField('thReq','יעד לתשובה על פנייה',th.requestDays,'ימי עבודה','פנייה שעברה את היעד נצבעת "באיחור"')+numField('thTarget','יעד רישום ארצי',th.regTarget||'','תיקים','אחוז הרישום בלוח הבית נמדד מולו. ריק = מציגים את אחוז המשובצות')+'</div>'+
           '<div class="req" id="thDirty" hidden><div class="l">נדרש</div><div class="t">שמירה כדי להחיל את הספים</div><div class="d">עד השמירה הדגלים ממשיכים לפי הערכים השמורים.</div></div></div>'+
         '<div class="card pad"><div class="sec-title">מה נדלק בעקבות הספים <span class="hq-count">כרגע, בערכים השמורים</span></div><div class="kpis" style="margin-top:10px">'+[['גנים מעל סף הרישיון',nLic,'נדרשת הגדלת רישיון'],['על גבול הרישיון',nNear,'מקום אחד או פחות'],['זכאים לסייעת ב׳ בלי סייעת',nAb,'סף '+th.assistantB+' בנות'],['פניות מעבר ליעד',nLate,th.requestDays+' ימי עבודה']].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+he(k[1])+'</div><div class="ks">'+k[2]+'</div></div>'; }).join('')+'</div></div>'+
       '</div>'+
@@ -5458,11 +5458,11 @@ function xlsToRows(buf){
       '<div data-pane="log"'+(SET.tab==='log'?'':' hidden')+'><div class="tcard"><div class="thead-bar"><div>יומן פעולות המרכזי</div><div>30 הימים האחרונים</div></div><div class="hm-list" style="padding:0 16px">'+(audit.length?audit.slice(0,60).map(function(x){ return '<div class="hm-row"><div class="tm">'+esc(H.fmtD(x.at))+'</div><div class="tx">'+esc(AL[x.action]||x.action||'')+(x.detail?' · '+esc(x.detail):'')+'</div><div class="who" title="'+esc(x.by||'')+'">'+esc(x.by||'')+'</div></div>'; }).join(''):'<div class="hm-empty"><span class="lamp wait"></span>עדיין אין פעולות.</div>')+'</div><div class="tfoot"><div>'+he(month.length)+' פעולות בחודש · שיבוצים, ייבואים והצלבות</div><div class="acts"><button type="button" class="btn-mini" id="auditExp">ייצוא היומן</button></div></div></div></div>';
     if(org){ var showOrg=SET.tab==='users'||SET.tab==='cities'; org.hidden=!showOrg; if(showOrg) org.setAttribute('data-show', SET.tab); else org.removeAttribute('data-show'); }
     if(acts) acts.innerHTML=(SET.tab==='th'&&canP?'<button type="button" class="btn-ghost" id="thReset">ביטול שינויים</button><button type="button" class="btn-primary" id="thSave">שמירת ההגדרות</button>':'');
-    var dirty=function(){ var d=(+$('#thLic').value!==th.license)||(+$('#thB').value!==th.assistantB)||(+$('#thReq').value!==th.requestDays); var el=$('#thDirty'); if(el) el.hidden=!d; };
-    ['#thLic','#thB','#thReq'].forEach(function(sel){ var el=$(sel); if(el) el.addEventListener('input', dirty); });
+    var dirty=function(){ var d=(+$('#thLic').value!==th.license)||(+$('#thB').value!==th.assistantB)||(+$('#thReq').value!==th.requestDays)||((+$('#thTarget').value||0)!==th.regTarget); var el=$('#thDirty'); if(el) el.hidden=!d; };
+    ['#thLic','#thB','#thReq','#thTarget'].forEach(function(sel){ var el=$(sel); if(el) el.addEventListener('input', dirty); });
     var b;
-    if((b=$('#thSave'))) b.addEventListener('click',function(){ H.saveSettings({ thresholds:{ license:+$('#thLic').value||35, assistantB:+$('#thB').value||30, requestDays:+$('#thReq').value||7 } }); });
-    if((b=$('#thReset'))) b.addEventListener('click',function(){ $('#thLic').value=th.license; $('#thB').value=th.assistantB; $('#thReq').value=th.requestDays; dirty(); });
+    if((b=$('#thSave'))) b.addEventListener('click',function(){ H.saveSettings({ thresholds:{ license:+$('#thLic').value||35, assistantB:+$('#thB').value||30, requestDays:+$('#thReq').value||7, regTarget:Math.max(0,+$('#thTarget').value||0) } }); });
+    if((b=$('#thReset'))) b.addEventListener('click',function(){ $('#thLic').value=th.license; $('#thB').value=th.assistantB; $('#thReq').value=th.requestDays; $('#thTarget').value=th.regTarget||''; dirty(); });
     if((b=$('#auditExp'))) b.addEventListener('click',function(){ H.exportXLS('יומן המרכזי '+H.todayISO(),['תאריך','פעולה','פירוט','מי'],audit.map(function(x){ return [H.fmtDT(x.at),AL[x.action]||x.action||'',x.detail||'',x.by||'']; }),'יומן'); });
     $$('#hqSettings .tab[data-tab]').forEach(function(t){ t.addEventListener('click',function(){ SET.tab=t.dataset.tab; renderSettings(); }); });
     $$('#hqSettings [data-tab-go]').forEach(function(t){ t.addEventListener('click',function(){ SET.tab=t.dataset.tabGo; renderSettings(); }); });
