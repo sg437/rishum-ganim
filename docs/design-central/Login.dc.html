@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:Heebo;src:url(../../fonts/heebo-hebrew.woff2) format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:Heebo;src:url(../../fonts/heebo-latin.woff2) format('woff2');font-weight:100 900;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122}
+@font-face{font-family:Assistant;src:url(../../fonts/assistant-hebrew.woff2) format('woff2');font-weight:200 800;font-display:swap;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:Assistant;src:url(../../fonts/assistant-latin.woff2) format('woff2');font-weight:200 800;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122}
+body{--bg:#f4f2ed;--wash:linear-gradient(180deg,#fbfaf7 0,#f4f2ed 220px);--card:#fffefb;--sunk:#faf8f4;--inner:#f7f5f0;--hov:#f7f5f0;--navhov:#f2efe8;--ink:#22221f;--ink2:#4e4c46;--ink3:#6b6860;--ink4:#75716a;--bd:#e3dfd6;--bd2:#eae6dd;--row:#f1eee7;--grn:#2f5d4a;--grnink:#24483a;--grnsoft:#e6efe9;--grnrow:#f2f6f2;--amb:#8a5b12;--ambbg:#f6edd9;--cly:#8a3b28;--clybg:#f6e2d9;--ntr:#55524b;--ntrbg:#eeece6;--track:#e9e5dc;--avbg:#eef1ec;--avink:#3d5a4d;--chev:#a09b91;--sb:#dcd7cc;--ok:#2f7d5a;--done:#24483a;--wait:#9b978d;--warn:#c08a1f;--bad:#b4503c}
+body[data-night]{--bg:#202723;--wash:linear-gradient(180deg,#2b3630 0,#202723 220px);--card:#2b3630;--sunk:#26302b;--inner:#313d37;--hov:#313d37;--navhov:#31463c;--ink:#fffefb;--ink2:#d3dbd7;--ink3:#9db0a8;--ink4:#9db0a8;--bd:#3f4f48;--bd2:#39463f;--row:#354039;--grn:#8fc4a9;--grnink:#8fc4a9;--grnsoft:#31463c;--grnrow:#2d3b34;--amb:#d9a94a;--ambbg:#3d3524;--cly:#e0917f;--clybg:#43302a;--ntr:#c9d3ce;--ntrbg:#343d38;--track:#39463f;--avbg:#3d5a4d;--avink:#d3dbd7;--chev:#7f8b85;--sb:#4a5a52;--ok:#4f9f78;--done:#8fc4a9;--wait:#9b978d;--warn:#d9a94a;--bad:#c9705c}
+*{box-sizing:border-box}
+body{margin:0;direction:rtl;background:var(--bg);color:var(--ink);font-family:Assistant,system-ui,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:var(--sb);border-radius:999px}::-webkit-scrollbar-track{background:transparent}
+a{color:var(--grnink);text-decoration:none}a:hover{color:var(--grn)}
+:focus-visible{outline:2px solid #9db0a8;outline-offset:-1px}
+</style>
+</helmet>
+<div dir="rtl" style="display:flex;flex-direction:column;gap:10px;padding:20px;width:max-content;font-family:Assistant,sans-serif">
+
+<div style="font:700 11px/1 Assistant;letter-spacing:.08em;color:var(--ink4)">מסך הכניסה · דסקטופ <span dir="ltr">1280×760</span></div>
+<div style="width:1280px;height:760px;border:1px solid var(--bd);border-radius:14px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column">
+
+  <div style="height:58px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);box-shadow:inset 0 1px 0 #5d6f66">
+    <div style="display:flex;align-items:center;gap:11px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="width:18px;height:2px;border-radius:999px;background:#8fc4a9"></div>
+        <div style="width:13px;height:2px;border-radius:999px;background:#fffefb"></div>
+        <div style="width:9px;height:2px;border-radius:999px;background:#7f8b85"></div>
+      </div>
+      <div style="font:600 15px/1 Heebo,sans-serif;color:#fffefb">רישום ושיבוץ ארצי</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onClick="{{ toggleNight }}" style="width:30px;height:30px;border-radius:8px;border:1px solid #6d7a74;background:rgba(255,255,255,.08);color:#d3dbd7;font:400 13px/1 Assistant;cursor:pointer;display:flex;align-items:center;justify-content:center">{{ nightGlyph }}</button>
+    </div>
+  </div>
+  <div style="height:2px;flex:none;background:var(--grn)"></div>
+
+  <div style="flex:1;min-height:0;background:var(--wash);display:flex;align-items:center;justify-content:center;padding:20px">
+    <div style="width:470px;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);padding:20px;display:flex;flex-direction:column;gap:16px">
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font:700 11px/1 Assistant;letter-spacing:.08em;color:var(--ink4)">מרכז ניהול ארצי</div>
+        <h1 style="margin:0;font:600 23px/1.2 Heebo,sans-serif;letter-spacing:-.015em;color:var(--ink)">רישום ושיבוץ · מחלקת הרישום</h1>
+        <div style="font:400 13.5px/1.45 Assistant;color:var(--ink3)">הכניסה למרכזי פתוחה לבעלי המערכת ולמי שסומנה מרכז במרשם המרכזי.</div>
+      </div>
+
+      <sc-if value="{{ isSignin }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <button onClick="{{ signIn }}" style="height:36px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;border:1px solid var(--grn);background:linear-gradient(180deg,#3a6d58,#2b5544);box-shadow:0 1px 2px rgba(34,34,31,.12);color:#fffefb;font:700 13.5px/1 Assistant;cursor:pointer">
+            <span style="font:700 15px/1 Heebo,sans-serif">G</span>
+            <span>כניסה עם חשבון Google</span>
+          </button>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <a href="#" style="font:400 13px/1 Assistant">כניסה למצב הדמיה · <span dir="ltr">?demo=1</span></a>
+            <div style="font:400 12.5px/1 Assistant;color:var(--ink4)">6 ערים · נתוני דוגמה בלבד</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDenied }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="background:var(--inner);border:1px solid var(--bd2);border-radius:9px;padding:9px 11px;display:flex;flex-direction:column;gap:3px">
+            <div style="font:700 11px/1 Assistant;letter-spacing:.06em;color:var(--ink4)">אין הרשאת כניסה</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:8px;height:8px;border-radius:2px;background:var(--bad);flex:none"></span>
+              <div style="font:600 13.5px/1.3 Assistant;color:var(--ink)">החשבון אינו מסומן מרכז במרשם המרכזי</div>
+            </div>
+            <div style="font:400 12.5px/1.45 Assistant;color:var(--ink3)">משתמשי עיר עובדים בתוכנת העיר. לצירוף לצוות המרכז יש לפנות למנהלת מחלקת הרישום.</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button style="flex:1;height:36px;border-radius:10px;border:1px solid var(--grn);background:linear-gradient(180deg,#3a6d58,#2b5544);box-shadow:0 1px 2px rgba(34,34,31,.12);color:#fffefb;font:700 13.5px/1 Assistant;cursor:pointer">מעבר לתוכנת העיר</button>
+            <button onClick="{{ back }}" style="height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--ink2);font:700 13.5px/1 Assistant;cursor:pointer">כניסה בחשבון אחר</button>
+          </div>
+          <div style="font:400 12.5px/1.45 Assistant;color:var(--ink4)"><span dir="ltr">rivka.k@ganim.org</span> · ניסיון כניסה 07.09</div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+
+<sc-if value="{{ mobile }}" hint-placeholder-val="{{ true }}">
+<div style="font:700 11px/1 Assistant;letter-spacing:.08em;color:var(--ink4);padding-top:10px">מסך הכניסה · מובייל <span dir="ltr">390×844</span></div>
+<div style="width:390px;height:844px;border:1px solid var(--bd);border-radius:14px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column">
+  <div style="height:58px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%);box-shadow:inset 0 1px 0 #5d6f66">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="width:16px;height:2px;border-radius:999px;background:#8fc4a9"></div>
+        <div style="width:12px;height:2px;border-radius:999px;background:#fffefb"></div>
+        <div style="width:8px;height:2px;border-radius:999px;background:#7f8b85"></div>
+      </div>
+      <div style="font:600 15.5px/1 Heebo,sans-serif;color:#fffefb">רישום ושיבוץ ארצי</div>
+    </div>
+    <button onClick="{{ toggleNight }}" style="width:34px;height:34px;border-radius:8px;border:1px solid #6d7a74;background:rgba(255,255,255,.08);color:#d3dbd7;font:400 13px/1 Assistant;cursor:pointer">{{ nightGlyph }}</button>
+  </div>
+  <div style="height:2px;flex:none;background:var(--grn)"></div>
+  <div style="flex:1;min-height:0;background:var(--wash);padding:18px 16px;display:flex;flex-direction:column;gap:14px">
+    <div style="background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 1px 2px rgba(34,34,31,.04);padding:16px 14px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font:700 11px/1 Assistant;letter-spacing:.08em;color:var(--ink4)">מרכז ניהול ארצי</div>
+        <div style="font:600 17px/1.25 Heebo,sans-serif;letter-spacing:-.015em;color:var(--ink)">רישום ושיבוץ · מחלקת הרישום</div>
+        <div style="font:400 13.5px/1.45 Assistant;color:var(--ink3)">הכניסה פתוחה לבעלי המערכת ולמי שסומנה מרכז במרשם.</div>
+      </div>
+      <sc-if value="{{ isDenied }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--inner);border:1px solid var(--bd2);border-radius:9px;padding:9px 11px;display:flex;flex-direction:column;gap:3px">
+          <div style="font:700 11px/1 Assistant;letter-spacing:.06em;color:var(--ink4)">אין הרשאת כניסה</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:8px;height:8px;border-radius:2px;background:var(--bad);flex:none"></span>
+            <div style="font:600 13.5px/1.3 Assistant;color:var(--ink)">החשבון אינו מסומן מרכז</div>
+          </div>
+          <div style="font:400 12.5px/1.45 Assistant;color:var(--ink3)">משתמשי עיר עובדים בתוכנת העיר.</div>
+        </div>
+      </sc-if>
+      <div style="font:400 12.5px/1.45 Assistant;color:var(--ink4)">6 ערים · שנת תשפ״ז · עודכן לפני 3 דקות</div>
+    </div>
+  </div>
+  <div style="flex:none;padding:12px 16px 16px;background:var(--card);border-top:1px solid var(--bd2);display:flex;flex-direction:column;gap:10px">
+    <sc-if value="{{ isSignin }}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{ signIn }}" style="height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;border:1px solid var(--grn);background:linear-gradient(180deg,#3a6d58,#2b5544);box-shadow:0 1px 2px rgba(34,34,31,.12);color:#fffefb;font:700 13.5px/1 Assistant;cursor:pointer">
+        <span style="font:700 15px/1 Heebo,sans-serif">G</span>
+        <span>כניסה עם חשבון Google</span>
+      </button>
+    </sc-if>
+    <sc-if value="{{ isDenied }}" hint-placeholder-val="{{ false }}">
+      <button style="height:44px;border-radius:10px;border:1px solid var(--grn);background:linear-gradient(180deg,#3a6d58,#2b5544);box-shadow:0 1px 2px rgba(34,34,31,.12);color:#fffefb;font:700 13.5px/1 Assistant;cursor:pointer">מעבר לתוכנת העיר</button>
+    </sc-if>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;min-height:30px">
+      <a href="#" style="font:400 13px/1 Assistant">מצב הדמיה · <span dir="ltr">?demo=1</span></a>
+      <sc-if value="{{ isDenied }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ back }}" style="height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--ink2);font:700 13px/1 Assistant;cursor:pointer">חשבון אחר</button>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1330,&quot;height&quot;:1680},&quot;showMobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;startState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;כניסה&quot;,&quot;אינך מרכז&quot;],&quot;default&quot;:&quot;כניסה&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const YEARS = ['תשפ״ז', 'תשפ״ח', 'תשפ״ו'];
+
+class Component extends DCLogic {
+  state = { night: false, state: null, year: 'תשפ״ז' };
+
+  componentDidMount() {
+    try {
+      const s = localStorage.getItem('wr-night');
+      if (s === '1') { document.body.dataset.night = '1'; this.setState({ night: true }); }
+    } catch (e) {}
+  }
+
+  setNight(on) {
+    if (on) document.body.dataset.night = '1'; else delete document.body.dataset.night;
+    try { localStorage.setItem('wr-night', on ? '1' : '0'); } catch (e) {}
+    this.setState({ night: on });
+  }
+
+  renderVals() {
+    const cur = this.state.state || this.props.startState || 'כניסה';
+    return {
+      mobile: this.props.showMobile !== false,
+      nightGlyph: this.state.night ? '☀' : '☾',
+      toggleNight: () => this.setNight(!this.state.night),
+      isSignin: cur === 'כניסה',
+      isDenied: cur === 'אינך מרכז',
+      signIn: () => this.setState({ state: 'אינך מרכז' }),
+      back: () => this.setState({ state: 'כניסה' })
+    };
+  }
+}
+</script>
+</body>
+</html>
