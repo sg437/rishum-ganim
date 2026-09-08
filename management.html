@@ -359,12 +359,10 @@
   .msel .msel-pop .msel-all{display:flex; gap:6px; padding:0 4px 6px; border-bottom:1px solid var(--bd2); margin-bottom:6px}
 
   /* ---- טאבים ו-chips ---- */
-  .chips,.tmpl,.steps{display:flex; gap:6px; flex-wrap:wrap}
-  .chipbtn,.chip[role="button"],.ptab,.steps .s{height:30px; padding:0 11px; border-radius:8px; border:1px solid var(--bd); background:var(--card); color:var(--ink2); font-size:13px; font-weight:400; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap}
+  .chips,.tmpl{display:flex; gap:6px; flex-wrap:wrap}
+  .chipbtn,.chip[role="button"],.ptab{height:30px; padding:0 11px; border-radius:8px; border:1px solid var(--bd); background:var(--card); color:var(--ink2); font-size:13px; font-weight:400; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap}
   .chipbtn:hover,.chip[role="button"]:hover,.ptab:hover{border-color:var(--grn); color:var(--ink)}
-  .chipbtn[aria-pressed="true"],.chip.on,.chipbtn.on,.ptab[aria-selected="true"],.steps .s.on{background:var(--grnsoft); border-color:var(--grn); color:var(--grnink); font-weight:700}
-  .steps .s{font-size:12.5px; cursor:default}
-  .steps .s.done{background:var(--grnsoft); border-color:var(--grnsoft); color:var(--grnink)}
+  .chipbtn[aria-pressed="true"],.chip.on,.chipbtn.on,.ptab[aria-selected="true"]{background:var(--grnsoft); border-color:var(--grn); color:var(--grnink); font-weight:700}
   .chip{display:inline-flex; align-items:center; gap:6px; white-space:nowrap}
   .chip[role="button"]{user-select:none}
   .tab{appearance:none; border:0; background:transparent; color:var(--ink3); cursor:pointer; height:36px; padding:0 12px; font-weight:700; font-size:13.5px; white-space:nowrap; display:inline-flex; align-items:center; gap:7px}
@@ -575,17 +573,93 @@
   .leaflet-container{font-family:inherit}
   .testbar{position:sticky; top:0; z-index:40; background:var(--ambbg); color:var(--amb); font-weight:700; text-align:center; padding:6px 10px; font-size:13px; border-bottom:1px solid var(--bd)}
 
+  /* ---- טאבים · footer טבלה · סרגל פעולות צף · תחנות · אווטאר · רצועת "נדרש" ---- */
+  .tabs{display:flex; align-items:center; gap:16px; border-bottom:1px solid var(--bd2); margin-bottom:12px; overflow-x:auto; scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs .tab{padding:0; font-weight:400; color:var(--ink3); flex:none}
+  .tabs .tab .n{color:var(--ink4); font-weight:400}
+  .tabs .tab[aria-selected="true"]{font-weight:700; color:var(--ink)}
+  .tabs .tab[aria-selected="true"] .n{color:var(--ink3)}
+  .tabs .tag{margin-inline-start:auto; flex:none}
+  .tabs .tag.cly{background:var(--clybg); color:var(--cly)}
+  .tcard{background:var(--card); border:1px solid var(--bd); border-radius:12px; overflow:hidden; box-shadow:0 1px 2px rgba(34,34,31,.04)}
+  .tcard .hq-scroll{border:0; border-radius:0; box-shadow:none}
+  .tfoot{min-height:40px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:6px 12px; background:var(--sunk); border-top:1px solid var(--bd2); font-size:12.5px; color:var(--ink3)}
+  .tfoot .acts{display:flex; gap:6px; flex-wrap:wrap}
+  .tfoot .btn-mini{height:26px; border-radius:7px; padding:0 10px; font-size:12.5px; font-weight:400}
+  .avatar{width:24px; height:24px; flex:none; border-radius:999px; background:var(--avbg); color:var(--avink); font:600 11px/24px "Heebo",system-ui,sans-serif; text-align:center; display:inline-block; vertical-align:middle}
+  .nm{display:inline-flex; align-items:center; gap:9px; font-weight:600; color:var(--ink)}
+  .c2 .a{display:block; font-size:13px; line-height:1.2; color:var(--ink)}
+  .c2 .b{display:block; font-size:11.5px; line-height:1.3; color:var(--ink4)}
+  .lampt{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--ink2); white-space:nowrap}
+  .lampt.mute{color:var(--ink4)}
+  td.chev,th.chev{width:30px; padding:0; text-align:center; color:var(--chev); font-size:14px}
+  .fab{position:fixed; bottom:18px; inset-inline:0; margin-inline:auto; width:max-content; max-width:92vw; height:46px; z-index:60; display:flex; align-items:center; gap:8px; padding:0 8px 0 14px; border-radius:12px; background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%); color:#fffefb; box-shadow:0 8px 22px rgba(34,34,31,.24); font-size:13px; white-space:nowrap}
+  .fab .btn{height:30px; padding:0 12px; border-radius:8px; border:1px solid #6d7a74; background:rgba(255,255,255,.08); color:#fffefb; font-size:13px; font-weight:700; white-space:nowrap}
+  .fab .btn.main{border-color:#8fc4a9}
+  .fab .btn:hover{border-color:#9db0a8}
+  .fab .btn.x{width:30px; padding:0}
+  .fab .btn:disabled{opacity:.45; cursor:not-allowed}
+  .has-fab{padding-bottom:82px}
+  .steps{display:flex; flex-direction:column; counter-reset:st}
+  .steps .s{display:flex; gap:10px; align-items:flex-start; padding:4px 8px; border-radius:9px; min-height:42px; font-size:13.5px; font-weight:600; line-height:1.2; color:var(--ink3); position:relative}
+  .steps .s::before{counter-increment:st; content:counter(st); width:24px; height:24px; flex:none; border-radius:999px; border:1px solid var(--sb); background:var(--card); color:var(--ink4); font:600 12px/22px "Heebo",system-ui,sans-serif; text-align:center}
+  .steps .s:not(:last-child)::after{content:""; position:absolute; top:30px; inset-inline-start:19px; width:2px; height:calc(100% - 30px); background:var(--bd2)}
+  .steps .s>span{padding-top:4px}
+  .steps .s.done{color:var(--ink)}
+  .steps .s.done::before{border-color:var(--grn); background:var(--grnsoft); color:var(--grnink)}
+  .steps .s.on{color:var(--ink); background:var(--grnrow)}
+  .steps .s.on::before{border-color:var(--warn); background:var(--ambbg); color:var(--amb)}
+  .steps .s small{display:block; font-size:11.5px; font-weight:400; line-height:1.4; color:var(--ink4)}
+  .steps.row{flex-direction:row; gap:6px; flex-wrap:wrap; counter-reset:st}
+  .steps.row .s{min-height:30px; padding:2px 10px 2px 4px; border:1px solid var(--bd); border-radius:8px; align-items:center; font-size:13px; font-weight:400}
+  .steps.row .s::before{width:22px; height:22px; font:600 12px/20px "Heebo",system-ui,sans-serif}
+  .steps.row .s::after{display:none}
+  .steps.row .s>span{padding-top:0}
+  .steps.row .s.on{border-color:var(--grn); background:var(--grnsoft); color:var(--grnink); font-weight:700}
+  .req{background:var(--inner); border:1px solid var(--bd2); border-radius:9px; padding:9px 11px; display:flex; flex-direction:column; gap:3px}
+  .req .l{font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--ink4)}
+  .req .t{font-size:13.5px; font-weight:600; color:var(--ink)}
+  .req .d{font-size:12.5px; line-height:1.45; color:var(--ink3)}
+  .req.bad .t::before{content:""; display:inline-block; width:9px; height:9px; border-radius:2px; background:var(--bad); margin-inline-end:7px; vertical-align:middle}
+  .kv{display:flex; flex-direction:column}
+  .kv .r{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--row)}
+  .kv .r .k{font-size:13px; line-height:1.3; color:var(--ink3)}
+  .kv .r .v{font-size:13.5px; line-height:1.3; color:var(--ink); text-align:left}
+  .kv .r .v.empty{color:var(--ink4)}
+  .hd-t{flex:1; min-width:0; display:flex; flex-direction:column; gap:3px}
+  .hd-label{font-size:11px; font-weight:700; letter-spacing:.08em; color:#9db0a8}
+  .hd-meta{font-size:12.5px; color:#d3dbd7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .hd-label:empty,.hd-meta:empty{display:none}
+  .rank{width:22px; height:22px; flex:none; border-radius:999px; border:1.5px solid var(--grn); color:var(--grnink); font:700 12px/19px "Heebo",system-ui,sans-serif; text-align:center; display:inline-block}
+  .wl{display:flex; flex-direction:column}
+  .wl .w{min-height:44px; display:flex; align-items:center; gap:12px; padding:9px 14px; border-bottom:1px solid var(--row); cursor:pointer; border-inline:0; border-top:0; background:none; width:100%; text-align:right; color:inherit; font-size:13px}
+  .wl .w:hover{background:var(--hov)}
+  .wl .w .nm{width:180px; flex:none}
+  .wl .w .ct{width:120px; flex:none; color:var(--ink2)}
+  .wl .w .gn{width:150px; flex:none; color:var(--ink2)}
+  .wl .w .nt{flex:1; min-width:0; font-size:12.5px; line-height:1.35; color:var(--ink3)}
+  .wl .w .sn{flex:none; font-size:12.5px; color:var(--ink4)}
+  .thead-bar{height:38px; display:flex; align-items:center; justify-content:space-between; background:var(--sunk); border-bottom:1px solid var(--bd2); font-size:11.5px; font-weight:700; letter-spacing:.04em; color:var(--ink3); padding:0 14px}
+  .empty-card{display:flex; flex-direction:column; align-items:center; gap:8px; padding:26px 18px; text-align:center}
+  .empty-card .t{font-family:"Heebo",system-ui,sans-serif; font-size:15px; font-weight:600}
+  .empty-card .d{font-size:13.5px; color:var(--ink3); max-width:340px}
+  .empty-card .lampt{color:var(--ink3)}
+  @media (max-width:1019px){ .wl .w{flex-wrap:wrap; gap:6px 10px} .wl .w .nm,.wl .w .ct,.wl .w .gn{width:auto} .wl .w .nt{flex-basis:100%} }
+
   /* ---- מגירת פרטים (406px משמאל) ---- */
   .hq-overlay{position:fixed; inset:0; background:rgba(34,34,31,.28); z-index:79; display:none}
   .hq-overlay.open{display:block}
   .hq-drawer{position:fixed; top:0; bottom:0; inset-inline-end:0; width:min(406px,100vw); background:var(--card); border-inline-start:1px solid var(--bd2); box-shadow:-14px 0 34px rgba(34,34,31,.16); z-index:80;
     transform:translateX(-8px); opacity:0; visibility:hidden; pointer-events:none; transition:transform .18s, opacity .18s, visibility 0s .18s; display:flex; flex-direction:column}
   .hq-drawer.open{transform:none; opacity:1; visibility:visible; pointer-events:auto; transition:transform .18s, opacity .18s}
-  .hq-drawer .hd{flex:none; height:60px; display:flex; align-items:center; gap:10px; padding:0 16px; background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%); color:#fffefb; box-shadow:inset 0 1px 0 #5d6f66; border-bottom:2px solid var(--grn)}
+  .hq-drawer .hd{flex:none; min-height:60px; display:flex; align-items:center; gap:10px; padding:12px 16px; background:linear-gradient(180deg,#3f4f48 0%,#2b3630 100%); color:#fffefb; box-shadow:inset 0 1px 0 #5d6f66; border-bottom:2px solid var(--grn)}
   .hq-drawer .hd h3{font-size:17px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:0}
   .hq-drawer .hd button,.hq-modal .mh button{width:30px; height:30px; flex:none; border:1px solid #6d7a74; border-radius:8px; background:rgba(255,255,255,.08); color:#fffefb; font-size:13px; line-height:1; display:inline-flex; align-items:center; justify-content:center}
   .hq-drawer .hd button:hover,.hq-modal .mh button:hover{border-color:#9db0a8}
-  .hq-drawer .bd{flex:1; min-height:0; overflow-y:auto; padding:14px 16px}
+  .hq-drawer .bd{flex:1; min-height:0; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:14px}
+  .hq-drawer .bd>*{flex:none}
+  .hq-drawer .bd .sec-h{margin:0}
   .hq-drawer .ft{flex:none; padding:10px 16px; border-top:1px solid var(--bd2); background:var(--sunk); display:flex; gap:8px; flex-wrap:wrap; align-items:center}
   .hq-drawer .ft:empty{display:none}
 
@@ -1255,9 +1329,9 @@
   <!-- ================= המסכים החיים החדשים של המרכזי (מוצגים אחרי כניסה) ================= -->
   <section class="view" id="view-students" role="tabpanel">
     <div class="view-head"><div>
-      <h2>תלמידים · כל הערים <span class="pill live"><span style="width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block"></span> חי</span></h2>
-      <div class="sub">כל התיקים מכל הערים, עם כל הנתונים: קליטה במערכת ובעירייה, שיבוץ (איזה גן), מועד, תוכניות וצהרון, מסמכים, הורים וכתובת. סינון לפי כמה ערים יחד, ייצוא לפי בחירת שדות (כמו בתוכנת העיר), ושיבוץ מרכזי לערים שהשיבוץ שלהן במשרד הראשי.</div>
-    </div></div>
+      <h2>תלמידים ושיבוץ מרכזי</h2>
+      <div class="sub">כל התיקים הפעילים בכל הערים. שינוי שיבוץ נכתב ישירות לתיק בתוכנת העיר.</div>
+    </div><div class="hm-actions" id="stuActions"></div></div>
     <div id="hqStudents"></div>
   </section>
 
@@ -1376,7 +1450,7 @@
 
   <!-- מגירת פרטים (תיק תלמיד/ה, איש צוות, גן) ומודאל כללי -->
   <div class="hq-overlay" id="hqOverlay"></div>
-  <aside class="hq-drawer" id="hqDrawer" aria-label="פרטים"><div class="hd"><h3 id="hqDrawerTitle"></h3><button type="button" id="hqDrawerClose" aria-label="סגירה">✕</button></div><div class="bd" id="hqDrawerBody"></div><div class="ft" id="hqDrawerFoot"></div></aside>
+  <aside class="hq-drawer" id="hqDrawer" aria-label="פרטים"><div class="hd"><div class="hd-t"><div class="hd-label" id="hqDrawerLabel"></div><h3 id="hqDrawerTitle"></h3><div class="hd-meta" id="hqDrawerMeta"></div></div><button type="button" id="hqDrawerClose" aria-label="סגירה">✕</button></div><div class="bd" id="hqDrawerBody"></div><div class="ft" id="hqDrawerFoot"></div></aside>
   <div class="hq-modal-wrap" id="hqModalWrap"><div class="hq-modal" id="hqModal" role="dialog" aria-modal="true"><div class="mh"><h3 id="hqModalTitle"></h3><button type="button" id="hqModalClose" aria-label="סגירה">✕</button></div><div class="mb" id="hqModalBody"></div><div class="mf" id="hqModalFoot"></div></div></div>
 
 <!-- @@END-HQ-HTML@@ -->
@@ -3397,7 +3471,7 @@ try{
   function closeModal(){ modalWrap.classList.remove('open'); $('#hqModalBody').innerHTML=''; }
   $('#hqModalClose').addEventListener('click',closeModal);
   modalWrap.addEventListener('click',function(e){ if(e.target===modalWrap) closeModal(); });
-  function openDrawer(title, body, foot){ $('#hqDrawerTitle').textContent=title||''; $('#hqDrawerBody').innerHTML=body||''; $('#hqDrawerFoot').innerHTML=foot||''; drawer.classList.add('open'); overlay.classList.add('open'); }
+  function openDrawer(title, body, foot, o){ o=o||{}; $('#hqDrawerLabel').textContent=o.label||''; $('#hqDrawerTitle').textContent=title||''; $('#hqDrawerMeta').innerHTML=o.meta||''; $('#hqDrawerBody').innerHTML=body||''; $('#hqDrawerFoot').innerHTML=foot||''; drawer.classList.add('open'); overlay.classList.add('open'); }
   function closeDrawer(){ drawer.classList.remove('open'); overlay.classList.remove('open'); }
   $('#hqDrawerClose').addEventListener('click',closeDrawer); overlay.addEventListener('click',closeDrawer);
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ if(modalWrap.classList.contains('open')) closeModal(); else closeDrawer(); } });
@@ -3434,7 +3508,7 @@ try{
   function selCities(){ var ids=Object.keys(SEL_CITIES).filter(function(k){ return SEL_CITIES[k]; }); var all=cities(); if(!ids.length) return all; return all.filter(function(c){ return SEL_CITIES[c.id]; }); }
   function citySelHTML(id){
     var all=cities(); var n=Object.keys(SEL_CITIES).filter(function(k){ return SEL_CITIES[k]; }).length;
-    return '<div class="msel" id="'+id+'"><button type="button" class="btn-ghost msel-btn">🏙️ '+(n?(n===1?esc((cityById(Object.keys(SEL_CITIES).filter(function(k){return SEL_CITIES[k];})[0])||{}).name||''):n+' ערים'):'כל הערים')+' <span>▾</span></button>'+
+    return '<div class="msel" id="'+id+'"><button type="button" class="btn-ghost msel-btn">'+(n?(n===1?esc((cityById(Object.keys(SEL_CITIES).filter(function(k){return SEL_CITIES[k];})[0])||{}).name||''):n+' ערים'):'כל הערים')+' <span style="color:var(--ink3)">⌄</span></button>'+
       '<div class="msel-pop"><div class="msel-all"><button type="button" class="btn-mini" data-all="1">כל הערים</button><button type="button" class="btn-mini" data-all="0">נקה</button></div>'+
       all.map(function(c){ return '<label><input type="checkbox" value="'+esc(c.id)+'"'+(SEL_CITIES[c.id]?' checked':'')+'> '+esc(c.name)+' <span class="hq-count">'+he(c.students)+'</span></label>'; }).join('')+'</div></div>';
   }
@@ -3501,10 +3575,19 @@ try{
   /* טבלה ממוינת + חיפוש — רכיב משותף */
   function tableHTML(id, cols, rows, opts){
     opts=opts||{}; var sort=opts.sort||{};
-    var head='<thead><tr>'+cols.map(function(c,i){ return '<th data-i="'+i+'"'+(c.num?' class="num"':'')+'>'+esc(c.l)+(sort.i===i?'<span class="sort">'+(sort.d<0?'▼':'▲')+'</span>':'')+'</th>'; }).join('')+'</tr></thead>';
-    var body='<tbody>'+(rows.length?rows.map(function(r,ri){ return '<tr'+(opts.rowAttr?' '+opts.rowAttr(r,ri):'')+(opts.clickable?' class="clickable"':'')+'>'+cols.map(function(c){ var v=c.h?c.h(r):esc(c.v(r)); return '<td'+(c.num?' class="num"':'')+(c.ltr?' class="ltr"':'')+'>'+v+'</td>'; }).join('')+'</tr>'; }).join(''):'<tr><td colspan="'+cols.length+'" class="live-note" style="padding:18px;text-align:center">'+esc(opts.empty||'אין שורות בסינון הזה.')+'</td></tr>')+'</tbody>';
-    return '<div class="hq-scroll" style="'+(opts.style||'')+'"><table class="hq-table" id="'+id+'">'+head+body+'</table></div>';
+    var head='<thead><tr>'+cols.map(function(c,i){ return '<th data-i="'+i+'"'+(c.num?' class="num"':'')+(c.chev?' class="chev"':'')+'>'+esc(c.l)+(sort.i===i?'<span class="sort">'+(sort.d<0?'▼':'▲')+'</span>':'')+'</th>'; }).join('')+'</tr></thead>';
+    var body='<tbody>'+(rows.length?rows.map(function(r,ri){ return '<tr'+(opts.rowAttr?' '+opts.rowAttr(r,ri):'')+(opts.clickable?' class="clickable"':'')+'>'+cols.map(function(c){ var v=c.h?c.h(r):esc(c.v(r)); return '<td'+(c.num?' class="num"':'')+(c.ltr?' class="ltr"':'')+(c.chev?' class="chev"':'')+'>'+v+'</td>'; }).join('')+'</tr>'; }).join(''):'<tr><td colspan="'+cols.length+'" class="live-note" style="padding:18px;text-align:center">'+esc(opts.empty||'אין שורות בסינון הזה.')+'</td></tr>')+'</tbody>';
+    var colg=opts.widths?'<colgroup>'+opts.widths.map(function(w){ return '<col style="width:'+w+'">'; }).join('')+'</colgroup>':'';
+    var t='<div class="hq-scroll'+(opts.fab?' has-fab':'')+'" style="'+(opts.style||'')+'"><table class="hq-table" id="'+id+'"'+(opts.widths?' style="min-width:auto"':'')+'>'+colg+head+body+'</table></div>';
+    return opts.foot!=null ? '<div class="tcard">'+t+'<div class="tfoot">'+opts.foot+'</div></div>' : t;
   }
+  /* נורת סטטוס + מילה — הצבע לריבוע בלבד, הטקסט תמיד בדיו */
+  function lamp(kind, text, mute){ return '<span class="lampt'+(mute?' mute':'')+'"><i class="lamp '+kind+'"></i>'+esc(text)+'</span>'; }
+  function initials(name){ var w=String(name||'').trim().split(/\s+/).filter(Boolean); return w.length?(w[0][0]+(w[1]?w[1][0]:'')):''; }
+  function nameCell(name, extra){ return '<span class="nm"><span class="avatar">'+esc(initials(name))+'</span><span>'+esc(name)+'</span></span>'+(extra||''); }
+  function cell2(a,b){ return '<span class="c2"><span class="a">'+a+'</span>'+(b?'<span class="b">'+b+'</span>':'')+'</span>'; }
+  function tabsHTML(list, cur, attr){ return '<div class="tabs" role="tablist">'+list.map(function(t){ return '<button type="button" class="tab" role="tab" '+attr+'="'+esc(t.k)+'" aria-selected="'+(t.k===cur?'true':'false')+'">'+esc(t.l)+(t.n!=null?' <span class="n">'+esc(t.n)+'</span>':'')+'</button>'; }).join('')+'</div>'; }
+  function emptyHTML(title, text, btn){ return '<div class="card empty-card"><div class="t">'+esc(title)+'</div>'+(text?'<div class="d">'+esc(text)+'</div>':'')+(btn||'')+'</div>'; }
   function sortRows(rows, cols, sort){ if(!sort||sort.i==null) return rows; var c=cols[sort.i]; if(!c) return rows; var k=c.s||c.v; return rows.slice().sort(function(a,b){ var x=k(a), y=k(b); if(typeof x==='number'&&typeof y==='number') return (x-y)*sort.d; return sortHe(x,y)*sort.d; }); }
   function wireSort(tableId, state, rerender){ var t=$('#'+tableId); if(!t) return; $$('th[data-i]',t).forEach(function(th){ th.addEventListener('click',function(){ var i=+th.dataset.i; if(state.sort&&state.sort.i===i) state.sort.d=-state.sort.d; else state.sort={i:i,d:1}; rerender(); }); }); }
 
@@ -3709,6 +3792,7 @@ try{
   window.__hq={ HQ:function(){ return HQ; }, perm:perm, canEdit:canEdit, guard:guard, ro:ro, roNote:roNote, modal:modal, closeModal:closeModal, openDrawer:openDrawer, closeDrawer:closeDrawer, promptForm:promptForm, confirmBox:confirmBox,
     save:save, remove:remove, saveSettings:saveSettings, hqErr:hqErr, selCities:selCities, citySelHTML:citySelHTML, wireCitySel:wireCitySel, SEL:function(){ return SEL_CITIES; },
     exportCSV:exportCSV, exportXLS:exportXLS, printTable:printTable, exportDialog:exportDialog, withSeq:withSeq, tableHTML:tableHTML, sortRows:sortRows, wireSort:wireSort, reg:reg, rerender:rerenderCurrent,
+    lamp:lamp, initials:initials, nameCell:nameCell, cell2:cell2, tabsHTML:tabsHTML, emptyHTML:emptyHTML,
     cities:cities, cityById:cityById, me:me, isOwner:isOwner, fmtDT:fmtDT, fmtD:fmtD, fmtDate:fmtDate, todayISO:todayISO, digits:digits, tzKey:tzKey, fixPhone:fixPhone, stuName:stuName, eduL:eduL, yes:yes, yn:yn, uid:uid, sortHe:sortHe, debounce:debounce,
     STU_FIELDS:STU_FIELDS, STU_DEFAULT:STU_DEFAULT, STAFF_FIELDS:STAFF_FIELDS, STAFF_DEFAULT:STAFF_DEFAULT, GAN_FIELDS:GAN_FIELDS, ctxLabel:ctxLabel, asgText:asgText, MODULES:MODULES,
     allStudents:allStudents, allStaff:allStaff, allGans:allGans, findStudent:findStudent, thresholds:thresholds, licenseState:licenseState, assistantBState:assistantBState, flagId:flagId, flagFor:flagFor,
@@ -3725,7 +3809,7 @@ try{
   var H=window.__hq; if(!H) return;
   var $=H.$, $$=H.$$, esc=H.esc, he=H.he, toast=H.toast, kpi=H.kpiHTML, LIVE=H.LIVE, C=H.C;
   var F={ q:'', gan:'', age:'', edu:'', gender:'', period:'', place:'', muni:'', ministry:'', prog:'', flag:'', finished:false };
-  var ST={ sort:{i:1,d:1}, sel:{} };
+  var ST={ sort:{i:1,d:1}, sel:{}, tab:'all' };
   var PLACE_L={ '':'שיבוץ: הכל', placed:'משובצים סופית', waiting:'ממתינים לשיבוץ', nogan:'ללא גן' };
   function ganOptions(){ var m={}; H.selCities().forEach(function(c){ (c.gans||[]).forEach(function(g){ m[c.id+'|'+g.id]=(H.selCities().length>1?c.name+' · ':'')+g.name; }); }); return m; }
   function filtered(){
@@ -3756,44 +3840,65 @@ try{
       return true;
     });
   }
+  function issueOf(s){
+    if(!H.digits(s.tz)) return 'בלי ת״ז';
+    var d=s.docs||{}; if(!(d.nispach&&d.idCopy&&d.takanon)) return 'מסמכים חסרים';
+    if(retentionNeedsDoc(s)) return 'השארות בלי מסמך';
+    var r=H.ministryRec(s); if(r&&r.status!=='ok') return r.status==='missing'?'לא נקלט/ה במשרד החינוך':'שגוי במשרד החינוך';
+    if(H.bouncedFor(s)) return 'מייל חזר';
+    if(H.openRequestsFor(s).length) return 'פנייה פתוחה';
+    return '';
+  }
+  function placeCell(s){ return s.ganId?(s.placed!==false?H.lamp('ok','משובץ/ת · סופי'):H.lamp('warn','ממתין/ה לאישור')):H.lamp('wait','ללא גן'); }
+  function moeCell(s){ var r=H.ministryRec(s); if(!r) return H.lamp('wait','לא נבדק',true); return r.status==='ok'?H.lamp('done','מתוקצב/ת'):(r.status==='missing'?H.lamp('warn','לא נקלט/ה'):H.lamp('bad',r.note||'שגוי')); }
   var COLS=[
-    { l:'', v:function(s){ return ''; }, h:function(s){ return '<input type="checkbox" class="stu-ck" data-k="'+esc(s.cityId+'|'+s.id)+'"'+(ST.sel[s.cityId+'|'+s.id]?' checked':'')+'>'; } },
-    { l:'שם', v:function(s){ return H.stuName(s); }, h:function(s){ return '<span class="strong">'+esc(H.stuName(s))+'</span>'+(H.openRequestsFor(s).length?' <span class="tag warn" title="פניות פתוחות">📬</span>':'')+(H.bouncedFor(s)?' <span class="tag bad" title="מייל חזר">✉️</span>':''); } },
+    { l:'', v:function(s){ return ''; }, h:function(s){ return '<input type="checkbox" class="stu-ck" data-k="'+esc(s.cityId+'|'+s.id)+'"'+(ST.sel[s.cityId+'|'+s.id]?' checked':'')+' aria-label="בחירה">'; } },
+    { l:'שם', v:function(s){ return H.stuName(s); }, h:function(s){ var iss=issueOf(s); return H.nameCell(H.stuName(s)); } },
     { l:'ת"ז', v:function(s){ return s.tz; }, ltr:true },
-    { l:'עיר', v:function(s){ return s.cityName; } },
-    { l:'גן', v:function(s){ return s.gan; }, h:function(s){ return s.gan?esc(s.gan)+(s.ganSym?' <span class="hq-count">'+esc(s.ganSym)+'</span>':''):'<span class="tag bad">ללא גן</span>'; } },
-    { l:'גיל', v:function(s){ return s.age; }, num:true },
-    { l:'מועד', v:function(s){ return s.period; } },
-    { l:'חינוך', v:function(s){ return H.eduL(s.education); } },
-    { l:'שיבוץ', v:function(s){ return s.ganId?(s.placed!==false?'משובץ/ת':'ממתין/ה'):'—'; }, h:function(s){ return s.ganId?(s.placed!==false?'<span class="pill ok">משובץ/ת</span>':'<span class="pill warn">ממתין/ה</span>'):'<span class="pill off">—</span>'; } },
-    { l:'עירייה', v:function(s){ return s.absorbedMunicipality?'קלוט':'לא'; }, h:function(s){ return s.absorbedMunicipality?'<span class="pill ok">קלוט/ה</span>':'<span class="pill off">טרם</span>'; } },
-    { l:'משרד החינוך', v:function(s){ return H.ministryLabel(s); }, h:function(s){ var r=H.ministryRec(s); if(!r) return '<span class="hq-count">לא נבדק</span>'; return r.status==='ok'?'<span class="pill ok">מתוקצב/ת</span>':(r.status==='missing'?'<span class="pill warn">לא נקלט/ה</span>':'<span class="pill warn">'+esc(r.note||'שגוי')+'</span>'); } },
-    { l:'צהרון', v:function(s){ return s.programs&&s.programs.tzaharon?'✓':''; } },
-    { l:'נייד', v:function(s){ return s.mobile||s.momMobile||s.dadMobile||s.phone; }, ltr:true },
-    { l:'מסמכים', v:function(s){ var d=s.docs||{}; return [d.nispach,d.idCopy,d.takanon].filter(Boolean).length+'/3'; } }
+    { l:'גן · עיר', v:function(s){ return s.gan||''; }, h:function(s){ return H.cell2(s.gan?esc(s.gan)+(s.ganSym?' <span class="hq-count">'+esc(s.ganSym)+'</span>':''):'<span class="hq-count">ללא גן</span>', esc(s.cityName)); } },
+    { l:'שיבוץ', v:function(s){ return s.ganId?(s.placed!==false?'משובץ/ת':'ממתין/ה'):'ללא גן'; }, h:placeCell },
+    { l:'עירייה', v:function(s){ return s.absorbedMunicipality?'קלוט':'טרם'; }, h:function(s){ return s.absorbedMunicipality?H.lamp('ok','קלוט/ה'):H.lamp('wait','טרם',true); } },
+    { l:'מסמכים', v:function(s){ var d=s.docs||{}; return [d.nispach,d.idCopy,d.takanon].filter(Boolean).length+' מתוך 3'; }, h:function(s){ var d=s.docs||{}; var n=[d.nispach,d.idCopy,d.takanon].filter(Boolean).length; return H.lamp(n===3?'ok':'warn', n+' מתוך 3'); } },
+    { l:'משרד החינוך', v:function(s){ return H.ministryLabel(s); }, h:moeCell },
+    { l:'', v:function(s){ return ''; }, h:function(){ return '‹'; }, chev:true }
   ];
+  var WIDTHS=['38px','190px','104px','172px','150px','92px','116px','1fr','30px'];
+  function tabbed(list){
+    if(ST.tab==='issues') return list.filter(function(s){ return !!issueOf(s); });
+    if(ST.tab==='wait') return list.filter(function(s){ return !s.ganId || s.placed===false; });
+    return list;
+  }
+  function daysSince(iso){ var t=new Date(iso||0).getTime(); if(!t) return ''; var d=Math.floor((Date.now()-t)/86400000); return d<=0?'היום':(d===1?'יום אחד':d+' ימים'); }
+  function tableBlock(list){
+    var all=H.allStudents().filter(function(s){ return !s.finished; });
+    var selN=Object.keys(ST.sel).filter(function(k){ return ST.sel[k]; }).length;
+    var foot='<div>'+he(list.length)+' מתוך '+he(all.length)+' תיקים · '+he(H.selCities().length)+' ערים</div><div class="acts"><button class="btn-mini" id="stuPrint">הדפסה</button><button class="btn-mini" id="stuMap">מפת שיבוץ</button></div>';
+    if(ST.tab==='wait'){
+      var rows=list.slice().sort(function(a,b){ return new Date(a.createdAt||0)-new Date(b.createdAt||0); });
+      return '<div class="tcard" id="stuWait"><div class="thead-bar"><div>רשימת המתנה · לפי ותק הבקשה</div><div>'+he(rows.length)+' ממתינות</div></div><div class="wl">'+
+        (rows.length?rows.map(function(s,i){ return '<button type="button" class="w" data-c="'+esc(s.cityId)+'" data-id="'+esc(s.id)+'"><span class="rank">'+(i+1)+'</span><span class="nm">'+esc(H.stuName(s))+'</span><span class="ct">'+esc(s.cityName)+'</span><span class="gn">'+(s.gan?esc(s.gan):'<span class="hq-count">ללא גן</span>')+'</span><span class="nt">'+esc(s.ganId?'משובצת לגן, ממתינה לאישור סופי':(s.placement==='office'?'שיבוץ במשרד הראשי':'ממתינה לשיבוץ'))+(issueOf(s)?' · '+esc(issueOf(s)):'')+'</span><span class="sn">'+esc(daysSince(s.createdAt))+'</span></button>'; }).join(''):'<div class="hq-count" style="padding:18px;text-align:center">אין ממתינות בסינון הזה.</div>')+
+        '</div><div class="tfoot"><div>הסדר לפי מועד פתיחת התיק</div><div class="acts"><button class="btn-mini" id="stuPrint">הדפסה</button></div></div></div>';
+    }
+    return H.tableHTML('stuTable', COLS, list, { clickable:true, rowAttr:function(s){ return 'data-c="'+esc(s.cityId)+'" data-id="'+esc(s.id)+'"'; }, sort:ST.sort, widths:WIDTHS, foot:foot, fab:selN>0 });
+  }
+  function fabHTML(){
+    var selN=Object.keys(ST.sel).filter(function(k){ return ST.sel[k]; }).length; if(!selN) return '';
+    return '<div class="fab" id="stuFab"><span>'+he(selN)+' נבחרו</span>'+(H.canEdit('students')?'<button type="button" class="btn main" id="stuBulkPlace">שיבוץ מרכזי</button><button type="button" class="btn" id="stuBulkFinal">סימון שיבוץ סופי</button>':'')+'<button type="button" class="btn x" id="stuSelNone" aria-label="ביטול הבחירה">✕</button></div>';
+  }
   function render(){
     var host=$('#hqStudents'); if(!host) return;
-    if(!C.live){ host.innerHTML='<div class="card pad live-note">המסך מציג את התיקים החיים מכל הערים — זמין אחרי כניסה למרכז.</div>'; return; }
-    if(!H.guard('students', host)) return;
-    var list=H.sortRows(filtered(), COLS, ST.sort);
-    var all=H.allStudents().filter(function(s){ return !s.finished; });
+    var acts=$('#stuActions');
+    if(!C.live){ if(acts) acts.innerHTML=''; host.innerHTML=H.emptyHTML('התיקים החיים מכל הערים','המסך זמין אחרי כניסה למרכז.'); return; }
+    if(!H.guard('students', host)){ if(acts) acts.innerHTML=''; return; }
+    var base=H.sortRows(filtered(), COLS, ST.sort);
+    var list=tabbed(base);
+    var nIss=base.filter(function(s){ return !!issueOf(s); }).length, nWait=base.filter(function(s){ return !s.ganId || s.placed===false; }).length;
     var gans=ganOptions();
-    var kpis=[
-      { l:'תיקים (בסינון)', v:he(list.length), s:'מתוך '+he(all.length)+' בערים שנבחרו', cls:'kaccent' },
-      { l:'משובצים סופית', v:he(list.filter(function(s){ return s.ganId&&s.placed!==false; }).length) },
-      { l:'ממתינים לשיבוץ', v:he(list.filter(function(s){ return s.ganId&&s.placed===false; }).length), cls:'kaccent' },
-      { l:'ללא גן', v:he(list.filter(function(s){ return !s.ganId; }).length) },
-      { l:'קלוטים בעירייה', v:he(list.filter(function(s){ return s.absorbedMunicipality; }).length), s:he(list.filter(function(s){ return !s.absorbedMunicipality; }).length)+' טרם' },
-      { l:'מתוקצבים במשרד החינוך', v:he(list.filter(function(s){ var r=H.ministryRec(s); return r&&r.status==='ok'; }).length), s:he(list.filter(function(s){ return !H.ministryRec(s); }).length)+' לא נבדקו' },
-      { l:'☀️ צהרון', v:he(list.filter(function(s){ return s.programs&&s.programs.tzaharon; }).length) }
-    ];
-    var selN=Object.keys(ST.sel).filter(function(k){ return ST.sel[k]; }).length;
-    var opt=function(name, cur, opts){ return '<select class="txtin" data-f="'+name+'">'+opts.map(function(o){ return '<option value="'+esc(o[0])+'"'+(String(cur)===String(o[0])?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('')+'</select>'; };
+    var opt=function(name, cur, opts){ return '<select class="txtin" data-f="'+name+'" aria-label="'+esc(opts[0][1])+'">'+opts.map(function(o){ return '<option value="'+esc(o[0])+'"'+(String(cur)===String(o[0])?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('')+'</select>'; };
+    if(acts) acts.innerHTML='<input class="txtin" id="stuQ" placeholder="שם, ת״ז, הורה או גן" value="'+esc(F.q)+'" style="width:220px"><button class="btn-ghost" id="stuExport">ייצוא לפי שדות</button>'+(window.__hqComm?'<button class="btn-ghost" id="stuMsg">הודעה לנמענים שבסינון</button>':'');
     host.innerHTML=H.roNote('students')+
-      '<div class="kpis" style="margin-bottom:14px">'+kpis.map(kpi).join('')+'</div>'+
-      '<div class="card pad" style="margin-bottom:14px"><div class="hq-toolbar">'+H.citySelHTML('stuCitySel')+
-        '<input class="txtin" id="stuQ" placeholder="חיפוש: שם, ת״ז, טלפון, הורה, גן…" value="'+esc(F.q)+'" style="min-width:220px;flex:1">'+
+      '<div class="tabs" role="tablist">'+[['all','כל התיקים',base.length],['issues','חריגים',nIss],['wait','רשימת המתנה',nWait]].map(function(t){ return '<button type="button" class="tab" role="tab" data-tab="'+t[0]+'" aria-selected="'+(ST.tab===t[0]?'true':'false')+'">'+t[1]+' <span class="n">'+he(t[2])+'</span></button>'; }).join('')+(nIss?'<span class="tag cly">'+he(nIss)+' חריגים</span>':'')+'</div>'+
+      '<div class="hq-toolbar">'+H.citySelHTML('stuCitySel')+
         opt('gan',F.gan,[['','גן: הכל']].concat(Object.keys(gans).sort(function(a,b){ return H.sortHe(gans[a],gans[b]); }).map(function(k){ return [k,gans[k]]; })))+
         opt('age',F.age,[['','גיל: הכל'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6']])+
         opt('edu',F.edu,[['','חינוך: הכל'],['רגיל','רגיל'],['ח"מ','חינוך מיוחד']])+
@@ -3805,32 +3910,33 @@ try{
         opt('prog',F.prog,[['','תוכנית: הכל'],['tzaharon','צהרון'],['campHanukkah','קייטנת חנוכה'],['campNisan','קייטנת ניסן'],['campEndYear','קייטנת סוף שנה']])+
         opt('flag',F.flag,[['','מאפיין: הכל'],['req','פניות פתוחות'],['bounce','מייל חזר'],['notz','בלי ת״ז'],['nodocs','חסרים מסמכים'],['noreg','לא נרשמה על ידינו'],['outofcity','ילדת חוץ'],['retention','השארות'],['retentionNoDoc','השארות בלי מסמך']])+
         '<label class="hq-count" style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="stuFin"'+(F.finished?' checked':'')+'> כולל שסיימו</label>'+
-        '<button class="btn-mini" id="stuClear">נקה סינון</button></div>'+
-      '<div class="hq-toolbar" style="margin-bottom:0"><button class="btn-primary" id="stuExport">⬇️ ייצוא לפי בחירת שדות</button><button class="btn-ghost" id="stuPrint">🖨️ הדפסה</button><button class="btn-ghost" id="stuMsg">📨 הודעה לנמענים שבסינון</button><button class="btn-ghost" id="stuMap">🗺️ מפה</button><span class="sp"></span>'+
-        (selN?'<span class="tag acc">'+selN+' נבחרו</span><button class="btn-mini" id="stuBulkPlace"'+H.ro('students')+'>🧩 שיבוץ מרכזי לנבחרים</button><button class="btn-mini" id="stuBulkFinal"'+H.ro('students')+'>✅ סמן שיבוץ סופי</button><button class="btn-mini" id="stuSelNone">בטל בחירה</button>':'<span class="hq-count">לחיצה על שורה פותחת את התיק · סימון שורות מאפשר שיבוץ מרוכז</span>')+
-      '</div></div>'+
-      H.tableHTML('stuTable', COLS, list, { clickable:true, rowAttr:function(s){ return 'data-c="'+esc(s.cityId)+'" data-id="'+esc(s.id)+'"'; }, sort:ST.sort });
+        '<button class="btn-mini" id="stuClear">ניקוי סינון</button></div>'+
+      '<div id="stuTableHost">'+tableBlock(list)+'</div>'+fabHTML();
     H.wireCitySel('stuCitySel', render);
-    $('#stuQ').addEventListener('input', H.debounce(function(){ F.q=this.value; renderTableOnly(); },250));
+    var q=$('#stuQ'); if(q) q.addEventListener('input', H.debounce(function(){ F.q=this.value; renderTableOnly(); },250));
     $$('#hqStudents [data-f]').forEach(function(sel){ sel.addEventListener('change',function(){ F[sel.dataset.f]=sel.value; render(); }); });
+    $$('#hqStudents .tab[data-tab]').forEach(function(b){ b.addEventListener('click',function(){ ST.tab=b.dataset.tab; render(); }); });
     $('#stuFin').addEventListener('change',function(){ F.finished=this.checked; render(); });
     $('#stuClear').addEventListener('click',function(){ F={ q:'', gan:'', age:'', edu:'', gender:'', period:'', place:'', muni:'', ministry:'', prog:'', flag:'', finished:false }; render(); });
-    $('#stuExport').addEventListener('click',function(){ H.exportDialog('students','רשימת תלמידים', H.STU_FIELDS, H.STU_DEFAULT, function(){ return H.sortRows(filtered(), COLS, ST.sort); }, 'מיוצאת הרשימה שעל המסך — כולל הסינון והערים שנבחרו ('+list.length+' תיקים).'); });
-    $('#stuPrint').addEventListener('click',function(){ var cs=COLS.slice(1);
-      var X=H.withSeq(cs.map(function(c){ return c.l; }), list.map(function(s){ return cs.map(function(c){ return c.v(s); }); }));
-      H.printTable('רשימת תלמידים', X.headers, X.rows, list.length+' תיקים'); });
-    $('#stuMsg').addEventListener('click',function(){ window.__hqComm && window.__hqComm.fromStudents(list); C.switchTab('comm'); });
-    $('#stuMap').addEventListener('click',function(){ C.switchTab('map'); });
+    var ex=$('#stuExport'); if(ex) ex.addEventListener('click',function(){ H.exportDialog('students','רשימת תלמידים', H.STU_FIELDS, H.STU_DEFAULT, function(){ return tabbed(H.sortRows(filtered(), COLS, ST.sort)); }, 'מיוצאת הרשימה שעל המסך — כולל הסינון והערים שנבחרו ('+list.length+' תיקים).'); });
+    var mg=$('#stuMsg'); if(mg) mg.addEventListener('click',function(){ window.__hqComm && window.__hqComm.fromStudents(list); C.switchTab('comm'); });
     wireTable();
+  }
+  function wireFab(){
     var bp=$('#stuBulkPlace'); if(bp) bp.addEventListener('click', bulkPlace);
     var bf=$('#stuBulkFinal'); if(bf) bf.addEventListener('click', function(){ bulkFinal(); });
     var bn=$('#stuSelNone'); if(bn) bn.addEventListener('click',function(){ ST.sel={}; render(); });
   }
-  function renderTableOnly(){ var t=$('#stuTable'); if(!t) return; var list=H.sortRows(filtered(), COLS, ST.sort); var wrap=t.parentNode; wrap.outerHTML=H.tableHTML('stuTable', COLS, list, { clickable:true, rowAttr:function(s){ return 'data-c="'+esc(s.cityId)+'" data-id="'+esc(s.id)+'"'; }, sort:ST.sort }); wireTable(); }
+  function renderTableOnly(){ var h=$('#stuTableHost'); if(!h) return; h.innerHTML=tableBlock(tabbed(H.sortRows(filtered(), COLS, ST.sort))); wireTable(); }
   function wireTable(){
     H.wireSort('stuTable', ST, render);
-    $$('#stuTable tbody tr[data-id]').forEach(function(tr){ tr.addEventListener('click',function(e){ if(e.target.classList.contains('stu-ck')) return; openStudent(tr.dataset.c, tr.dataset.id); }); });
-    $$('#stuTable .stu-ck').forEach(function(cb){ cb.addEventListener('change',function(){ ST.sel[cb.dataset.k]=cb.checked; var n=Object.keys(ST.sel).filter(function(k){ return ST.sel[k]; }).length; if((n===1&&cb.checked)||n===0) render(); }); });
+    $$('#stuTable tbody tr[data-id], #stuWait .w[data-id]').forEach(function(tr){ tr.addEventListener('click',function(e){ if(e.target.classList.contains('stu-ck')) return; openStudent(tr.dataset.c, tr.dataset.id); }); });
+    $$('#stuTable .stu-ck').forEach(function(cb){ cb.addEventListener('change',function(){ ST.sel[cb.dataset.k]=cb.checked; var f=$('#stuFab'); if(f) f.remove(); $('#hqStudents').insertAdjacentHTML('beforeend', fabHTML()); wireFab(); var sc=$('#stuTable')&&$('#stuTable').parentNode; if(sc) sc.classList.toggle('has-fab', !!$('#stuFab')); }); });
+    var pr=$('#stuPrint'); if(pr) pr.addEventListener('click',function(){ var cs=COLS.slice(1,-1); var list=tabbed(H.sortRows(filtered(), COLS, ST.sort));
+      var X=H.withSeq(cs.map(function(c){ return c.l; }), list.map(function(s){ return cs.map(function(c){ return c.v(s); }); }));
+      H.printTable('רשימת תלמידים', X.headers, X.rows, list.length+' תיקים'); });
+    var mp=$('#stuMap'); if(mp) mp.addEventListener('click',function(){ C.switchTab('map'); });
+    wireFab();
   }
   /* ---- תיק מלא במגירה ---- */
   function kvRow(k,v){ v=(v==null||v==='')?'':v; return '<div><div class="k">'+esc(k)+'</div><div class="v'+(v===''?' empty':'')+'">'+(v===''?'—':esc(v))+'</div></div>'; }
@@ -3840,17 +3946,22 @@ try{
     var reqs=(H.HQ().requests||[]).filter(function(r){ return r.cityId===cityId && r.studentId===id; }).sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
     var mr=H.ministryRec(s);
     var d=s.docs||{}, sp=s.special||{}, pr=s.programs||{}, su=s.support||{};
+    var stepsState=[s.registeredByUs?'done':'', s.absorbedMunicipality?'done':'', s.ganId?(s.placed!==false?'done':'on'):'', mr&&mr.status==='ok'?'done':(mr?'on':'')];
+    if(stepsState.indexOf('on')<0){ var k=stepsState.indexOf(''); if(k>=0) stepsState[k]='on'; }
+    var stepsL=[['קליטה במערכת', s.registeredByUs?'נרשמה על ידינו':'נרשמה בערוץ אחר'],['קליטה בעירייה', s.absorbedMunicipality?'קלוטה':'טרם נקלטה'],['שיבוץ', s.ganId?(s.placed!==false?'סופי · '+s.gan:'ממתינה לאישור · '+s.gan):'ללא גן — שיבוץ מרכזי פתוח'],['משרד החינוך', H.ministryLabel(s)]];
     var body=
-      '<div class="steps"><span class="s '+(s.registeredByUs?'done':'')+'">קליטה במערכת</span><span class="s '+(s.absorbedMunicipality?'done':'')+'">קליטה בעירייה</span><span class="s '+(s.ganId?(s.placed!==false?'done':'on'):'')+'">שיבוץ'+(s.ganId?(s.placed!==false?' סופי':' — ממתין/ה'):' — ללא גן')+'</span><span class="s '+(mr&&mr.status==='ok'?'done':(mr?'on':''))+'">משרד החינוך</span></div>'+
-      '<div class="sec-h">פרטי התלמיד/ה</div><div class="kv-grid">'+kvRow('עיר',c.name)+kvRow('שנה',s.year)+kvRow('ת"ז',s.tz)+kvRow('תאריך לידה',H.fmtDate(s.dob))+kvRow('גיל',s.age)+kvRow('מועד',s.period)+kvRow('חינוך',H.eduL(s.education))+kvRow('מגדר (לפי הגן)',s.gender)+kvRow('קמפוס',s.campus)+'</div>'+
-      '<div class="sec-h">שיבוץ</div><div class="kv-grid">'+kvRow('גן',s.gan)+kvRow('סמל גן',s.ganSym)+kvRow('גננת',g?g.teacher:'')+kvRow('רשומים בגן',g?(g.enrolled+(g.cap?' / '+g.cap:'')):'')+kvRow('שיבוץ סופי',s.ganId?(s.placed!==false?'כן':'לא — ממתין/ה'):'אין גן')+kvRow('אופן השיבוץ בעיר',c.placement==='office'?'שיבוץ במשרד הראשי (מרכזי)':'שיבוץ בעיר')+'</div>'+
-      '<div class="sec-h">הורים וכתובת</div><div class="kv-grid">'+kvRow('שם האם',s.motherName)+kvRow('שם האב',s.fatherName)+kvRow('טלפון בית',s.phone)+kvRow('נייד',s.mobile)+kvRow('נייד אב',s.dadMobile)+kvRow('נייד אם',s.momMobile)+kvRow('דוא"ל',s.email+(H.bouncedFor(s)?' (חזר)':''))+kvRow('כתובת',[s.street,s.building,s.city].filter(Boolean).join(' '))+'</div>'+
-      '<div class="sec-h">קליטה, מסמכים ותוכניות</div><div class="kv-grid">'+kvRow('נרשמה על ידינו',H.yn(s.registeredByUs))+kvRow('קלוט בעירייה',H.yn(s.absorbedMunicipality))+kvRow('משרד החינוך',H.ministryLabel(s))+kvRow('נספח',H.yn(d.nispach))+kvRow('צילום ת"ז',H.yn(d.idCopy))+kvRow('תקנון',H.yn(d.takanon))+kvRow('צהרון',H.yn(pr.tzaharon))+kvRow('קייטנת חנוכה',H.yn(pr.campHanukkah))+kvRow('קייטנת ניסן',H.yn(pr.campNisan))+kvRow('קייטנת סוף שנה',H.yn(pr.campEndYear))+kvRow('ביטוח שולם',H.yn(s.insurancePaid))+'</div>'+
-      '<div class="sec-h">סימונים</div><div class="kv-grid">'+kvRow('גרושים',H.yn(sp.divorced))+kvRow('ילדת חוץ',H.yn(sp.outOfCity))+kvRow('הסדר תשלום',H.yn(sp.paymentArrangement))+kvRow('השארות',H.yn(sp.retention))+kvRow('השארות לשנה הבאה',H.yn(s.retentionNext))+kvRow('אחר',sp.other?(sp.otherText||'✓'):'')+kvRow('שילוב',H.yn(su.shiluv))+kvRow('סל אישי',H.yn(su.salIshi))+kvRow('מנתחת התנהגות',H.yn(su.behavior))+kvRow('הכנה לא׳',H.yn(su.prepA))+kvRow('תיקיית דרייב',s.driveFolder?'קיימת':'')+kvRow('הערות',s.notes)+kvRow('נפתח',H.fmtDT(s.createdAt))+'</div>'+
-      '<div class="sec-h">פניות וערעורים <span class="tag">'+reqs.length+'</span></div>'+(reqs.length?'<div class="timeline2">'+reqs.map(function(r){ return '<div class="it"><span class="d">'+esc(H.fmtD(r.createdAt))+'</span><div><b>'+esc(r.type||'')+'</b> · '+reqStatus(r)+'<br>'+esc(r.text||'')+(r.decision?'<br><i>החלטה: '+esc(r.decision)+'</i>':'')+'</div></div>'; }).join('')+'</div>':'<div class="hq-count">אין פניות מתועדות.</div>');
-    var foot=(H.canEdit('students')?'<button class="btn-primary" id="sd-place">🧩 שיבוץ מרכזי</button><button class="btn-ghost" id="sd-final">'+(s.placed!==false?'סמן כממתין/ה':'✅ סמן שיבוץ סופי')+'</button>':'')+
-      (H.canEdit('requests')?'<button class="btn-ghost" id="sd-req">📬 תיעוד פנייה</button>':'')+(H.canEdit('ministry')?'<button class="btn-ghost" id="sd-moe">🏛️ מצב במשרד החינוך</button>':'')+(H.canEdit('smoove')&&s.email?'<button class="btn-ghost" id="sd-bounce">'+(H.bouncedFor(s)?'✉️ המייל תקין':'✉️ סמן: מייל חזר')+'</button>':'');
-    H.openDrawer(H.stuName(s)+' · '+c.name, body, foot);
+      '<div class="steps">'+stepsL.map(function(st,i){ return '<div class="s '+stepsState[i]+'"><span>'+esc(st[0])+'<small>'+esc(st[1])+'</small></span></div>'; }).join('')+'</div>'+
+      (retentionNeedsDoc(s)?'<div class="req bad"><div class="l">נדרש</div><div class="t">מסמך השארות</div><div class="d">בלי המסמך אפשר לשבץ רק במצב ממתינה לאישור. המסמך מסומן בתיק בתוכנת העיר.</div></div>':'')+
+      '<div class="kpis" style="grid-template-columns:repeat(3,1fr)">'+[{l:'מסמכים',v:[d.nispach,d.idCopy,d.takanon].filter(Boolean).length+' / 3'},{l:'פניות',v:he(reqs.length)},{l:'רשומים בגן',v:g?(g.enrolled+(g.cap?' / '+g.cap:'')):'—'}].map(function(k){ return '<div class="kpi"><div class="kl">'+k.l+'</div><div class="kv" dir="ltr" style="text-align:right">'+k.v+'</div></div>'; }).join('')+'</div>'+
+      '<div><div class="sec-h">שיבוץ</div><div class="kv">'+[['גן',s.gan],['סמל גן',s.ganSym],['גננת',g?g.teacher:''],['שיבוץ סופי',s.ganId?(s.placed!==false?'כן':'לא — ממתינה לאישור'):'אין גן'],['אופן השיבוץ בעיר',c.placement==='office'?'שיבוץ במשרד הראשי (מרכזי)':'שיבוץ בעיר']].map(function(r){ return '<div class="r"><span class="k">'+esc(r[0])+'</span><span class="v'+(r[1]?'':' empty')+'">'+(r[1]?esc(r[1]):'—')+'</span></div>'; }).join('')+'</div></div>'+
+      '<div><div class="sec-h">פרטי התלמידה</div><div class="kv-grid">'+kvRow('עיר',c.name)+kvRow('שנה',s.year)+kvRow('ת"ז',s.tz)+kvRow('תאריך לידה',H.fmtDate(s.dob))+kvRow('גיל',s.age)+kvRow('מועד',s.period)+kvRow('חינוך',H.eduL(s.education))+kvRow('מגדר (לפי הגן)',s.gender)+kvRow('קמפוס',s.campus)+'</div></div>'+
+      '<div><div class="sec-h">הורים וכתובת</div><div class="kv-grid">'+kvRow('שם האם',s.motherName)+kvRow('שם האב',s.fatherName)+kvRow('טלפון בית',s.phone)+kvRow('נייד',s.mobile)+kvRow('נייד אב',s.dadMobile)+kvRow('נייד אם',s.momMobile)+kvRow('דוא"ל',s.email+(H.bouncedFor(s)?' (חזר)':''))+kvRow('כתובת',[s.street,s.building,s.city].filter(Boolean).join(' '))+'</div></div>'+
+      '<div><div class="sec-h">קליטה, מסמכים ותוכניות</div><div class="kv-grid">'+kvRow('נרשמה על ידינו',H.yn(s.registeredByUs))+kvRow('קלוט בעירייה',H.yn(s.absorbedMunicipality))+kvRow('משרד החינוך',H.ministryLabel(s))+kvRow('נספח',H.yn(d.nispach))+kvRow('צילום ת"ז',H.yn(d.idCopy))+kvRow('תקנון',H.yn(d.takanon))+kvRow('צהרון',H.yn(pr.tzaharon))+kvRow('קייטנת חנוכה',H.yn(pr.campHanukkah))+kvRow('קייטנת ניסן',H.yn(pr.campNisan))+kvRow('קייטנת סוף שנה',H.yn(pr.campEndYear))+kvRow('ביטוח שולם',H.yn(s.insurancePaid))+'</div></div>'+
+      '<div><div class="sec-h">סימונים</div><div class="kv-grid">'+kvRow('גרושים',H.yn(sp.divorced))+kvRow('ילדת חוץ',H.yn(sp.outOfCity))+kvRow('הסדר תשלום',H.yn(sp.paymentArrangement))+kvRow('השארות',H.yn(sp.retention))+kvRow('השארות לשנה הבאה',H.yn(s.retentionNext))+kvRow('אחר',sp.other?(sp.otherText||'כן'):'')+kvRow('שילוב',H.yn(su.shiluv))+kvRow('סל אישי',H.yn(su.salIshi))+kvRow('מנתחת התנהגות',H.yn(su.behavior))+kvRow('הכנה לא׳',H.yn(su.prepA))+kvRow('תיקיית דרייב',s.driveFolder?'קיימת':'')+kvRow('הערות',s.notes)+kvRow('נפתח',H.fmtDT(s.createdAt))+'</div></div>'+
+      '<div><div class="sec-h">יומן מעקב <span class="hq-count">'+reqs.length+' פניות</span></div>'+(reqs.length?'<div class="timeline">'+reqs.map(function(r){ return '<div class="ti"><span class="d">'+esc(H.fmtD(r.createdAt))+'</span><div><b>'+esc(r.type||'')+'</b> · '+reqStatus(r)+'<br>'+esc(r.text||'')+(r.decision?'<br><i>החלטה: '+esc(r.decision)+'</i>':'')+'</div></div>'; }).join('')+'</div>':'<div class="hq-count">אין פניות מתועדות.</div>')+'</div>';
+    var foot=(H.canEdit('students')?'<button class="btn-primary" id="sd-place" style="flex:1">שיבוץ מרכזי</button><button class="btn-ghost" id="sd-final">'+(s.placed!==false?'סימון כממתינה':'סימון שיבוץ סופי')+'</button>':'')+
+      (H.canEdit('requests')?'<button class="btn-ghost" id="sd-req">תיעוד פנייה</button>':'')+(H.canEdit('ministry')?'<button class="btn-ghost" id="sd-moe">מצב במשרד החינוך</button>':'')+(H.canEdit('smoove')&&s.email?'<button class="btn-ghost" id="sd-bounce">'+(H.bouncedFor(s)?'המייל תקין':'סימון: מייל חזר')+'</button>':'');
+    H.openDrawer(H.stuName(s), body, foot, { label:'תיק תלמידה', meta:'<span dir="ltr">'+esc(s.tz||'')+'</span>'+(s.tz?' · ':'')+esc(c.name)+(s.gan?' · '+esc(s.gan):'') });
     var b;
     if((b=$('#sd-place'))) b.addEventListener('click',function(){ placeDialog([s]); });
     if((b=$('#sd-final'))) b.addEventListener('click',function(){ if(!s.ganId){ toast('אין גן — קודם שיבוץ'); return; }
@@ -3860,7 +3971,7 @@ try{
     if((b=$('#sd-moe'))) b.addEventListener('click',function(){ window.__hqMoe && window.__hqMoe.setStatus(s); });
     if((b=$('#sd-bounce'))) b.addEventListener('click',function(){ window.__hqSmoove && window.__hqSmoove.toggleBounce(s); });
   }
-  function reqStatus(r){ return r.status==='closed'?'<span class="tag ok">נסגר</span>':(r.status==='progress'?'<span class="tag acc">בטיפול</span>':'<span class="tag warn">פתוח</span>'); }
+  function reqStatus(r){ return r.status==='closed'?H.lamp('done','נסגרה'):(r.status==='progress'?H.lamp('warn','בטיפול'):H.lamp('ok','פתוחה')); }
   /* ---- שיבוץ מרכזי: כתיבה לתיק בעיר, העיר רואה חי ---- */
   /* ילדת השארות בלי מסמך השארות — כמו בתוכנת העיר, אין לה שיבוץ סופי עד
      שהאישור מגיע והמסמך מסומן בתיק שבעיר. כאן זו חסימה על "שיבוץ סופי";
@@ -3870,9 +3981,9 @@ try{
     var cityId=students[0].cityId; if(students.some(function(s){ return s.cityId!==cityId; })){ toast('שיבוץ מרוכז — רק לתלמידים מאותה עיר'); return; }
     var c=H.cityById(cityId); var gans=(c.gans||[]).filter(function(g){ return g.on; }).slice().sort(function(a,b){ return H.sortHe(a.name,b.name); });
     var noDoc=students.filter(retentionNeedsDoc);
-    var note=c.placement==='office'?'<span class="tag acc">העיר הזאת: השיבוץ במשרד הראשי</span>':'<span class="tag warn">בעיר הזאת השיבוץ נעשה בעיר — שיבוץ מהמרכזי ידרוס את הבחירה המקומית</span>';
+    var note=c.placement==='office'?H.lamp('ok','העיר הזאת: השיבוץ במשרד הראשי'):H.lamp('warn','בעיר הזאת השיבוץ נעשה בעיר — שיבוץ מהמרכזי ידרוס את הבחירה המקומית');
     var body='<div class="sec-note" style="margin-bottom:8px">'+note+'</div>'+
-      (noDoc.length?'<div class="sec-note" style="margin-bottom:8px"><span class="tag warn">⚠️ '+noDoc.length+' ילדות השארות בלי מסמך השארות</span> '+esc(noDoc.slice(0,6).map(H.stuName).join(', '))+(noDoc.length>6?'…':'')+' — אי אפשר לסמן להן "שיבוץ סופי" עד שהמסמך יסומן בתיק שבתוכנת העיר.</div>':'')+
+      (noDoc.length?'<div class="req bad" style="margin-bottom:10px"><div class="l">נדרש</div><div class="t">מסמך השארות · '+noDoc.length+' ילדות</div><div class="d">'+esc(noDoc.slice(0,6).map(H.stuName).join(', '))+(noDoc.length>6?'…':'')+' — אי אפשר לסמן להן שיבוץ סופי עד שהמסמך יסומן בתיק שבתוכנת העיר.</div></div>':'')+
       '<div class="sec-note">'+students.length+' תלמיד/ה: '+esc(students.slice(0,6).map(H.stuName).join(', '))+(students.length>6?'…':'')+'</div>'+
       '<div class="frm" style="margin-top:10px"><label class="full">גן<select class="txtin" id="pl-gan"><option value="">— ללא גן —</option>'+gans.map(function(g){ var room=g.assignCap?(g.assignCap-g.enrolled):(g.cap?(g.cap-g.enrolled):null); return '<option value="'+esc(g.id)+'"'+(students.length===1&&students[0].ganId===g.id?' selected':'')+'>'+esc(g.name)+' · גיל '+esc(g.age)+' · '+(g.edu==='spc'?'ח״מ':'רגיל')+(g.gender?' · '+esc(g.gender):'')+' · '+g.enrolled+(g.cap?'/'+g.cap:'')+(room!=null?(room>0?' · פנוי '+room:' · מלא'):'')+'</option>'; }).join('')+'</select></label>'+
       '<label>מצב<select class="txtin" id="pl-final"><option value="1">שיבוץ סופי (משובץ/ת)</option><option value="0">רשום/ה לגן, ממתין/ה לאישור</option></select></label><label class="full">הערה לתיק (אופציונלי)<input class="txtin" id="pl-note"></label></div>'+
