@@ -4601,7 +4601,7 @@ function xlsToRows(buf){
   var IMP={ cityId:'', rows:null, map:[], opts:{ regByUs:true, absorbed:false, tzaharon:false, skipDup:true, edu:'רגיל', period:'א' }, fileName:'' };
   function render(){
     var host=$('#hqImport'); if(!host) return;
-    if(!C.live){ host.innerHTML='<div class="card pad live-note">ייבוא לעיר — זמין אחרי כניסה למרכז.</div>'; return; }
+    if(!C.live){ host.innerHTML=H.emptyHTML('זמין אחרי כניסה למרכז','הייבוא כותב למסמך השנה של העיר.'); H.hoist('import',[]); return; }
     if(!H.guard('import', host)) return;
     if(!H.canEdit('import')){ host.innerHTML=H.roNote('import'); return; }
     var cs=H.cities(); if(!IMP.cityId && cs.length) IMP.cityId=cs[0].id;
@@ -4622,6 +4622,7 @@ function xlsToRows(buf){
     $('#impPasteBtn').addEventListener('click',function(){ var t=$('#impPaste').value; if(!t.trim()){ toast('אין מה לקרוא'); return; } IMP.fileName='הדבקה'; setRows(parseTable(t)); });
     $('#impTemplate').addEventListener('click',function(){ var hd=['שם משפחה','שם פרטי','ת"ז','תאריך לידה','שם האם','שם האב','טלפון בית','נייד','נייד אב','נייד אם','דוא"ל','רחוב','בניין','עיר','קמפוס','גן','גיל','מועד','חינוך','קלוט בעירייה','צהרון','הערות']; H.exportCSV('תבנית ייבוא תלמידים', hd, [['כהן','שרה','012345678','01/09/2022','רבקה','משה','','0501234567','','','','הרב שך','12','','','גן הדקל','3','א','רגיל','לא','כן','']]); });
     if(IMP.rows) renderMap();
+    H.hoist('import', ['impTemplate']);
   }
   function readFile(file){
     var r=new FileReader(); r.onerror=function(){ toast('לא ניתן לקרוא את הקובץ'); };
@@ -4683,7 +4684,6 @@ function xlsToRows(buf){
       go.disabled=true; go.textContent='מייבא…';
       LIVE.addStudents(b.city.id, b.city.year, b.list).then(function(n){ toast('✓ נפתחו '+n+' תיקים ב'+b.city.name); LIVE.hqSet('imports', null, { cityId:b.city.id, cityName:b.city.name, year:b.city.year, n:n, file:IMP.fileName, dup:b.dup, noGan:b.noGan, ids:b.list.map(function(s){ return s.id; }).slice(0,2000) }); LIVE.hqAudit('import', b.city.name+' · '+n+' תיקים · '+IMP.fileName); IMP.rows=null; IMP.fileName=''; render(); }).catch(function(e){ toast('הייבוא נכשל: '+H.hqErr(e)); go.disabled=false; go.textContent=' ייבוא'; });
     });
-    H.hoist('import', ['impTemplate']);
   }
   H.reg('import', render);
   window.__hqImport={ readRows:function(file,cb){ var r=new FileReader(); r.onload=function(){ var buf=r.result,u8=new Uint8Array(buf); var sig=function(a,b,c,d){ return u8[0]===a&&u8[1]===b&&u8[2]===c&&u8[3]===d; }; if(sig(0x50,0x4B,0x03,0x04)){ xlsxToRows(buf).then(function(res){ cb(res.rows); }).catch(function(){ toast('לא ניתן לקרוא xlsx'); }); return; } if(sig(0xD0,0xCF,0x11,0xE0)){ try{ cb(xlsToRows(buf).rows); }catch(e){ toast('לא ניתן לקרוא xls'); } return; } cb(parseTable(decodeFileText(buf))); }; r.readAsArrayBuffer(file); }, parseTable:parseTable, normHeader:normHeader, normDateVal:normDateVal };
@@ -5250,7 +5250,7 @@ function xlsToRows(buf){
   function system(){ return 'אתה עוזר עברי מקצועי בתוך "המרכזי" — מרכז הניהול הארצי של רשת גני הילדים (מחלקת הרישום במשרד הראשי). אתה רואה את תמונת המצב החיה של כל הערים (למטה) ומכיר את המדריך של המרכזי. ענה בקצרה, בעברית פשוטה ומעשית, עם מספרים מדויקים מהנתונים שלמטה בלבד; אם משהו אינו בנתונים — אמור זאת, אל תמציא. אינך יכול לשנות נתונים — כשמבקשים לבצע פעולה, הסבר באיזה מסך במרכזי עושים זאת. אפשר לבקש ממך רשימה: אם המשתמש/ת מבקש/ת קובץ/רשימה, סיים את התשובה בשורה בפורמט EXPORT:{"kind":"students"|"gans"|"staff","city":"שם עיר או ריק","filter":"תיאור קצר"} והמערכת תפיק את הקובץ.\n\n'+ctx()+'\n\n== המדריך של המרכזי (תקציר) ==\n'+guideText().slice(0,14000); }
   function renderAssistant(){
     var host=$('#hqAssistant'); if(!host) return;
-    if(!C.live){ host.innerHTML='<div class="card pad live-note">העוזר עובד על הנתונים החיים — זמין אחרי כניסה למרכז.</div>'; return; }
+    if(!C.live){ host.innerHTML=H.emptyHTML('זמין אחרי כניסה למרכז','העוזר עונה מהנתונים החיים של הערים.'); H.hoist('assistant',[]); return; }
     if(!H.guard('assistant', host)) return;
     if($('#aiMsgs')) return;
     host.innerHTML='<div class="ai-wrap"><div class="card pad"><div class="ai-msgs" id="aiMsgs"></div><div class="hq-toolbar" style="margin:10px 0 0"><input class="txtin" id="aiIn" placeholder="שאלה על הנתונים או על המרכזי… (Enter לשליחה)" style="flex:1"><button class="btn-primary" id="aiSend">שליחה</button><button class="btn-ghost" id="aiClear">ניקוי</button></div></div><div class="card pad"><div class="sec-title">מה אפשר לשאול</div><ul style="font-size:.86rem;color:var(--ink-soft);padding-inline-start:18px;line-height:1.7"><li>כמה תלמידים ממתינים לשיבוץ בביתר?</li><li>אילו גנים חורגים מהרישיון?</li><li>איפה יש גן מעל 30 בנות בלי סייעת ב׳?</li><li>כמה קלוטים בעירייה באשדוד ולא מתוקצבים?</li><li>תוציא לי רשימת התלמידים של גן הדקל לאקסל</li><li>איך מסמנים שמייל חזר?</li></ul><div class="sec-note" style="margin-top:8px">המודל מקבל תמונת מצב מספרית (בלי טלפונים וכתובות של הורים) ואת המדריך. המפתח יושב בגשר (Apps Script). מודל: <b>'+esc(((H.HQ().settings||{}).aiModel)||'gemini-3.6-flash')+'</b></div></div></div>';
