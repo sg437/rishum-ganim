@@ -25,6 +25,16 @@
 <meta name="generator" content="rishum-ganim rg-b05ea2eb">
 <meta name="theme-color" content="#2b3630">
 <meta name="robots" content="noindex">
+<!-- PWA — התקנת המרכזי כאפליקציה בטלפון/במחשב. Manifest ואייקונים *נפרדים* מתוכנת הערים
+     (מזהה app שונה), כך ששתי התוכנות מותקנות זו לצד זו עם אייקון משלהן. ה-service worker
+     (sw.js) משותף — מעבר שקוף לרשת בלי מטמון, ולכן אין סיכון לגרסה ישנה. -->
+<link rel="manifest" href="manifest-central.webmanifest">
+<link rel="icon" type="image/png" href="central-icon-192.png">
+<link rel="apple-touch-icon" href="central-apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ארצי">
 </head>
 <body>
 <script>try{if(localStorage.getItem("wr-night")==="1")document.body.dataset.night="1";}catch(e){}</script>
@@ -787,6 +797,7 @@
       <button class="gbtn" id="gateGoogle" type="button"><span class="g" dir="ltr">G</span> כניסה עם חשבון Google</button>
       <div class="err" id="gateErr"></div>
       <div class="alt"><button type="button" id="gateDemo">כניסה למצב הדמיה · <span dir="ltr">?demo=1</span></button><span>נתוני דוגמה בלבד · בלי חיבור לערים</span></div>
+      <div class="alt"><button type="button" class="hq-install-open">📲 התקנה כאפליקציה בטלפון / במחשב</button><span>אייקון "ארצי" במסך הבית</span></div>
     </div>
   </div>
 </div>
@@ -3268,6 +3279,56 @@ try{
   setNight(!!document.body.dataset.night, false);
   $$('.night-btn').forEach(function(b){ b.addEventListener('click',function(){ setNight(!document.body.dataset.night, true); }); });
 
+  /* ---------- התקנה כאפליקציה (PWA): המרכזי במסך הבית של הטלפון / בשולחן העבודה ----------
+     ה-manifest והאייקונים (manifest-central.webmanifest, central-icon-*.png) יושבים בראש הדף,
+     נפרדים משל תוכנת הערים — כך שתי התוכנות מותקנות זו לצד זו. sw.js משותף ובלי מטמון.
+     כפתור "התקנה עכשיו" מופיע רק כשהדפדפן מציע התקנה (beforeinstallprompt — Chrome/Edge);
+     ב-iOS אין אירוע כזה ולכן מוצגות ההוראות הידניות (שיתוף ← הוספה למסך הבית).
+     התיבה מצוירת בכל מקום שיש בו .hq-install-box (הגדרות, חלון מהתפריט) ומתעדכנת חי. */
+  var deferredInstall=null;
+  function isStandalone(){ try{ return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true; }catch(e){ return false; } }
+  function installBoxHtml(){
+    if(isStandalone()) return '<div class="sec-note">✅ המרכזי פתוח כרגע כאפליקציה מותקנת — נכנסים אליו ישירות מהאייקון במסך הבית / בשולחן העבודה.</div>';
+    var desktop=!/(Android|iPhone|iPad|iPod|Mobile)/i.test(navigator.userAgent||'');
+    return (deferredInstall
+        ? '<div style="margin-bottom:10px"><button type="button" class="btn-primary hq-do-install">📲 התקנת המרכזי '+(desktop?'על המחשב':'בטלפון')+' עכשיו</button></div>'
+        : '<div class="sec-note" style="margin-bottom:10px">💡 אם כפתור ההתקנה אינו מופיע כאן — מתקינים ידנית לפי ההוראות למטה.'+(desktop?' ב-Chrome/Edge: אייקון ההתקנה <b>⊕</b> בקצה שורת הכתובת (ליד הכוכב).':'')+'</div>')+
+      '<div class="sec-note" style="line-height:1.9">'+
+        '<b>📱 אנדרואיד (Chrome):</b> '+(deferredInstall?'הכפתור למעלה, או ':'')+'תפריט הדפדפן ⋮ ← <b>"התקנת אפליקציה"</b> / "הוספה למסך הבית".<br>'+
+        '<b>🍏 אייפון / אייפד (Safari):</b> כפתור השיתוף <b>⬆️</b> (למטה) ← <b>"הוספה למסך הבית"</b>.<br>'+
+        '<b>💻 מחשב (Chrome / Edge):</b> אייקון ההתקנה <b>⊕</b> בקצה שורת הכתובת, או תפריט ⋮ ← <b>"התקנת אפליקציה"</b>.<br>'+
+        'האייקון שיופיע: <b>ארצי</b> (ירוק כהה) — נפרד מהאייקון של תוכנת העיר, ואפשר להחזיק את שתיהן זו לצד זו. '+
+        'האפליקציה אינה שומרת נתונים במכשיר: בכל פתיחה המרכזי נטען מהרשת (תמיד הגרסה העדכנית) ומבקש כניסה כרגיל.'+
+      '</div>';
+  }
+  function renderInstallBoxes(){
+    $$('.hq-install-box').forEach(function(box){
+      box.innerHTML=installBoxHtml();
+      var b=box.querySelector('.hq-do-install'); if(!b) return;
+      b.addEventListener('click',function(){
+        var p=deferredInstall; if(!p){ toast('ההתקנה זמינה מתפריט הדפדפן ⋮ ← "התקנת אפליקציה"'); return; }
+        deferredInstall=null;
+        try{ p.prompt(); }catch(e){}
+        (p.userChoice||Promise.resolve()).then(renderInstallBoxes, renderInstallBoxes);
+      });
+    });
+  }
+  function installFootBtn(){ return '<button type="button" class="hq-install-open" title="התקנת המרכזי במסך הבית">📲 התקנה כאפליקציה</button>'; }
+  function openInstallModal(){
+    var H=window.__hq; if(!H||!H.modal) return;
+    H.modal('התקנת המרכזי כאפליקציה', '<div class="sec-note" style="margin-bottom:10px">אייקון משלו במסך הבית של הטלפון או בשולחן העבודה — כניסה ישירה בלי לפתוח דפדפן ולהקליד כתובת.</div><div class="hq-install-box"></div>', '<button type="button" class="btn-ghost" id="hqInstallClose">סגירה</button>');
+    renderInstallBoxes();
+    var c=$('#hqInstallClose'); if(c) c.addEventListener('click', H.closeModal);
+  }
+  document.addEventListener('click',function(e){ var b=e.target && e.target.closest && e.target.closest('.hq-install-open'); if(b) openInstallModal(); });
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferredInstall=e; renderInstallBoxes(); });
+  window.addEventListener('appinstalled', function(){ deferredInstall=null; toast('המרכזי הותקן כאפליקציה ✓'); renderInstallBoxes(); });
+  if('serviceWorker' in navigator){
+    var regSW=function(){ try{ navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(e){} };
+    if(document.readyState==='complete') regSW(); else window.addEventListener('load', regSW);
+  }
+  window.__hqInstall={ html:installBoxHtml, render:renderInstallBoxes, footBtn:installFootBtn, open:openInstallModal, standalone:isStandalone };
+
   /* ---------- חיפוש תיק מהסרט: פותח את מסך התלמידים עם השאילתה ---------- */
   function ribbonSearch(q){
     switchTab('students');
@@ -3311,8 +3372,8 @@ try{
     $('#abAvatar').textContent = initials(LIVEMODE ? (LIVE_NAME||LIVE_USER) : 'הדמיה');
     $('#footL').innerHTML = LIVEMODE ? 'מרכז ניהול ארצי · <b>נתונים חיים</b> מכל הערים' : 'מרכז ניהול ארצי · <b>תוכנית חיה</b> · הדמיה עם נתוני דוגמה';
     var f=$('#drFoot');
-    if(LIVEMODE) f.innerHTML='<div class="acct"><span> מחובר/ת</span><span class="em">'+LIVE_USER+'</span><button type="button" id="drOut">⎋ התנתקות</button></div>';
-    else f.innerHTML='● הדמיה · נתוני דוגמה · <button type="button" id="drIn" style="background:none;border:0;color:var(--accent-strong);font-weight:800;cursor:pointer;font-family:inherit">כניסה למרכז</button>';
+    if(LIVEMODE) f.innerHTML='<div class="acct"><span> מחובר/ת</span><span class="em">'+LIVE_USER+'</span><button type="button" id="drOut">⎋ התנתקות</button></div><div class="acct" style="margin-top:6px">'+installFootBtn()+'</div>';
+    else f.innerHTML='● הדמיה · נתוני דוגמה · <button type="button" id="drIn" style="background:none;border:0;color:var(--accent-strong);font-weight:800;cursor:pointer;font-family:inherit">כניסה למרכז</button><div class="acct" style="margin-top:6px">'+installFootBtn()+'</div>';
     var o=$('#drOut'); if(o) o.addEventListener('click',function(){ window.__centralLive.signOut().then(function(){ location.href=location.pathname; }); });
     var i=$('#drIn'); if(i) i.addEventListener('click',function(){ $('#gate').hidden=false; });
   }
@@ -3670,13 +3731,14 @@ try{
   $$('#drawerNav .navitem .ni').forEach(function(n){ n.innerHTML=navIcon(n.parentNode.dataset.view); });
   function ago(t){ if(!t) return ''; var m=Math.round((Date.now()-t)/60000); if(m<1) return 'עודכן לפני רגע'; if(m===1) return 'עודכן לפני דקה'; if(m<60) return 'עודכן לפני '+m+' דקות'; var h=Math.round(m/60); return h===1?'עודכן לפני שעה':('עודכן לפני '+h+' שעות'); }
   function tnFootLine(){ return cities().length+' ערים · '+ago(C.dataAt); }
+  function installBtn(){ var I=window.__hqInstall; return I ? I.footBtn() : ''; }
   function updateTnFoot(){
     var f=$('#tnFoot'); if(!f) return;
     if(C.live){
-      f.innerHTML='<div id="tnFootLine">'+esc(tnFootLine())+'</div><div class="acct"><span class="em" title="'+esc(C.user)+'">'+esc(C.user)+'</span><button type="button" id="tnOut">התנתקות</button></div>';
+      f.innerHTML='<div id="tnFootLine">'+esc(tnFootLine())+'</div><div class="acct"><span class="em" title="'+esc(C.user)+'">'+esc(C.user)+'</span><button type="button" id="tnOut">התנתקות</button></div><div class="acct">'+installBtn()+'</div>';
       var o=$('#tnOut'); if(o) o.addEventListener('click',function(){ LIVE.signOut().then(function(){ location.href=location.pathname; }); });
     } else {
-      f.innerHTML='<div>הדמיה · נתוני דוגמה</div><div class="acct"><button type="button" id="tnIn">כניסה למרכז</button></div>';
+      f.innerHTML='<div>הדמיה · נתוני דוגמה</div><div class="acct"><button type="button" id="tnIn">כניסה למרכז</button>'+installBtn()+'</div>';
       var i=$('#tnIn'); if(i) i.addEventListener('click',function(){ $('#gate').hidden=false; });
     }
   }
@@ -5428,11 +5490,13 @@ function xlsToRows(buf){
 
   /* ===== הגדרות (נוסף מעל מסך "הרשאות עבודה" הקיים) ===== */
   var SET={ tab:'th' };
+  /* כרטיס "התקנה בטלפון" — התיבה עצמה מצוירת על ידי __hqInstall (מתעדכנת חי כשהדפדפן מציע התקנה) */
+  function installCard(){ return '<div class="card pad"><div class="sec-title">התקנת המרכזי כאפליקציה <span class="hq-count">טלפון · טאבלט · מחשב</span></div><div class="sec-note" style="margin:4px 0 12px">אייקון "ארצי" במסך הבית או בשולחן העבודה — כניסה ישירה למרכזי בלי לפתוח דפדפן ולהקליד כתובת. ההתקנה אישית לכל מכשיר ואינה משנה דבר בנתונים.</div><div class="hq-install-box"></div></div>'; }
   function renderSettings(){
     var host=$('#hqSettings'); var org=$('#orgAdmin');
     if(!host){ host=document.createElement('div'); host.id='hqSettings'; org.parentNode.insertBefore(host, org); }
     var acts=$('#permsActions');
-    if(!C.live){ host.innerHTML=''; if(acts) acts.innerHTML=''; if(org){ org.hidden=false; org.removeAttribute('data-show'); } return; }
+    if(!C.live){ host.innerHTML='<div style="margin-bottom:12px">'+installCard()+'</div>'; if(window.__hqInstall) window.__hqInstall.render(); if(acts) acts.innerHTML=''; if(org){ org.hidden=false; org.removeAttribute('data-show'); } return; }
     var st=H.HQ().settings||{}; var th=H.thresholds(); var perms_=st.perms||{}; var orgD=C.org||{ users:{} };
     var hqUsers=Object.keys(orgD.users||{}).filter(function(em){ return orgD.users[em].hq; }).sort(); (LIVE.isOwner(H.me())?[H.me()]:[]).forEach(function(em){ if(hqUsers.indexOf(em)<0) hqUsers.push(em); });
     var canP=H.isOwner()||H.canEdit('perms');
@@ -5444,7 +5508,7 @@ function xlsToRows(buf){
     var audit=(H.HQ().audit||[]).slice().sort(function(a,b){ return (b.at||0)-(a.at||0); }); var month=audit.filter(function(a){ return now-(a.at||0)<30*86400000; });
     var AL={place:'שיבוץ מרכזי',import:'ייבוא מאקסל',ministry:'הצלבת מצבת משרד החינוך'};
     var cityUsers=Object.keys(orgD.users||{}).length;
-    var tabs=[['th','ספים ובקרה',null],['perms','הרשאות',hqUsers.length],['users','משתמשים',cityUsers],['cities','מרשם ערים',(orgD.cities||[]).length],['log','יומן פעולות',month.length]];
+    var tabs=[['th','ספים ובקרה',null],['perms','הרשאות',hqUsers.length],['users','משתמשים',cityUsers],['cities','מרשם ערים',(orgD.cities||[]).length],['log','יומן פעולות',month.length],['install','התקנה בטלפון',null]];
     var numField=function(id,label,val,unit,note){ return '<div class="setf"><div class="l">'+label+'</div><div class="row"><input class="txtin num" type="number" id="'+id+'" value="'+val+'"'+(canP?'':' disabled')+'><span class="u">'+unit+'</span></div><div class="n">'+note+'</div></div>'; };
     host.innerHTML='<div class="tabs" role="tablist">'+tabs.map(function(t){ return '<button type="button" class="tab" role="tab" data-tab="'+t[0]+'" aria-selected="'+(SET.tab===t[0]?'true':'false')+'">'+t[1]+(t[2]!=null?' <span class="n">'+he(t[2])+'</span>':'')+'</button>'; }).join('')+'</div>'+
       '<div data-pane="th"'+(SET.tab==='th'?'':' hidden')+'>'+
@@ -5455,7 +5519,9 @@ function xlsToRows(buf){
       '<div data-pane="perms"'+(SET.tab==='perms'?'':' hidden')+'><div class="card pad"><div class="sec-title">מה כל אחד/ת יכול/ה לערוך במרכזי <span class="hq-count">משתמשי מרכז בלבד · בעלי המערכת תמיד הכל</span></div><div class="sec-note" style="margin:4px 0 10px">עריכה = לעבוד במודול · צפייה = לראות בלי לשנות · אין = המסך מוסתר. משתמש/ת בלי שורה — עריכה בכל המודולים. ההרשאות כאן הן בממשק; בשרת כל משתמש/ת מרכז מורשה לכתוב (ראה docs/SECURITY.md).</div>'+
         (hqUsers.length?'<div class="hq-scroll" style="max-height:50vh"><table class="hq-table" style="min-width:auto"><thead><tr><th>משתמש/ת</th>'+H.MODULES.map(function(m){ return '<th>'+esc(m[1])+'</th>'; }).join('')+'</tr></thead><tbody>'+hqUsers.map(function(em){ var own=LIVE.isOwner(em); var row=perms_[em]||{}; return '<tr><td dir="ltr" style="text-align:right"><span class="nm"><span class="avatar">'+esc(H.initials((orgD.users[em]&&orgD.users[em].name)||em))+'</span><span>'+esc(em)+'</span></span>'+(own?' '+H.lamp('done','בעלים'):'')+(em===H.me()?' <span class="hq-count">אני</span>':'')+'</td>'+H.MODULES.map(function(m){ if(own) return '<td>'+H.lamp('done','הכל')+'</td>'; var v=row[m[0]]||'edit'; return '<td><span class="lampt"><i class="lamp '+(v==='edit'?'ok':(v==='view'?'wait':'bad'))+'"></i><select class="txtin perm-sel" data-em="'+esc(em)+'" data-m="'+m[0]+'" style="height:30px;padding:0 26px 0 8px;font-size:13px"'+(canP?'':' disabled')+'><option value="edit"'+(v==='edit'?' selected':'')+'>עריכה</option><option value="view"'+(v==='view'?' selected':'')+'>צפייה</option><option value="none"'+(v==='none'?' selected':'')+'>אין</option></select></span></td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table></div>':'<div class="hq-count">אין עדיין משתמשי מרכז במרשם (מלבד הבעלים). מוסיפים בלשונית "משתמשים" — משתמש/ת בלי עיר = מרכז.</div>')+
         '<div class="tfoot" style="margin:12px -16px -16px;border-radius:0 0 12px 12px"><div>בעלי המערכת רואים ועורכים הכל · משתמש/ת בלי שורה מקבל/ת עריכה בכל המודולים</div><div class="acts"><button type="button" class="btn-mini" data-tab-go="users">הוספת משתמש/ת</button></div></div></div></div>'+
-      '<div data-pane="log"'+(SET.tab==='log'?'':' hidden')+'><div class="tcard"><div class="thead-bar"><div>יומן פעולות המרכזי</div><div>30 הימים האחרונים</div></div><div class="hm-list" style="padding:0 16px">'+(audit.length?audit.slice(0,60).map(function(x){ return '<div class="hm-row"><div class="tm">'+esc(H.fmtD(x.at))+'</div><div class="tx">'+esc(AL[x.action]||x.action||'')+(x.detail?' · '+esc(x.detail):'')+'</div><div class="who" title="'+esc(x.by||'')+'">'+esc(x.by||'')+'</div></div>'; }).join(''):'<div class="hm-empty"><span class="lamp wait"></span>עדיין אין פעולות.</div>')+'</div><div class="tfoot"><div>'+he(month.length)+' פעולות בחודש · שיבוצים, ייבואים והצלבות</div><div class="acts"><button type="button" class="btn-mini" id="auditExp">ייצוא היומן</button></div></div></div></div>';
+      '<div data-pane="log"'+(SET.tab==='log'?'':' hidden')+'><div class="tcard"><div class="thead-bar"><div>יומן פעולות המרכזי</div><div>30 הימים האחרונים</div></div><div class="hm-list" style="padding:0 16px">'+(audit.length?audit.slice(0,60).map(function(x){ return '<div class="hm-row"><div class="tm">'+esc(H.fmtD(x.at))+'</div><div class="tx">'+esc(AL[x.action]||x.action||'')+(x.detail?' · '+esc(x.detail):'')+'</div><div class="who" title="'+esc(x.by||'')+'">'+esc(x.by||'')+'</div></div>'; }).join(''):'<div class="hm-empty"><span class="lamp wait"></span>עדיין אין פעולות.</div>')+'</div><div class="tfoot"><div>'+he(month.length)+' פעולות בחודש · שיבוצים, ייבואים והצלבות</div><div class="acts"><button type="button" class="btn-mini" id="auditExp">ייצוא היומן</button></div></div></div></div>'+
+      '<div data-pane="install"'+(SET.tab==='install'?'':' hidden')+'>'+installCard()+'</div>';
+    if(window.__hqInstall) window.__hqInstall.render();
     if(org){ var showOrg=SET.tab==='users'||SET.tab==='cities'; org.hidden=!showOrg; if(showOrg) org.setAttribute('data-show', SET.tab); else org.removeAttribute('data-show'); }
     if(acts) acts.innerHTML=(SET.tab==='th'&&canP?'<button type="button" class="btn-ghost" id="thReset">ביטול שינויים</button><button type="button" class="btn-primary" id="thSave">שמירת ההגדרות</button>':'');
     var dirty=function(){ var d=(+$('#thLic').value!==th.license)||(+$('#thB').value!==th.assistantB)||(+$('#thReq').value!==th.requestDays)||((+$('#thTarget').value||0)!==th.regTarget); var el=$('#thDirty'); if(el) el.hidden=!d; };
@@ -5523,7 +5589,7 @@ function xlsToRows(buf){
     ['','מרכז הודעות','קהל יעד: הורים (לפי ערים, גן, גיל, חינוך, מועד, שיבוץ, עירייה, תוכנית), צוות וגננות (לפי תפקיד/שיבוץ), רכזים/מנהלים/אחראיות קליטה/משתמשי תוכנות הערים/ספר הטלפונים של ההנהלה, או רשימה ידנית. גם ממסך התלמידים/הצוות ("הודעה לנמענים שבסינון"). ערוצים: מייל דרך הגשר (בלי עלות, עם מכסה יומית), וואטסאפ/SMS במצב ידני (נמען אחר נמען), או העתקת רשימה. תבניות עם שדות מיזוג ({{שם הילדה}}, {{גן}}, {{גננת}}…), תצוגה מקדימה, שליחת בדיקה, ויומן שליחות של המרכזי + שליחות אחרונות מתוכנות הערים.'],
     ['','החלטות וחומרים','נושא להחלטה עם רקע ונתונים, האפשרויות, החומרים (קישורים לקבצים/דרייב/מיילים), מי מחליט/ה ועד מתי, ואז ההחלטה ותאריכה. פנייה או ערעור עוברים ל"החלטה" בלחיצה. נושא פתוח מופיע ב"דורש טיפול".'],
     ['','דורש טיפול','רשימה אחת של כל מה שממתין: הגדלת רישיון, סייעת ב׳ חסרה, פניות באיחור/פתוחות, בעיות מול משרד החינוך, החלטות ממתינות, רשומות שגויות חמורות, ממתינים לשיבוץ, ערים בלי גישה, מיילים חוזרים, הפצה בעיצומה. לחיצה מובילה למסך המתאים. פריט נשאר עד שמטפלים בו.'],
-    ['','הגדרות והרשאות','ספי בקרה (רישיון, סייעת ב׳, ימים לתשובה). הרשאות לפי משתמש/ת מרכז: לכל מודול — עריכה / צפייה / אין (בעלי המערכת תמיד הכל). המרשם המרכזי: פתיחת ערים, אופן קליטה, שיוך משתמשים לערים (מנהל/ת עיר, עריכה, צפייה) או כמרכז. יומן פעולות המרכזי.'],
+    ['','הגדרות והרשאות','ספי בקרה (רישיון, סייעת ב׳, ימים לתשובה). הרשאות לפי משתמש/ת מרכז: לכל מודול — עריכה / צפייה / אין (בעלי המערכת תמיד הכל). המרשם המרכזי: פתיחת ערים, אופן קליטה, שיוך משתמשים לערים (מנהל/ת עיר, עריכה, צפייה) או כמרכז. יומן פעולות המרכזי. לשונית "התקנה בטלפון" — התקנת המרכזי כאפליקציה עם אייקון "ארצי" במסך הבית / בשולחן העבודה (זמין גם מכפתור 📲 בתחתית התפריט).'],
     ['','עוזר חכם','שאלות על הנתונים החיים (כמה, איפה, מי), על מה דורש טיפול, ואיך עושים דברים במרכזי; הפקת רשימה לאקסל לפי בקשה. עובד דרך הגשר עם המפתח שבו (Gemini חינמי או Claude). קורא בלבד — אינו משנה נתונים.'],
     ['','אבטחת מידע — בקצרה','כניסה עם Google בלבד; כללי השרת (firestore.rules) חוסמים כל מי שאינו מרכז מלקרוא את המרכזי ואת אחסונו (org/hq), ומשתמש/ת עיר רואה רק את העיר שלו/ה. מפתחות AI/מפות בגשר בלבד. CSP בדף. פירוט ב-docs/SECURITY.md.']
   ];

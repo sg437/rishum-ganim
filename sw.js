@@ -15,6 +15,8 @@
    ========================================================================== */
 
 /* Service Worker מינימלי — מאפשר התקנת המערכת כאפליקציה (PWA) במסך הבית.
+   משותף לתוכנת הערים (index.html + manifest.webmanifest) ולמרכזי
+   (management.html + manifest-central.webmanifest) — שתיהן נרשמות לאותו worker.
    בכוונה ללא שמירת מטמון (network pass-through), כדי שלעולם לא תוצג גרסה ישנה
    של התוכנה — כל בקשה עוברת ישירות לרשת. */
 self.addEventListener('install', function(e){ self.skipWaiting(); });

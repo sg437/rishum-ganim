@@ -37,6 +37,8 @@
 /sw.js
   Cache-Control: no-cache
 
-# App manifest should revalidate too
+# App manifests should revalidate too (תוכנת הערים + המרכזי)
 /manifest.webmanifest
+  Cache-Control: no-cache
+/manifest-central.webmanifest
   Cache-Control: no-cache
