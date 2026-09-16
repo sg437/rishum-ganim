@@ -1884,21 +1884,64 @@ async function addStudents(cityId, year, list){
   });
   return added;
 }
-/* ---- הגשר (Apps Script): מייל, שער הודעות, עוזר חכם ---- */
+/* ---- הגשר (Apps Script): מייל, שער הודעות, עוזר חכם ----
+   Apps Script מגביל ל-1,000 הרצות בו-זמנית לכל הפרויקט (המרכזי והעיריות יחד),
+   ולכן גם כאן: תקרה של קריאות שרצות יחד, איחוד קריאות-קריאה זהות שבדרך,
+   וניסיון חוזר בהמתנה עולה כשהגשר עמוס ומחזיר דף שגיאה במקום JSON. ---- */
+const BRIDGE_MAX_INFLIGHT = 4;
+const BRIDGE_RETRY_MS = [900, 2600, 6000];
+const BRIDGE_SHARED_ACTIONS = { ping:1, list:1, regList:1, regConfigGet:1, shareList:1,
+                                mailQuota:1, msgGatewayStatus:1, download:1 };
+let _bridgeInflight = 0;
+const _bridgeWaiting = [];
+const _bridgeShared = new Map();
+function bridgeSlot(){
+  if(_bridgeInflight < BRIDGE_MAX_INFLIGHT){ _bridgeInflight++; return Promise.resolve(); }
+  return new Promise(res => _bridgeWaiting.push(res));
+}
+function bridgeSlotFree(){
+  const next=_bridgeWaiting.shift();
+  if(next) next(); else _bridgeInflight--;
+}
+function bridgeWait(ms){ return new Promise(r => setTimeout(r, ms)); }
+function bridgeTransient(status, raw){
+  if(status===429 || status===408 || status>=500) return true;
+  return /too many|simultaneous|concurrent|overload|try again|timed? ?out|exceeded maximum/i.test(String(raw||""));
+}
 async function bridge(action, payload, cityId){
+  const key = BRIDGE_SHARED_ACTIONS[action] ? (action+"|"+(cityId||"")+"|"+JSON.stringify(payload||{})) : "";
+  if(key && _bridgeShared.has(key)) return _bridgeShared.get(key);
+  const run = (async ()=>{
+    await bridgeSlot();
+    try{ return await bridgeSend(action, payload, cityId); }
+    finally{ if(key) _bridgeShared.delete(key); bridgeSlotFree(); }
+  })();
+  if(key) _bridgeShared.set(key, run);
+  return run;
+}
+async function bridgeSend(action, payload, cityId){
   if(!user) throw new Error("not-logged-in");
   const c=cityById(cityId)||HOME_CITY;
-  let force=false;
-  for(let attempt=0; attempt<2; attempt++){
+  let force=false, soft=0;
+  for(let attempt=0; attempt<6; attempt++){
     const idToken=await user.getIdToken(force);
     const json=JSON.stringify(Object.assign({ action, idToken, cityId:c.id, cityName:c.name||c.id, cityLegacy:!!(c.legacy||c.id===HOME_CITY.id) }, payload||{}));
     let url=APPS_SCRIPT_URL, opts;
     if(json.length<6000){ url=APPS_SCRIPT_URL+"?data="+encodeURIComponent(json); opts={ method:"POST" }; }
     else opts={ method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:json };
-    let r; try{ r=await fetch(url, opts); }catch(e){ throw new Error("network"); }
+    let r;
+    try{ r=await fetch(url, opts); }
+    catch(e){
+      if(soft < BRIDGE_RETRY_MS.length){ await bridgeWait(BRIDGE_RETRY_MS[soft++]); continue; }
+      throw new Error("network");
+    }
     let raw="", data=null;
     try{ raw=await r.text(); }catch(e){ throw new Error("network"); }
-    try{ data=JSON.parse(raw); }catch(e){ throw new Error("bad-response:"+r.status+":"+raw.replace(/\s+/g," ").trim().slice(0,120)); }
+    try{ data=JSON.parse(raw); }
+    catch(e){
+      if(bridgeTransient(r.status, raw) && soft < BRIDGE_RETRY_MS.length){ await bridgeWait(BRIDGE_RETRY_MS[soft++]); continue; }
+      throw new Error("bad-response:"+r.status+":"+raw.replace(/\s+/g," ").trim().slice(0,120));
+    }
     if(data && data.ok===false){
       if((data.error==='unauthorized'||data.error==='token') && !force){ force=true; continue; }
       throw new Error(data.error||"bridge-error");

@@ -51,7 +51,7 @@ var RG_BUILD = 'rg-b05ea2eb';
 // גרסת הגשר — מוחזרת ב"בדיקת חיבור" בתוכנה, כדי לדעת בוודאות איזו גרסה *נפרסה בפועל*
 // (שמירת הקוד בעורך אינה מספיקה — חייבים לפרוס גרסה חדשה). יש להעלות את התאריך
 // בכל שינוי שמוסיף/משנה פעולה בגשר.
-var BRIDGE_VERSION = '2026-09-02';
+var BRIDGE_VERSION = '2026-09-16';
 
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
@@ -130,9 +130,108 @@ function doPost(e){
 function doGet(e){ return ContentService.createTextOutput('OK'); }
 
 /* ============================================================
+   מטמון קצר-טווח — הגורם המרכזי ל"הרצות בו-זמניות" בגשר
+   ------------------------------------------------------------
+   Apps Script מגביל ל-1,000 הרצות בו-זמנית. מספר ההרצות שרצות יחד שווה
+   בקירוב ל"קצב הקריאות × משך ההרצה", ולכן הדרך היעילה לרדת מהמגבלה היא
+   לקצר את ההרצה — לא להקטין את מספר המשתמשים.
+
+   עד כאן כל קריאה לגשר שילמה, עוד לפני שהתחילה לעבוד:
+     1. פנייה ל-Identity Toolkit (המרת הטוקן למייל),
+     2. חתימת JWT + פנייה ל-oauth2 להנפקת טוקן Service Account,
+     3. קריאת org/meta מ-Firestore,
+     4. לעיתים עוד הנפקת SA + קריאת app/meta,
+     5. ולבסוף סריקת תיקיות ב-Drive (שרשרת של getFoldersByName).
+   זה שניות של המתנה לרשת בכל קריאה, וכולן נספרות כהרצה פעילה.
+
+   כאן נשמרות התוצאות היציבות ב-CacheService (משותף לכל ההרצות של הפרויקט)
+   ובמטמון של ההרצה הנוכחית. התוצאה: קריאה חוזרת מדלגת על כל הפניות האלה,
+   ההרצה מתקצרת בסדר גודל, ובהתאם יורד מספר ההרצות הבו-זמניות.
+
+   ⚠️ נשמרות רק החלטות "מותר" ומזהי תיקיות — לעולם לא סיסמאות, לא תוכן
+   מסמכים ולא שלילות הרשאה (כדי שאישור משתמש/ת חדש/ה ייכנס לתוקף מיד).
+   ============================================================ */
+var CACHE_TTL_ = {
+  sa:     1800,    // טוקן Service Account (תקף שעה — נשמר לחצי שעה)
+  email:  300,     // טוקן → מייל
+  gate:   180,     // החלטת "מורשה/מנהל" (חיובית בלבד)
+  folder: 21600    // מזהי תיקיות ב-Drive (6 שעות)
+};
+var MEM_ = {};     // מטמון בתוך ההרצה הנוכחית בלבד (נמחק בסופה)
+
+function cacheSvc_(){ try{ return CacheService.getScriptCache(); }catch(e){ return null; } }
+/* מפתח מטמון קצר וקבוע — הטוקן עצמו ארוך מדי למפתח, ואין סיבה לשמור אותו כלשונו */
+function cacheKey_(prefix, val){
+  var d = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, String(val), Utilities.Charset.UTF_8);
+  return prefix + Utilities.base64EncodeWebSafe(d).replace(/=+$/, '');
+}
+function cacheGet_(key){
+  if(Object.prototype.hasOwnProperty.call(MEM_, key)) return MEM_[key];
+  var c = cacheSvc_(); if(!c) return null;
+  var raw = null;
+  try{ raw = c.get(key); }catch(e){ return null; }
+  if(raw === null || raw === undefined) return null;
+  var val = null;
+  try{ val = JSON.parse(raw); }catch(e){ return null; }
+  MEM_[key] = val;
+  return val;
+}
+function cachePut_(key, val, ttl){
+  MEM_[key] = val;
+  var c = cacheSvc_(); if(!c) return val;
+  try{ c.put(key, JSON.stringify(val), ttl); }catch(e){}
+  return val;
+}
+
+/* מזהה עיר לצורכי מטמון — עיר הבית יושבת בתיקיית האב עצמה (כמו תמיד) */
+function cityKey_(city){ return (city && !city.legacy) ? ('city:' + city.id) : 'root'; }
+/* קישור לתיקייה לפי מזהה — נחסך ממנו getUrl() (ולכן גם פנייה ל-Drive) */
+function driveFolderUrl_(id){ return 'https://drive.google.com/drive/folders/' + id; }
+
+/* תיקייה עם מטמון מזהה. resolve() מאתר/יוצר בפועל — ורץ רק כשאין מטמון או
+   שהתיקייה שבמטמון נמחקה. האימות (getFolderById) הוא פנייה אחת, במקום
+   שרשרת סריקות — וגם מרפא מטמון ישן במקום להחזיר מזהה מת. */
+function folderCached_(pathKey, resolve){
+  var key = cacheKey_('fld:', pathKey);
+  var hit = cacheGet_(key);
+  if(hit && hit.id){
+    try{
+      var f = DriveApp.getFolderById(hit.id);
+      if(f && !f.isTrashed()) return f;
+    }catch(e){}
+    delete MEM_[key];
+  }
+  var folder = resolve();
+  if(folder) cachePut_(key, { id: folder.getId() }, CACHE_TTL_.folder);
+  return folder;
+}
+/* תיקייה לפי נתיב שלם מתוך שורש העיר — נשמרת לפי הנתיב, כך שקריאה חוזרת
+   אינה סורקת שוב תיקייה-תיקייה. rootFn נקרא רק כשצריך לאתר בפועל. */
+function pathFolder_(rootKey, rootFn, parts){
+  var names = (parts || []).map(function(p){ return String(p === null || p === undefined ? '' : p).trim(); })
+                           .filter(function(s){ return !!s; });
+  if(!names.length) return rootFn();
+  return folderCached_(rootKey + '/' + names.join('/'), function(){
+    var f = rootFn();
+    for(var i = 0; i < names.length; i++) f = sub_(f, names[i]);
+    return f;
+  });
+}
+/* תיקייה לפי נתיב בתוך העיר של הבקשה */
+function cityPath_(city, parts){
+  return pathFolder_(cityKey_(city), function(){ return cityRoot_(city); }, parts);
+}
+/* הקישור לשורש (העיר) — מהמטמון כשאפשר, בלי פנייה נוספת ל-Drive */
+function cityRootLink_(city){
+  var hit = cacheGet_(cacheKey_('fld:', cityKey_(city)));
+  if(hit && hit.id) return driveFolderUrl_(hit.id);
+  return cityRoot_(city).getUrl();
+}
+
+/* ============================================================
    רישום דיגיטלי — טופס ציבורי להורים (קונפיג, קליטה, רשימה לאישור)
    ============================================================ */
-function regFolder_(){ return sub_(root_(), 'רישום דיגיטלי'); }
+function regFolder_(){ return pathFolder_('root', root_, ['רישום דיגיטלי']); }
 function putTextFile_(folder, name, content){
   var it = folder.getFilesByName(name);
   while(it.hasNext()){ it.next().setTrashed(true); }
@@ -544,8 +643,10 @@ function verifyToken_(idToken){
 }
 
 function root_(){
-  var it = DriveApp.getRootFolder().getFoldersByName(ROOT_FOLDER_NAME);
-  return it.hasNext() ? it.next() : DriveApp.createFolder(ROOT_FOLDER_NAME);
+  return folderCached_('root', function(){
+    var it = DriveApp.getRootFolder().getFoldersByName(ROOT_FOLDER_NAME);
+    return it.hasNext() ? it.next() : DriveApp.createFolder(ROOT_FOLDER_NAME);
+  });
 }
 /* העיר מתוך הבקשה: {id, name, legacy}. עיר הבית (או בקשה ישנה בלי עיר) = legacy. */
 function cityFromReq_(req){
@@ -557,9 +658,10 @@ function cityFromReq_(req){
 }
 /* תיקיית הבסיס של העיר: עיר הבית — תיקיית האב עצמה (כמו תמיד); עיר אחרת — "ערים/<שם>" */
 function cityRoot_(city){
-  var r = root_();
-  if(!city || city.legacy) return r;
-  return sub_(sub_(r, CITIES_FOLDER_NAME), city.name || city.id);
+  if(!city || city.legacy) return root_();
+  return folderCached_(cityKey_(city), function(){
+    return sub_(sub_(root_(), CITIES_FOLDER_NAME), city.name || city.id);
+  });
 }
 function sub_(parent, name){
   var it = parent.getFoldersByName(name);
@@ -570,6 +672,9 @@ function ping_(){
   var r = root_();
   return { ok:true, rootId:r.getId(), rootLink:r.getUrl(), version:BRIDGE_VERSION };
 }
+/* שמות ברירת מחדל — תיקייה לעולם לא נשארת בלי שם */
+function childName_(name){ return String(name === null || name === undefined ? '' : name).trim() || 'ללא שם'; }
+function childYearName_(year){ return String(year === null || year === undefined ? '' : year).trim() || 'ללא שנה'; }
 /* שם תיקיית החינוך הראשית — חלוקה ל"חינוך רגיל" / "חינוך מיוחד" (סעיף 12) */
 function eduFolderName_(edu){
   var e = String(edu || '').replace(/\s/g,'');
@@ -577,30 +682,23 @@ function eduFolderName_(edu){
   return 'חינוך רגיל';
 }
 function childFolder_(year, name, edu, gan, city){
-  var r = cityRoot_(city);
-  var e = sub_(r, eduFolderName_(edu));            // חלוקה ראשית לפי חינוך (סעיף 12)
-  var y = sub_(e, String(year || 'ללא שנה'));
-  var parent = (gan && String(gan).trim()) ? sub_(y, String(gan).trim()) : y;  // תיקיית גן בתוך השנה (חינוך → שנה → גן → ילדה)
-  var c = sub_(parent, String(name || 'ללא שם'));
-  return { ok:true, folderId:c.getId(), folderLink:c.getUrl(), rootLink:r.getUrl() };
+  // חינוך → שנה → גן → ילדה (סעיף 12). הנתיב נשמר במטמון, ולכן קריאה חוזרת
+  // אינה סורקת שוב את כל השרשרת — ההרצה מתקצרת מאוד. שם ריק (או רווחים בלבד)
+  // מקבל שם ברירת מחדל — אחרת המסמכים היו נוחתים בתיקיית הגן עצמה.
+  var c = cityPath_(city, [eduFolderName_(edu), childYearName_(year), gan, childName_(name)]);
+  return { ok:true, folderId:c.getId(), folderLink:c.getUrl(), rootLink:cityRootLink_(city) };
 }
 /* העברת תיקיית ילדה קיימת אל תוך תיקיית הגן שלה (ארגון מחדש של מבנה קיים) */
 function childMove_(folderId, year, edu, gan, city){
-  var r = cityRoot_(city);
-  var e = sub_(r, eduFolderName_(edu));
-  var y = sub_(e, String(year || 'ללא שנה'));
-  var parent = (gan && String(gan).trim()) ? sub_(y, String(gan).trim()) : y;
+  var parent = cityPath_(city, [eduFolderName_(edu), childYearName_(year), gan]);
   var f = DriveApp.getFolderById(folderId);
   f.moveTo(parent);                                 // מעביר לתיקיית היעד (שומר על התוכן)
   return { ok:true, folderId:f.getId(), folderLink:f.getUrl() };
 }
 /* תיקיית אנשי צוות — לפי חינוך, ובתוכה תיקייה לכל איש/אשת צוות (סעיפים 12, 17) */
 function staffFolder_(edu, name, city){
-  var r = cityRoot_(city);
-  var e = sub_(r, eduFolderName_(edu));
-  var s = sub_(e, 'אנשי צוות');
-  var c = sub_(s, String(name || 'ללא שם'));
-  return { ok:true, folderId:c.getId(), folderLink:c.getUrl(), rootLink:r.getUrl() };
+  var c = cityPath_(city, [eduFolderName_(edu), 'אנשי צוות', childName_(name)]);
+  return { ok:true, folderId:c.getId(), folderLink:c.getUrl(), rootLink:cityRootLink_(city) };
 }
 function list_(folderId){
   var f = DriveApp.getFolderById(folderId);
@@ -628,7 +726,7 @@ function copy_(fileId, folderId, name){
 /* ===================== גיבוי אוטומטי ל-Drive ===================== */
 var BACKUP_FOLDER_NAME = 'גיבויים';
 var BACKUP_KEEP = 30; // כמה גיבויים אחרונים לשמור (השאר נמחקים אוטומטית)
-function backupFolder_(){ return sub_(root_(), BACKUP_FOLDER_NAME); }
+function backupFolder_(){ return pathFolder_('root', root_, [BACKUP_FOLDER_NAME]); }
 function backupPrune_(folder){
   var arr = [], it = folder.getFiles();
   while(it.hasNext()){ var f = it.next(); arr.push({ f:f, t:f.getDateCreated().getTime() }); }
@@ -637,7 +735,7 @@ function backupPrune_(folder){
 }
 /* גיבוי שנשלח מהתוכנה (client-side) — JSON של כל הנתונים, מקודד base64 */
 function backupSave_(name, dataB64, city){
-  var folder = (city && !city.legacy) ? sub_(cityRoot_(city), BACKUP_FOLDER_NAME) : backupFolder_();
+  var folder = (city && !city.legacy) ? cityPath_(city, [BACKUP_FOLDER_NAME]) : backupFolder_();
   var blob = Utilities.newBlob(Utilities.base64Decode(dataB64), 'application/json',
                                name || ('backup-' + new Date().toISOString().slice(0,10) + '.json'));
   var file = folder.createFile(blob);
@@ -808,22 +906,44 @@ function orgUserRec_(idToken, email){
   return rec;
 }
 function fsDocJson_(idToken, path){
+  // מטמון בתוך ההרצה בלבד: adminGate_ מבקש org/meta ואז app/meta, ולעיתים את
+  // אותו מסמך פעמיים. תוכן המסמכים אינו נשמר מעבר לכך — הרשימות משתנות.
+  var memo = 'fs:' + path;
+  if(Object.prototype.hasOwnProperty.call(MEM_, memo)) return MEM_[memo];
   var url = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT_ID +
             '/databases/(default)/documents/' + path;
   var sa = saToken_();
   var auth = sa ? ('Bearer ' + sa) : (idToken ? ('Bearer ' + idToken) : '');
   if(!auth) return null;
+  var doc = null;
   try{
     var resp = UrlFetchApp.fetch(url, { headers:{ Authorization: auth }, muteHttpExceptions:true });
-    if(resp.getResponseCode() !== 200) return null;
-    return JSON.parse(resp.getContentText());
-  }catch(e){ return null; }
+    if(resp.getResponseCode() === 200) doc = JSON.parse(resp.getContentText());
+  }catch(e){ doc = null; }
+  MEM_[memo] = doc;
+  return doc;
 }
 
+/* מפתח המטמון של שער ההרשאה — לפי הטוקן *והעיר*, כך ששתי ערים אינן מתערבבות */
+function gateKey_(kind, idToken, city){
+  return cacheKey_(kind + ':', String(idToken) + '|' + ((city && city.id) || HOME_CITY_ID) +
+                               '|' + ((city && city.legacy) ? 'L' : '-'));
+}
 /* אימות שהקורא הוא מנהל מערכת: בעל מערכת תמיד; אחרת קורא את app/meta מ-Firestore
    ובודק את settings.admins. רשימה ריקה = רק בעלים (אין יותר "כל מחובר מנהל"
-   במצב אתחול) — תואם ל-isAdmin() באפליקציה. */
+   במצב אתחול) — תואם ל-isAdmin() באפליקציה.
+   ההחלטה יקרה (מייל + מרשם + app/meta = עד ארבע פניות רשת) וחוזרת זהה בכל
+   קריאה של אותו משתמש, ולכן תשובה *חיובית* נשמרת לשלוש דקות. שלילה לעולם
+   אינה נשמרת — כדי שאישור משתמש/ת חדש/ה ייכנס לתוקף מיד. */
 function adminGate_(idToken, city){
+  var key = gateKey_('adm', idToken, city);
+  var hit = cacheGet_(key);
+  if(hit && hit.ok) return { ok:true };
+  var res = adminGateCompute_(idToken, city);
+  if(res && res.ok) cachePut_(key, { ok:true }, CACHE_TTL_.gate);
+  return res;
+}
+function adminGateCompute_(idToken, city){
   var email = tokenEmail_(idToken);
   if(!email) return { ok:false, error:'unauthorized' };
   if(isOwnerEmail_(email)) return { ok:true };
@@ -854,6 +974,14 @@ function adminGate_(idToken, city){
    מקביל ל-emailAllowed()/knownEmails() באפליקציה. חוסם כל חשבון Google אקראי
    שקיבל טוקן תקף אך אינו מורשה במערכת. */
 function allowedGate_(idToken, city){
+  var key = gateKey_('gate', idToken, city);
+  var hit = cacheGet_(key);
+  if(hit && hit.ok) return { ok:true, email:hit.email };
+  var res = allowedGateCompute_(idToken, city);
+  if(res && res.ok) cachePut_(key, { ok:true, email:res.email || '' }, CACHE_TTL_.gate);
+  return res;
+}
+function allowedGateCompute_(idToken, city){
   var email = tokenEmail_(idToken);
   if(!email) return { ok:false, error:'unauthorized' };
   if(isOwnerEmail_(email)) return { ok:true, email:email };
@@ -889,6 +1017,11 @@ function allowedGate_(idToken, city){
 /* מחזיר את האימייל (lower-case) של בעל הטוקן, או null אם אינו תקף. */
 function tokenEmail_(idToken){
   if(!idToken) return null;
+  // אותו טוקן חוזר בעשרות קריאות רצופות (העלאת מסמכים, רשימות, גיבוי) —
+  // ההמרה שלו למייל נשמרת לחמש דקות במקום פנייה לרשת בכל קריאה.
+  var key = cacheKey_('tok:', idToken);
+  var hit = cacheGet_(key);
+  if(hit && hit.e) return hit.e;
   try{
     var resp = UrlFetchApp.fetch(
       'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_API_KEY,
@@ -896,7 +1029,9 @@ function tokenEmail_(idToken){
         payload: JSON.stringify({ idToken: idToken }), muteHttpExceptions:true });
     if(resp.getResponseCode() !== 200) return null;
     var d = JSON.parse(resp.getContentText());
-    return (d.users && d.users[0] && String(d.users[0].email || '').toLowerCase()) || null;
+    var email = (d.users && d.users[0] && String(d.users[0].email || '').toLowerCase()) || null;
+    if(email) cachePut_(key, { e:email }, CACHE_TTL_.email);
+    return email;
   }catch(err){ return null; }
 }
 
@@ -989,10 +1124,15 @@ function accountsUpdate_(token, body){
 /* מנפיק OAuth access token עבור Service Account (חתימת JWT → החלפה בטוקן).
    מחזיר null אם ה-Service Account אינו מוגדר ב-Script Properties. */
 function saToken_(){
+  // הטוקן תקף שעה. בלי מטמון, כל קריאה לגשר חתמה JWT ופנתה ל-oauth2 מחדש —
+  // לפעמים פעמיים באותה הרצה. עכשיו ההנפקה קורית פעם בחצי שעה לכל הפרויקט.
+  var hit = cacheGet_('sa:token');
+  if(hit && hit.t) return hit.t;
+  if(hit && hit.none) return null;               // אין Service Account מוגדר
   var props = PropertiesService.getScriptProperties();
   var clientEmail = props.getProperty('SA_CLIENT_EMAIL');
   var privateKey  = props.getProperty('SA_PRIVATE_KEY');
-  if(!clientEmail || !privateKey) return null;
+  if(!clientEmail || !privateKey){ MEM_['sa:token'] = { none:true }; return null; }
   privateKey = privateKey.replace(/\\n/g, '\n'); // אם הודבק עם \n מילוליים
   var now = Math.floor(Date.now() / 1000);
   var header = Utilities.base64EncodeWebSafe(JSON.stringify({ alg:'RS256', typ:'JWT' })).replace(/=+$/, '');
@@ -1013,6 +1153,8 @@ function saToken_(){
     muteHttpExceptions:true });
   try{
     var d = JSON.parse(resp.getContentText());
-    return d.access_token || null;
+    var tok = d.access_token || null;
+    if(tok) cachePut_('sa:token', { t:tok }, CACHE_TTL_.sa);
+    return tok;
   }catch(e){ return null; }
 }
