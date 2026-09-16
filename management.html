@@ -4160,8 +4160,20 @@ try{
   window.__hqStudents={ open:openStudent, place:placeDialog, filterTo:function(f){ F=Object.assign(F,f); }, filtered:filtered };
 
   /* ---------- מפת שיבוץ ארצית ---------- */
+  /* SRI — טביעת האצבע של כל קובץ CDN. קובץ שהוחלף בצד ה-CDN לא ירוץ.
+     המפתח הוא סוף הכתובת בלבד; כתובת מקומית (stub בבדיקות) נטענת ללא בדיקה. */
+  var CDN_SRI = {
+    "leaflet@1.9.4/dist/leaflet.css": "sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H",
+    "leaflet@1.9.4/dist/leaflet.js": "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH",
+  };
+  function sriApply(el, url){
+    for(var k in CDN_SRI){
+      if(String(url).slice(-(k.length+1)) === "/"+k){ el.integrity=CDN_SRI[k]; el.crossOrigin="anonymous"; break; }
+    }
+    return el;
+  }
   var MAP=null, LAYER=null, mapReady=false, showStu=false, mapEdu='';
-  function ensureLeaflet(){ return new Promise(function(res,rej){ if(window.L){ res(); return; } var css=document.createElement('link'); css.rel='stylesheet'; css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css); var js=document.createElement('script'); js.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; js.onload=res; js.onerror=function(){ rej(new Error('leaflet')); }; document.head.appendChild(js); }); }
+  function ensureLeaflet(){ return new Promise(function(res,rej){ if(window.L){ res(); return; } var css=document.createElement('link'); css.rel='stylesheet'; css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; sriApply(css, css.href); document.head.appendChild(css); var js=document.createElement('script'); js.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; sriApply(js, js.src); js.onload=res; js.onerror=function(){ rej(new Error('leaflet')); }; document.head.appendChild(js); }); }
   function renderMap(){
     var host=$('#hqMap'); if(!host) return;
     if(!C.live){ host.innerHTML='<div class="card pad live-note">המפה מציגה את הגנים החיים — זמינה אחרי כניסה למרכז.</div>'; return; }

@@ -1,0 +1,50 @@
+# סריקת CodeQL — מנתחת את ה-JavaScript המוטבע בדפי ה-HTML ומחפשת
+# XSS, זרימת נתונים לא בטוחה ובעיות אבטחה מוכרות.
+# רצה על כל דחיפה ל-main, על כל PR, ואחת לשבוע (כדי לתפוס שאילתות חדשות
+# שנוספו ל-CodeQL אחרי שהקוד כבר נכתב).
+name: CodeQL — סריקת קוד
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 1'   # שני בבוקר, 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: ניתוח JavaScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      security-events: write   # לכתיבת הממצאים ללשונית Security
+      contents: read
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: אתחול CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - docs/design
+              - docs/design-central
+              - sw.js
+
+      - name: ניתוח
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"

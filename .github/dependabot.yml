@@ -1,0 +1,12 @@
+# עדכון גרסאות של פעולות GitHub (actions/checkout, codeql-action וכו').
+# בפרויקט אין package.json, ולכן אין מה לעדכן מעבר לכך.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "כלים ·"
+    labels:
+      - תלויות

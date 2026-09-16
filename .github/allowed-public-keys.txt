@@ -1,0 +1,12 @@
+# מזהים ציבוריים שמותר להם להופיע בקוד.
+# מפתח apiKey של Firebase הוא מזהה ציבורי לפי התיעוד של Google — ההגנה היא
+# כללי השרת (firestore.rules) ו-App Check, לא סודיות המפתח.
+# ראו docs/SECURITY.md סעיף 2.5.
+#
+# כל מפתח Google אחר שיופיע בקוד ייכשל בבדיקה — במיוחד מפתחות Gemini/Claude
+# ומפתחות מפות, שמקומם ב-Script Properties של הגשר בלבד.
+
+# Firebase — פרויקט הערים
+AIzaSyAsIXD28ODmwbBZqrnJooqT1UTmFjoMOy0
+# Firebase — המרכזי
+AIzaSyBRIWtqtPXxd-W0WR3nB-iGn0Qn9ml-Q8I
