@@ -1742,17 +1742,23 @@ function emitData(){
   emit("central:data", { cities, errors, org:{ cities:orgCities(), users:ORG.users }, user:{ email:lower(user.email), name:user.displayName||"" }, hq:true });
 }
 /* אירועי "פעילות חיה" — הפרש בין שני מצבי השרת של אותה עיר */
+/* בריחת HTML לבלוק הזה. הפיד במרכזי מוצג עם innerHTML (pushFeed), ו-tx נבנה כאן
+   עם <b> מכוון — ולכן בורחים מהערכים בלבד, לא מהמחרוזת כולה.
+   escH שבבלוק הסקריפט הבא אינו בהישג יד מכאן. */
+const evEsc = v => String(v == null ? "" : v).replace(/[&<>"']/g,
+  c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
+
 function diffEvents(c, prevDocs, docs){
   const ev=[];
   const p=prevDocs?buildCity(c,prevDocs):null, n=buildCity(c,docs);
   if(!p) return ev;
-  const mt=c.name+" · עכשיו";
+  const mt=evEsc(c.name)+" · עכשיו";
   if(n.students!==p.students) ev.push({ c:"reg", ic:n.students>p.students?"":"", tx:(n.students>p.students?"<b>"+(n.students-p.students)+" תיקים חדשים</b> נרשמו":"<b>"+(p.students-n.students)+" תיקים</b> הוסרו/הסתיימו"), mt, cityId:c.id, kind:"students" });
   if(n.placed!==p.placed) ev.push({ c:"reg", ic:"", tx:"<b>שיבוץ עודכן</b> · "+n.placed.toLocaleString("he-IL")+" משובצים ("+(n.placed>p.placed?"+":"")+(n.placed-p.placed)+")", mt, cityId:c.id, kind:"placed" });
   if(n.muni!==p.muni) ev.push({ c:"reg", ic:"", tx:"<b>קליטה בעירייה</b> · "+n.muni.toLocaleString("he-IL")+" קלוטים", mt, cityId:c.id, kind:"muni" });
   if(n.gan!==p.gan || n.gans.length!==p.gans.length) ev.push({ c:"reg", ic:"", tx:"<b>רשימת הגנים עודכנה</b> · "+n.gan+" גנים פעילים", mt, cityId:c.id, kind:"gans" });
   if(n.staff!==p.staff) ev.push({ c:"reg", ic:"", tx:"<b>מאגר הצוות עודכן</b> · "+n.staff+" אנשי צוות", mt, cityId:c.id, kind:"staff" });
-  const pe=new Set(p.presence.map(x=>x.email)); n.presence.forEach(x=>{ if(!pe.has(x.email)) ev.push({ c:"enter", ic:"", tx:"<b>"+(x.name||x.email)+"</b> נכנס/ה לתוכנת העיר", mt, cityId:c.id, kind:"presence" }); });
+  const pe=new Set(p.presence.map(x=>x.email)); n.presence.forEach(x=>{ if(!pe.has(x.email)) ev.push({ c:"enter", ic:"", tx:"<b>"+evEsc(x.name||x.email)+"</b> נכנס/ה לתוכנת העיר", mt, cityId:c.id, kind:"presence" }); });
   if(!ev.length && n.students===p.students){ ev.push({ c:"reg", ic:"", tx:"<b>עדכון נתונים</b> בתוכנת העיר", mt, cityId:c.id, kind:"edit" }); }
   return ev;
 }
@@ -1774,7 +1780,7 @@ function watchCity(c){
     console.error("city "+c.id, err);
     const code=String(err&&(err.code||err.message)||"unknown");
     cityErr.set(c.id, /permission-denied/i.test(code) ? "אין הרשאה לקרוא את נתוני העיר (permission-denied) — יש לפרסם את firestore.rules המעודכן בקונסולת Firebase" : code);
-    emit("central:event", { c:"exit", ic:"", tx:"<b>אין גישה לנתוני "+(c.name||c.id)+"</b> — "+code, mt:"בדיקת כללי השרת · עכשיו" });
+    emit("central:event", { c:"exit", ic:"", tx:"<b>אין גישה לנתוני "+evEsc(c.name||c.id)+"</b> — "+evEsc(code), mt:"בדיקת כללי השרת · עכשיו" });
     scheduleEmit();
   });
   cityUnsubs.set(c.id, un);
@@ -1790,7 +1796,7 @@ function hqEmit(){ clearTimeout(hqTimer); hqTimer=setTimeout(()=>{ if(user) emit
 function startHQ(){
   if(hqUnsubs.length) return;
   hqUnsubs.push(onSnapshot(doc(db,"org","hq"), snap=>{ HQ.settings=(snap.exists()?snap.data():{})||{}; HQ.loaded=true; hqEmit(); },
-    err=>{ console.error("org/hq", err); HQ.loaded=true; HQ.error=String(err&&(err.code||err.message)||""); emit("central:event", { c:"exit", ic:"", tx:"<b>אחסון המרכזי (org/hq) אינו נגיש</b> — "+String(err&&err.code||err), mt:"יש לפרסם את firestore.rules המעודכן · עכשיו" }); hqEmit(); }));
+    err=>{ console.error("org/hq", err); HQ.loaded=true; HQ.error=String(err&&(err.code||err.message)||""); emit("central:event", { c:"exit", ic:"", tx:"<b>אחסון המרכזי (org/hq) אינו נגיש</b> — "+evEsc(err&&err.code||err), mt:"יש לפרסם את firestore.rules המעודכן · עכשיו" }); hqEmit(); }));
   HQ_COLLS.forEach(k=>{
     hqUnsubs.push(onSnapshot(collection(db,"org","hq",k), snap=>{ HQ[k]=snap.docs.map(d=>Object.assign({ id:d.id }, d.data())); hqEmit(); }, err=>{ console.error("org/hq/"+k, err); }));
   });

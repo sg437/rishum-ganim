@@ -223,7 +223,12 @@ async function bridge(action, payload){
   if(data && data.ok === false) throw new Error(data.error || "error");
   return data;
 }
-function esc(s){ return String(s==null?"":s); }
+/* בריחת HTML — הערכים נכנסים ל-innerHTML בבניית מסמך הרישום ולתוך
+   מאפיינים בגרשיים (value="…"), ולכן גם " ו-' בורחים. */
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,
+  c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]); }
+/* הצבה ל-value/textContent אינה הקשר HTML — שם רק ממירים למחרוזת. */
+function str(s){ return String(s==null?"":s); }
 function fileToB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]||""); r.onerror=rej; r.readAsDataURL(file); }); }
 function todayStr(){ const d=new Date(); const p=n=>String(n).padStart(2,"0"); return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear(); }
 
@@ -246,9 +251,9 @@ function signatureDataUrl(){ return sigHasDrawn ? $("#sign").toDataURL("image/pn
 function wireGan(){
   const dl=$("#ganList"); dl.innerHTML = GANS.map(g=>`<option value="${esc(g.name)}">`).join("");
   const apply=()=>{ const v=$("#ganName").value.trim(); const g=GANS.find(x=>x.name===v)||GANS.find(x=>x.name.replace(/\s/g,"")===v.replace(/\s/g,""));
-    $("#ganSymbol").value = g? esc(g.symbol) : "";
-    $("#ganAddress").value = g? esc(g.address) : "";
-    $("#declSymbol").textContent = g? esc(g.symbol) : "—"; };
+    $("#ganSymbol").value = g? str(g.symbol) : "";
+    $("#ganAddress").value = g? str(g.address) : "";
+    $("#declSymbol").textContent = g? str(g.symbol) : "—"; };
   $("#ganName").addEventListener("input", apply); $("#ganName").addEventListener("change", apply);
 }
 
