@@ -5315,10 +5315,55 @@ function renderAuthBox(){
    כל משתמש מחובר לתוכנה יכול ליצור תיקיות/להעלות/לצפות/להוריד — ללא חיבור Google אישי.
    ============================================================ */
 async function driveIdToken(force){ if(!currentUser) throw new Error("not-logged-in"); return await currentUser.getIdToken(!!force); }
+/* ============================================================
+   תור הקריאות לגשר — הגנה מפני חריגה מ"הרצות בו-זמניות"
+   ------------------------------------------------------------
+   Apps Script מגביל ל-1,000 הרצות בו-זמנית — לכל הפרויקט, כל המשתמשות יחד.
+   לשונית אחת יודעת לפתוח עשרות קריאות במקביל (ייבוא מסמכים, סנכרון תיקיות,
+   רשימות), וכל אחת מהן היא הרצה נוספת שנספרת. לכן:
+     • יש תקרה קבועה של קריאות שרצות יחד מהלשונית, והשאר ממתינות בתור;
+     • קריאת *קריאה* זהה שכבר בדרך מתאחדת לתשובה אחת במקום הרצה נוספת;
+     • כשהגשר עמוס (Google מחזיר דף שגיאה ולא JSON) מנסים שוב בהמתנה עולה,
+       במקום להציג לתלמידה/למשתמשת כישלון.
+   ============================================================ */
+const DRIVE_MAX_INFLIGHT = 4;              // כמה קריאות לגשר רצות יחד מהלשונית
+const DRIVE_RETRY_MS = [900, 2600, 6000];  // המתנה לפני ניסיון חוזר בעומס
+/* פעולות קריאה בלבד — בטוח לאחד שתי בקשות זהות שנשלחו יחד. פעולות שכותבות
+   (upload · copy · childFolder · sendMail…) לעולם אינן מתאחדות. */
+const DRIVE_SHARED_ACTIONS = { ping:1, list:1, regList:1, regConfigGet:1, shareList:1,
+                               mailQuota:1, msgGatewayStatus:1, download:1, walk:1, geocode:1 };
+let _driveInflight = 0;
+const _driveWaiting = [];
+const _driveShared = new Map();
+function driveSlot(){
+  if(_driveInflight < DRIVE_MAX_INFLIGHT){ _driveInflight++; return Promise.resolve(); }
+  return new Promise(res => _driveWaiting.push(res));
+}
+function driveSlotFree(){
+  const next = _driveWaiting.shift();
+  if(next) next(); else _driveInflight--;
+}
+function driveWait(ms){ return new Promise(r => setTimeout(r, ms)); }
+/* תשובה שאינה JSON בגלל עומס/תקלה זמנית בצד Google — ולא שגיאת תוכן אמיתית */
+function driveTransient(status, raw){
+  if(status===429 || status===408 || status>=500) return true;
+  return /too many|simultaneous|concurrent|overload|try again|timed? ?out|exceeded maximum/i.test(String(raw||""));
+}
 async function driveCall(action, payload){
+  const key = DRIVE_SHARED_ACTIONS[action] ? (action+"|"+JSON.stringify(payload||{})) : "";
+  if(key && _driveShared.has(key)) return _driveShared.get(key);
+  const run = (async ()=>{
+    await driveSlot();
+    try{ return await driveSend(action, payload); }
+    finally{ if(key) _driveShared.delete(key); driveSlotFree(); }
+  })();
+  if(key) _driveShared.set(key, run);
+  return run;
+}
+async function driveSend(action, payload){
   if(!DRIVE_READY) throw new Error("drive-not-configured");
-  let force=false;
-  for(let attempt=0; attempt<2; attempt++){
+  let force=false, soft=0;
+  for(let attempt=0; attempt<6; attempt++){
     const idToken=await driveIdToken(force);
     const json=JSON.stringify(Object.assign({action, idToken}, cityBridgeArgs(), payload||{}));
     // Apps Script לעיתים משמיט את גוף בקשת ה-POST החוצה-מקור (בגלל הפניה פנימית),
@@ -5329,13 +5374,20 @@ async function driveCall(action, payload){
     else { opts={ method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: json }; }
     let r;
     try{ r=await fetch(url, opts); }
-    catch(e){ throw new Error("network"); }
+    catch(e){
+      if(soft < DRIVE_RETRY_MS.length){ await driveWait(DRIVE_RETRY_MS[soft++]); continue; }
+      throw new Error("network");
+    }
     // התשובה נקראת כטקסט ואז מפוענחת, כדי שכשהיא אינה JSON נדע *מה* הוחזר.
     // "bad-response" סתמי שלח אותנו לחפש במקומות הלא נכונים.
     let raw="", data=null;
     try{ raw=await r.text(); }catch(e){ throw new Error("network"); }
     try{ data=JSON.parse(raw); }
-    catch(e){ throw new Error("bad-response:"+r.status+":"+raw.replace(/\s+/g," ").trim().slice(0,120)); }
+    catch(e){
+      // עומס בגשר מחזיר דף שגיאה של Google ולא JSON — ממתינים ומנסים שוב.
+      if(driveTransient(r.status, raw) && soft < DRIVE_RETRY_MS.length){ await driveWait(DRIVE_RETRY_MS[soft++]); continue; }
+      throw new Error("bad-response:"+r.status+":"+raw.replace(/\s+/g," ").trim().slice(0,120));
+    }
     if(data && data.ok===false){
       // טוקן פג תוקף / לא תקף — רענון כפוי של הטוקן וניסיון חוזר אחד (מונע "בעיית הרשאה")
       if((data.error==='unauthorized' || data.error==='token') && !force){ force=true; continue; }
