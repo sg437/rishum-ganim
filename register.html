@@ -301,10 +301,22 @@ async function load(){
 }
 
 /* ---- טעינת ספריות PDF (רק בעת שליחה) ---- */
+/* SRI — טביעת האצבע של כל קובץ CDN. קובץ שהוחלף בצד ה-CDN לא ירוץ.
+   המפתח הוא סוף הכתובת בלבד; כתובת מקומית (stub בבדיקות) נטענת ללא בדיקה. */
+const CDN_SRI = {
+  "html2canvas@1.4.1/dist/html2canvas.min.js": "sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H",
+  "jspdf@2.5.1/dist/jspdf.umd.min.js": "sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk",
+};
+function sriApply(el, url){
+  for(const k in CDN_SRI){
+    if(String(url).slice(-(k.length+1)) === "/"+k){ el.integrity=CDN_SRI[k]; el.crossOrigin="anonymous"; break; }
+  }
+  return el;
+}
 let _pdfLibs=null;
 function loadPdfLibs(){
   if(_pdfLibs) return _pdfLibs;
-  const one=src=>new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src;
+  const one=src=>new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; sriApply(s, s.src);
     const to=setTimeout(()=>rej(new Error("timeout")),15000);
     s.onload=()=>{ clearTimeout(to); res(); }; s.onerror=()=>{ clearTimeout(to); rej(new Error("load-fail")); };
     document.head.appendChild(s); });

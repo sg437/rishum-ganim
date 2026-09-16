@@ -16,6 +16,7 @@
 | **הרשאה בממשק** | המרכזי: לכל משתמש/ת מרכז — עריכה / צפייה / אין, לכל מודול (הגדרות והרשאות). תוכנת העיר: מנהל/ת, עריכה (רגיל / ח"מ), צפייה. | `management.html` (`org/hq.perms`), `index.html` |
 | **סודות** | מפתחות AI (Gemini/Claude) ומפות — ב-Script Properties של הגשר בלבד, לעולם לא בדפדפן. | `APPS_SCRIPT.gs` |
 | **App Check** | reCAPTCHA v3 — כשמדליקים אכיפה ב-Firestore, רק הדפים שלנו יכולים לדבר עם המסד. | `index.html`, `management.html` |
+| **SRI** | כל קובץ שנטען מ-CDN (Leaflet, html2canvas, jsPDF) נושא `integrity` עם טביעת אצבע sha384 + `crossorigin`. קובץ שהוחלף בצד ה-CDN לא ירוץ. הטבלה: `CDN_SRI` בכל דף. **חריג:** מודולי Firebase נטענים כ-ES modules מ-gstatic — ל-`import` סטטי אין `integrity` בתקן, ולכן הם אינם מוגנים ב-SRI. | `index.html`, `management.html`, `register.html` |
 | **CSP** | Content-Security-Policy כתגית `<meta>` בכל דף: סקריפטים רק מהמקורות שלנו + Firebase/Google/unpkg/jsdelivr; `connect-src` רק ל-Firebase, לגשר ול-Nominatim; `object-src 'none'`; `frame-ancestors` (ב-`_headers`, ל-Cloudflare). | כל דף |
 | **XSS** | כל ערך שמוצג במרכזי עובר `escH()` לפני `innerHTML`; קישורים נבנים מ-URL מקודד. | `management.html` |
 | **יומן** | כל שיבוץ מרכזי, ייבוא והצלבת משרד החינוך נרשמים ב-`org/hq/audit` (מי, מה, מתי). כל מסמך באחסון המרכזי נושא `createdBy/updatedBy`. | `management.html` |
@@ -50,15 +51,42 @@
 
 ---
 
-## 4. מודל האיומים בקצרה
+## 4. סריקה אוטומטית (CI)
+
+שלוש בדיקות רצות מעצמן ב-GitHub Actions. הן **אינן מחליפות** את הרשימה בסעיף 3 — אף סורק לא יודע שצריך להדליק אכיפת App Check.
+
+| מה | מתי | קובץ |
+|---|---|---|
+| **CodeQL** — ניתוח ה-JavaScript המוטבע בדפים: XSS, זרימת נתונים לא בטוחה | כל דחיפה ל-`main`, כל PR, ואחת לשבוע (שאילתות חדשות של CodeQL על קוד ישן) | `.github/workflows/codeql.yml` |
+| **סקירת אבטחה של Claude** — קוראת את הדיף בהקשר של `firestore.rules` והגשר | כל PR | `.github/workflows/security-review.yml` |
+| **שומר סודות** — מפתח Google שאינו ברשימת המזהים הציבוריים, מפתחות Anthropic/AWS, טוקני OAuth, מפתח PEM | כל דחיפה וכל PR | `.github/workflows/secrets-guard.yml` |
+
+**את שומר הסודות אפשר להריץ גם מקומית** לפני קומיט:
+
+```bash
+.github/scripts/check-secrets.sh
+```
+
+הרשימה הלבנה של המזהים הציבוריים (שני מפתחות ה-`apiKey` של Firebase) — `.github/allowed-public-keys.txt`. כל מפתח אחר יכשיל את הבדיקה.
+
+### מה עוד צריך להגדיר ביד
+
+1. **הסוד `CLAUDE_API_KEY`** — Settings → Secrets and variables → Actions. בלי הסוד סקירת האבטחה מדלגת בשקט (לא צובעת PR באדום).
+2. **Secret scanning + Push protection** — Settings → Code security. חוסם דחיפה של סוד לפני שהוא מגיע לשרת, ולא רק מדווח אחריה. חינם לריפו ציבורי.
+3. **הצמדת `anthropics/claude-code-security-review` ל-SHA** — כרגע מוצמדת ל-`@main` לפי התיעוד הרשמי. הצמדה ל-SHA מלא עדיפה: פעולה שרצה על הקוד שלנו עם הרשאת כתיבה ל-PR היא שרשרת אספקה לכל דבר.
+
+---
+
+## 5. מודל האיומים בקצרה
 
 * **חשבון Google של עובד/ת דלף** — הפגיעה מוגבלת לעיר של המשתמש/ת (בשרת). למרכז — לכל הערים; לכן מומלץ אימות דו-שלבי בחשבונות Google של המשרד הראשי (הגדרה ב-Google, לא בתוכנה).
 * **סקריפט זדוני בדף** — CSP חוסם טעינה ממקורות זרים ושליחת נתונים החוצה; `escH` מונע הזרקה מהנתונים.
+* **ספרייה שהוחלפה ב-CDN** — SRI פוסל קובץ ששונה; הדף ממשיך לעבוד בלי המפה/ה-PDF במקום להריץ קוד זר. מודולי Firebase מ-gstatic נשארים החריג (ראו סעיף 1).
 * **גישה ישירה ל-Firestore/REST** — נחסמת בכללי השרת; App Check (כשנאכף) חוסם גם לקוחות שאינם הדפים שלנו.
 * **שימוש לרעה בגשר** — כל פעולה דורשת טוקן + מייל במרשם; מכסת המייל היומית של Google מגבילה הפצה המונית.
 
 ---
 
-## 5. מה חייב להישאר זהה בארבעה מקומות
+## 6. מה חייב להישאר זהה בארבעה מקומות
 
 `OWNER_EMAILS` ומזהה עיר הבית (`modiin-illit`) — ב-`index.html`, `management.html`, `firestore.rules`, `APPS_SCRIPT.gs`. שינוי באחד בלי האחרים = נעילה או פתיחה לא מכוונת.

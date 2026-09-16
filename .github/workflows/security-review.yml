@@ -1,0 +1,46 @@
+# סקירת אבטחה של קלוד על כל PR — הכלי היחיד שמבין את ההקשר של
+# firestore.rules, שערי ההרשאה בגשר (APPS_SCRIPT.gs) ובקרת ההרשאות בממשק.
+#
+# דורש סוד בשם CLAUDE_API_KEY (Settings → Secrets and variables → Actions).
+# בלי הסוד — ה-workflow מדלג בשקט ואינו נכשל, כדי שלא יצבע PR-ים באדום.
+name: סקירת אבטחה (Claude)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write   # לכתיבת הערות הסקירה על ה-PR
+
+concurrency:
+  group: security-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: סקירה
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HAS_KEY: ${{ secrets.CLAUDE_API_KEY != '' }}
+
+    steps:
+      - name: בדיקה שהסוד מוגדר
+        if: env.HAS_KEY != 'true'
+        run: |
+          echo "::notice::הסוד CLAUDE_API_KEY אינו מוגדר — הסקירה דולגה. להגדרה: Settings → Secrets and variables → Actions → New repository secret"
+
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+
+      # הצמדה ל-@main לפי התיעוד הרשמי של הפעולה.
+      # עדיף להצמיד ל-SHA מלא — ראו docs/SECURITY.md סעיף 4.
+      - uses: anthropics/claude-code-security-review@main
+        if: env.HAS_KEY == 'true'
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}

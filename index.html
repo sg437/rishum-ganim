@@ -7476,6 +7476,20 @@ function exportGansXlsColored(C, rows, fileBase){
    גאוקוד דרך Nominatim; הקואורדינטות נשמרות במטמון (g.geo/s.geo)
    כדי לא לגאוקד שוב ולכבד את מדיניות השימוש (בקשה אחת לשנייה).
    ============================================================ */
+/* SRI — טביעת האצבע של כל קובץ CDN. קובץ שהוחלף בצד ה-CDN לא ירוץ.
+   המפתח הוא סוף הכתובת בלבד; כתובת מקומית (stub בבדיקות) נטענת ללא בדיקה. */
+const CDN_SRI = {
+  "leaflet@1.9.4/dist/leaflet.css": "sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H",
+  "leaflet@1.9.4/dist/leaflet.js": "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH",
+  "html2canvas@1.4.1/dist/html2canvas.min.js": "sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H",
+  "jspdf@2.5.1/dist/jspdf.umd.min.js": "sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk",
+};
+function sriApply(el, url){
+  for(const k in CDN_SRI){
+    if(String(url).slice(-(k.length+1)) === "/"+k){ el.integrity=CDN_SRI[k]; el.crossOrigin="anonymous"; break; }
+  }
+  return el;
+}
 let _leafletPromise=null;
 function ensureLeaflet(){
   if(window.L) return Promise.resolve(window.L);
@@ -7483,9 +7497,11 @@ function ensureLeaflet(){
   _leafletPromise=new Promise((resolve,reject)=>{
     const css=document.createElement("link");
     css.rel="stylesheet"; css.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    sriApply(css, css.href);
     document.head.appendChild(css);
     const js=document.createElement("script");
     js.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    sriApply(js, js.src);
     js.onload=()=>resolve(window.L);
     js.onerror=()=>reject(new Error("leaflet-load-failed"));
     document.head.appendChild(js);
@@ -10198,7 +10214,7 @@ function reportInnerHtml({ title, subtitle, headers, rows, bodyHtml, footNote=""
 let _pdfLibs=null;
 function loadPdfLibs(){
   if(_pdfLibs) return _pdfLibs;
-  const one=src=>new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src;
+  const one=src=>new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; sriApply(s, s.src);
     const to=setTimeout(()=>rej(new Error("timeout")), 15000); // אם ה-CDN אינו נגיש — לא נתקע
     s.onload=()=>{ clearTimeout(to); res(); }; s.onerror=()=>{ clearTimeout(to); rej(new Error("load-fail")); };
     document.head.appendChild(s); });
