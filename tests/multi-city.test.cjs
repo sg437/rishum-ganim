@@ -54,7 +54,7 @@ export const deleteDoc=P, terminate=P, clearIndexedDbPersistence=P, disableNetwo
 export const onSnapshot=(ref,opts,cb,err)=>{ window.__snaps=window.__snaps||[]; window.__snaps.push({path:ref.path, cb:typeof opts==='function'?opts:cb}); return noop; };
 export const writeBatch=()=>({set:noop,delete:noop,commit:P});
 export const runTransaction=P;
-export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}
+export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; export const getToken=async()=>({token:""});
 `);
 /* המרכזי — בלי Firebase (הרשת חסומה): רק בודקים שהעיצוב של תוכנת הערים לא נטען */
 let mgmt=fs.readFileSync(path.join(ROOT,'management.html'),'utf8');

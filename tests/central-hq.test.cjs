@@ -48,7 +48,7 @@ export const onSnapshot=(ref,opts,cb,err)=>{ const f=typeof opts==='function'?op
 export const setDoc=(ref,data,opts)=>{ window.__writes=(window.__writes||[]); window.__writes.push({path:ref.path,data:JSON.parse(JSON.stringify(data)),merge:!!(opts&&opts.merge)}); window.__docs[ref.path]=(opts&&opts.merge)?Object.assign({},window.__docs[ref.path]||{},data):JSON.parse(JSON.stringify(data)); fire(ref.path); return Promise.resolve(); };
 export const deleteDoc=(ref)=>{ delete window.__docs[ref.path]; fire(ref.path); return Promise.resolve(); };
 export const runTransaction=async(db,fn)=>{ const tx={ get:async(ref)=>snapDoc(ref.path), set:(ref,data)=>{ window.__docs[ref.path]=JSON.parse(JSON.stringify(data)); window.__txWrites=(window.__txWrites||[]); window.__txWrites.push({path:ref.path,data:window.__docs[ref.path]}); fire(ref.path); } }; return fn(tx); };
-export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}
+export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; export const getToken=async()=>({token:""});
 `);
 const PORT=8741;
 const server=require('http').createServer((req,res)=>{

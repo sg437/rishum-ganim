@@ -769,7 +769,7 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
          doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence, writeBatch, runTransaction,
          disableNetwork, enableNetwork }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import { initializeAppCheck, ReCaptchaV3Provider }
+import { initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-check.js";
 
 /* ===== הגדרות Firebase — הדבק/י כאן את 6 המפתחות מהפרויקט שלך (ראה SETUP.md) ===== */
@@ -1013,7 +1013,7 @@ function blankDB(){
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
-let app=null, auth=null, db=null, currentUser=null;
+let app=null, auth=null, db=null, currentUser=null, appCheck=null;
 let DB = blankDB();
 
 /* ============================================================
@@ -1618,12 +1618,12 @@ async function loadViaRest(){
   if(!currentUser){ if(out) out.innerHTML=`<b style="color:var(--bad)">יש להתחבר קודם.</b>`; return; }
   if(out) out.innerHTML="טוען נתונים במצב חלופי… ⏳";
   try{
-    const token=await currentUser.getIdToken();
+    const hdr=await _restHdr(false);
     const base=cityRestBase();
     const map=new Map(); let pageToken="";
     do{
       const url=base+"?pageSize=300"+(pageToken?("&pageToken="+encodeURIComponent(pageToken)):"");
-      const res=await fetch(url,{ headers:{ Authorization:"Bearer "+token } });
+      const res=await fetch(url,{ headers:hdr });
       if(!res.ok){ if(out) out.innerHTML=`<b style="color:var(--bad)">שגיאת טעינה (${res.status}).</b> ${res.status===403?'אין הרשאה לחשבון הזה.':'נסה/י שוב.'}`; return; }
       const json=await res.json();
       (json.documents||[]).forEach(dnode=>{ const id=dnode.name.split("/").pop(); const d=decFsFields(dnode.fields||{}); map.set(id, d); shadowSeedFromCloud(id, d, false); });
@@ -1680,6 +1680,14 @@ function encFsVal(v){
   return {stringValue:String(v)};
 }
 function encFsFields(obj){ const f={}; for(const k in obj){ if(obj[k]!==undefined) f[k]=encFsVal(obj[k]); } return f; }
+/* כותרות לבקשת REST: אסימון התחברות + אסימון App Check (כשהוא פעיל בפרויקט, בקשה בלעדיו נדחית).
+   כשל בהשגת אסימון App Check לא חוסם — הבקשה יוצאת בלעדיו, כמו קודם. */
+async function _restHdr(json){
+  const h={ Authorization:"Bearer "+(await currentUser.getIdToken()) };
+  if(json) h["Content-Type"]="application/json";
+  if(appCheck){ try{ const t=await getAppCheckToken(appCheck, false); if(t&&t.token) h["X-Firebase-AppCheck"]=t.token; }catch(_){} }
+  return h;
+}
 /* מיזוג REST (מצב חלופי כשה-SDK חסום) — GET עם updateTime ואז PATCH מותנה */
 async function _restGet(base, hdr, id){
   const r=await fetch(base+encodeURIComponent(id), { headers:hdr });
@@ -1691,23 +1699,25 @@ async function _restGet(base, hdr, id){
 function _condUrl(base, id, updateTime){
   return base+encodeURIComponent(id)+"?"+(updateTime ? ("currentDocument.updateTime="+encodeURIComponent(updateTime)) : "currentDocument.exists=false");
 }
-async function _restMergeSimple(base, hdr, id, listKey, list, baseMap){
+async function _restMergeSimple(base, hdr, id, listKey, list, baseMap, gen){
   const { changed, deleted } = _diffList(list, baseMap);
   if(!changed.length && !deleted.length) return;
   for(let attempt=0; attempt<6; attempt++){
+    _assertGen(gen);
     const g=await _restGet(base, hdr, id);
+    _assertGen(gen);
     const server=Array.isArray(g.data[listKey])?g.data[listKey]:[];
     const m=new Map(server.map(o=>[o.id,o]));
     for(const o of changed) m.set(o.id, o);
     for(const dId of deleted) m.delete(dId);
     const p=await fetch(_condUrl(base,id,g.updateTime),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields({[listKey]:[...m.values()]})}) });
-    if(p.ok) return;
+    if(p.ok){ _pushProgress(gen); return; }
     if(p.status===409||p.status===412) continue; // תנאי נכשל — מישהו כתב בינתיים → נסה שוב
     throw new Error("restMerge "+id+" ("+p.status+")");
   }
   throw new Error("restMerge "+id+" — יותר מדי התנגשויות");
 }
-async function _restMergeStudents(base, hdr){
+async function _restMergeStudents(base, hdr, gen){
   const b=_mergeBase.stu, cur=new Map(DB.students.map(s=>[s.id,s]));
   const addsByYear=new Map(), removesByYear=new Map();
   const push=(m,k,v)=>{ let a=m.get(k); if(!a){a=[];m.set(k,a);} a.push(v); };
@@ -1719,7 +1729,9 @@ async function _restMergeStudents(base, hdr){
     const id=safeYearId(y), adds=addsByYear.get(y)||[], rms=removesByYear.get(y)||new Set();
     let done=false;
     for(let attempt=0; attempt<6 && !done; attempt++){
+      _assertGen(gen);
       const g=await _restGet(base,hdr,id);
+      _assertGen(gen);
       const server=Array.isArray(g.data.students)?g.data.students:[];
       const m=new Map(server.map(o=>[o.id,o]));
       for(const s of adds) m.set(s.id,s);
@@ -1727,31 +1739,33 @@ async function _restMergeStudents(base, hdr){
       const payload={ year:y, students:packStudents([...m.values()]) };
       assertFsDocFits(id, payload, `בשנת ${y} יש ${payload.students.length} תלמידות. `+DOC_FULL_HOWTO);
       const p=await fetch(_condUrl(base,id,g.updateTime),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(payload)}) });
-      if(p.ok){ knownStudentDocs.add(id); done=true; break; }
+      if(p.ok){ knownStudentDocs.add(id); _pushProgress(gen); done=true; break; }
       if(p.status===409||p.status===412) continue;
       throw new Error("restMerge "+id+" ("+p.status+")");
     }
     if(!done) throw new Error("restMerge "+id+" — יותר מדי התנגשויות");
   }
 }
-async function mergePushRest(){
-  const token=await currentUser.getIdToken();
+async function mergePushRest(gen){
+  const after=_captureBase();
   const base=cityRestBase()+"/";
-  const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
+  const hdr=await _restHdr(true);
   const r=await fetch(base+"meta",{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(metaForWrite())}) }); if(!r.ok) throw new Error("write meta ("+r.status+")");
-  await _restMergeSimple(base,hdr,"gans","gans",DB.gans,_mergeBase.gan);
-  await _restMergeSimple(base,hdr,"staff","staff",DB.staff,_mergeBase.staff);
-  await _restMergeSimple(base,hdr,"management","management",DB.management,_mergeBase.mgmt);
-  await _restMergeStudents(base,hdr);
-  recordGuard(); // שומר-ראש: לפני refreshMergeBase, בעוד _mergeBase מחזיק את מצב השרת שלפני הכתיבה
-  refreshMergeBase();
+  _pushProgress(gen);
+  await _restMergeSimple(base,hdr,"gans","gans",DB.gans,_mergeBase.gan,gen);
+  await _restMergeSimple(base,hdr,"staff","staff",DB.staff,_mergeBase.staff,gen);
+  await _restMergeSimple(base,hdr,"management","management",DB.management,_mergeBase.mgmt,gen);
+  _assertGen(gen);
+  await _restMergeStudents(base,hdr,gen);
+  _assertGen(gen); // דחיפה שהוחלפה — לא נוגעים בבסיס-ההשוואה
+  recordGuard(); // שומר-ראש: לפני עדכון הבסיס, בעוד _mergeBase מחזיק את מצב השרת שלפני הכתיבה
+  _setBase(after);
 }
 /* כתיבת כל הנתונים דרך Firestore REST (PATCH=setDoc מלא, DELETE למסמכי שנה שהוסרו) */
-async function pushAllRest(){
-  if(MERGE_WRITE){ await mergePushRest(); return; } // מנעול נגד דריסה
-  const token=await currentUser.getIdToken();
+async function pushAllRest(gen){
+  if(MERGE_WRITE){ await mergePushRest(gen); return; } // מנעול נגד דריסה
   const base=cityRestBase()+"/";
-  const hdr={ "Authorization":"Bearer "+token, "Content-Type":"application/json" };
+  const hdr=await _restHdr(true);
   const put=async(id,obj)=>{ const r=await fetch(base+encodeURIComponent(id),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(obj)}) }); if(!r.ok) throw new Error("write "+id+" ("+r.status+")"); };
   const meta=metaForWrite();
   await put("meta", meta);
@@ -2001,13 +2015,51 @@ function buildChangeSummary(){
   if(total===1 && single) return single.verb+" "+single.unit+": "+single.name;
   return events.join(", ");
 }
+/* ============================================================
+   שומר-זמן לכתיבה (write watchdog)
+   ------------------------------------------------------------
+   התקלה: כתיבה ל-Firestore יכולה "להיתקע" — ההבטחה (promise) לא מסתיימת לעולם,
+   בלי שגיאה. כך קורה כשערוץ הכתיבה של ה-SDK נתקע (לשונית ברקע שהדפדפן הקפיא,
+   לשונית ראשית אחרת שמחזיקה את התור, חיבור long-polling שנפל בשקט) — גם כשהאינטרנט
+   תקין. בלי גבול-זמן, savePending נשאר true לנצח: הניסיון-החוזר חסום, הסנאפשוטים
+   מהשרת לא מוחלים, והעריכה יושבת במכשיר עד רענון — "הזנתי לפני חצי שעה וזה לא נקלט".
+   הפתרון:
+     • דחיפה שלא מתקדמת (אף מסמך לא נכתב) במשך PUSH_TIMEOUT_MS — נחשבת תקועה: כשל רגיל
+       → "טרם נשמר" + ניסיון-חוזר. ייבוא גדול ברשת איטית שכן מתקדם — לא נקטע.
+     • אחרי היתקעות, הניסיונות הבאים עוקפים את ה-SDK וכותבים ב-REST (בקשת HTTPS
+       פשוטה, אותו מיזוג מותנה נגד דריסה) — בלי לעצור את המאזין החי.
+     • דחיפה אחת בכל רגע (_pushInFlight). שמירה שמגיעה באמצע — מסומנת ורצה מיד אחריה.
+     • מספר-דור (_pushGen): דחיפה ישנה שהתעוררה מאוחר לא כותבת ולא מזיזה את בסיס-ההשוואה.
+   נבדק ב-tests/write-watchdog.test.cjs. */
+const PUSH_TIMEOUT_MS = 25000;
+const SDK_STUCK_FALLBACK_MS = 10*60*1000; // כמה זמן לכתוב ב-REST אחרי שה-SDK נתקע
+let _pushInFlight=false, _pushAgain=false, _pushGen=0, _sdkStuckUntil=0, _pushTick=0;
+/* סימן-חיים: מסמך נכתב בהצלחה — מאפס את שעון ההיתקעות (רק לדחיפה הנוכחית) */
+function _pushProgress(gen){ if(gen===undefined || gen===_pushGen) _pushTick=Date.now(); }
+/* גבול-זמן להיתקעות: נכשל רק אם עברו ms בלי שום התקדמות */
+function _withTimeout(p, ms){
+  _pushTick=Date.now(); let t;
+  const to=new Promise((_,rej)=>{
+    const chk=()=>{ const idle=Date.now()-_pushTick;
+      if(idle>=ms) rej(Object.assign(new Error("השרת לא אישר את השמירה תוך "+Math.round(ms/1000)+" שניות"),{code:"rg-timeout"}));
+      else t=setTimeout(chk, ms-idle); };
+    t=setTimeout(chk, ms);
+  });
+  return Promise.race([p, to]).finally(()=>clearTimeout(t));
+}
+/* דחיפה ישנה (שהוחלפה בחדשה אחרי היתקעות) — עוצרים אותה לפני כל כתיבה */
+function _assertGen(gen){ if(gen!==undefined && gen!==_pushGen) throw Object.assign(new Error("superseded"),{code:"rg-superseded"}); }
 async function runPush(){
+  if(_pushInFlight){ _pushAgain=true; return; } // דחיפה קודמת עוד רצה — נרוץ מיד אחריה
+  _pushInFlight=true;
+  const gen=++_pushGen;
   if(RESILIENT_SAVE) recordPending(); // רשום את מה שעומדים לכתוב *לפני* הכתיבה (בסיס = מצב השרת שלפנינו)
   if(TEST_DB_MODE) dlog("▶ runPush: pending="+_pending.size+" restMode="+restMode+" online="+navigator.onLine);
   let ok=false;
-  try{ await pushAll(); ok=true; lastSaveError=null; _lastSaveErrShown=""; if(TEST_DB_MODE) dlog("  pushAll OK"); if(restMode) setSyncStatus("synced"); }
+  try{ await _withTimeout(pushAll(gen), PUSH_TIMEOUT_MS); ok=true; lastSaveError=null; _lastSaveErrShown=""; if(TEST_DB_MODE) dlog("  pushAll OK"); if(restMode) setSyncStatus("synced"); }
   catch(e){
     console.error(e);
+    if(e && e.code==="rg-timeout"){ _pushGen++; _sdkStuckUntil=Date.now()+SDK_STUCK_FALLBACK_MS; } // הדחיפה התקועה כבר לא תכתוב; הבאות דרך REST
     lastSaveError={ code:(e&&e.code)||"", message:(e&&e.message)||String(e), ts:Date.now() };
     if(TEST_DB_MODE) dlog("  pushAll FAIL: "+(e&&(e.code||e.message)||e));
     // שגיאה שאינה חולפת (מסמך מלא / אין הרשאה) לא תיפתר בניסיון-חוזר שקט — אומרים אותה מיד.
@@ -2017,6 +2069,8 @@ async function runPush(){
     else if(!RESILIENT_SAVE){ setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
   }
   finally{
+    _pushInFlight=false;
+    if(_pushAgain){ _pushAgain=false; runPush(); return; } // נשמר עוד שינוי בזמן הדחיפה — savePending נשאר דלוק
     savePending=false;
     if(!restMode){ rebuildDB(cloudDocs); if(RESILIENT_SAVE) applyPending(); else applyGuard(); } // הצג מצב-שרת + החזק עריכות ממתינות
     if(RESILIENT_SAVE){
@@ -2134,21 +2188,24 @@ if(TEST_DB_MODE){
 }
 
 /* מיזוג SDK למסמך-רשימה פשוט (gans/staff/management) */
-async function _txnMergeSimple(docId, listKey, list, baseMap){
+async function _txnMergeSimple(docId, listKey, list, baseMap, gen){
   const { changed, deleted } = _diffList(list, baseMap);
   if(!changed.length && !deleted.length) return;
   const ref=cityDoc(docId);
+  _assertGen(gen);
   await runTransaction(db, async tx=>{
     const snap=await tx.get(ref);
+    _assertGen(gen);
     const server=(snap.exists() && Array.isArray(snap.data()[listKey])) ? snap.data()[listKey] : [];
     const m=new Map(server.map(o=>[o.id,o]));
     for(const o of changed) m.set(o.id, o);
     for(const id of deleted) m.delete(id);
     tx.set(ref, { [listKey]:[...m.values()] });
   });
+  _pushProgress(gen);
 }
 /* מיזוג SDK לתלמידות — מחולקות למסמך לכל שנה (students_<year>) */
-async function _txnMergeStudents(){
+async function _txnMergeStudents(gen){
   const base=_mergeBase.stu, cur=new Map(DB.students.map(s=>[s.id,s]));
   const addsByYear=new Map(), removesByYear=new Map();
   const push=(m,k,v)=>{ let a=m.get(k); if(!a){a=[];m.set(k,a);} a.push(v); };
@@ -2166,8 +2223,10 @@ async function _txnMergeStudents(){
     if(!y) continue;
     const docId=safeYearId(y), ref=cityDoc(docId);
     const adds=addsByYear.get(y)||[], rms=removesByYear.get(y)||new Set();
+    _assertGen(gen);
     await runTransaction(db, async tx=>{
       const snap=await tx.get(ref);
+      _assertGen(gen);
       const server=(snap.exists() && Array.isArray(snap.data().students)) ? snap.data().students : [];
       const m=new Map(server.map(o=>[o.id,o]));
       for(const s of adds) m.set(s.id, s);
@@ -2180,24 +2239,44 @@ async function _txnMergeStudents(){
       tx.set(ref, payload);
     });
     knownStudentDocs.add(docId);
+    _pushProgress(gen);
   }
 }
-async function mergePushSDK(){
-  await setDoc(cityDoc("meta"), metaForWrite()); // meta קטן — כתיבה רגילה
-  await _txnMergeSimple("gans","gans",DB.gans,_mergeBase.gan);
-  await _txnMergeSimple("staff","staff",DB.staff,_mergeBase.staff);
-  await _txnMergeSimple("management","management",DB.management,_mergeBase.mgmt);
-  await _txnMergeStudents();
-  recordGuard(); // שומר-ראש: לפני refreshMergeBase, בעוד _mergeBase מחזיק את מצב השרת שלפני הכתיבה
-  refreshMergeBase();
+/* תמונת-בסיס של מה שאנחנו עומדים לכתוב — נלכדת *בתחילת* הדחיפה. בסוף הדחיפה הבסיס
+   מתעדכן אליה ולא ל-DB הנוכחי: עריכה שנוספה באמצע הדחיפה נשארת "שינוי" ונכתבת בדחיפה הבאה. */
+function _captureBase(){
+  return { stu:new Map(DB.students.map(s=>[s.id, { y:s.year, j:_mk(s) }])),
+           gan:new Map(DB.gans.map(g=>[g.id, { j:_mk(g) }])),
+           staff:new Map(DB.staff.map(m=>[m.id, { j:_mk(m) }])),
+           mgmt:new Map(DB.management.map(m=>[m.id, { j:_mk(m) }])) };
 }
-async function pushAll(){
+function _setBase(c){ _mergeBase.stu=c.stu; _mergeBase.gan=c.gan; _mergeBase.staff=c.staff; _mergeBase.mgmt=c.mgmt; }
+/* meta נכנס לתור הקבוע של Firestore (IndexedDB) ויישלח גם אם האישור מתעכב — לכן לא
+   מחכים לו לפני הרשומות. שגיאה אמיתית (הרשאה וכו') כן מדווחת; איחור בלבד — לא. */
+function _settleOrQueued(p, ms){
+  let t; return Promise.race([p, new Promise(res=>{ t=setTimeout(res, ms); })]).finally(()=>clearTimeout(t));
+}
+async function mergePushSDK(gen){
+  const after=_captureBase();
+  const metaP=setDoc(cityDoc("meta"), metaForWrite()); // meta קטן — כתיבה רגילה (לא חוסמת את הרשומות)
+  metaP.catch(()=>{}); // נקלט ב-await למטה; מונע "unhandled rejection" אם נזנח
+  await _txnMergeSimple("gans","gans",DB.gans,_mergeBase.gan,gen);
+  await _txnMergeSimple("staff","staff",DB.staff,_mergeBase.staff,gen);
+  await _txnMergeSimple("management","management",DB.management,_mergeBase.mgmt,gen);
+  await _txnMergeStudents(gen);
+  await _settleOrQueued(metaP, 8000);
+  _assertGen(gen); // דחיפה שהוחלפה — לא נוגעים בבסיס-ההשוואה
+  recordGuard(); // שומר-ראש: לפני עדכון הבסיס, בעוד _mergeBase מחזיק את מצב השרת שלפני הכתיבה
+  _setBase(after);
+}
+async function pushAll(gen){
   if(!db) return;
   // בטיחות: אל תדרוס נתוני שרת עם DB ריק שטרם אושר מול השרת (דפדפן ללא חיבור שלא הספיק לטעון)
   const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
   if(localEmpty && !serverConfirmed) return;
-  if(restMode){ await pushAllRest(); return; } // מצב חלופי: כתיבה דרך REST
-  if(MERGE_WRITE){ await mergePushSDK(); return; } // מנעול נגד דריסה
+  if(restMode){ await pushAllRest(gen); return; } // מצב חלופי: כתיבה דרך REST
+  if(MERGE_WRITE && Date.now()<_sdkStuckUntil){ await mergePushRest(gen); return; } // ה-SDK נתקע לאחרונה — עוקפים אותו
+  if(MERGE_WRITE){ await mergePushSDK(gen); return; } // מנעול נגד דריסה
   // ---- מסלול ישן (דריסה מלאה) — פעיל כשהמנעול כבוי ----
   // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
   const meta=metaForWrite();
@@ -5057,7 +5136,12 @@ window.addEventListener("beforeunload", ev=>{
   ev.preventDefault(); ev.returnValue="";
   return "";
 });
-document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState!=="hidden") writePresence(); });
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState==="hidden") return;
+  writePresence();
+  // חזרה ללשונית (טלפון שננעל, חלון שהוסתר) — הדפדפן השהה את הטיימרים, אז לא מחכים לניסיון-החוזר: שומרים עכשיו
+  if(RESILIENT_SAVE && _pending.size && currentUser && db && !savePending){ _retryDelay=0; save(); }
+});
 function startDataSync(){
   if(dataUnsub) return;
   if(!CITY) CITY=Object.assign({}, cityById(HOME_CITY.id)||HOME_CITY);   // רשת ביטחון — לעולם לא מסנכרנים בלי עיר
@@ -5112,7 +5196,7 @@ function boot(){
     // App Check — פעיל רק אם הוגדר מפתח reCAPTCHA, ורק בפרויקט הייצור (לא בסביבת הבדיקה,
     // שהיא פרויקט Firebase נפרד עם מפתח אחר). כשל באתחול לא חוסם את התוכנה.
     if(RECAPTCHA_SITE_KEY && !TEST_DB_MODE){
-      try{ initializeAppCheck(app, { provider:new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled:true }); }
+      try{ appCheck=initializeAppCheck(app, { provider:new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled:true }); }
       catch(e){ console.error("App Check init failed", e); }
     }
     auth=getAuth(app);

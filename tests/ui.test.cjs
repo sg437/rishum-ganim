@@ -73,7 +73,7 @@ export const doc=()=>({}), setDoc=P, deleteDoc=P, collection=()=>({}), terminate
 export const onSnapshot=()=>noop;
 export const writeBatch=()=>({set:noop,delete:noop,commit:P});
 export const runTransaction=P;
-export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}
+export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; export const getToken=async()=>({token:""});
 `);
 
 const PORT=8731;
