@@ -285,6 +285,24 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
 
   await p.evaluate(() => closeModal()); await p.waitForTimeout(400);
 
+  /* --- "עוד ▾" בסינון התלמידות פותח פאנל שיש בו גם "עיר" -------------- */
+  await goTab(p, 'students'); await p.waitForTimeout(900);
+  await p.evaluate(() => { const b = document.querySelector('#stuFilterToggle'); if (b) b.click(); });
+  await p.waitForTimeout(600);
+  const cityF = await p.evaluate(() => {
+    const tg = document.querySelector('#stuFilterToggle');
+    const sel = document.querySelector('#stuFilterPanel #f-city');
+    const fld = sel && sel.closest('.field');
+    const r = sel && sel.getBoundingClientRect();
+    return { toggle: tg ? tg.textContent.trim() : null, found: !!sel,
+             hidden: !!(fld && fld.classList.contains('lab-hidden')), visible: !!(r && r.width > 0 && r.height > 0) };
+  });
+  if (!cityF.found) bad('אין שדה "עיר" בפאנל "עוד" של סינון התלמידות');
+  else if (cityF.hidden || !cityF.visible) bad('שדה "עיר" מוסתר בפאנל "עוד"', [JSON.stringify(cityF)]);
+  else ok('בפאנל "' + cityF.toggle.replace(/\d+$/, '') + '" של סינון התלמידות מופיע שדה "עיר"');
+  await p.evaluate(() => { const b = document.querySelector('#stuFilterToggle'); if (b) b.click(); });
+  await p.waitForTimeout(400);
+
   /* --- 5. "עדכון לפי ת"ז" מכיל את רשימת העירייה, והיא עובדת ------------ */
   await goTab(p, 'students'); await p.waitForTimeout(900);
   /* "עדכון לפי מ.ז." יושב בכפתור המרחף */
