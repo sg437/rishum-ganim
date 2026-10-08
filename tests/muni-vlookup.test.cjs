@@ -1142,13 +1142,15 @@ const run = async p => { await p.evaluate(() => document.querySelector('#muni-ru
   });
   (flagOpts && flagOpts.includes('noTz'))
     ? ok('נוסף מסנן "מאפיין" לחלון הייצוא, עם "בלי מספר זהות"') : bad('אין מסנן מאפיין בייצוא', [JSON.stringify(flagOpts)]);
+  (flagOpts && flagOpts.includes('outOfCity'))
+    ? ok('במסנן "מאפיין" של הייצוא יש "ילדת חוץ"') : bad('אין "ילדת חוץ" במסנן הייצוא', [JSON.stringify(flagOpts)]);
   const sameAsScreen = await p.evaluate(() => {
     const a = [...document.querySelector('#x-flag').options].map(o => o.value).filter(Boolean).sort();
     return JSON.stringify(a);
   });
   const screenOpts = await p.evaluate(() => {
     /* אותה רשימה בדיוק כמו במסך התלמידות — שתיהן נגזרות מ-STU_FLAGS */
-    return JSON.stringify(['campEndYear','campHanukkah','campNisan','insurancePaid','insuranceUnpaid','noTz','retention','retentionNext','retentionNoDoc','tzaharon'].sort());
+    return JSON.stringify(['campEndYear','campHanukkah','campNisan','insurancePaid','insuranceUnpaid','noTz','outOfCity','retention','retentionNext','retentionNoDoc','tzaharon'].sort());
   });
   sameAsScreen === screenOpts
     ? ok('אותן אפשרויות בדיוק כמו במסך התלמידות') : bad('הרשימות נבדלו', [sameAsScreen, screenOpts]);
