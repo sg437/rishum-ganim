@@ -198,6 +198,13 @@ const SEED = `(() => {
     document.querySelector('#tpl-roster-go').click();
     await new Promise(r=>setTimeout(r,200));
     res.printBlocks=(opened.length?(opened[opened.length-1].match(/<h3>[^<]*<\/h3>/g)||[]):[]).length;
+    /* התבנית המורחבת — אותה הפקה, רק עם בורר התבנית על "full" */
+    const tplSel=document.querySelector('#tpl-roster-tpl');
+    tplSel.value='full'; tplSel.dispatchEvent(new Event('change'));
+    document.querySelector('#tpl-roster-csv').click();
+    await new Promise(r=>setTimeout(r,150));
+    res.csvFull=blobs.length?await blobs[blobs.length-1].text():"";
+    tplSel.value='fixed'; tplSel.dispatchEvent(new Event('change'));
     return res;
   });
 
@@ -224,6 +231,10 @@ const SEED = `(() => {
   else bad('עמודת "גן" בבחירה מרובה', head2);
   if(nums.join(',')==='1,2,3,4,1,2') ok('המספור מתחיל מ-1 בכל גן (1,2,3,4 · 1,2)');
   else bad('המספור לכל גן', nums.join(','));
+  const headFull=(R.csvFull||'').split('\r\n')[0].split(',').filter(h=>h!=='גן').join(',');
+  const WANT_FULL = "מס',שם משפחה,שם פרטי,\"ת\"\"ז\",תאריך לידה,גיל,טלפון,נייד,כתובת";
+  if(headFull===WANT_FULL) ok('התבנית המורחבת: '+WANT_FULL);
+  else bad('התבנית המורחבת', headFull);
   if(R.printBlocks===2) ok('בהדפסה כל גן מקבל בלוק משלו (2 גנים = 2 כותרות)');
   else bad('בלוק לכל גן בהדפסה', R.printBlocks);
 
