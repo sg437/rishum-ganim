@@ -1547,6 +1547,7 @@ function refreshPendingState(fromCache){
 if(typeof window!=="undefined") window.addEventListener("online", ()=>{
   if(TEST_DB_MODE) dlog("🌐 online→ ניסיון שמירה (pending="+_pending.size+" savePending="+savePending+")");
   if(RESILIENT_SAVE && _pending.size && currentUser && db && !savePending){ _retryDelay=0; save(); }
+  setTimeout(()=>verifyFreshness("הרשת חזרה"), 3000);
 });
 function hideOfflineBanner(){ const b=$("#offlineBanner"); if(b) b.style.display="none"; }
 function showOfflineBanner(){
@@ -1893,7 +1894,10 @@ async function maybeDailyBackup(){
    הכבד של הלוגו אינו מנפח את meta לכיוון תקרת ה-1MB. */
 function metaForWrite(){
   const s=Object.assign({}, DB.settings); delete s.appLogo; // הלוגו נשמר ב-app/branding בלבד
-  return { activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, historicalGans:DB.historicalGans, settings:s, assignments:DB.assignments, tzGroups:DB.tzGroups };
+  // updatedAt/updatedBy: חותמת לכל שמירה — מאפשרת ל"בקרת האמת" (verifyFreshness) להשוות, בערוץ
+  // עצמאי (REST), מה השרת מחזיק מול מה שהמאזין החי הביא למכשיר. אין להם משמעות אחרת.
+  return { activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, historicalGans:DB.historicalGans, settings:s, assignments:DB.assignments, tzGroups:DB.tzGroups,
+           updatedAt:Date.now(), updatedBy:myEmail() };
 }
 function brandingFromSettings(){
   return { appTitle:(DB.settings&&DB.settings.appTitle)||"", appSubtitle:(DB.settings&&DB.settings.appSubtitle)||"", appLogo:(DB.settings&&DB.settings.appLogo)||"" };
@@ -5098,14 +5102,21 @@ async function writePresence(){
   try{
     const em=myEmail();
     const nm=(DB.settings&&DB.settings.userNames&&DB.settings.userNames[em])||"";
-    await setDoc(cityDoc(presenceKey(em)), { _t:"presence", email:em, name:nm, ts:Date.now() });
+    // pend: כמה עריכות של המשתמש/ת עדיין לא עלו לענן — כך המנהל רואה ב"מי מחובר" מכשיר שתקוע
+    const rec={ _t:"presence", email:em, name:nm, ts:Date.now(), pend:_pending.size };
+    if(Date.now()<_sdkStuckUntil){ // ערוץ ה-SDK נתקע לאחרונה — הדופק (והאזהרה שבו) חייב להגיע, אז דרך REST
+      const hdr=await _restHdr(true);
+      await fetch(cityRestBase()+"/"+encodeURIComponent(presenceKey(em)), { method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(rec)}) });
+      return;
+    }
+    await setDoc(cityDoc(presenceKey(em)), rec);
   }catch(_){}
 }
 async function clearPresence(){
   if(!db || !currentUser) return;
   try{ await deleteDoc(cityDoc(presenceKey(myEmail()))); }catch(_){}
 }
-function startPresence(){ stopPresence(); const beat=()=>{ if(document.visibilityState!=="hidden") writePresence(); }; beat(); _presenceTimer=setInterval(beat, PRESENCE_BEAT_MS); }
+function startPresence(){ stopPresence(); const beat=()=>{ if(document.visibilityState!=="hidden"){ writePresence(); verifyFreshness("דופק"); } }; beat(); _presenceTimer=setInterval(beat, PRESENCE_BEAT_MS); }
 function stopPresence(){ if(_presenceTimer){ clearInterval(_presenceTimer); _presenceTimer=null; } }
 function activePresence(){
   const now=Date.now(), out=[];
@@ -5119,7 +5130,7 @@ function refreshPresenceWidget(){
   const list=activePresence();
   const meLC=myEmail();
   box.innerHTML = list.length
-    ? `<div class="row" style="flex-wrap:wrap;gap:6px">${list.map(p=>`<span class="pill ${p.email===meLC?'ok':'neutral'}" style="padding:5px 11px">🟢 ${esc(p.name||p.email)}${p.email===meLC?' (את/ה)':''} · <span class="hint" style="display:inline">${presenceAgo(p.ts)}</span></span>`).join("")}</div>`
+    ? `<div class="row" style="flex-wrap:wrap;gap:6px">${list.map(p=>`<span class="pill ${p.email===meLC?'ok':'neutral'}" style="padding:5px 11px">🟢 ${esc(p.name||p.email)}${p.email===meLC?' (את/ה)':''} · <span class="hint" style="display:inline">${presenceAgo(p.ts)}</span>${p.pend?` · <b style="color:var(--bad)" title="שינויים שנשמרו במכשיר של המשתמש/ת אך עדיין לא עלו לענן — שאר המשתמשים לא רואים אותם">✍️ ${p.pend} שינויים טרם עלו לענן</b>`:""}</span>`).join("")}</div>`
     : `<div class="hint">אף אחד לא מחובר כרגע (מלבד רענון תצוגה זה).</div>`;
   const c=$("#presenceCount"); if(c) c.textContent=list.length;
 }
@@ -5137,10 +5148,11 @@ function renderActivityPanel(){
   }</tbody></table></div>`;
 }
 window.addEventListener("beforeunload", ()=>{ try{ clearPresence(); }catch(_){} });
-/* אזהרה לפני סגירה/רענון — *רק* כשלא הצלחנו לגבות את הממתינים במכשיר (מכסת אחסון מלאה).
-   כשהגיבוי הצליח הרענון בטוח לחלוטין, ואזהרה כזו תהיה רעש מיותר. */
+/* אזהרה לפני סגירה/רענון כשיש עריכות שטרם עלו לענן. גם כשהן מגובות במכשיר (ולא
+   ייעלמו) — הן לא ייראו לשאר המשתמשים עד שהמכשיר הזה ייפתח שוב, ועובדת שסוגרת במשרד
+   ופותחת בבית לא תמצא אותן. סגירה בלי לדעת זאת היא בדיוק התקלה שמנסים למנוע. */
 window.addEventListener("beforeunload", ev=>{
-  if(!RESILIENT_SAVE || !_pending.size || _pendingPersisted) return;
+  if(!RESILIENT_SAVE || !_pending.size) return;
   ev.preventDefault(); ev.returnValue="";
   return "";
 });
@@ -5149,7 +5161,122 @@ document.addEventListener("visibilitychange", ()=>{
   writePresence();
   // חזרה ללשונית (טלפון שננעל, חלון שהוסתר) — הדפדפן השהה את הטיימרים, אז לא מחכים לניסיון-החוזר: שומרים עכשיו
   if(RESILIENT_SAVE && _pending.size && currentUser && db && !savePending){ _retryDelay=0; save(); }
+  verifyFreshness("חזרה ללשונית"); // ...ובודקים שמה שמוצג הוא באמת מצב השרת
+  maybeApplyUpdate();              // עדכון-גרסה שחיכה לרגע פנוי
 });
+/* ============================================================
+   בקרת אמת — "האם מה שאני רואה הוא באמת מה שיש בשרת?"
+   ------------------------------------------------------------
+   התקלה: עובדת עדכנה במשרד, פתחה בבית — ולא ראתה את העדכונים, גם אחרי כמה
+   סגירות ופתיחות. המאזין החי של Firestore (long-polling) יכול להיתקע בשקט:
+   המטמון המקומי מוצג מיד, והסנאפשוט מהשרת לא מגיע — ואין שום שגיאה.
+   הפתרון: ערוץ עצמאי. כל שמירה כותבת meta.updatedAt; כאן שואלים את השרת ישירות
+   ב-REST (בקשת HTTPS פשוטה, עוקפת את ערוץ ה-SDK) מה ה-updatedAt שלו, ומשווים למה
+   שהמאזין הביא. אם השרת מקדים אותנו — הערוץ תקוע: מנתקים ומחברים מחדש את הרשת של
+   Firestore (מקים חיבור חדש), ואם גם זה לא עזר תוך 8 שניות — טוענים דרך REST.
+   רץ: 6 שניות אחרי ההתחברות, בכל חזרה ללשונית, כשהרשת חוזרת, וכל 2 דקות (עם הדופק). */
+const FRESH_START_MS = 6000;
+const FRESH_GRACE_MS = 3000;   // זמן-חסד לסנאפשוט שאולי רק בדרך, לפני שמכריזים "תקוע"
+const FRESH_REST_AFTER_MS = 8000; // אחרי חיבור מחדש — כמה לחכות לפני טעינה ישירה דרך REST
+let _lastServerSnapAt=0, _lastVerifiedAt=0, _freshBusy=false, _freshHeals=0;
+async function _serverUpdatedAt(){
+  const hdr=await _restHdr(false);
+  const r=await fetch(cityRestBase()+"/meta?mask.fieldPaths=updatedAt", { headers:hdr, cache:"no-store" });
+  if(r.status===404) return 0;
+  if(!r.ok) throw new Error("meta ("+r.status+")");
+  const j=await r.json();
+  return +(decFsFields(j.fields||{}).updatedAt||0);
+}
+function _localUpdatedAt(){ const m=cloudDocs.get("meta"); return +((m&&m.updatedAt)||0); }
+/* ניתוק וחיבור מחדש של רשת Firestore — מקים חיבור חדש במקום התקוע, בלי לאבד את המאזין */
+function _raceTimeout(p, ms){ let t; return Promise.race([p, new Promise((_,rej)=>{ t=setTimeout(()=>rej(new Error("timeout")), ms); })]).finally(()=>clearTimeout(t)); }
+async function _reconnectFirestore(){
+  try{ await _raceTimeout(disableNetwork(db), 8000); }catch(_){}
+  try{ await _raceTimeout(enableNetwork(db), 8000); }catch(_){}
+}
+const _sleep = ms => new Promise(r=>setTimeout(r, ms));
+async function verifyFreshness(reason){
+  if(_freshBusy || !currentUser || !db || !CITY || restMode) return;
+  if(typeof navigator!=="undefined" && navigator.onLine===false) return;
+  _freshBusy=true;
+  try{
+    const serverAt=await _serverUpdatedAt();
+    _lastVerifiedAt=Date.now();
+    const localAt=_localUpdatedAt();
+    if(TEST_DB_MODE) dlog("🔎 בקרת אמת ("+reason+"): server="+serverAt+" local="+localAt);
+    if(!serverAt || serverAt<=localAt){ _paintVerified(); return; } // מעודכנים (או שהשינוי האחרון הוא שלנו)
+    // השרת מקדים אותנו. אולי הסנאפשוט פשוט בדרך (מישהו שמר ממש עכשיו) — נותנים לו 3 שניות
+    await _sleep(FRESH_GRACE_MS);
+    if(_localUpdatedAt()>=serverAt){ _paintVerified(); return; }
+    // עדיין מאחרים — המאזין החי תקוע. ריפוי שלב א': חיבור מחדש.
+    _freshHeals++;
+    if(TEST_DB_MODE) dlog("🩹 המאזין החי מאחר אחרי השרת — מחבר מחדש");
+    toast("מעדכן נתונים מהשרת…");
+    await _reconnectFirestore();
+    // שלב ב': אם גם אחרי חיבור מחדש השרת עדיין מקדים — טעינה ישירה דרך REST
+    setTimeout(()=>{ if(currentUser && !restMode && _localUpdatedAt()<serverAt){ if(TEST_DB_MODE) dlog("🩹 עדיין מאחר — טוען דרך REST"); loadViaRest(); } }, FRESH_REST_AFTER_MS);
+  }catch(e){ if(TEST_DB_MODE) dlog("בקרת אמת נכשלה: "+((e&&e.message)||e)); }
+  finally{ _freshBusy=false; }
+}
+/* חיווי: מתי לאחרונה אומת מול השרת (בכותרת-העל של חיווי הסנכרון) */
+function _paintVerified(){
+  const el=$("#syncStatus"); if(!el || !_lastVerifiedAt || _syncState!=="synced") return;
+  const t=new Date(_lastVerifiedAt).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+  el.title="כל הנתונים נשמרו בשרת ומשותפים לכל המשתמשים המחוברים · אומת ישירות מול השרת ב-"+t;
+}
+
+/* ============================================================
+   עדכון-גרסה אוטומטי
+   ------------------------------------------------------------
+   אפליקציה מותקנת (או לשונית שנשארת פתוחה ימים) ממשיכה להריץ את הקוד שנטען בפעם
+   האחרונה — תיקון שעלה לא מגיע אליה עד שמישהו סוגר ופותח. כאן בודקים (HEAD, בלי
+   מטמון) אם index.html בשרת השתנה מאז הטעינה. אם כן: בלשונית מוסתרת נטען מחדש
+   מיד (בטוח — אין מי שמקליד); בלשונית פעילה ופנויה — הודעה וטעינה מחדש; ובאמצע
+   עבודה (חלון פתוח / שדה בעריכה / שינויים שטרם עלו) — כפתור "עדכון זמין" בלבד. */
+const APP_UPDATE_CHECK_MS = 5*60*1000;
+let _appTag=null, _updateReady=false, _updateTimer=null;
+async function _appVersionTag(){
+  try{
+    const r=await fetch(new URL("index.html", location.href).href, { method:"HEAD", cache:"no-store" });
+    if(!r.ok) return null;
+    return r.headers.get("etag") || r.headers.get("last-modified") || null;
+  }catch(_){ return null; }
+}
+async function checkAppUpdate(){
+  if(TEST_DB_MODE) return; // בסביבת הבדיקה אין פריסות — ואין לטעון מחדש באמצע בדיקה
+  const tag=await _appVersionTag(); if(!tag) return;
+  if(_appTag===null){ _appTag=tag; return; }
+  if(tag===_appTag) return;
+  _updateReady=true; maybeApplyUpdate();
+}
+function _userMidWork(){
+  const ae=document.activeElement, tag=ae&&ae.tagName;
+  const typing = tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT"||(ae&&ae.isContentEditable);
+  const modal = $("#overlay") && $("#overlay").classList.contains("show");
+  return !!(typing || modal || _pending.size || savePending || _pushInFlight);
+}
+function maybeApplyUpdate(){
+  if(!_updateReady) return;
+  if(document.visibilityState==="hidden"){ location.reload(); return; } // ברקע — בטוח לטעון מחדש מיד
+  if(_userMidWork()){ _showUpdatePill(); return; }
+  toast("עלתה גרסה חדשה של התוכנה — הדף נטען מחדש…", 3000);
+  setTimeout(()=>{ if(!_userMidWork()) location.reload(); else _showUpdatePill(); }, 2500);
+}
+function _showUpdatePill(){
+  if($("#updatePill")) return;
+  const host=document.querySelector(".drawer-sync"); if(!host) return;
+  const b=document.createElement("button"); b.id="updatePill"; b.type="button"; b.className="btn sm";
+  b.textContent="🔄 עדכון זמין — לחצ/י לטעינה"; b.title="עלתה גרסה חדשה של התוכנה. הטעינה תתבצע אחרי שהשינויים שלך יעלו לענן.";
+  b.onclick=()=>{ if(_pending.size||savePending||_pushInFlight){ toast("ממתינים שהשינויים שלך יעלו לענן…"); return; } location.reload(); };
+  host.appendChild(b);
+}
+function startAppUpdateChecks(){
+  if(_updateTimer) return;
+  checkAppUpdate();
+  _updateTimer=setInterval(checkAppUpdate, APP_UPDATE_CHECK_MS);
+}
+if(typeof window!=="undefined") window.addEventListener("load", startAppUpdateChecks);
+
 function startDataSync(){
   if(dataUnsub) return;
   if(!CITY) CITY=Object.assign({}, cityById(HOME_CITY.id)||HOME_CITY);   // רשת ביטחון — לעולם לא מסנכרנים בלי עיר
@@ -5159,7 +5286,7 @@ function startDataSync(){
     const md=snap.metadata; // עדכון חיווי הסנכרון לפי מצב הכתיבות מול השרת
     lastSyncError=""; // התקבל סנאפשוט — הקריאה עובדת
     if(TEST_DB_MODE) dlog("📸 snapshot fromCache="+md.fromCache+" hasPending="+md.hasPendingWrites+" changes="+snap.docChanges().length+" savePending="+savePending+" pending="+_pending.size);
-    if(!md.fromCache) serverConfirmed=true; // אושר מגע עם השרת — מותר לכתוב
+    if(!md.fromCache){ serverConfirmed=true; _lastServerSnapAt=Date.now(); } // אושר מגע עם השרת — מותר לכתוב
     setSyncStatus(md.hasPendingWrites ? "pending" : (md.fromCache ? "offline" : "synced"));
     const changes = snap.docChanges();
     if(!changes.length && cloudDocs.size) return; // שינוי מטא-דאטה בלבד (סטטוס) על נתונים שכבר נטענו — אין צורך לבנות מחדש
@@ -5191,6 +5318,7 @@ function startDataSync(){
   }, err=>{ console.error(err); if(TEST_DB_MODE) dlog("❌ snapshot ERROR: "+(err&&(err.code||err.message)||"unknown")+" (pending="+_pending.size+")"); lastSyncError=(err&&(err.code||err.message))||"unknown"; setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
   // מעבר אוטומטי למצב חלופי (REST) אם חיבור ה-SDK לא הצליח למשוך נתונים תוך ~12 שניות
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
+  setTimeout(()=>verifyFreshness("אחרי התחברות"), FRESH_START_MS); // בקרת אמת — גם כשהמאזין "עובד" אך מאחר
   startPresence(); // נוכחות: "מי מחובר עכשיו"
 }
 function stopDataSync(){ _accessDenied=false; stopPresence(); clearPresence(); if(dataUnsub){ dataUnsub(); dataUnsub=null; } restMode=false; serverConfirmed=false; knownStudentDocs.clear(); _shadowBase.stu.clear(); _shadowBase.gan.clear(); _guard.clear(); _pending.clear(); _pendingLoadedOnce=false; _pendingRestored=0; _saveFailed=false; cancelRetry(); /* העותק ב-localStorage *לא* נמחק: עריכה שטרם עלתה תשוחזר בהתחברות הבאה */ clearTimeout(_confirmTimer); _confirmTimer=null; cloudDocs=new Map(); DB=blankDB(); const el=$("#syncStatus"); if(el) el.style.display="none"; clearTimeout(_offlineTimer); _offlineTimer=null; clearTimeout(_pendingWatch); _pendingWatch=null; _syncState=""; hideOfflineBanner(); }
