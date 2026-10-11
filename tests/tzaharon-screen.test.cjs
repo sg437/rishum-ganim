@@ -65,12 +65,15 @@ export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; ex
 
 const MIME = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8',
                '.js':'text/javascript; charset=utf-8', '.woff2':'font/woff2', '.png':'image/png' };
+const serveFiles = require('./serve-files.cjs');
+const FILES = serveFiles([['/', ROOT], ['/__stub/', TMP]]);
 const server = require('http').createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
   let body, ext;
   if (url === '/app.html') { body = Buffer.from(buildApp()); ext = '.html'; }
   else {
-    const f = url.startsWith('/__stub/') ? path.join(TMP, url.slice(8)) : path.join(ROOT, url.replace(/^\/+/, ''));
+    const f = FILES.get(url);
+    if (!f) { res.writeHead(404); return res.end('nf'); }
     ext = path.extname(f);
     try { body = fs.readFileSync(f); } catch (e) { res.writeHead(404); return res.end('nf'); }
   }

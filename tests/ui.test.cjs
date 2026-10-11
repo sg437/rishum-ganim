@@ -77,8 +77,11 @@ export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; ex
 `);
 
 const PORT=8731;
+const serveFiles = require('./serve-files.cjs');
+const FILES=serveFiles([['/',TMP]]);
 const server=require('http').createServer((req,res)=>{
-  const f=path.join(TMP, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/,''));
+  const f=FILES.get(decodeURIComponent(req.url.split('?')[0]));
+  if(!f){ res.writeHead(404); return res.end('nf'); }
   try{ const body=fs.readFileSync(f);
     const ct = f.endsWith('.js')?'text/javascript':f.endsWith('.html')?'text/html; charset=utf-8':'text/plain';
     res.writeHead(200,{'Content-Type':ct}); res.end(body);

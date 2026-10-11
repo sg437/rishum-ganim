@@ -34,10 +34,12 @@ const ROOT=path.join(__dirname,'..');
 const PORT=8732;
 const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8',
             '.js':'text/javascript; charset=utf-8','.woff2':'font/woff2'};
+const serveFiles = require('./serve-files.cjs');
+const FILES=serveFiles([['/',ROOT]]);
 const server=require('http').createServer((req,res)=>{
-  const rel=decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/,'')||'index.html';
-  const f=path.join(ROOT,rel);
-  if(!f.startsWith(ROOT)){ res.writeHead(403); return res.end('no'); }
+  const u=decodeURIComponent(req.url.split('?')[0]);
+  const f=FILES.get(u==='/'?'/index.html':u);
+  if(!f){ res.writeHead(404); return res.end('nf'); }
   let body; try{ body=fs.readFileSync(f); }catch(e){ res.writeHead(404); return res.end('nf'); }
   res.writeHead(200,{'Content-Type':MIME[path.extname(f)]||'application/octet-stream'});
   res.end(body);
