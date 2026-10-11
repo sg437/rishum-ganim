@@ -1611,7 +1611,7 @@ function stuTemplate(){ return {
   programsPaid:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false },
   insurancePaid:false,
   special:{ divorced:false, approvalFather:false, approvalMother:false, idFather:false, idMother:false, approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false, outOfCity:false, paymentArrangement:false, retention:false, retentionDoc:false, other:false, otherText:"" },
-  support:{ shiluv:false, salIshi:false, behavior:false, prepA:false },
+  support:{ shiluv:false, salIshi:false, medical:false, behavior:false, prepA:false },
   driveFolder:"", driveFolderId:"", notes:"", createdAt:""
 };}
 let _stuKeys=null, _stuBlank=null;
@@ -3861,7 +3861,7 @@ try{
     ['campNisan','קייטנת ניסן',function(s){ return yes(s.programs&&s.programs.campNisan); }],
     ['campEndYear','קייטנת סוף שנה',function(s){ return yes(s.programs&&s.programs.campEndYear); }],
     ['insurancePaid','ביטוח שולם',function(s){ return yn(s.insurancePaid); }],
-    ['support','סיוע/העשרה',function(s){ var sp=s.support||{}; return [sp.shiluv&&'שילוב',sp.salIshi&&'סל אישי',sp.behavior&&'מנתחת התנהגות',sp.prepA&&'הכנה לא׳'].filter(Boolean).join(', '); }],
+    ['support','סיוע/העשרה',function(s){ var sp=s.support||{}; return [sp.shiluv&&'שילוב',sp.salIshi&&'סל אישי',sp.medical&&'סייעת רפואית',sp.behavior&&'מנתחת התנהגות',sp.prepA&&'הכנה לא׳'].filter(Boolean).join(', '); }],
     ['finished','סיימה / יצאה',function(s){ return yes(s.finished); }],
     ['requests','פניות פתוחות',function(s){ return openRequestsFor(s).length||''; }],
     ['bounced','מייל חזר',function(s){ return bouncedFor(s)?'✓':''; }],
