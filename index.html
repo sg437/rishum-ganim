@@ -955,20 +955,27 @@ const STUDENT_DOCS = [
 const SUPPORT_TYPES = [
   ["shiluv","שילוב"],
   ["salIshi","סל אישי"],
+  ["medical","סייעת רפואית"],
   ["behavior","מנתחת התנהגות"],
   ["prepA",'הכנה לכיתה א׳']
 ];
 /* תפקידי שיבוץ שמשייכים ילדות לעובד/ת (סעיפים 15, 21) → מפתח הסיוע התואם */
 const SUPPORT_ROLE_MAP = {
   "גננת שילוב":"shiluv",
-  "סייעת רפואית":"salIshi",
-  "סייעת רפואית משלימה":"salIshi",
-  "סייעת רפואית ממלאת מקום":"salIshi",
+  "סייעת רפואית":"medical",
+  "סייעת רפואית משלימה":"medical",
+  "סייעת רפואית ממלאת מקום":"medical",
   "מנתחת התנהגות":"behavior",
   "הכנה לכיתה א׳":"prepA",
   "הכנה לכיתה א'":"prepA"
 };
 function supportKeyForRole(role){ return SUPPORT_ROLE_MAP[role] || (role && role.indexOf("שילוב")>=0 ? "shiluv" : ""); }
+/* האם הילדה מסומנת בסיוע הזה. לפני שנוסף "סייעת רפואית" כסימון נפרד, ילדות
+   של הסייעת הרפואית סומנו "סל אישי" — הן ממשיכות להופיע אצלה. */
+function studentHasSupport(s, key){
+  const sp=(s&&s.support)||{};
+  return !!sp[key] || (key==="medical" && !!sp.salIshi);
+}
 /* תפקידים שמותר להם להיות בכמה גנים באותו הקשר: תפקידי "לפי ימים" (משלימה
    וחברותיה — כל יום בגן אחר) ותפקידי סיוע שנצמדים לילדה ולא לגן. רק אצל
    שאר התפקידים שיבוץ בגן שני הוא שיבוץ כפול. */
@@ -2840,7 +2847,7 @@ function buildPromoted(src, toYear, forceRetain, promoteGrads){
   n.programs={ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false };
   n.programsPaid={ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false };
   // סיוע והעשרה — ריק
-  n.support={ shiluv:false, salIshi:false, behavior:false, prepA:false };
+  n.support={ shiluv:false, salIshi:false, medical:false, behavior:false, prepA:false };
   // שונות: גרושים/חוץ/אחר — הסימון עובר; מסמכים וחתימות מחדש; השארות (של השנה) לא עוברת
   const sp=src.special||{};
   n.special={
@@ -3122,7 +3129,7 @@ function makeStudent(){ return {
             outOfCity:false, paymentArrangement:false,
             retention:false, retentionDoc:false,
             other:false, otherText:"" }, // סעיף 3 — "אחר" עם טקסט חופשי
-  support:{ shiluv:false, salIshi:false, behavior:false, prepA:false }, // סעיף 15 — סיוע/העשרה
+  support:{ shiluv:false, salIshi:false, medical:false, behavior:false, prepA:false }, // סעיף 15 — סיוע/העשרה
   driveFolder:"", driveFolderId:"", notes:"", createdAt:new Date().toISOString()
 };}
 function makeStaff(){ return {
@@ -4612,7 +4619,7 @@ function guideContent(){
           <b>4)</b> גנים חסרים <b>מאותו קמפוס ומאותו סוג חינוך</b> מוצעים לצירוף לקבוצה אחת (גילים שונים — מותר).
           <b>5)</b> פותחים קבוצה — והמונה "נפתחו / ניתן לפתוח עוד" מתעדכן מיד.
           <b>6)</b> משבצים צוות לקבוצה בלשונית "שיבוץ צוות" → "צהרונים". קבוצה מצורפת היא שיבוץ אחד.</li>
-        <li><b>תשלום ביטוח תלמידים</b> · <b>סיוע והעשרה</b> · <b>שונות</b> (גרושים/חוץ/השארות/אחר). ב"ילדת השארות" נפתח מתחתיו הסימון <b>מסמך השארות</b> — <b>בלעדיו אי אפשר לשבץ אותה</b>.</li>
+        <li><b>תשלום ביטוח תלמידים</b> · <b>סיוע והעשרה</b> (שילוב · סל אישי · <b>סייעת רפואית</b> · מנתחת התנהגות · הכנה לכיתה א׳ — לכל אחד אפשר לצרף מסמך 📎) · <b>שונות</b> (גרושים/חוץ/השארות/אחר). ב"ילדת השארות" נפתח מתחתיו הסימון <b>מסמך השארות</b> — <b>בלעדיו אי אפשר לשבץ אותה</b>.</li>
         <li><b>הערות</b> — טקסט חופשי בתוך התיק. ברשימת התלמידות מוצג רק <b>סימון</b> שיש הערה (<span class="gd-pill warn">📝 הערה</span>), בלי תוכן ההערה.</li>
         <li><b>🔎 בדיקת אחים/אחיות</b> — מאתר תיקים עם אותו שם משפחה + כתובת, לשיבוץ באותו קמפוס. לכל תוצאה יש כפתור <b>↩ פתיחת התיק</b>.</li>
         <li><b>🧭 בדיקת קרבה לגנים (חדש)</b> — מקטע מתקפל בתוך התיק, ממש מתחת ל"בדיקת אחים/אחיות": מסמנים אילו גנים לבדוק (מקובצים לפי קמפוס, עם חיווי מי כבר מלא) ולוחצים <b>"📏 בדיקת המרחקים"</b> — ומקבלים <b>כאן בתיק</b> טבלת מרחקים ממוינת מהקרוב לרחוק, בלי לפתוח את המפה הגדולה. עם גשר Google מוצג גם <b>מרחק וזמן הליכה</b> אמיתיים, והמיון לפיהם. אחרת מוצג <b>מרחק אווירי</b> (קו ישר) — ומתחת לטבלה מופיעה הסיבה המדויקת לכך. לחיצה על <b>"שבץ"</b> בוחרת את הגן בשדה "גן משובצת" (השמירה בכפתור <b>שמירה</b>).<br>אותה בדיקה זמינה גם בלי לפתוח את התיק — כפתור <b>🧭</b> בעמודת הגן בטבלת התלמידות.
@@ -4683,6 +4690,7 @@ function guideContent(){
       `<ul>
         <li>לשונית <b>גנים</b> → כפתור ה-<b>➕</b> המרחף (פינה שמאלית תחתונה) → <b>הוספת גן</b>: שם, סמל, גיל, חינוך, גננת, כתובת, טלפונים, <b>קיבולת</b>, קמפוס, הפעלה/כיבוי.</li>
         <li><b>ניווט וחיוג מהירים</b> — בטבלת הגנים (וגם בטופס עריכת הגן) מופיעים ליד הכתובת כפתורי <b>🚗 Waze</b> ו-<b>🗺️ מפות Google</b> לניווט בלחיצה, וליד הטלפון כפתור <b>📞 חיוג</b>.</li>
+        <li><b>👥 צוות הגן בתיק הגן</b> — בתיק כל גן מופיע מקטע <b>"צוות הגן"</b> של השנה הפעילה, ובו כל מי שמשובץ לגן: תפקיד · שם · טלפון · ימים (או "כל השבוע", ויום חופשי לפי המשלימה) · שעות שבועיות, וליד עובדות סיוע גם הילדות המשויכות. לצהרונים ולקייטנות יש טבלה נפרדת. בראש המקטע כתוב תמיד אם <b>יש או אין סייעת רפואית</b> — ואם יש, מי היא, באילו ימים וכמה שעות. הכפתור <b>"לשיבוץ הצוות של הגן"</b> פותח את השיבוץ לעריכה.</li>
         <li>גנים דו-גילאיים נתמכים (למשל 3/4, 4/5).</li>
         <li>הקמפוס של הגן קובע את הקמפוס של התלמידות שבו.</li>
         <li><b>מספר הרשומות</b> נצבע לפי הקיבולת: <span class="gd-pill ok">בתוך הקיבולת</span> · חריגה של <b>ילדה אחת</b> (למשל 36 כשהקיבולת 35) <b>בסגול</b> — וגם הילדה שמעל הקיבולת נצבעת בסגול ברשימה · חריגה גדולה יותר <span class="gd-pill" style="background:#f5dcd9;color:#a5342b">אדום</span>.</li>
@@ -6746,7 +6754,7 @@ function openStudent(s){
     <div id="pg-rows"></div>
   </fieldset>
   <fieldset><legend>סיוע והעשרה</legend>
-    <div class="hint" style="margin-bottom:8px">סימון סוג הסיוע שהילדה מקבלת — לפי הסימון יוצגו הילדות בשיבוץ העובדת המתאימה (שילוב / רפואית–סל אישי / מנתחת התנהגות / הכנה לכיתה א׳). אפשר לצרף מסמך לכל סוג — נשמר בדרייב עם שם הילדה וּת"ז.</div>
+    <div class="hint" style="margin-bottom:8px">סימון סוג הסיוע שהילדה מקבלת — לפי הסימון יוצגו הילדות בשיבוץ העובדת המתאימה (שילוב / סל אישי / סייעת רפואית / מנתחת התנהגות / הכנה לכיתה א׳). אפשר לצרף מסמך לכל סוג — נשמר בדרייב עם שם הילדה וּת"ז.</div>
     <div class="doc-rows" id="support-rows"></div>
   </fieldset>
   <fieldset><legend>שונות</legend>
@@ -9909,6 +9917,46 @@ function renderGanTable(){
   host.querySelectorAll("tr.clickable").forEach(tr=> tr.onclick=e=>{ if(e.target.closest("button,input,a")) return; const g=DB.gans.find(x=>x.id===tr.dataset.gid); if(g) openGan(JSON.parse(JSON.stringify(g))); });
   host.querySelectorAll("[data-sort]").forEach(t=> t.onclick=()=>{ const k=t.dataset.sort; if(ganSort.key===k) ganSort.dir*=-1; else { ganSort.key=k; ganSort.dir=1; } renderGanTable(); });
 }
+/* צוות הגן בשנה הפעילה — לתיק הגן. נקרא מאותו מבנה השיבוץ של לשונית
+   "שיבוץ צוות" ובאותם כללים של המצבת למשרד הראשי: שם, טלפון, ימים (או
+   יום חופשי לפי המשלימה), שעות שבועיות, וילדות משויכות בתפקידי סיוע.
+   כל הקשר (פעילות הגן · צהרונים · קייטנות) שיש בו שיבוץ מקבל טבלה משלו.
+   מעל הכל שורה קבועה על הסייעת הרפואית — יש או אין — גם כשאין שיבוץ בכלל. */
+const MEDICAL_ROLES = ["סייעת רפואית","סייעת רפואית משלימה","סייעת רפואית ממלאת מקום"];
+function ganStaffRows(ganId, ctx){
+  const a=ganAsg(ganId, ctx), free=ganFreeDays(ganId, ctx);
+  const known=assignRoles().map(m=>m.role);
+  const roles=known.concat(Object.keys(a).filter(r=>!known.includes(r)));
+  return roles.map(role=>{
+    const c=a[role]; if(!c || !(c.name||c.staffId)) return null;
+    const info=asgStaffInfo(a, role);
+    let days=info.days.length ? info.days.join(", ") : asgExtraText(role, c);
+    /* תפקיד בלי ימים ובלי תקופה (גננת, סייעת, סייעת רפואית…) הוא תפקיד של כל השבוע */
+    if(!days && !EXTRA_BY_ROLE[role]) days="כל השבוע";
+    if(free[role] && free[role].length) days="כל השבוע · 🏖️ יום חופשי: "+free[role].join(", ");
+    const hours=c.hours || (HOURS_ROLES.includes(role) && info.m && info.m.weeklyHours) || "";
+    return { role, name:info.name, phone:info.phone, days, hours:String(hours||""), kids:asgStudentsLabel(role, c) };
+  }).filter(Boolean);
+}
+function ganStaffSectionHtml(ganId){
+  const ctxs=ASSIGN_CONTEXTS.map(c=>({ c, rows:ganStaffRows(ganId, c.id) })).filter(x=>x.rows.length);
+  const act=ganStaffRows(ganId, "activity");
+  const med=act.filter(r=>MEDICAL_ROLES.includes(r.role));
+  const medLine = med.length
+    ? `<div class="note" style="margin-bottom:8px;background:var(--good-soft);border-color:var(--good)">🩺 <b>יש סייעת רפואית בגן</b> — ${med.map(r=>
+        `${esc(r.role)}: <b>${esc(r.name)}</b>${r.days?` · ${esc(r.days)}`:""}${r.hours?` · ${esc(r.hours)} שעות שבועיות`:""}`).join(" · ")}</div>`
+    : `<div class="note" style="margin-bottom:8px">🩺 <b>אין סייעת רפואית</b> משובצת בגן בשנת ${esc(DB.activeYear)}.</div>`;
+  const tables=ctxs.map(({c,rows})=>`
+    ${ctxs.length>1||c.id!=="activity"?`<div style="font-weight:700;margin:10px 0 4px">${esc(c.label)}</div>`:""}
+    <div class="table-wrap" style="overflow-x:auto;max-width:100%"><table class="gan-staff-table"><thead><tr><th>תפקיד</th><th>שם</th><th>טלפון</th><th>ימים / תקופה</th><th>שעות שבועיות</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr><td>${roleChip(r.role)}</td><td><b>${esc(r.name)}</b>${r.kids?`<div class="hint">ילדות: ${esc(r.kids)}</div>`:""}</td><td>${phoneCell(r.phone, true)}</td><td>${esc(r.days)||"—"}</td><td>${esc(r.hours)||"—"}</td></tr>`).join("")}
+    </tbody></table></div>`).join("");
+  return `<fieldset id="ganStaffBox" style="min-width:0"><legend>צוות הגן · שנת ${esc(DB.activeYear)}</legend>
+    ${medLine}
+    ${tables || `<div class="hint">עדיין אין שיבוץ צוות לגן זה בשנה הנוכחית.</div>`}
+    <div class="row" style="margin-top:8px"><button class="btn ghost sm" id="ganStaffAssign" type="button">🧩 לשיבוץ הצוות של הגן</button></div>
+  </fieldset>`;
+}
 function openGan(g){
   const isNew=!DB.gans.some(x=>x.id===g.id);
   const gStreetList = uniqSortHe([...DB.gans.map(x=>x.street), ...DB.students.map(s=>s.street)]);
@@ -9953,6 +10001,7 @@ function openGan(g){
     </div>
     <div class="note" style="margin-top:6px">פרטי הצוות (גננת, סייעת, ניידים) והשיבוץ נקבעים בלשונית "שיבוץ" לכל שנה בנפרד.</div>
   </fieldset>
+  ${isNew?'':ganStaffSectionHtml(g.id)}
   <fieldset><legend>מסמכים והפעלה</legend>
     <div class="grid g3" style="margin-bottom:8px">
       <div><label>רישיון — גילאים מורשים</label><input id="g-licenseAges" value="${esc(g.licenseAges||"")}" placeholder="למשל: 3-4"><div class="hint">גיל הרישיון של הגן ממשרד החינוך — לבקרת קליטה.</div></div>
@@ -9968,6 +10017,7 @@ function openGan(g){
     <button class="btn ghost" id="cancelGan">ביטול</button>
   </div>`);
   if(!isNew){ const gs=$("#ganStudents"); if(gs) gs.onclick=()=>viewGanStudents(g.id); }
+  if(!isNew){ const ga=$("#ganStaffAssign"); if(ga) ga.onclick=()=>{ closeModal(); openGanAssign(g.id); }; }
   $("#saveGan").onclick=()=>{
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{
@@ -13168,7 +13218,7 @@ function openGanAssign(ganId){
         let kidsHtml="";
         if(supKey){
           const supLbl=(SUPPORT_TYPES.find(t=>t[0]===supKey)||[])[1]||"";
-          const kids=studentsOfYear().filter(s=>u.ganIds.includes(s.ganId) && !s.finished && s.support && s.support[supKey]);
+          const kids=studentsOfYear().filter(s=>u.ganIds.includes(s.ganId) && !s.finished && studentHasSupport(s, supKey));
           const chosen=new Set(cur.students||[]);
           kidsHtml=`<div class="field" style="flex:1 1 100%;min-width:230px"><label>ילדות משויכות · ${esc(supLbl)}</label>
             ${kids.length? `<div class="checks asg-kids-box" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px">
