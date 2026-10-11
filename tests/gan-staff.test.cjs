@@ -82,7 +82,10 @@ const server = require('http').createServer((req, res) => {
   let body, ext;
   if (url === '/app.html') { body = Buffer.from(buildApp()); ext = '.html'; }
   else {
-    const f = url.startsWith('/__stub/') ? path.join(TMP, url.slice(8)) : path.join(ROOT, url.replace(/^\/+/, ''));
+    /* הנתיב נשאר בתוך תיקיית הפרויקט (או תיקיית הקבצים המדומים) — בלי ../ החוצה */
+    const base = url.startsWith('/__stub/') ? TMP : ROOT;
+    const f = path.resolve(base, '.' + path.sep + (url.startsWith('/__stub/') ? url.slice(8) : url.replace(/^\/+/, '')));
+    if (f !== base && !f.startsWith(base + path.sep)) { res.writeHead(403); return res.end('no'); }
     ext = path.extname(f);
     try { body = fs.readFileSync(f); } catch (e) { res.writeHead(404); return res.end('nf'); }
   }
