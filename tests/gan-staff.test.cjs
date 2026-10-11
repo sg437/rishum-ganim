@@ -77,17 +77,27 @@ export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; ex
 
 const MIME = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8',
                '.js':'text/javascript; charset=utf-8', '.woff2':'font/woff2', '.png':'image/png' };
+/* השרת מגיש רק קבצים מרשימה שנבנית מראש — הבקשה בוחרת שם מהרשימה, ולעולם
+   אינה הופכת בעצמה לנתיב בדיסק (כך גם ../ לא יכול לצאת מהפרויקט). */
+const FILES = new Map();
+(function walk(dir, prefix) {
+  for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (d.name === 'node_modules' || d.name.startsWith('.')) continue;
+    const full = path.join(dir, d.name);
+    if (d.isDirectory()) walk(full, prefix + d.name + '/');
+    else FILES.set(prefix + d.name, full);
+  }
+})(ROOT, '/');
+for (const n of fs.readdirSync(TMP)) FILES.set('/__stub/' + n, path.join(TMP, n));
 const server = require('http').createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
   let body, ext;
   if (url === '/app.html') { body = Buffer.from(buildApp()); ext = '.html'; }
   else {
-    /* הנתיב נשאר בתוך תיקיית הפרויקט (או תיקיית הקבצים המדומים) — בלי ../ החוצה */
-    const base = url.startsWith('/__stub/') ? TMP : ROOT;
-    const f = path.resolve(base, '.' + path.sep + (url.startsWith('/__stub/') ? url.slice(8) : url.replace(/^\/+/, '')));
-    if (f !== base && !f.startsWith(base + path.sep)) { res.writeHead(403); return res.end('no'); }
+    const f = FILES.get(url);
+    if (!f) { res.writeHead(404); return res.end('nf'); }
     ext = path.extname(f);
-    try { body = fs.readFileSync(f); } catch (e) { res.writeHead(404); return res.end('nf'); }
+    body = fs.readFileSync(f);
   }
   res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
   res.end(body);
