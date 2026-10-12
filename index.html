@@ -1922,6 +1922,7 @@ const META_PRIV_FIELDS = ["admins","allowedEmails","editScopes","userNames"];
    בלי זה, כל שמירה של מנהל/ת (גם עריכת תיק) כתבה את רשימות ההרשאות מהעותק שבמכשיר —
    ומנהל/ת עם עותק ישן מחק/ה בשקט עובדות שנוספו בינתיים, והשרת התחיל לדחות אותן. */
 const _privDirty = new Set();
+let _metaBase = null; // ה-meta שממנו נבנה DB האחרון (rebuildDB) — בסיס לזיהוי מה שונה מקומית
 function markPrivDirty(field){ if(META_PRIV_FIELDS.includes(field)) _privDirty.add(field); }
 function metaWriteSpec(){
   const data=metaForWrite(), st=data.settings||{}, admin=isAdmin(), em=myEmail();
@@ -1932,6 +1933,22 @@ function metaWriteSpec(){
     if(k==="userActivity"){ if(em && st.userActivity && st.userActivity[em]) paths.push(["settings","userActivity",em]); continue; }
     if(META_PRIV_FIELDS.includes(k) && !(admin && _privDirty.has(k))) continue;
     paths.push(["settings",k]);
+  }
+  // רק מה שהמשתמש/ת שינה/תה במכשיר הזה — מול ה-meta שממנו נבנה המסך (_metaBase). בלי זה כל
+  // שמירה (גם עריכת תיק) כתבה את *כל* ההגדרות מהעותק המקומי — ועותק ישן מחק בשקט פנייה חדשה,
+  // יעד גנים, מייל לפניות וכו'. השוואה לבסיס (ולא למצב השרת העדכני) — כי גם כשהשרת התקדם
+  // בינתיים, מה שלא נגענו בו לא שלנו לכתוב.
+  const server=_metaBase;
+  if(server){
+    const at=(o,p)=>p.reduce((a,k)=>(a==null?undefined:a[k]), o);
+    const same=(x,y)=>JSON.stringify(x===undefined?null:x)===JSON.stringify(y===undefined?null:y);
+    const kept=paths.filter(p=>{
+      const k=p.join(".");
+      if(k==="updatedAt"||k==="updatedBy") return true;                  // חותמת השמירה — תמיד
+      if(p[0]==="settings" && META_PRIV_FIELDS.includes(p[1])) return true; // שינוי הרשאות מכוון (dirty)
+      return !same(at(data,p), at(server,p));
+    });
+    return { data, paths:kept };
   }
   return { data, paths };
 }
@@ -2363,6 +2380,7 @@ function getEduPref(){ try{ const v=localStorage.getItem("rg-edu"); return v===n
 function setEduPref(v){ try{ if(v===null) localStorage.removeItem("rg-edu"); else localStorage.setItem("rg-edu", v); }catch(_){} }
 function rebuildDB(docsMap){
   const meta=docsMap.get("meta")||{};
+  _metaBase = docsMap.has("meta") ? JSON.parse(JSON.stringify(meta)) : null;
   DB.years = (meta.years&&meta.years.length)? meta.years : DEFAULT_YEARS.slice();
   const pref=getYearPref();
   DB.activeYear = (pref && DB.years.includes(pref)) ? pref

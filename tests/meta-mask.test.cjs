@@ -31,15 +31,15 @@ function grab(decl){
   throw new Error('סוגריים לא מאוזנים אחרי: ' + decl);
 }
 const line = d => { const a = SRC.indexOf(d); if(a<0) throw new Error('לא נמצא: '+d); return SRC.slice(a, SRC.indexOf('\n', a)); };
-const code = [ line('const META_PRIV_FIELDS'), line('const _privDirty'), line('function markPrivDirty('), grab('function metaForWrite('), grab('function metaWriteSpec('), line("function _restFieldPath(")+"\n"+line("  return segs.map")+"\n}", line('function _restMaskQuery(') ].join('\n');
+const code = [ line('const META_PRIV_FIELDS'), line('const _privDirty'), line('let _metaBase'), line('function markPrivDirty('), grab('function metaForWrite('), grab('function metaWriteSpec('), line("function _restFieldPath(")+"\n"+line("  return segs.map")+"\n}", line('function _restMaskQuery(') ].join('\n');
 const ME = 'rivka.c@example.com';
-const ctx = { Date, Object, Array, String, RegExp, encodeURIComponent, admin:false,
+const ctx = { Date, Object, Array, String, RegExp, JSON, encodeURIComponent, admin:false, cloudDocs:null,
   DB:{ activeYear:'2026', years:['2026','2025'], municipality:{a:1}, historical:{}, historicalGans:{}, assignments:{x:1}, tzGroups:{},
        settings:{ gansTarget:29, admins:['boss@example.com'], allowedEmails:['a@b.c'], editScopes:{ [ME]:'רגיל' }, userNames:{ [ME]:'רבקה' }, appLogo:'data:...', appTitle:'כותרת',
                   userActivity:{ [ME]:{ ts:1 }, 'other@example.com':{ ts:2 } } } },
   isAdmin(){ return ctx.admin; }, myEmail(){ return ME; } };
 vm.createContext(ctx);
-vm.runInContext(code + ';this.markPrivDirty=markPrivDirty; this._privDirty=_privDirty; this.metaWriteSpec=metaWriteSpec; this._restMaskQuery=_restMaskQuery; this._restFieldPath=_restFieldPath;', ctx);
+vm.runInContext(code + ';Object.defineProperty(this,"_metaBase",{set:v=>{_metaBase=v},get:()=>_metaBase});this.markPrivDirty=markPrivDirty; this._privDirty=_privDirty; this.metaWriteSpec=metaWriteSpec; this._restMaskQuery=_restMaskQuery; this._restFieldPath=_restFieldPath;', ctx);
 let pass=0, fail=0; const check=(n,c,d)=>{ if(c){pass++;console.log('  ✓ '+n);} else {fail++;console.log('  ✗ '+n+(d?'  → '+d:''));} };
 const key = p => p.join('/');
 const getAt = (o,p) => p.reduce((a,k)=> (a==null?undefined:a[k]), o);
@@ -63,6 +63,21 @@ sp = ctx.metaWriteSpec(); keys = sp.paths.map(key);
 check('מנהל/ת ששינה/תה הרשאות — כולל שדות הרשאה', ['settings/admins','settings/allowedEmails','settings/editScopes','settings/userNames'].every(k=>keys.includes(k)));
 check('גם למנהל — userActivity רק של עצמו', keys.includes('settings/userActivity/'+ME) && !keys.includes('settings/userActivity'));
 check('כל נתיב קיים בנתונים', sp.paths.every(p=>getAt(sp.data,p)!==undefined));
+
+console.log('2ב) רק מה שהשתנה מול השרת — עותק ישן לא מוחק פנייה חדשה');
+ctx._privDirty.clear(); ctx.admin=false;
+ctx.DB.settings.feedback = [];                                                           // במכשיר: עותק (ישן) בלי הפנייה החדשה
+ctx._metaBase = JSON.parse(JSON.stringify(ctx.metaWriteSpec().data));                     // המסך נבנה מה-meta הזה
+// בינתיים בשרת נוספה פנייה חדשה — המכשיר לא יודע עליה
+ctx.DB.settings.userActivity[ME] = { ts: 99 };                                           // העריכה שלה עכשיו
+sp = ctx.metaWriteSpec(); keys = sp.paths.map(key);
+check('הפניות לא נכתבות (לא נוגעים ברשימת הפניות שבשרת)', !keys.includes('settings/feedback'), keys.join(','));
+check('הגדרות שלא השתנו לא נכתבות', !keys.includes('settings/gansTarget') && !keys.includes('years'));
+check('הפעילות שלה וחותמת השמירה כן', keys.includes('settings/userActivity/'+ME) && keys.includes('updatedAt'));
+ctx.DB.settings.feedback = [{ id:'mine', text:'פנייה שלי' }];
+sp = ctx.metaWriteSpec(); keys = sp.paths.map(key);
+check('פנייה שהיא הוסיפה — כן נכתבת', keys.includes('settings/feedback'));
+ctx._metaBase = null; ctx.DB.settings.feedback = undefined;
 
 console.log('3) פורמט REST');
 check('אימייל עטוף ב-backticks', ctx._restFieldPath(['settings','userActivity',ME])==='settings.userActivity.`'+ME+'`');
