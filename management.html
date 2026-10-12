@@ -1535,7 +1535,7 @@
    ============================================================ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { initializeFirestore, doc, collection, onSnapshot, setDoc, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { initializeFirestore, doc, collection, onSnapshot, setDoc, deleteDoc, runTransaction, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-check.js";
 
 const PROD_FIREBASE = {
@@ -1602,6 +1602,22 @@ function collFor(c){ return (c.legacy||c.id===HOME_CITY.id) ? collection(db,"app
 function docFor(c, id){ return (c.legacy||c.id===HOME_CITY.id) ? doc(db,"app",id) : doc(db,"cities",c.id,"app",id); }
 /* מזהה מסמך השנה — זהה ל-safeYearId שבתוכנת העיר */
 function safeYearId(y){ return "students_"+String(y).replace(/[^0-9A-Za-z֐-׿]/g,"_"); }
+/* מסמך לכל רשומה (RECS) — עיר שעברה (meta.model==="recs") שומרת כל תלמידה/גן/צוות/הנהלה
+   כמסמך r_<k>_<id> באותו אוסף. זהה בדיוק ל-index.html (recDocId/recsListsFromDocs) —
+   המזהים חייבים להתאים, אחרת המרכזי והעיר יכתבו למסמכים שונים. */
+const RECS_KINDS = { stu:"s", gan:"g", staff:"t", mgmt:"m" };
+function _recHash(s){ let h=2166136261; s=String(s); for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
+function recDocId(kind, id){
+  const k=RECS_KINDS[kind]||kind, sid=String(id==null?"":id);
+  return "r_"+k+"_"+(/^[A-Za-z0-9_-]{1,120}$/.test(sid) ? sid : ("x"+_recHash(sid)));
+}
+function cityIsRecs(docs){ const m=docs&&docs.get&&docs.get("meta"); return !!(m && m.model==="recs"); }
+function recsLists(docs){
+  const by={ s:[], g:[], t:[], m:[] };
+  for(const [id,v] of docs){ if(id.startsWith("r_") && v && v._t==="rec" && by[v.k] && v.d && typeof v.d==="object") by[v.k].push(v); }
+  const ord=a=>a.sort((x,y)=>((+x.o||0)-(+y.o||0)) || String(x.d.id).localeCompare(String(y.d.id))).map(v=>v.d);
+  return { s:ord(by.s), g:ord(by.g), t:ord(by.t), m:ord(by.m) };
+}
 
 /* ---- תבנית התיק (זהה ל-makeStudent בתוכנת העיר) — להשלמה בקריאה ולדחיסה בכתיבה ---- */
 function stuTemplate(){ return {
@@ -1665,10 +1681,13 @@ function buildCity(c, docs){
   const meta=docs.get("meta")||{};
   const settings=meta.settings||{};
   const years=Array.isArray(meta.years)?meta.years:[];
-  const gansRaw=Array.isArray((docs.get("gans")||{}).gans)?(docs.get("gans")||{}).gans:[];
-  const staffRaw=Array.isArray((docs.get("staff")||{}).staff)?(docs.get("staff")||{}).staff:[];
-  const mgmtRaw=Array.isArray((docs.get("management")||{}).management)?(docs.get("management")||{}).management:[];
-  const all=[]; for(const [id,v] of docs){ if(id.startsWith("students_") && v && Array.isArray(v.students)) v.students.forEach(x=>all.push(normStudent(x, v.year))); }
+  const R=cityIsRecs(docs) ? recsLists(docs) : null; // מסמך לכל רשומה — אחרי מעבר העיר
+  const gansRaw=R ? R.g : (Array.isArray((docs.get("gans")||{}).gans)?(docs.get("gans")||{}).gans:[]);
+  const staffRaw=R ? R.t : (Array.isArray((docs.get("staff")||{}).staff)?(docs.get("staff")||{}).staff:[]);
+  const mgmtRaw=R ? R.m : (Array.isArray((docs.get("management")||{}).management)?(docs.get("management")||{}).management:[]);
+  const all=[];
+  if(R) R.s.forEach(x=>all.push(normStudent(x, x.year)));
+  else for(const [id,v] of docs){ if(id.startsWith("students_") && v && Array.isArray(v.students)) v.students.forEach(x=>all.push(normStudent(x, v.year))); }
   /* השנה: מה שהעיר מסמנת כפעילה (meta.activeYear) — ואם אין בה אף תיק פעיל
      (השדה משקף את ההעדפה של מי ששמר אחרון), השנה שבה יש הכי הרבה תיקים. */
   const perYear={}; all.forEach(x=>{ if(!x.finished) perYear[x.year]=(perYear[x.year]||0)+1; });
@@ -1859,6 +1878,17 @@ async function hqAudit(action, detail){ try{ await hqSet("audit", "a"+Date.now()
 async function updateStudent(cityId, year, studentId, mutate){
   requireHQ();
   const c=cityById(cityId); if(!c) throw new Error("no-city");
+  if(cityIsRecs(cityDocs.get(c.id))){ // מסמך לכל רשומה — טרנזקציה על התיק הזה בלבד
+    const rref=docFor(c, recDocId("stu", studentId)); let out=null;
+    await runTransaction(db, async tx=>{
+      const snap=await tx.get(rref);
+      if(!snap.exists() || !snap.data().d) throw new Error("no-student");
+      const v=snap.data(), full=normStudent(v.d, v.d.year||year);
+      mutate(full);
+      tx.set(rref, Object.assign({}, v, { d:packStudent(full), u:Date.now(), by:lower(user&&user.email) })); out=full;
+    });
+    return out;
+  }
   const ref=docFor(c, safeYearId(year));
   let after=null;
   await runTransaction(db, async tx=>{
@@ -1879,6 +1909,19 @@ async function updateStudent(cityId, year, studentId, mutate){
 async function addStudents(cityId, year, list){
   requireHQ();
   const c=cityById(cityId); if(!c) throw new Error("no-city");
+  if(cityIsRecs(cityDocs.get(c.id))){ // מסמך לכל רשומה — כל תיק מסמך חדש
+    const docs=cityDocs.get(c.id), now=Date.now(), by=lower(user&&user.email); let n=0;
+    for(let i=0;i<list.length;i+=400){
+      const b=writeBatch(db);
+      list.slice(i,i+400).forEach((s,j)=>{
+        const full=normStudent(s, year); if(!full.createdAt) full.createdAt=new Date().toISOString();
+        if(docs && docs.has(recDocId("stu", full.id))) full.id=uid();
+        b.set(docFor(c, recDocId("stu", full.id)), { _t:"rec", k:"s", d:packStudent(full), o:now+i+j, u:now, by }); n++;
+      });
+      await b.commit();
+    }
+    return n;
+  }
   const ref=docFor(c, safeYearId(year));
   let added=0;
   await runTransaction(db, async tx=>{

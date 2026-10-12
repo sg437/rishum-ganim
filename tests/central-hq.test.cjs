@@ -48,6 +48,7 @@ export const onSnapshot=(ref,opts,cb,err)=>{ const f=typeof opts==='function'?op
 export const setDoc=(ref,data,opts)=>{ window.__writes=(window.__writes||[]); window.__writes.push({path:ref.path,data:JSON.parse(JSON.stringify(data)),merge:!!(opts&&opts.merge)}); window.__docs[ref.path]=(opts&&opts.merge)?Object.assign({},window.__docs[ref.path]||{},data):JSON.parse(JSON.stringify(data)); fire(ref.path); return Promise.resolve(); };
 export const deleteDoc=(ref)=>{ delete window.__docs[ref.path]; fire(ref.path); return Promise.resolve(); };
 export const runTransaction=async(db,fn)=>{ const tx={ get:async(ref)=>snapDoc(ref.path), set:(ref,data)=>{ window.__docs[ref.path]=JSON.parse(JSON.stringify(data)); window.__txWrites=(window.__txWrites||[]); window.__txWrites.push({path:ref.path,data:window.__docs[ref.path]}); fire(ref.path); } }; return fn(tx); };
+export const writeBatch=()=>{ const ops=[]; return { set:(r,d)=>ops.push([r,d]), delete:r=>ops.push([r,null]), commit:async()=>{ ops.forEach(([r,d])=>{ if(d) window.__docs[r.path]=JSON.parse(JSON.stringify(d)); else delete window.__docs[r.path]; fire(r.path); }); } }; };
 export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; export const getToken=async()=>({token:""});
 `);
 const PORT=8741;

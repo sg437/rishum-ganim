@@ -55,7 +55,7 @@ const ctx = {
   navigator:{ onLine:true }, location:{ href:'https://example.test/app/', reload(){ log.push('reload'); } },
   document:{ get visibilityState(){ return hidden?'hidden':'visible'; }, get activeElement(){ return { tagName:activeTag, isContentEditable:false }; },
              querySelector(){ return { appendChild(b){ log.push('pill:'+b.id); } }; }, createElement(){ return {}; } },
-  TEST_DB_MODE:false, currentUser:{ email:'a@b.c' }, db:{}, CITY:{ id:'c' }, restMode:false,
+  TEST_DB_MODE:false, _fsPendingSince:0, currentUser:{ email:'a@b.c' }, db:{}, CITY:{ id:'c' }, restMode:false,
   cloudDocs:new Map(), _pending:new Map(), savePending:false, _pushInFlight:false, _syncState:'synced',
   async _restHdr(){ return {}; }, cityRestBase(){ return 'https://fs/cities/c/app'; },
   decFsFields(f){ return { updatedAt: f.updatedAt ? +f.updatedAt.integerValue : undefined }; },
