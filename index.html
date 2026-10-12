@@ -1210,7 +1210,7 @@ function onOrgChanged(){
   }
   if(CITY){ const c=cityById(CITY.id); if(c) CITY=Object.assign({},c); }
   renderCityPick();
-  if(active==="settings" && $("#org-box")) renderOrgPanel();
+
 }
 function renderNoCity(){
   document.body.classList.add("locked");
@@ -3303,7 +3303,6 @@ const SETTINGS_SECTIONS = [
   { g:"מערכת ומשתמשים" },
   { k:"presence",      label:"מי מחובר ויומן פעילות" },
   { k:"admins users",  label:"ניהול משתמשים" },
-  { k:"cities",        label:"ערים ומשתמשים (מרכזי)", hq:true },
   { k:"auth",          label:"חשבון והתחברות" },
   { k:"feedback",      label:"פניות והצעות שיפור", admin:true },
   { g:"מראה והתקנה" },
@@ -5501,140 +5500,8 @@ async function doSignOut(){ try{ await clearPresence(); }catch(_){} try{ await s
    פאנל המרשם המרכזי — ערים ומשתמשים (למשתמשי המרכז בלבד)
    ============================================================ */
 let _orgForm={ city:{name:"",id:"",region:"",absorption:"local",coordinator:"",phone:""}, user:{email:"",name:""} };
-function renderOrgPanel(){
-  const box=$("#org-box"); if(!box) return;
-  if(!isHQ()){ box.innerHTML='<div class="hint">רק משתמשי המרכז רואים ועורכים את המרשם.</div>'; return; }
-  const cities=orgCities();
-  const activeCities=cities.filter(c=>c.active!==false);
-  const users=Object.assign({}, ORG.users||{});
-  const emails=Object.keys(users).sort();
-  const me=myEmail();
-  const roleSel=(em,c)=>{ const cur=cityRole(c.id, em);
-    return `<select class="org-role" data-em="${esc(em)}" data-city="${esc(c.id)}" title="${esc(c.name||c.id)}"><option value="">—</option>${CITY_ROLES.map(([k,l])=>`<option value="${k}" ${cur===k?'selected':''}>${esc(l)}</option>`).join("")}</select>`; };
-  const absLabel=v=>(CITY_ABSORPTION.find(x=>x[0]===v)||[])[1]||"—";
-  const legacyUsersN=(()=>{ try{ return [...knownEmails()].filter(e=>!orgUser(e)&&!isOwnerEmail(e)).length; }catch(_){ return 0; } })();
-  box.innerHTML=`
-  <h3 style="margin:0 0 6px">🏙️ ערים</h3>
-  <div class="table-wrap"><table style="min-width:820px"><thead><tr>
-    <th>עיר</th><th>מזהה</th><th>אזור</th><th>אופן הקליטה</th><th>רכז/ת</th><th>טלפון</th><th>משתמשים</th><th>סטטוס</th><th style="text-align:end">פעולות</th></tr></thead><tbody>${
-    cities.map(c=>{ const n=emails.filter(e=>users[e].hq||cityRole(c.id,e)).length;
-      return `<tr>
-        <td><b>${esc(c.name||c.id)}</b>${cityIsLegacy(c)?' <span class="pill neutral" title="הנתונים של העיר הזאת יושבים במאגר המקורי (app)">עיר הבית</span>':''}${CITY&&CITY.id===c.id?' <span class="pill ok">פעילה כאן</span>':''}</td>
-        <td dir="ltr" style="text-align:right"><code>${esc(c.id)}</code></td>
-        <td><input class="org-cf" data-city="${esc(c.id)}" data-k="region" value="${esc(c.region||"")}" placeholder="—" style="min-width:90px"></td>
-        <td><select class="org-cf" data-city="${esc(c.id)}" data-k="absorption" style="min-width:170px">${CITY_ABSORPTION.map(([k,l])=>`<option value="${k}" ${(c.absorption||"local")===k?'selected':''}>${esc(l)}</option>`).join("")}</select></td>
-        <td><input class="org-cf" data-city="${esc(c.id)}" data-k="coordinator" value="${esc(c.coordinator||"")}" placeholder="—" style="min-width:110px"></td>
-        <td><input class="org-cf" data-city="${esc(c.id)}" data-k="phone" value="${esc(c.phone||"")}" placeholder="—" inputmode="tel" style="min-width:100px"></td>
-        <td>${n}</td>
-        <td>${c.active===false?'<span class="pill neutral">מושהית</span>':'<span class="pill ok">פעילה</span>'}</td>
-        <td style="text-align:end;white-space:nowrap">${cityIsLegacy(c)?'':`<button class="btn ghost sm" data-city-toggle="${esc(c.id)}">${c.active===false?'הפעלה':'השהיה'}</button>`}</td></tr>`; }).join("")
-  }</tbody></table></div>
-  <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px;align-items:flex-end">
-    <div class="field" style="min-width:160px"><label>שם העיר החדשה</label><input id="org-city-name" value="${esc(_orgForm.city.name)}" placeholder="למשל: ביתר עילית" autocomplete="off"></div>
-    <div class="field" style="min-width:140px"><label>מזהה (אנגלית)</label><input id="org-city-id" value="${esc(_orgForm.city.id)}" placeholder="beitar-illit" dir="ltr" autocomplete="off"></div>
-    <div class="field" style="min-width:110px"><label>אזור</label><input id="org-city-region" value="${esc(_orgForm.city.region)}" placeholder="ירושלים / מרכז…" autocomplete="off"></div>
-    <div class="field"><label>אופן הקליטה</label><select id="org-city-abs">${CITY_ABSORPTION.map(([k,l])=>`<option value="${k}" ${_orgForm.city.absorption===k?'selected':''}>${esc(l)}</option>`).join("")}</select></div>
-    <button class="btn" id="org-city-add">➕ פתיחת עיר</button>
-  </div>
-  <div class="hint" style="margin-top:6px">המזהה נקבע פעם אחת ואינו משתנה — הוא שם המאגר של העיר בענן. אחרי הפתיחה משייכים לעיר משתמשים בטבלה למטה, והם ייכנסו לאותה תוכנה בדיוק ויראו רק את העיר שלהם.</div>
-
-  <h3 style="margin:18px 0 6px">👥 משתמשים והרשאות לפי עיר</h3>
-  <div class="table-wrap"><table style="min-width:${Math.max(720, 380+activeCities.length*150)}px"><thead><tr>
-    <th>אימייל</th><th>שם</th><th title="רואה את כל הערים ומנהל/ת את המרשם">מרכז</th>${activeCities.map(c=>`<th>${esc(c.name||c.id)}</th>`).join("")}<th style="text-align:end">פעולות</th></tr></thead><tbody>${
-    emails.length ? emails.map(em=>{ const u=users[em]; const own=isOwnerEmail(em);
-      return `<tr>
-        <td dir="ltr" style="text-align:right">${esc(em)}${em===me?' <span class="pill neutral">זה אני</span>':''}${own?' <span class="pill ok" title="בעל/ת המערכת — תמיד מרכז">בעלים</span>':''}</td>
-        <td><input class="org-un" data-em="${esc(em)}" value="${esc(u.name||"")}" placeholder="—" autocomplete="off" style="min-width:120px"></td>
-        <td style="text-align:center"><input type="checkbox" class="org-hq" data-em="${esc(em)}" ${u.hq||own?'checked':''} ${own?'disabled':''}></td>
-        ${activeCities.map(c=>`<td>${(u.hq||own)?'<span class="hint">הכל</span>':roleSel(em,c)}</td>`).join("")}
-        <td style="text-align:end;white-space:nowrap"><button class="btn danger sm" data-org-rm="${esc(em)}" ${em===me||own?'disabled title="אי אפשר להסיר את עצמך"':''}>✕ הסרה</button></td></tr>`; }).join("")
-    : `<tr><td colspan="${4+activeCities.length}"><div class="hint">המרשם ריק. כרגע כל המשתמשים הקיימים עובדים בעיר הבית לפי רשימת המורשים שלה (כמו עד היום). הוסף/י משתמשים כאן, או ייבא/י את המורשים של העיר הנוכחית בכפתור למטה.</div></td></tr>`
-  }</tbody></table></div>
-  <div id="org-msg" class="note" style="display:none;margin-top:10px"></div>
-  <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px;align-items:flex-end">
-    <div class="field grow" style="min-width:220px"><label>אימייל Google של המשתמש/ת</label><input id="org-user-email" type="email" inputmode="email" value="${esc(_orgForm.user.email)}" placeholder="name@gmail.com" autocomplete="off"></div>
-    <div class="field" style="min-width:150px"><label>שם (לא חובה)</label><input id="org-user-name" value="${esc(_orgForm.user.name)}" placeholder="שם מלא" autocomplete="off"></div>
-    <div class="field"><label>עיר ראשונה</label><select id="org-user-city"><option value="">— ללא (מרכז) —</option>${activeCities.map(c=>`<option value="${esc(c.id)}" ${CITY&&CITY.id===c.id?'selected':''}>${esc(c.name||c.id)}</option>`).join("")}</select></div>
-    <div class="field"><label>תפקיד בעיר</label><select id="org-user-role">${CITY_ROLES.map(([k,l])=>`<option value="${k}" ${k==='edit'?'selected':''}>${esc(l)}</option>`).join("")}</select></div>
-    <button class="btn" id="org-user-add">➕ הוספת משתמש/ת</button>
-    ${legacyUsersN?`<button class="btn ghost" id="org-import" title="כל מי שברשימת המורשים של העיר הנוכחית ואינו במרשם — יתווסף עם הרשאה לעיר הזאת בלבד">⬇️ ייבוא ${legacyUsersN} מורשי ${esc(cityName())} למרשם</button>`:""}
-  </div>
-  <div class="hint" style="margin-top:6px"><b>מנהל/ת עיר</b> = כמו מנהל מערכת בעיר ההיא (הגדרות, משתמשים של העיר) · <b>עריכה</b> = עבודה רגילה (ניתן לצמצם לחינוך רגיל/מיוחד ב"ניהול משתמשים" של העיר) · <b>צפייה בלבד</b> = בלי שינויים. משתמש/ת שסומן/ה כ<b>מרכז</b> רואה את כל הערים ואת המרשם הזה.</div>`;
-
-  const msg=(t,ok)=>{ const m=$("#org-msg"); if(!m) return; m.style.display="block"; m.textContent=t; m.style.background=ok?"var(--good-soft)":"var(--bad-soft)"; m.style.color=ok?"var(--good)":"var(--bad)"; m.style.borderColor=ok?"var(--good)":"var(--bad)"; };
-  const commit=async(what)=>{ try{ await saveOrg(); toast(what||"המרשם נשמר"); renderOrgPanel(); renderCityPick(); }catch(e){ console.error(e); msg("שמירת המרשם נכשלה: "+(e&&e.message||e), false); } };
-  const keepForm=()=>{ _orgForm.city={ name:$("#org-city-name").value, id:$("#org-city-id").value, region:$("#org-city-region").value, absorption:$("#org-city-abs").value }; _orgForm.user={ email:$("#org-user-email").value, name:$("#org-user-name").value }; };
-  // ערים
-  $("#org-city-name").oninput=()=>{ const idEl=$("#org-city-id"); if(!idEl.dataset.touched) idEl.value=cityIdFrom($("#org-city-name").value); };
-  $("#org-city-id").oninput=()=>{ $("#org-city-id").dataset.touched="1"; };
-  $("#org-city-add").onclick=()=>{
-    const name=$("#org-city-name").value.trim(), id=cityIdFrom($("#org-city-id").value||name);
-    if(!name){ msg("יש להזין שם עיר.", false); return; }
-    if(!id || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(id)){ msg("המזהה חייב להיות באנגלית: אותיות קטנות, ספרות ומקפים.", false); return; }
-    if(cityById(id)){ msg("כבר קיימת עיר עם המזהה הזה.", false); return; }
-    if(orgCities().some(c=>String(c.name||"").trim()===name)){ msg("כבר קיימת עיר בשם הזה.", false); return; }
-    ORG.cities=orgCities().concat([{ id, name, region:$("#org-city-region").value.trim(), absorption:$("#org-city-abs").value||"local", coordinator:"", phone:"", active:true, createdAt:Date.now(), createdBy:me }]);
-    _orgForm.city={name:"",id:"",region:"",absorption:"local",coordinator:"",phone:""};
-    commit("העיר "+name+" נפתחה — עכשיו אפשר לשייך לה משתמשים");
-  };
-  box.querySelectorAll("[data-city-toggle]").forEach(b=> b.onclick=()=>{
-    const c=cityById(b.dataset.cityToggle); if(!c) return;
-    const off=c.active!==false;
-    if(off && !confirm(`להשהות את העיר ${c.name||c.id}? המשתמשים שלה לא יוכלו להיכנס עד להפעלה מחדש. הנתונים נשמרים.`)) return;
-    ORG.cities=orgCities().map(x=> x.id===c.id ? Object.assign({},x,{active:!off}) : x);
-    keepForm(); commit(off?"העיר הושהתה":"העיר הופעלה");
-  });
-  box.querySelectorAll(".org-cf").forEach(inp=> inp.onchange=()=>{
-    ORG.cities=orgCities().map(x=> x.id===inp.dataset.city ? Object.assign({},x,{[inp.dataset.k]:inp.value.trim()}) : x);
-    keepForm(); commit("פרטי העיר נשמרו");
-  });
-  // משתמשים
-  const isEmail=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  $("#org-user-add").onclick=()=>{
-    const em=$("#org-user-email").value.trim().toLowerCase(), nm=$("#org-user-name").value.trim();
-    const city=$("#org-user-city").value, role=$("#org-user-role").value;
-    if(!isEmail(em)){ msg("יש להזין כתובת אימייל תקינה.", false); return; }
-    if(orgUser(em)){ msg(em+" כבר במרשם — עדכן/י את ההרשאות בטבלה.", false); return; }
-    const rec={ name:nm, hq:!city, cities:{} };
-    if(city) rec.cities[city]=role||"edit";
-    ORG.users=Object.assign({}, ORG.users, { [em]:rec });
-    _orgForm.user={email:"",name:""};
-    commit(em+(city?" נוסף/ה לעיר "+cityName(city):" נוסף/ה כמשתמש/ת מרכז"));
-  };
-  box.querySelectorAll("[data-org-rm]").forEach(b=> b.onclick=()=>{
-    const em=b.dataset.orgRm;
-    if(!confirm(`להסיר את ${em} מהמרשם? הוא/היא לא יוכל/תוכל להיכנס לאף עיר (מלבד עיר הבית, אם מופיע/ה ברשימת המורשים שלה).`)) return;
-    const u=Object.assign({}, ORG.users); delete u[em]; ORG.users=u;
-    keepForm(); commit("המשתמש/ת הוסר/ה מהמרשם");
-  });
-  box.querySelectorAll(".org-un").forEach(inp=> inp.onchange=()=>{
-    const em=inp.dataset.em; ORG.users=Object.assign({}, ORG.users, { [em]:Object.assign({}, ORG.users[em], {name:inp.value.trim()}) });
-    keepForm(); commit("השם נשמר");
-  });
-  box.querySelectorAll(".org-hq").forEach(cb=> cb.onchange=()=>{
-    const em=cb.dataset.em;
-    if(cb.checked && !confirm(`לסמן את ${em} כמשתמש/ת מרכז? הוא/היא יראה/תראה את כל הערים ויוכל/תוכל לערוך את המרשם הזה.`)){ cb.checked=false; return; }
-    ORG.users=Object.assign({}, ORG.users, { [em]:Object.assign({}, ORG.users[em], {hq:cb.checked}) });
-    keepForm(); commit(cb.checked?"סומן/ה כמרכז":"הוסר/ה ממרכז");
-  });
-  box.querySelectorAll(".org-role").forEach(sel=> sel.onchange=()=>{
-    const em=sel.dataset.em, cid=sel.dataset.city, v=sel.value;
-    const u=Object.assign({}, ORG.users[em]); const cm=Object.assign({}, (u.cities&&!Array.isArray(u.cities))?u.cities:{});
-    if(Array.isArray(u.cities)) u.cities.forEach(id=>{ cm[id]="edit"; });
-    if(v) cm[cid]=v; else delete cm[cid];
-    u.cities=cm; ORG.users=Object.assign({}, ORG.users, { [em]:u });
-    keepForm(); commit("ההרשאה עודכנה");
-  });
-  const imp=$("#org-import"); if(imp) imp.onclick=()=>{
-    const st=DB.settings||{}; const admins=new Set((st.admins||[]).map(x=>String(x).toLowerCase())); const scopes=st.editScopes||{}; const names=st.userNames||{};
-    const list=[...knownEmails()].filter(e=>!orgUser(e)&&!isOwnerEmail(e));
-    if(!list.length) return;
-    if(!confirm(`לייבא ${list.length} משתמשים למרשם עם הרשאה לעיר ${cityName()} בלבד?\n\nמנהלי המערכת של העיר יהפכו ל"מנהל/ת עיר", "צופה" ל"צפייה בלבד", והשאר ל"עריכה". ההגדרות בתוך העיר (חינוך רגיל/מיוחד) נשארות כמו שהן.`)) return;
-    const u=Object.assign({}, ORG.users);
-    list.forEach(em=>{ const role=admins.has(em)?"admin":(scopes[em]==="צופה"?"view":"edit"); u[em]={ name:names[em]||"", hq:false, cities:{ [CITY.id]:role } }; });
-    ORG.users=u; keepForm(); commit("יובאו "+list.length+" משתמשים למרשם");
-  };
-}
+/* ניהול המרשם המרכזי (ערים, משתמשים והרשאות לפי עיר) — במרכזי בלבד (management.html → "ערים ומשתמשים").
+   תוכנת העיר רק קוראת את המרשם (cityAccess/cityRole/myCities) ואינה עורכת אותו. */
 function renderAuthBox(){
   const box=$("#auth-box"); if(!box) return;
   const email = currentUser? currentUser.email : "—";
@@ -16691,7 +16558,7 @@ function viewSettings(root){
   <div class="panel" data-set="admins">
     <h2>מנהלי מערכת</h2>
     <div class="sub">רק כתובות אימייל שברשימה זו יכולות לשנות את הגדרות המערכת (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, גילי ילדים ותפקידי צוות). אם הרשימה ריקה — כל משתמש מחובר יכול (עד שמוסיפים מנהל ראשון).</div>
-    ${admin?`<div class="note" style="margin-top:8px">את/ה (<b dir="ltr">${esc(myEmail())}</b>) מנהל/ת בעיר הזו כי: <b>${esc(adminWhy())}</b>.${/מרשם|מרכז/.test(adminWhy())?` הסרה — רק במרשם המרכזי (מסך "ערים ומשתמשים"), לא כאן.`:""}</div>`:""}
+    ${admin?`<div class="note" style="margin-top:8px">את/ה (<b dir="ltr">${esc(myEmail())}</b>) מנהל/ת בעיר הזו כי: <b>${esc(adminWhy())}</b>.${/מרשם|מרכז/.test(adminWhy())?` שינוי — רק במרכזי (ערים ומשתמשים), לא כאן.`:""}${isHQ()?` <a href="management.html" target="_blank" rel="noopener">לניהול ערים ומשתמשים במרכזי ↗</a>`:""}</div>`:""}
     <div id="admins-box"></div>
     <div id="admins-other" style="margin-top:10px"></div>
     ${admin?`<div class="row" style="margin-top:10px">
@@ -16700,11 +16567,6 @@ function viewSettings(root){
     </div>`:""}
   </div>
 
-  ${isHQ()?`<div class="panel" data-set="cities">
-    <h2>ערים ומשתמשים — המרשם המרכזי</h2>
-    <div class="sub">כאן המשרד הראשי פותח את התוכנה לערים נוספות וקובע מי רואה איזו עיר. כל עיר מקבלת מאגר נתונים משלה (תלמידים, גנים, צוות, שיבוץ) — נפרד לחלוטין מהערים האחרות. משתמש/ת רואה <b>רק</b> את הערים שסומנו לו/ה כאן; משתמש/ת <b>מרכז</b> רואה את כולן. ההרשאות נאכפות גם בשרת.</div>
-    <div id="org-box" style="margin-top:12px"><div class="hint">טוען…</div></div>
-  </div>`:""}
 
   ${admin?`<div class="panel" data-set="users">
     <h2>ניהול משתמשים</h2>
@@ -16773,7 +16635,6 @@ function viewSettings(root){
 
   renderAuthBox();
   renderInstallBox();
-  if(isHQ()) renderOrgPanel();
   $("#skin-new").onclick=()=>skinGo("new");
   $("#skin-old").onclick=()=>skinGo("old");
   writePresence(); refreshPresenceWidget(); renderActivityPanel(); // "מי מחובר עכשיו" + "יומן פעילות"
@@ -16932,7 +16793,7 @@ function viewSettings(root){
     const cityAdm=new Set(admins.map(x=>String(x).toLowerCase()));
     const others=[...effectiveAdmins()].filter(([e,w])=>w && !cityAdm.has(e));
     ao.innerHTML = others.length
-      ? `<div class="hint" style="margin-bottom:6px">מנהלים גם מכוח הגדרה אחרת (שינוי — במרשם המרכזי, לא כאן):</div><div class="row" style="gap:8px;flex-wrap:wrap">${others.map(([e,w])=>`<span class="pill neutral" style="padding:6px 12px" title="${esc(w)}"><span dir="ltr">${esc(e)}</span> · ${esc(w)}</span>`).join("")}</div>`
+      ? `<div class="hint" style="margin-bottom:6px">מנהלים גם מכוח הגדרה אחרת (שינוי — במרכזי, במסך "ערים ומשתמשים"):</div><div class="row" style="gap:8px;flex-wrap:wrap">${others.map(([e,w])=>`<span class="pill neutral" style="padding:6px 12px" title="${esc(w)}"><span dir="ltr">${esc(e)}</span> · ${esc(w)}</span>`).join("")}</div>`
       : "";
   }
   if(admin){
