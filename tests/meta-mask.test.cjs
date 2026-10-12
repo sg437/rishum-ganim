@@ -31,7 +31,7 @@ function grab(decl){
   throw new Error('סוגריים לא מאוזנים אחרי: ' + decl);
 }
 const line = d => { const a = SRC.indexOf(d); if(a<0) throw new Error('לא נמצא: '+d); return SRC.slice(a, SRC.indexOf('\n', a)); };
-const code = [ line('const META_PRIV_FIELDS'), grab('function metaForWrite('), grab('function metaWriteSpec('), line("function _restFieldPath(")+"\n"+line("  return segs.map")+"\n}", line('function _restMaskQuery(') ].join('\n');
+const code = [ line('const META_PRIV_FIELDS'), line('const _privDirty'), line('function markPrivDirty('), grab('function metaForWrite('), grab('function metaWriteSpec('), line("function _restFieldPath(")+"\n"+line("  return segs.map")+"\n}", line('function _restMaskQuery(') ].join('\n');
 const ME = 'rivka.c@example.com';
 const ctx = { Date, Object, Array, String, RegExp, encodeURIComponent, admin:false,
   DB:{ activeYear:'2026', years:['2026','2025'], municipality:{a:1}, historical:{}, historicalGans:{}, assignments:{x:1}, tzGroups:{},
@@ -39,12 +39,13 @@ const ctx = { Date, Object, Array, String, RegExp, encodeURIComponent, admin:fal
                   userActivity:{ [ME]:{ ts:1 }, 'other@example.com':{ ts:2 } } } },
   isAdmin(){ return ctx.admin; }, myEmail(){ return ME; } };
 vm.createContext(ctx);
-vm.runInContext(code + ';this.metaWriteSpec=metaWriteSpec; this._restMaskQuery=_restMaskQuery; this._restFieldPath=_restFieldPath;', ctx);
+vm.runInContext(code + ';this.markPrivDirty=markPrivDirty; this._privDirty=_privDirty; this.metaWriteSpec=metaWriteSpec; this._restMaskQuery=_restMaskQuery; this._restFieldPath=_restFieldPath;', ctx);
 let pass=0, fail=0; const check=(n,c,d)=>{ if(c){pass++;console.log('  ✓ '+n);} else {fail++;console.log('  ✗ '+n+(d?'  → '+d:''));} };
 const key = p => p.join('/');
 const getAt = (o,p) => p.reduce((a,k)=> (a==null?undefined:a[k]), o);
 
 console.log('1) עובדת רגילה');
+ctx.markPrivDirty('admins'); // גם אם סומן — עובדת לא כותבת שדות הרשאה
 let sp = ctx.metaWriteSpec(); let keys = sp.paths.map(key);
 check('בלי שדות הרשאה', !keys.some(k=>/^settings\/(admins|allowedEmails|editScopes|userNames)$/.test(k)), keys.join(','));
 check('userActivity רק של עצמה', keys.includes('settings/userActivity/'+ME) && !keys.includes('settings/userActivity') && !keys.includes('settings/userActivity/other@example.com'));
@@ -53,9 +54,13 @@ check('שדות-על כן', ['activeYear','years','municipality','assignments','
 check('appLogo לא נכתב ל-meta (נשמר ב-branding)', !keys.includes('settings/appLogo'));
 check('כל נתיב קיים בנתונים', sp.paths.every(p=>getAt(sp.data,p)!==undefined));
 
+ctx._privDirty.clear();
 console.log('2) מנהל/ת');
 ctx.admin = true; sp = ctx.metaWriteSpec(); keys = sp.paths.map(key);
-check('כולל שדות הרשאה', ['settings/admins','settings/allowedEmails','settings/editScopes','settings/userNames'].every(k=>keys.includes(k)));
+check('מנהל/ת ששמר/ה תיק — לא כותב/ת רשימות הרשאה (עותק ישן לא מוחק אף אחד)', !keys.some(k=>/^settings\/(admins|allowedEmails|editScopes|userNames)$/.test(k)), keys.join(','));
+['admins','allowedEmails','editScopes','userNames'].forEach(f=>ctx.markPrivDirty(f));
+sp = ctx.metaWriteSpec(); keys = sp.paths.map(key);
+check('מנהל/ת ששינה/תה הרשאות — כולל שדות הרשאה', ['settings/admins','settings/allowedEmails','settings/editScopes','settings/userNames'].every(k=>keys.includes(k)));
 check('גם למנהל — userActivity רק של עצמו', keys.includes('settings/userActivity/'+ME) && !keys.includes('settings/userActivity'));
 check('כל נתיב קיים בנתונים', sp.paths.every(p=>getAt(sp.data,p)!==undefined));
 
