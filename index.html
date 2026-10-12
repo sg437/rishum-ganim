@@ -1922,6 +1922,7 @@ const META_PRIV_FIELDS = ["admins","allowedEmails","editScopes","userNames"];
    בלי זה, כל שמירה של מנהל/ת (גם עריכת תיק) כתבה את רשימות ההרשאות מהעותק שבמכשיר —
    ומנהל/ת עם עותק ישן מחק/ה בשקט עובדות שנוספו בינתיים, והשרת התחיל לדחות אותן. */
 const _privDirty = new Set();
+let _metaBase = null; // ה-meta שממנו נבנה DB האחרון (rebuildDB) — בסיס לזיהוי מה שונה מקומית
 function markPrivDirty(field){ if(META_PRIV_FIELDS.includes(field)) _privDirty.add(field); }
 function metaWriteSpec(){
   const data=metaForWrite(), st=data.settings||{}, admin=isAdmin(), em=myEmail();
@@ -1932,6 +1933,22 @@ function metaWriteSpec(){
     if(k==="userActivity"){ if(em && st.userActivity && st.userActivity[em]) paths.push(["settings","userActivity",em]); continue; }
     if(META_PRIV_FIELDS.includes(k) && !(admin && _privDirty.has(k))) continue;
     paths.push(["settings",k]);
+  }
+  // רק מה שהמשתמש/ת שינה/תה במכשיר הזה — מול ה-meta שממנו נבנה המסך (_metaBase). בלי זה כל
+  // שמירה (גם עריכת תיק) כתבה את *כל* ההגדרות מהעותק המקומי — ועותק ישן מחק בשקט פנייה חדשה,
+  // יעד גנים, מייל לפניות וכו'. השוואה לבסיס (ולא למצב השרת העדכני) — כי גם כשהשרת התקדם
+  // בינתיים, מה שלא נגענו בו לא שלנו לכתוב.
+  const server=_metaBase;
+  if(server){
+    const at=(o,p)=>p.reduce((a,k)=>(a==null?undefined:a[k]), o);
+    const same=(x,y)=>JSON.stringify(x===undefined?null:x)===JSON.stringify(y===undefined?null:y);
+    const kept=paths.filter(p=>{
+      const k=p.join(".");
+      if(k==="updatedAt"||k==="updatedBy") return true;                  // חותמת השמירה — תמיד
+      if(p[0]==="settings" && META_PRIV_FIELDS.includes(p[1])) return true; // שינוי הרשאות מכוון (dirty)
+      return !same(at(data,p), at(server,p));
+    });
+    return { data, paths:kept };
   }
   return { data, paths };
 }
@@ -2363,6 +2380,7 @@ function getEduPref(){ try{ const v=localStorage.getItem("rg-edu"); return v===n
 function setEduPref(v){ try{ if(v===null) localStorage.removeItem("rg-edu"); else localStorage.setItem("rg-edu", v); }catch(_){} }
 function rebuildDB(docsMap){
   const meta=docsMap.get("meta")||{};
+  _metaBase = docsMap.has("meta") ? JSON.parse(JSON.stringify(meta)) : null;
   DB.years = (meta.years&&meta.years.length)? meta.years : DEFAULT_YEARS.slice();
   const pref=getYearPref();
   DB.activeYear = (pref && DB.years.includes(pref)) ? pref
@@ -3071,6 +3089,26 @@ function isAdmin(){
   const admins=(DB.settings&&DB.settings.admins)||[];
   if(!admins.length) return false;                  // אין מנהלים מוגדרים — רק הבעלים (לא כל מחובר)
   return admins.map(x=>String(x).toLowerCase()).includes(em);
+}
+/* למה המשתמש/ת מנהל/ת בעיר הזו — יש ארבעה מקורות, ומסך "מנהלי מערכת" של העיר מציג רק
+   אחד מהם (settings.admins). בלי זה נראה שחשבון "שאינו מנהל" מנהל משתמשים. ""=אינו מנהל.
+   (זהה ל-isAdmin ולכללי השרת: בעלים · מרכז · מנהל/ת עיר במרשם · רשימת מנהלי העיר) */
+function adminWhy(email){
+  const em=String(email==null?myEmail():email).toLowerCase(); if(!em) return "";
+  if(isOwnerEmail(em)) return "בעלי המערכת (קבוע בקוד)";
+  if(isHQ(em)) return "משתמש/ת מרכז במרשם המרכזי";
+  if(CITY && cityRole(CITY.id, em)==="admin") return "\"מנהל/ת עיר\" במרשם המרכזי";
+  const admins=((DB.settings&&DB.settings.admins)||[]).map(x=>String(x).toLowerCase());
+  return admins.includes(em) ? "ברשימת מנהלי המערכת של העיר" : "";
+}
+/* כל מי שמנהל/ת את העיר הזו בפועל, עם המקור — לתצוגה (לא רק רשימת העיר) */
+function effectiveAdmins(){
+  const out=new Map();
+  OWNER_EMAILS.forEach(e=>out.set(e, adminWhy(e)));
+  const u=(ORG&&ORG.users)||{};
+  for(const k in u){ const e=String(k).toLowerCase(), w=adminWhy(e); if(w) out.set(e, w); }
+  ((DB.settings&&DB.settings.admins)||[]).forEach(x=>{ const e=String(x).toLowerCase(); if(!out.has(e)) out.set(e, adminWhy(e)); });
+  return out;
 }
 /* ---------- הרשאת עריכה לפי חינוך (הסתרה בממשק — סעיף 7) ----------
    DB.settings.editScopes[email] = "רגיל" | 'ח"מ' → המשתמש רשאי לערוך רק חינוך זה
@@ -16636,7 +16674,9 @@ function viewSettings(root){
   <div class="panel" data-set="admins">
     <h2>מנהלי מערכת</h2>
     <div class="sub">רק כתובות אימייל שברשימה זו יכולות לשנות את הגדרות המערכת (מיתוג, שנים, מעבר שנה, נתונים היסטוריים, יעד גנים, גילי ילדים ותפקידי צוות). אם הרשימה ריקה — כל משתמש מחובר יכול (עד שמוסיפים מנהל ראשון).</div>
+    ${admin?`<div class="note" style="margin-top:8px">את/ה (<b dir="ltr">${esc(myEmail())}</b>) מנהל/ת בעיר הזו כי: <b>${esc(adminWhy())}</b>.${/מרשם|מרכז/.test(adminWhy())?` הסרה — רק במרשם המרכזי (מסך "ערים ומשתמשים"), לא כאן.`:""}</div>`:""}
     <div id="admins-box"></div>
+    <div id="admins-other" style="margin-top:10px"></div>
     ${admin?`<div class="row" style="margin-top:10px">
       <div class="field grow"><label>הוספת מנהל (אימייל)</label><input id="new-admin" type="email" inputmode="email" placeholder="name@example.com"></div>
       <button class="btn" id="addAdmin" style="align-self:end">הוסף מנהל</button>
@@ -16743,6 +16783,7 @@ function viewSettings(root){
       const rows=[...all].sort();
       if(!rows.length){ usersBox.innerHTML=`<div class="hint">עדיין אין משתמשים מורשים. הוסף/י כתובת Google למעלה.</div>`; return; }
       const badge=em=> adminSet.has(em) ? '<span class="pill ok">מנהל</span>'
+                     : adminWhy(em) ? `<span class="pill ok" title="שינוי — במרשם המרכזי">מנהל · ${esc(adminWhy(em))}</span>`
                      : allowedSet.has(em) ? '<span class="pill neutral">מורשה</span>'
                      : '<span class="pill neutral" title="נכנס/ה בעבר וטרם אושר/ה במפורש ברשימה">ערך/ה בעבר</span>';
       const scopeCell=(em,isAdm)=>{
@@ -16867,6 +16908,16 @@ function viewSettings(root){
   ab.innerHTML = admins.length
     ? `<div class="row" style="gap:8px">${admins.map(e=>`<span class="pill ok" style="padding:6px 12px">${esc(e)} ${admin?`<button class="btn ghost sm" data-delA="${esc(e)}" style="padding:0 6px;margin-inline-start:6px">✕</button>`:''}</span>`).join("")}</div>`
     : `<div class="hint">אין עדיין מנהלים מוגדרים — כל משתמש מחובר יכול לשנות הגדרות. מומלץ להוסיף את עצמך כמנהל.</div>`;
+  // מנהלים שמקורם *אינו* רשימת העיר — בעלים / מרכז / "מנהל/ת עיר" במרשם. מוצגים כאן כדי שלא יהיה
+  // מנהל "נסתר": מי שאינו ברשימה למעלה ובכל זאת מנהל/ת משתמשים — רואים כאן למה.
+  const ao=$("#admins-other");
+  if(ao){
+    const cityAdm=new Set(admins.map(x=>String(x).toLowerCase()));
+    const others=[...effectiveAdmins()].filter(([e,w])=>w && !cityAdm.has(e));
+    ao.innerHTML = others.length
+      ? `<div class="hint" style="margin-bottom:6px">מנהלים גם מכוח הגדרה אחרת (שינוי — במרשם המרכזי, לא כאן):</div><div class="row" style="gap:8px;flex-wrap:wrap">${others.map(([e,w])=>`<span class="pill neutral" style="padding:6px 12px" title="${esc(w)}"><span dir="ltr">${esc(e)}</span> · ${esc(w)}</span>`).join("")}</div>`
+      : "";
+  }
   if(admin){
     ab.querySelectorAll("[data-delA]").forEach(b=>b.onclick=()=>{ const e=b.dataset.dela;
       if(admins.length===1 && !confirm("זהו המנהל האחרון. לאחר הסרתו כל משתמש יוכל לשנות הגדרות. להמשיך?")) return;
