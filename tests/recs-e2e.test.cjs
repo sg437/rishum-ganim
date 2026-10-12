@@ -92,11 +92,14 @@ const SEED={
   'app/management': { management:[ { id:'m1', name:'מנהלת' } ] },
 };
 const PORT=8763;
+/* השרת מגיש רק את הקבצים שהבדיקה כתבה — מרשימה שנבנית מראש, לא מנתיב שבבקשה */
+const FILES=new Map(['app.html','noop.js','ui-lab.css','ui-lab.js','fbstub.js'].map(n=>[ '/'+n, {
+  body:fs.readFileSync(path.join(TMP,n)),
+  type:n.endsWith('.js')?'text/javascript':n.endsWith('.html')?'text/html; charset=utf-8':'text/css' }]));
 const server=require('http').createServer((req,res)=>{
-  const f=path.join(TMP, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/,''));
-  try{ const body=fs.readFileSync(f);
-    res.writeHead(200,{'Content-Type': f.endsWith('.js')?'text/javascript':f.endsWith('.html')?'text/html; charset=utf-8':'text/plain'}); res.end(body);
-  }catch(e){ res.writeHead(404); res.end('nf'); }
+  const f=FILES.get(String(req.url||'').split('?')[0]);
+  if(!f){ res.writeHead(404); return res.end('nf'); }
+  res.writeHead(200,{'Content-Type':f.type}); res.end(f.body);
 });
 let pass=0, fail=0; const check=(n,c,d)=>{ if(c){pass++;console.log('  ✓ '+n);} else {fail++;console.log('  ✗ '+n+(d?'  → '+d:''));} };
 (async()=>{
