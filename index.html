@@ -1381,7 +1381,7 @@ function setSyncStatus(state){
   if(state==="synced"){
     clearTimeout(_offlineTimer); _offlineTimer=null; _offlineDismissed=false; hideOfflineBanner();
   } else {
-    if(!_offlineTimer && !_offlineDismissed) _offlineTimer=setTimeout(showOfflineBanner, 12000);
+    if(!_offlineTimer && !_offlineDismissed) _offlineTimer=setTimeout(maybeShowOfflineBanner, OFFLINE_BANNER_DELAY_MS);
   }
   // שומר-סף לכתיבה תקועה: כשהקריאה מהשרת עובדת (serverConfirmed) אך "מסנכרן" לא מתחלף ל"נשמר בענן"
   // תוך ~15 שניות — סימן שערוץ הכתיבה של ה-SDK חסום (רשת/פרוקסי) בעוד הקריאה עוברת. עוברים אוטומטית
@@ -1550,6 +1550,21 @@ if(typeof window!=="undefined") window.addEventListener("online", ()=>{
   setTimeout(()=>verifyFreshness("הרשת חזרה"), 3000);
 });
 function hideOfflineBanner(){ const b=$("#offlineBanner"); if(b) b.style.display="none"; }
+/* הבאנר האדום הוא לתקלה אמיתית, לא לרגע. בפתיחה, בחיבור מחדש (בקרת האמת), או כשהרשת
+   מגמגמת לכמה שניות — המכשיר עובר "לא מחובר"/"מסנכרן" וחוזר לבד. 12 שניות הקפיצו את הבאנר
+   על כל רגע כזה. עכשיו: רק אחרי 45 שניות רצופות, ורק אם המצב עדיין לא "נשמר בענן" ולא
+   באמצע חיבור מחדש. החיווי הקטן בתפריט ממשיך להראות את המצב בזמן אמת.
+   דחייה מהשרת (הרשאות / מסמך מלא) — מוצגת מיד, בנפרד (ראו runPush ומאזין הנתונים). */
+const OFFLINE_BANNER_DELAY_MS = 45000;
+let _reconnecting = false;
+function maybeShowOfflineBanner(){
+  _offlineTimer=null;
+  if(_syncState==="synced" || _reconnecting || _offlineDismissed) return;
+  if(typeof document!=="undefined" && document.visibilityState==="hidden"){ // ברקע אין מי שיראה — נבדוק שוב כשיחזרו
+    _offlineTimer=setTimeout(maybeShowOfflineBanner, 5000); return;
+  }
+  showOfflineBanner();
+}
 function showOfflineBanner(){
   const b=$("#offlineBanner"); if(!b) return;
   // מה באמת קרה: כשל *כתיבה* מוסבר גובר על ההנחה הכללית של "אין רשת". השלבים של
@@ -2143,7 +2158,7 @@ async function runPush(){
     // שגיאה שאינה חולפת (מסמך מלא / אין הרשאה) לא תיפתר בניסיון-חוזר שקט — אומרים אותה מיד.
     // פעם אחת לכל שגיאה: הניסיון-החוזר רץ שוב ושוב, ואין טעם להקפיץ את אותה הודעה כל 30ש'.
     const sig=lastSaveError.code+"|"+lastSaveError.message;
-    if(saveErrIsHard() && sig!==_lastSaveErrShown){ _lastSaveErrShown=sig; toast("השמירה נדחתה: "+lastSaveError.message, 8000); }
+    if(saveErrIsHard() && sig!==_lastSaveErrShown){ _lastSaveErrShown=sig; _offlineDismissed=false; showOfflineBanner(); } // דחייה אמיתית — לא תיפתר לבד, אומרים מיד
     else if(!RESILIENT_SAVE){ setSyncStatus("error"); toast("שגיאת שמירה לענן — בדוק/י חיבור"); }
   }
   finally{
@@ -5288,8 +5303,10 @@ function _localUpdatedAt(){ const m=cloudDocs.get("meta"); return +((m&&m.update
 /* ניתוק וחיבור מחדש של רשת Firestore — מקים חיבור חדש במקום התקוע, בלי לאבד את המאזין */
 function _raceTimeout(p, ms){ let t; return Promise.race([p, new Promise((_,rej)=>{ t=setTimeout(()=>rej(new Error("timeout")), ms); })]).finally(()=>clearTimeout(t)); }
 async function _reconnectFirestore(){
+  _reconnecting=true; // ה"לא מחובר" הרגעי שבזמן החיבור מחדש הוא מכוון — לא סיבה לבאנר
   try{ await _raceTimeout(disableNetwork(db), 8000); }catch(_){}
   try{ await _raceTimeout(enableNetwork(db), 8000); }catch(_){}
+  setTimeout(()=>{ _reconnecting=false; }, 10000);
 }
 const _sleep = ms => new Promise(r=>setTimeout(r, ms));
 async function verifyFreshness(reason){
@@ -5308,7 +5325,7 @@ async function verifyFreshness(reason){
     // עדיין מאחרים — המאזין החי תקוע. ריפוי שלב א': חיבור מחדש.
     _freshHeals++;
     if(TEST_DB_MODE) dlog("🩹 המאזין החי מאחר אחרי השרת — מחבר מחדש");
-    toast("מעדכן נתונים מהשרת…");
+    // בשקט — הריפוי אוטומטי, אין למשתמש/ת מה לעשות
     await _reconnectFirestore();
     // שלב ב': אם גם אחרי חיבור מחדש השרת עדיין מקדים — טעינה ישירה דרך REST
     setTimeout(()=>{ if(currentUser && !restMode && _localUpdatedAt()<serverAt){ if(TEST_DB_MODE) dlog("🩹 עדיין מאחר — טוען דרך REST"); loadViaRest(); } }, FRESH_REST_AFTER_MS);

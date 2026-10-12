@@ -84,7 +84,7 @@ const setLocal = at => ctx.cloudDocs.set('meta', { updatedAt: at });
   await ctx.verifyFreshness('t');
   check('נשאל השרת ישירות (REST)', log.includes('rest-get'));
   check('חיבור מחדש של Firestore', log.includes('disable') && log.includes('enable'));
-  check('המשתמש/ת רואה "מעדכן נתונים מהשרת…"', log.includes('toast'));
+  check('הריפוי שקט — בלי הודעה קופצת', !log.includes('toast'));
   check('עוד לא REST (מחכים לחיבור מחדש)', !log.includes('loadViaRest'));
   await sleep(200);
   check('עדיין מאחר אחרי החיבור מחדש → טעינה ישירה דרך REST', log.includes('loadViaRest'));
