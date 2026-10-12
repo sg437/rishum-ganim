@@ -64,7 +64,7 @@ const ctx = {
   recordPending(){}, dlog(){}, toast(){}, saveErrIsHard(){ return false; },
   setSyncStatus(s){ log.push('status:'+s); }, rebuildDB(){}, applyPending(){}, applyGuard(){},
   refreshPendingState(){ log.push('refreshed'); }, armConfirmSafety(){}, scheduleRetry(){ log.push('retry'); },
-  route(){}, $:()=>({ classList:{ contains:()=>false } }),
+  route(){}, rerenderKeepScroll(){}, $:()=>({ classList:{ contains:()=>false } }),
   pendingRender:false,
 };
 // pushAll המדומה: SDK או REST, לפי _sdkStuckUntil (כמו ב-index.html)
