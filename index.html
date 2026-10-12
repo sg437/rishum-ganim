@@ -23,6 +23,15 @@
      נבנו במדויק לפי מה שהתוכנה טוענת. ⚠️ ספרייה/שירות חיצוני חדש → להוסיף כאן, אחרת ייחסם.
      הערה: frame-ancestors (מניעת הטמעה ב-iframe) אינו נתמך ב-meta — מטופל ע"י frame-buster למטה. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.google.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://unpkg.com https://*.tile.openstreetmap.org; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseappcheck.googleapis.com https://script.google.com https://script.googleusercontent.com https://nominatim.openstreetmap.org https://www.google.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://apis.google.com https://www.google.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<!-- כתובת אחת לכולם: העותק ב-Cloudflare (rishum-ganim.pages.dev) לא מתעדכן באופן אמין (פריסות נכשלות),
+     ומי שעובד/ת דרכו מריץ/ה גרסה ישנה. מעבירים לכתובת החיה ב-GitHub Pages — אבל עריכות שטרם עלו
+     לענן שמורות בדפדפן *לפי כתובת*, ובכתובת החדשה הן לא ייראו. לכן: אם יש כאלה, התוכנה עולה כרגיל,
+     מעלה אותן, ורק אז עוברת (ראו refreshPendingState). -->
+<script>(function(){try{if(location.hostname!=="rishum-ganim.pages.dev")return;
+var to="https://sg437.github.io/rishum-ganim/"+location.pathname.replace(/^\//,"")+location.search+location.hash,p=null;
+try{p=JSON.parse(localStorage.getItem("rg-pending-v1")||"null");}catch(e){}
+if(p&&p.items&&p.items.length){window.__RG_MOVE_TO=to;return;}
+location.replace(to);}catch(e){}})();</script>
 <!-- הגנת clickjacking (תחליף ל-X-Frame-Options שאי אפשר לשלוח ב-GitHub Pages):
      אם הדף נטען בתוך iframe של אתר אחר — משחזרים אותו לחלון עליון. -->
 <script>try{if(self!==top){top.location=self.location;}}catch(e){document.documentElement.style.display="none";}</script>
@@ -1541,7 +1550,17 @@ function armConfirmSafety(){
 /* אחרי כל סנאפשוט/כתיבה: אם התנקו כל הממתינים — סיים מצב "טרם נשמר" והצג "נשמר". */
 function refreshPendingState(fromCache){
   if(!RESILIENT_SAVE) return;
-  if(!_pending.size){ _saveFailed=false; _pendingRestored=0; _pendingForget(); cancelRetry(); clearTimeout(_confirmTimer); _confirmTimer=null; setSyncStatus(fromCache?"offline":"synced"); }
+  if(!_pending.size){ _saveFailed=false; _pendingRestored=0; _pendingForget(); cancelRetry(); clearTimeout(_confirmTimer); _confirmTimer=null; setSyncStatus(fromCache?"offline":"synced"); _maybeMoveHost(); }
+}
+/* מעבר מהעותק הישן (rishum-ganim.pages.dev) לכתובת החיה — רק אחרי שהשרת אישר ואין עריכה שממתינה
+   (גם לא כזו שטרם שוחזרה מהדפדפן), כדי שאף עריכה לא תישאר "תקועה" בכתובת הישנה. */
+function _maybeMoveHost(){
+  const to=(typeof window!=="undefined") && window.__RG_MOVE_TO; if(!to || !serverConfirmed || _pending.size) return;
+  let left=false; try{ left=!!localStorage.getItem(PENDING_LS_KEY); }catch(_){}
+  if(left) return;
+  window.__RG_MOVE_TO=null;
+  try{ toast("השינויים עלו לענן ✓ עוברים לכתובת הקבועה של המערכת…", 3000); }catch(_){}
+  setTimeout(()=>location.replace(to), 1800);
 }
 /* כשהרשת חוזרת (מצב-טיסה כובה, סלולרי חזר) — נסה מיד לשמור את הממתינים. */
 if(typeof window!=="undefined") window.addEventListener("online", ()=>{
