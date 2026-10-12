@@ -767,7 +767,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendP
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
          doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence, writeBatch, runTransaction,
-         disableNetwork, enableNetwork }
+         disableNetwork, enableNetwork, FieldPath }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-check.js";
@@ -1344,7 +1344,7 @@ function saveErrHe(){
   const code=lastSaveError.code||"", msg=lastSaveError.message||"";
   const big=/rg\/doc-too-large|invalid-argument|maximum|too large|exceeds/i.test(code+" "+msg);
   if(big) return `<b style="color:var(--bad)">המסמך בענן מלא — לא בעיית רשת.</b> ${esc(msg)}`;
-  if(/permission-denied/i.test(code)) return `<b style="color:var(--bad)">אין הרשאת כתיבה לחשבון הזה.</b> יש לפנות למנהל כדי להוסיף את המשתמש להרשאות.`;
+  if(/permission-denied/i.test(code)) return `<b style="color:var(--bad)">השרת דחה את הכתיבה (הרשאות).</b> ${_appCheckErr?`אימות האפליקציה (App Check) נכשל בדפדפן זה: ${esc(_appCheckErr)} — נסה/י לכבות חוסם פרסומות/מצב פרטי או דפדפן אחר. `:""}אם זה חוזר — לפנות למנהל עם צילום מסך של "בדיקת חיבור".`;
   if(/unauthenticated/i.test(code)) return `<b style="color:var(--bad)">ההתחברות פגה.</b> יש להתנתק ולהתחבר מחדש.`;
   if(/resource-exhausted/i.test(code)) return `<b style="color:var(--bad)">מכסת הכתיבה של הפרויקט נגמרה להיום.</b> יש לפנות למנהל.`;
   if(/unavailable|deadline-exceeded|failed to fetch|network/i.test(code+" "+msg))
@@ -1690,10 +1690,11 @@ function encFsVal(v){
 function encFsFields(obj){ const f={}; for(const k in obj){ if(obj[k]!==undefined) f[k]=encFsVal(obj[k]); } return f; }
 /* כותרות לבקשת REST: אסימון התחברות + אסימון App Check (כשהוא פעיל בפרויקט, בקשה בלעדיו נדחית).
    כשל בהשגת אסימון App Check לא חוסם — הבקשה יוצאת בלעדיו, כמו קודם. */
+let _appCheckErr=""; // כשל אחרון בהשגת אסימון App Check (לאבחון "אין הרשאה" שאינה הרשאה)
 async function _restHdr(json){
   const h={ Authorization:"Bearer "+(await currentUser.getIdToken()) };
   if(json) h["Content-Type"]="application/json";
-  if(appCheck){ try{ const t=await getAppCheckToken(appCheck, false); if(t&&t.token) h["X-Firebase-AppCheck"]=t.token; }catch(_){} }
+  if(appCheck){ try{ const t=await getAppCheckToken(appCheck, false); if(t&&t.token){ h["X-Firebase-AppCheck"]=t.token; _appCheckErr=""; } }catch(e){ _appCheckErr=String((e&&e.message)||e||"?"); } }
   return h;
 }
 /* מיזוג REST (מצב חלופי כשה-SDK חסום) — GET עם updateTime ואז PATCH מותנה */
@@ -1758,7 +1759,8 @@ async function mergePushRest(gen){
   const after=_captureBase();
   const base=cityRestBase()+"/";
   const hdr=await _restHdr(true);
-  const r=await fetch(base+"meta",{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(metaForWrite())}) }); if(!r.ok) throw new Error("write meta ("+r.status+")");
+  const ms=metaWriteSpec();
+  const r=await fetch(base+"meta?"+_restMaskQuery(ms.paths),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(ms.data)}) }); if(!r.ok) throw new Error("write meta ("+r.status+")");
   _pushProgress(gen);
   await _restMergeSimple(base,hdr,"gans","gans",DB.gans,_mergeBase.gan,gen);
   await _restMergeSimple(base,hdr,"staff","staff",DB.staff,_mergeBase.staff,gen);
@@ -1775,8 +1777,8 @@ async function pushAllRest(gen){
   const base=cityRestBase()+"/";
   const hdr=await _restHdr(true);
   const put=async(id,obj)=>{ const r=await fetch(base+encodeURIComponent(id),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(obj)}) }); if(!r.ok) throw new Error("write "+id+" ("+r.status+")"); };
-  const meta=metaForWrite();
-  await put("meta", meta);
+  { const ms=metaWriteSpec();
+    const r=await fetch(base+"meta?"+_restMaskQuery(ms.paths),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(ms.data)}) }); if(!r.ok) throw new Error("write meta ("+r.status+")"); }
   await put("gans", { gans:DB.gans.slice() });
   await put("management", { management:DB.management.slice() });
   await put("staff", { staff:DB.staff.slice() });
@@ -1899,6 +1901,40 @@ function metaForWrite(){
   return { activeYear:DB.activeYear, years:DB.years.slice(), municipality:DB.municipality, historical:DB.historical, historicalGans:DB.historicalGans, settings:s, assignments:DB.assignments, tzGroups:DB.tzGroups,
            updatedAt:Date.now(), updatedBy:myEmail() };
 }
+/* ============================================================
+   כתיבת meta לפי שדות (field mask) — ולא דריסה של כל המסמך
+   ------------------------------------------------------------
+   התקלה: save() כתב את *כל* מסמך meta, כולל settings שלם, מהעותק שבמכשיר.
+   שתי תוצאות הרסניות:
+     • עובדת רגילה שלחה גם admins/allowedEmails/editScopes — מהעותק שלה. אם המנהל
+       שינה הרשאות אחרי שהיא נכנסה, העותק שלה ישן, כללי השרת (privUnchanged) דוחים
+       את הכתיבה: "אין הרשאת כתיבה לחשבון הזה" — וזה חוזר בכל ניסיון, כי הרשומות
+       שלה נכתבות רק אחרי meta.
+     • settings.userActivity נדרס כולו מהעותק במכשיר — ומחק את הרישום של עובדות
+       אחרות. מי שמוכרת לשרת רק דרך userActivity איבדה כך את ההרשאה שלה.
+       כך תקלה אצל אחת גוררת תקלה אצל אחרות.
+   הפתרון: כל כתיבת meta מצהירה בדיוק אילו שדות היא כותבת. השדות הרגישים נכתבים
+   רק ע"י מנהל/ת; userActivity — רק הרשומה של המשתמש/ת עצמו/ה; שאר השדות — כרגיל.
+   השרת ממזג את השאר מהמסמך הקיים, ו-privUnchanged תמיד מתקיים לעובדת רגילה.
+   SDK: setDoc(..., {mergeFields}) · REST: updateMask. נבדק ב-tests/meta-mask.test.cjs. */
+const META_PRIV_FIELDS = ["admins","allowedEmails","editScopes","userNames"];
+function metaWriteSpec(){
+  const data=metaForWrite(), st=data.settings||{}, admin=isAdmin(), em=myEmail();
+  const paths=[];
+  for(const k in data){ if(k!=="settings" && data[k]!==undefined) paths.push([k]); }
+  for(const k in st){
+    if(st[k]===undefined) continue;
+    if(k==="userActivity"){ if(em && st.userActivity && st.userActivity[em]) paths.push(["settings","userActivity",em]); continue; }
+    if(!admin && META_PRIV_FIELDS.includes(k)) continue;
+    paths.push(["settings",k]);
+  }
+  return { data, paths };
+}
+/* נתיב שדה לפורמט updateMask של REST: קטע שאינו מזהה פשוט (למשל אימייל) עטוף ב-backticks */
+function _restFieldPath(segs){
+  return segs.map(x=>/^[A-Za-z_][A-Za-z0-9_]*$/.test(x) ? x : "`"+String(x).replace(/\\/g,"\\\\").replace(/`/g,"\\`")+"`").join(".");
+}
+function _restMaskQuery(paths){ return paths.map(p=>"updateMask.fieldPaths="+encodeURIComponent(_restFieldPath(p))).join("&"); }
 function brandingFromSettings(){
   return { appTitle:(DB.settings&&DB.settings.appTitle)||"", appSubtitle:(DB.settings&&DB.settings.appSubtitle)||"", appLogo:(DB.settings&&DB.settings.appLogo)||"" };
 }
@@ -1938,8 +1974,8 @@ async function testCloudConnection(){
   let realOk=false, realMsg="";
   if(email){
     try{
-      const token=await currentUser.getIdToken();
-      const r=await fetch(cityRestBase()+"?pageSize=1",{ headers:{ Authorization:"Bearer "+token }, cache:"no-store" });
+      const hdr=await _restHdr(false);
+      const r=await fetch(cityRestBase()+"?pageSize=1",{ headers:hdr, cache:"no-store" });
       realOk=r.ok; realMsg=r.ok?"":("("+r.status+")");
     }catch(err){ realOk=false; realMsg=String((err&&err.message)||err); }
   }
@@ -1950,6 +1986,14 @@ async function testCloudConnection(){
   if(email){
     msg += realOk ? `בדיקת חיבור אמיתית לשרת: ${G("עברה ✓")} — הרשת תקינה${lastSaveError?", ולכן הכשל אינו נובע מהחיבור (ראו למטה)":", אפשר לשמור"}.<br>`
       : `בדיקת חיבור אמיתית לשרת: ${R("נכשלה")} ${esc(realMsg)} — ${netBlocked?"הרשת/הדפדפן חוסמים כרגע את החיבור ל-Firebase. עברו ל<b>רשת סלולרית</b> (או להיפך), כבו <b>VPN/סינון תוכן</b>, או נסו <b>דפדפן/מכשיר אחר</b>":"נסו שוב מאוחר יותר"}.<br>`;
+  }
+  if(email){ // אימות האפליקציה (App Check) — כשהוא אכוף בשרת, כשל כאן נראה כמו "אין הרשאה"
+    msg += appCheck ? (_appCheckErr ? `אימות אפליקציה (App Check): ${R("נכשל")} — ${esc(_appCheckErr)}. חוסם פרסומות / מצב פרטי / דפדפן ישן עלולים לגרום לזה.<br>` : `אימות אפליקציה (App Check): ${G("תקין ✓")}.<br>`) : "";
+    // סתירה בין המרשם המרכזי לרשימת העיר — הסיבה השקטה ל"אין הרשאה" אצל מי שמוגדר/ת מנהל/ת בעיר
+    const emL=email.toLowerCase(), regRole=(CITY&&cityRole(CITY.id, emL))||"", inAdmins=((DB.settings&&DB.settings.admins)||[]).some(x=>String(x).toLowerCase()===emL);
+    const regHe={admin:"מנהל/ת עיר",edit:"עריכה",view:"צפייה בלבד"}[regRole]||"לא רשום/ה";
+    msg += `במרשם המרכזי: <b>${regHe}</b> · ברשימת המנהלים של העיר: <b>${inAdmins?"כן":"לא"}</b>${regRole==="view"?` — ${R("המרשם המרכזי מגדיר צפייה בלבד, ולכן השרת דוחה כל שמירה")}, גם אם ברשימת העיר מופיע/ה כמנהל/ת. יש לתקן את התפקיד במרכזי.`:""}.<br>`;
+    msg += `תפקיד בחשבון זה: <b>${isAdmin()?"מנהל/ת":"עריכה"}</b>${lastSaveError&&/permission-denied/i.test(lastSaveError.code||"")?` · ${R("השרת דחה שמירה מסיבת הרשאות")} ב-${new Date(lastSaveError.ts).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})}`:""}.<br>`;
   }
   msg += reachable ? `רשת (בדיקה בסיסית): ${G("הדומיין נגיש")}.<br>` : `רשת (בדיקה בסיסית): ${R("הדומיין חסום")} — עבור/עברי לרשת אחרת (חבילת גלישה) או דפדפן אחר.<br>`;
   // נתונים שהתקבלו בפועל מהשרת — הקובע אם זו בעיית חיבור או בעיית בחירת שנה/סינון
@@ -2089,7 +2133,7 @@ async function runPush(){
       else { _saveFailed=true; setSyncStatus("error"); scheduleRetry(); } // כשל — החזק, סמן "טרם נשמר", נסה שוב אוטומטית
     }
     if(TEST_DB_MODE) dlog("■ runPush end: ok="+ok+" pending="+_pending.size+" saveFailed="+_saveFailed);
-    if($("#overlay").classList.contains("show")) pendingRender=true; else route();
+    if($("#overlay").classList.contains("show")) pendingRender=true; else rerenderKeepScroll();
   }
 }
 /* ============================================================
@@ -2269,7 +2313,8 @@ function _settleOrQueued(p, ms){
 }
 async function mergePushSDK(gen){
   const after=_captureBase();
-  const metaP=setDoc(cityDoc("meta"), metaForWrite()); // meta קטן — כתיבה רגילה (לא חוסמת את הרשומות)
+  const ms=metaWriteSpec();
+  const metaP=setDoc(cityDoc("meta"), ms.data, { mergeFields: ms.paths.map(p=>new FieldPath(...p)) }); // רק השדות שלנו — לא דורסים הרשאות/פעילות של אחרים
   metaP.catch(()=>{}); // נקלט ב-await למטה; מונע "unhandled rejection" אם נזנח
   await _txnMergeSimple("gans","gans",DB.gans,_mergeBase.gan,gen);
   await _txnMergeSimple("staff","staff",DB.staff,_mergeBase.staff,gen);
@@ -2290,10 +2335,10 @@ async function pushAll(gen){
   if(MERGE_WRITE){ await mergePushSDK(gen); return; } // מנעול נגד דריסה
   // ---- מסלול ישן (דריסה מלאה) — פעיל כשהמנעול כבוי ----
   // לוכדים תמונת מצב לפני כל await — כדי שרענון-רקע לא ידרוס את מה שאנחנו כותבים
-  const meta=metaForWrite();
+  const ms=metaWriteSpec();
   const gans=DB.gans.slice(), management=DB.management.slice(), staff=DB.staff.slice();
   const byYear={}; DB.students.forEach(s=>{ (byYear[s.year]=byYear[s.year]||[]).push(s); });
-  await setDoc(cityDoc("meta"), meta);
+  await setDoc(cityDoc("meta"), ms.data, { mergeFields: ms.paths.map(p=>new FieldPath(...p)) });
   await setDoc(cityDoc("gans"), { gans });
   await setDoc(cityDoc("management"), { management });
   await setDoc(cityDoc("staff"), { staff });
@@ -5076,6 +5121,14 @@ function route(){
    התחברות (Firebase Auth) + סנכרון נתונים (Firestore)
    ============================================================ */
 let pendingRender=false;
+/* בנייה מחדש של המסך *בלי* לקפוץ לראש הדף. route() מחליף את תוכן #view, והדפדפן
+   מאבד את מיקום הגלילה — כך כל סנאפשוט מהשרת או כל ניסיון-שמירה "זרק" את העובדת
+   לראש הדף באמצע העבודה. כאן שומרים את המיקום ומחזירים אותו מיד אחרי הבנייה. */
+function rerenderKeepScroll(){
+  const y=(typeof window!=="undefined" && window.scrollY)||0;
+  route();
+  if(y) try{ window.scrollTo(0,y); }catch(_){}
+}
 function firebaseErrHe(code){
   const m={
     "auth/invalid-email":"כתובת אימייל לא תקינה",
@@ -5314,7 +5367,7 @@ function startDataSync(){
     // כדי שדפדפן שאינו מצליח להגיע ל-Firestore לא ידחוף DB ריק וידרוס נתונים קיימים.
     if(!cloudDocs.has("meta") && !md.fromCache) save();
     if($("#overlay").classList.contains("show")){ pendingRender=true; }
-    else route();
+    else rerenderKeepScroll();
   }, err=>{ console.error(err); if(TEST_DB_MODE) dlog("❌ snapshot ERROR: "+(err&&(err.code||err.message)||"unknown")+" (pending="+_pending.size+")"); lastSyncError=(err&&(err.code||err.message))||"unknown"; setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
   // מעבר אוטומטי למצב חלופי (REST) אם חיבור ה-SDK לא הצליח למשוך נתונים תוך ~12 שניות
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);

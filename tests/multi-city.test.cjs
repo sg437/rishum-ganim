@@ -53,7 +53,7 @@ export const setDoc=(ref,data)=>{ window.__writes.push({path:ref.path,data}); re
 export const deleteDoc=P, terminate=P, clearIndexedDbPersistence=P, disableNetwork=P, enableNetwork=P;
 export const onSnapshot=(ref,opts,cb,err)=>{ window.__snaps=window.__snaps||[]; window.__snaps.push({path:ref.path, cb:typeof opts==='function'?opts:cb}); return noop; };
 export const writeBatch=()=>({set:noop,delete:noop,commit:P});
-export const runTransaction=P;
+export const runTransaction=P; export class FieldPath{ constructor(...s){ this.segments=s; } }
 export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; export const getToken=async()=>({token:""});
 `);
 /* המרכזי — בלי Firebase (הרשת חסומה): רק בודקים שהעיצוב של תוכנת הערים לא נטען */

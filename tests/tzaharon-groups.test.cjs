@@ -49,7 +49,7 @@ export const doc=()=>({}), setDoc=P, deleteDoc=P, collection=()=>({}), terminate
   clearIndexedDbPersistence=P, disableNetwork=P, enableNetwork=P;
 export const onSnapshot=()=>noop;
 export const writeBatch=()=>({set:noop,delete:noop,commit:P});
-export const runTransaction=P;
+export const runTransaction=P; export class FieldPath{ constructor(...s){ this.segments=s; } }
 export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; export const getToken=async()=>({token:""});
 `);
 const MIME = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8',
