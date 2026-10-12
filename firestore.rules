@@ -110,6 +110,13 @@ service cloud.firestore {
           && oldSettings(p).get('editScopes', {})    == newSettings().get('editScopes', {});
     }
 
+    /* ── מסמך לכל רשומה (RECS): אחרי שעיר עברה (meta.model == 'recs'), המסמכים הישנים —
+          students_<שנה>, gans, staff, management — הם גיבוי בלבד. גרסה ישנה של התוכנה
+          שעוד לא התעדכנה הייתה כותבת אליהם עריכה שאף אחד לא יראה; חסימה כאן מחזירה לה
+          שגיאה, והעריכה נשמרת אצלה ועולה במבנה החדש אחרי העדכון האוטומטי. ── */
+    function legacyListDoc(docId) { return docId.matches('students_.*') || docId in ['gans', 'staff', 'management']; }
+    function modelIsRecs(p)       { return exists(p) && get(p).data.get('model', '') == 'recs'; }
+
     /* ── המרשם המרכזי: כל מי שמוכר למערכת קורא (כדי לדעת מהן הערים שלו);
           כותבים רק בעלים ומרכז. ─────────────────────────────────────────── */
     match /org/meta {
@@ -136,7 +143,8 @@ service cloud.firestore {
     }
     match /app/{docId} {
       allow read:  if homeAllowed();
-      allow write: if homeCanWrite() && docId != 'meta';
+      allow write: if homeCanWrite() && docId != 'meta'
+                   && !(legacyListDoc(docId) && modelIsRecs(homeMetaPath()));
     }
 
     /* ── ערים נוספות: cities/<cityId>/app/* — אותו מבנה, בידוד מלא בין ערים ── */
@@ -150,7 +158,8 @@ service cloud.firestore {
     }
     match /cities/{cityId}/app/{docId} {
       allow read:  if cityAllowed(cityId);
-      allow write: if cityCanWrite(cityId) && docId != 'meta';
+      allow write: if cityCanWrite(cityId) && docId != 'meta'
+                   && !(legacyListDoc(docId) && modelIsRecs(cityMetaPath(cityId)));
     }
 
     // כל השאר חסום כברירת מחדל

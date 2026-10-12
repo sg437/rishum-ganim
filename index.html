@@ -776,7 +776,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendP
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
          doc, setDoc, deleteDoc, onSnapshot, collection, terminate, clearIndexedDbPersistence, writeBatch, runTransaction,
-         disableNetwork, enableNetwork, FieldPath }
+         disableNetwork, enableNetwork, FieldPath, getDocsFromServer }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken }
   from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-check.js";
@@ -1321,6 +1321,7 @@ const DOC_FULL_HOWTO = 'כל תלמידות השנה נשמרות במסמך א�
 /* אזהרה מקדימה פעם אחת לטעינה, לפני שהתקרה נהפכת לכשל-שמירה מסתורי */
 let _docFullWarned=false;
 function warnIfYearDocNearFull(){
+  if(RECS) return; // במבנה החדש אין מסמך-שנה ואין תקרה
   let u; try{ u=studentsDocUsage(); }catch(_){ return; }
   if(u.pct<FS_DOC_WARN || _docFullWarned) return;
   _docFullWarned=true;
@@ -1404,6 +1405,7 @@ function setSyncStatus(state){
   }
 }
 let _offlineTimer=null, _offlineDismissed=false, _pendingWatch=null, _syncState="";
+let _fsPendingWrites=false, _fsPendingSince=0; // כתיבות שבתור של Firestore וטרם אושרו בשרת (מטא-דאטה של הסנאפשוט)
 /* שמירה עמידה v2 — כתיבות-ממתינות: "coll:id" → {coll,id,j,prev} של עריכות שטרם אושרו בשרת.
    _saveFailed = הניסיון האחרון נכשל (מציג "טרם נשמר"); אחרת ממתין-לאישור (מציג "מסנכרן"). */
 const _pending = new Map();
@@ -2057,7 +2059,8 @@ async function testCloudConnection(){
   msg += `נתונים מהשרת: ${serverConfirmed? G("התקבלו ✓") : R("טרם התקבלו ✗")} · נטענו <b>${totalStu}</b> תלמידות ו-<b>${totalGan}</b> גנים.<br>`;
   msg += `שנה נבחרת: <b>${esc(DB.activeYear)}</b> · בשנה זו: <b>${studentsOfYear().length}</b> תלמידות.<br>`;
   // תפוסת מסמך השנה מול תקרת Firestore — הגורם השקט שמפיל שמירות דווקא כשהמאגר גדל
-  try{
+  msg += `מבנה הנתונים: <b>${RECS?"מסמך לכל רשומה ✓":"מסמך-שנה (הישן)"}</b>.<br>`;
+  if(!RECS) try{
     const u=studentsDocUsage();
     const pct=Math.round(u.pct*100);
     msg += `תפוסת מסמך השנה: <b>${Math.round(u.bytes/1024)}KB מתוך 1024KB (${pct}%)</b>` +
@@ -2382,11 +2385,177 @@ async function mergePushSDK(gen){
   recordGuard(); // שומר-ראש: לפני עדכון הבסיס, בעוד _mergeBase מחזיק את מצב השרת שלפני הכתיבה
   _setBase(after);
 }
+/* ============================================================
+   מסמך לכל רשומה (RECS) — המבנה החדש של הנתונים
+   ------------------------------------------------------------
+   המבנה הישן: כל תלמידות השנה במסמך אחד (students_<שנה>), כל הגנים במסמך אחד,
+   וכך גם הצוות וההנהלה. כל עריכה של תיק אחד קראה וכתבה מחדש מאות KB, שתי עובדות
+   שעורכות יחד התנגשו בטרנזקציה, ומכשיר אחר קיבל את כל המסמך מחדש. זה השורש של
+   "נתקע", "לא עלה" ו"אצלי רואים ואצלה לא".
+   המבנה החדש: כל רשומה — מסמך קטן משלה, באותו אוסף של העיר:
+       r_s_<id>  תלמידה      r_g_<id>  גן      r_t_<id>  איש/אשת צוות      r_m_<id>  הנהלה
+       { _t:"rec", k:"s"|"g"|"t"|"m", d:<הרשומה>, o:<סדר>, u:<מתי>, by:<מי> }
+   • עריכה = כתיבת מסמך אחד של כמה KB, בלי טרנזקציה ובלי התנגשות עם עריכות אחרות.
+   • הכתיבה נכנסת לתור הקבוע של Firestore (IndexedDB): שורדת סגירה, רענון ונפילת רשת,
+     ונשלחת לבד כשהחיבור חוזר — כמו בכל תוכנה.
+   • מכשיר אחר מקבל רק את הרשומה שהשתנתה.
+   • אין תקרת גודל — אין צורך לדחוס, לארכב או למחוק כדי לפנות מקום.
+   המעבר: חד-פעמי, ע"י מנהל/ת, בכפתור בהגדרות (migrateToRecs) — כותב את כל הרשומות,
+   מאמת מול השרת שכל אחת הגיעה זהה, ורק אז מסמן ב-meta: model:"recs". המסמכים הישנים
+   נשארים בשרת כגיבוי. עד הסימון — הכול עובד בדיוק כמו קודם.
+   נבדק ב-tests/recs-model.test.cjs. */
+const RECS_KINDS = { stu:"s", gan:"g", staff:"t", mgmt:"m" };
+let RECS = false;                 // האם העיר הנוכחית במבנה החדש (נקבע ב-rebuildDB לפי meta.model)
+const _recOrd = new Map();        // "k:id" → o (סדר התצוגה כפי שנשמר)
+/* מזהה מסמך יציב לרשומה. מזהה "רגיל" — כפי שהוא; אחר (תווים שאסורים במזהה מסמך) — גיבוב. */
+function _recHash(s){ let h=2166136261; s=String(s); for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
+function recDocId(kind, id){
+  const k=RECS_KINDS[kind]||kind, sid=String(id==null?"":id);
+  return "r_"+k+"_"+(/^[A-Za-z0-9_-]{1,120}$/.test(sid) ? sid : ("x"+_recHash(sid)));
+}
+/* רשימות הרשומות מתוך מסמכי האוסף — ממוינות לפי o (סדר השמירה), ואז מזהה */
+function recsListsFromDocs(docsMap){
+  const by={ s:[], g:[], t:[], m:[] };
+  for(const [id,v] of docsMap){ if(id.startsWith("r_") && v && v._t==="rec" && by[v.k] && v.d && typeof v.d==="object") by[v.k].push(v); }
+  const ord=a=>a.sort((x,y)=>((+x.o||0)-(+y.o||0)) || String(x.d.id).localeCompare(String(y.d.id)));
+  const out={};
+  for(const k in by){ out[k]=ord(by[k]).map(v=>{ _recOrd.set(k+":"+v.d.id, +v.o||0); return JSON.parse(JSON.stringify(v.d)); }); }
+  return out;
+}
+/* מסמך-רשומה לכתיבה */
+function recDoc(kind, obj, ordFallback){
+  const k=RECS_KINDS[kind], key=k+":"+obj.id;
+  let o=_recOrd.get(key); if(o==null){ o=ordFallback!=null?ordFallback:Date.now(); _recOrd.set(key,o); }
+  return { _t:"rec", k, d:(kind==="stu"?packStudent(obj):obj), o, u:Date.now(), by:myEmail() };
+}
+/* מה לכתוב: ההפרש בין ה-DB המוצג לבסיס-ההשוואה (מצב השרת) — לכל רשומה בנפרד */
+function recsOps(){
+  const ops=[];
+  const add=(kind, list, base)=>{
+    const cur=new Set();
+    for(const o of list){ if(!o || o.id==null) continue; cur.add(o.id); const b=base.get(o.id); if(!b || b.j!==_mk(o)) ops.push({ id:recDocId(kind,o.id), data:recDoc(kind,o) }); }
+    for(const id of base.keys()){ if(!cur.has(id)) ops.push({ id:recDocId(kind,id), data:null }); }
+  };
+  add("stu",DB.students,_mergeBase.stu); add("gan",DB.gans,_mergeBase.gan);
+  add("staff",DB.staff,_mergeBase.staff); add("mgmt",DB.management,_mergeBase.mgmt);
+  return ops;
+}
+/* דיווח על כתיבה שנדחתה אחרי שכבר נחשבה "בתור" (למשל: אין הרשאה) — לא נבלעת בשקט */
+function _recsLateError(e){
+  const code=(e&&e.code)||"";
+  if(/permission-denied|invalid-argument|unauthenticated/.test(code)){
+    lastSaveError={ code, message:(e&&e.message)||String(e), ts:Date.now() };
+    try{ _offlineDismissed=false; showOfflineBanner(); }catch(_){}
+  }
+}
+async function recsPushSDK(gen){
+  const after=_captureBase();
+  const ms=metaWriteSpec();
+  const metaP=setDoc(cityDoc("meta"), ms.data, { mergeFields: ms.paths.map(p=>new FieldPath(...p)) });
+  metaP.catch(_recsLateError);
+  const ops=recsOps(), commits=[];
+  for(let i=0;i<ops.length;i+=400){
+    _assertGen(gen);
+    const b=writeBatch(db);
+    ops.slice(i,i+400).forEach(op=>{ if(op.data) b.set(cityDoc(op.id), op.data); else b.delete(cityDoc(op.id)); });
+    const p=b.commit(); p.catch(_recsLateError); commits.push(p);
+    _pushProgress(gen);
+  }
+  // הכתיבות כבר בתור הקבוע של Firestore — יישלחו גם אחרי רענון/נפילת רשת. ממתינים קצר לאישור
+  // השרת רק כדי שדחייה אמיתית (הרשאות) תדווח כאן; איחור בלבד אינו כשל.
+  await _settleOrQueued(Promise.all([metaP, ...commits]), 10000);
+  _assertGen(gen);
+  recordGuard();
+  _setBase(after);
+}
+/* כתיבה דרך REST (ערוץ ה-SDK תקוע / מצב חלופי) — commit אחד לכל 400 רשומות */
+async function recsPushRest(gen){
+  const after=_captureBase();
+  const base=cityRestBase()+"/";
+  const hdr=await _restHdr(true);
+  const ms=metaWriteSpec();
+  const r=await fetch(base+"meta?"+_restMaskQuery(ms.paths),{ method:"PATCH", headers:hdr, body:JSON.stringify({fields:encFsFields(ms.data)}) });
+  if(!r.ok) throw Object.assign(new Error("write meta ("+r.status+")"), { code:r.status===403?"permission-denied":"" });
+  _pushProgress(gen);
+  const namePrefix=cityRestBase().replace(/^https:\/\/firestore\.googleapis\.com\/v1\//,"")+"/";
+  const commitUrl=restRoot().replace(/\/$/,"")+":commit";
+  const ops=recsOps();
+  for(let i=0;i<ops.length;i+=400){
+    _assertGen(gen);
+    const writes=ops.slice(i,i+400).map(op=> op.data ? { update:{ name:namePrefix+op.id, fields:encFsFields(op.data) } } : { delete:namePrefix+op.id });
+    const c=await fetch(commitUrl,{ method:"POST", headers:hdr, body:JSON.stringify({ writes }) });
+    if(!c.ok) throw Object.assign(new Error("commit ("+c.status+")"), { code:c.status===403?"permission-denied":"" });
+    _pushProgress(gen);
+  }
+  _assertGen(gen);
+  recordGuard();
+  _setBase(after);
+}
+/* ---------- המעבר החד-פעמי ---------- */
+/* הרשימות מתוך המבנה הישן — בדיוק כמו rebuildDB, בלי לגעת ב-DB */
+function legacyListsFromDocs(docsMap){
+  const studs=[]; for(const [id,v] of docsMap){ if(id.startsWith("students_") && v && Array.isArray(v.students)) studs.push(...v.students); }
+  return {
+    stu:  studs.map(s=>normStudent(s)),
+    gan:  ((docsMap.get("gans")||{}).gans||[]).filter(Boolean).map(g=>Object.assign({}, g, { id:g.id||uid() })),
+    staff:((docsMap.get("staff")||{}).staff||[]).filter(Boolean).map(normStaff),
+    mgmt: ((docsMap.get("management")||{}).management||[]).filter(Boolean).map(m=>Object.assign({}, m, { id:m.id||uid() }))
+  };
+}
+/* כל מסמכי-הרשומה שהמעבר כותב: o = המקום ברשימה הישנה (שומר את סדר התצוגה) */
+function recsMigrationOps(lists){
+  const ops=[];
+  [["stu",lists.stu],["gan",lists.gan],["staff",lists.staff],["mgmt",lists.mgmt]].forEach(([kind,list])=>{
+    const seen=new Set();
+    list.forEach((o,i)=>{ if(!o || o.id==null || seen.has(o.id)) return; seen.add(o.id);
+      ops.push({ id:recDocId(kind,o.id), kind, src:o, data:{ _t:"rec", k:RECS_KINDS[kind], d:(kind==="stu"?packStudent(o):o), o:i, u:Date.now(), by:myEmail() } }); });
+  });
+  return ops;
+}
+/* אימות: כל רשומה מהמבנה הישן קיימת במבנה החדש וזהה לה. מחזיר רשימת בעיות (ריקה = תקין). */
+function recsVerify(ops, docsMap){
+  const bad=[];
+  for(const op of ops){
+    const v=docsMap.get(op.id);
+    if(!v || v._t!=="rec" || !v.d){ bad.push("חסר: "+op.id); continue; }
+    const got = op.kind==="stu" ? normStudent(v.d) : (op.kind==="staff" ? normStaff(JSON.parse(JSON.stringify(v.d))) : v.d);
+    const want= op.kind==="stu" ? normStudent(op.data.d) : (op.kind==="staff" ? normStaff(JSON.parse(JSON.stringify(op.src))) : op.src);
+    if(_mk(got)!==_mk(want)) bad.push("שונה: "+op.id);
+  }
+  return bad;
+}
+async function migrateToRecs(onStep){
+  const step=t=>{ try{ onStep&&onStep(t); }catch(_){} };
+  if(RECS) throw new Error("העיר כבר במבנה החדש");
+  if(!isAdmin()) throw new Error("רק מנהל/ת יכול/ה להריץ את המעבר");
+  if(!serverConfirmed || _pending.size || savePending || _pushInFlight) throw new Error("יש שינויים שעוד לא עלו לענן — חכו ל\"נשמר בענן\" ונסו שוב");
+  step("קורא את כל הנתונים מהשרת…");
+  const read=async()=>{ const m=new Map(); (await getDocsFromServer(cityColl())).forEach(d=>m.set(d.id, d.data())); return m; };
+  const before=await read();
+  if((before.get("meta")||{}).model==="recs") throw new Error("העיר כבר במבנה החדש");
+  const lists=legacyListsFromDocs(before);
+  const ops=recsMigrationOps(lists);
+  step(`כותב ${ops.length} רשומות (${lists.stu.length} תלמידות · ${lists.gan.length} גנים · ${lists.staff.length} צוות · ${lists.mgmt.length} הנהלה)…`);
+  for(let i=0;i<ops.length;i+=400){
+    const b=writeBatch(db);
+    ops.slice(i,i+400).forEach(op=>b.set(cityDoc(op.id), op.data));
+    await _raceTimeout(b.commit(), 60000);
+    step(`נכתבו ${Math.min(i+400,ops.length)} מתוך ${ops.length}…`);
+  }
+  step("מאמת מול השרת שכל רשומה הגיעה…");
+  const after=await read();
+  const bad=recsVerify(ops, after);
+  if(bad.length) throw new Error(`האימות נכשל ב-${bad.length} רשומות (${bad.slice(0,3).join(", ")}…). לא בוצע מעבר — הכול ממשיך במבנה הקיים.`);
+  step("מסמן את העיר כמעבר שהושלם…");
+  await _raceTimeout(setDoc(cityDoc("meta"), { model:"recs", modelAt:Date.now(), modelBy:myEmail(), modelCounts:{ stu:lists.stu.length, gan:lists.gan.length, staff:lists.staff.length, mgmt:lists.mgmt.length } }, { merge:true }), 30000);
+  return { count:ops.length, lists };
+}
 async function pushAll(gen){
   if(!db) return;
   // בטיחות: אל תדרוס נתוני שרת עם DB ריק שטרם אושר מול השרת (דפדפן ללא חיבור שלא הספיק לטעון)
   const localEmpty = !DB.students.length && !DB.gans.length && !DB.staff.length && !DB.management.length;
   if(localEmpty && !serverConfirmed) return;
+  if(RECS){ if(restMode || Date.now()<_sdkStuckUntil) await recsPushRest(gen); else await recsPushSDK(gen); return; } // מסמך לכל רשומה
   if(restMode){ await pushAllRest(gen); return; } // מצב חלופי: כתיבה דרך REST
   if(MERGE_WRITE && Date.now()<_sdkStuckUntil){ await mergePushRest(gen); return; } // ה-SDK נתקע לאחרונה — עוקפים אותו
   if(MERGE_WRITE){ await mergePushSDK(gen); return; } // מנעול נגד דריסה
@@ -2441,6 +2610,16 @@ function rebuildDB(docsMap){
   const studs=[];
   for(const [id,val] of docsMap){ if(id.startsWith("students_") && val && Array.isArray(val.students)) studs.push(...val.students); }
   DB.students = studs.map(normStudent);
+  // מסמך לכל רשומה: אחרי המעבר (meta.model) — הרשימות נבנות מהמסמכים r_*, והמסמכים הישנים
+  // נשארים בשרת כגיבוי בלבד ואינם נקראים.
+  RECS = meta.model==="recs";
+  if(RECS){
+    const L=recsListsFromDocs(docsMap);
+    DB.gans = L.g.map(g=>{ if(!g.id) g.id=uid(); return g; });
+    DB.management = L.m.map(m=>{ if(!m.id) m.id=uid(); return m; });
+    DB.staff = L.t.map(normStaff);
+    DB.students = L.s.map(x=>normStudent(x));
+  }
 }
 /* השלמת שדות חדשים לרשומות ישנות שנשמרו לפני העדכון */
 /* ============================================================
@@ -5282,7 +5461,7 @@ window.addEventListener("beforeunload", ()=>{ try{ clearPresence(); }catch(_){} 
    ייעלמו) — הן לא ייראו לשאר המשתמשים עד שהמכשיר הזה ייפתח שוב, ועובדת שסוגרת במשרד
    ופותחת בבית לא תמצא אותן. סגירה בלי לדעת זאת היא בדיוק התקלה שמנסים למנוע. */
 window.addEventListener("beforeunload", ev=>{
-  if(!RESILIENT_SAVE || !_pending.size) return;
+  if(!(RESILIENT_SAVE && _pending.size) && !_fsPendingWrites) return; // גם כתיבה שעוד בתור של Firestore — לא תיראה במכשיר אחר עד שתעלה
   ev.preventDefault(); ev.returnValue="";
   return "";
 });
@@ -5330,6 +5509,8 @@ const _sleep = ms => new Promise(r=>setTimeout(r, ms));
 async function verifyFreshness(reason){
   if(_freshBusy || !currentUser || !db || !CITY || restMode) return;
   if(typeof navigator!=="undefined" && navigator.onLine===false) return;
+  // תור כתיבות שלא מתרוקן דקה ויותר בזמן שיש רשת — ערוץ הכתיבה תקוע: חיבור מחדש מרוקן אותו
+  if(_fsPendingSince && Date.now()-_fsPendingSince>60000){ _fsPendingSince=Date.now(); await _reconnectFirestore(); }
   _freshBusy=true;
   try{
     const serverAt=await _serverUpdatedAt();
@@ -5419,6 +5600,7 @@ function startDataSync(){
     lastSyncError=""; // התקבל סנאפשוט — הקריאה עובדת
     if(TEST_DB_MODE) dlog("📸 snapshot fromCache="+md.fromCache+" hasPending="+md.hasPendingWrites+" changes="+snap.docChanges().length+" savePending="+savePending+" pending="+_pending.size);
     if(!md.fromCache){ serverConfirmed=true; _lastServerSnapAt=Date.now(); } // אושר מגע עם השרת — מותר לכתוב
+    _fsPendingWrites=!!md.hasPendingWrites; if(_fsPendingWrites){ if(!_fsPendingSince) _fsPendingSince=Date.now(); } else _fsPendingSince=0;
     setSyncStatus(md.hasPendingWrites ? "pending" : (md.fromCache ? "offline" : "synced"));
     const changes = snap.docChanges();
     if(!changes.length && cloudDocs.size) return; // שינוי מטא-דאטה בלבד (סטטוס) על נתונים שכבר נטענו — אין צורך לבנות מחדש
@@ -16580,6 +16762,13 @@ function viewSettings(root){
     ${admin?`<div class="note" style="margin-top:8px">את/ה (<b dir="ltr">${esc(myEmail())}</b>) מנהל/ת בעיר הזו כי: <b>${esc(adminWhy())}</b>.${/מרשם|מרכז/.test(adminWhy())?` שינוי — רק במרכזי (ערים ומשתמשים), לא כאן.`:""}${isHQ()?` <a href="management.html" target="_blank" rel="noopener">לניהול ערים ומשתמשים במרכזי ↗</a>`:""}</div>`:""}
     <div id="admins-box"></div>
     <div id="admins-other" style="margin-top:10px"></div>
+    ${admin?`<div class="note" style="margin-top:14px" id="recs-box">
+      <b>מבנה הנתונים של ${esc(cityName())}:</b> ${RECS?`<b style="color:var(--good)">מסמך לכל רשומה ✓</b> — כל תיק, גן ואיש/אשת צוות נשמרים בנפרד.`:`מסמך-שנה (הישן).`}
+      ${RECS?"":`<div style="margin-top:6px">המעבר ל"מסמך לכל רשומה" הוא חד-פעמי: כל רשומה נכתבת כמסמך נפרד, נבדקת מול השרת, ורק אז העיר עוברת. הנתונים הישנים נשארים בשרת כגיבוי.
+        <b>לפני המעבר:</b> (1) פרויקט Firebase בתוכנית <b>Blaze</b> (תשלום לפי שימוש — כמה דולרים בחודש לכל היותר), כי כל פתיחה קוראת מסמך לכל רשומה;
+        (2) לבצע כשאף אחד לא עובד — בערב; (3) לוודא שלמעלה כתוב "נשמר בענן".</div>
+        <div class="row" style="margin-top:8px;gap:8px;align-items:center"><button class="btn" id="recs-migrate" type="button">🔁 מעבר למבנה החדש</button><span id="recs-log" class="hint"></span></div>`}
+    </div>`:""}
     ${admin?`<div class="row" style="margin-top:10px">
       <div class="field grow"><label>הוספת מנהל (אימייל)</label><input id="new-admin" type="email" inputmode="email" placeholder="name@example.com"></div>
       <button class="btn" id="addAdmin" style="align-self:end">הוסף מנהל</button>
@@ -16800,6 +16989,16 @@ function viewSettings(root){
     }; }
 
   // מנהלי מערכת
+  const rmBtn=$("#recs-migrate");
+  if(rmBtn) rmBtn.onclick=async()=>{
+    if(!confirm(`מעבר "${cityName()}" למבנה "מסמך לכל רשומה".\n\n• לבצע רק כשאף אחד לא עובד במערכת.\n• הפרויקט ב-Firebase חייב להיות בתוכנית Blaze.\n• אם האימות נכשל — לא מתבצע שום שינוי.\n\nלהמשיך?`)) return;
+    const log=$("#recs-log"); rmBtn.disabled=true;
+    try{
+      const r=await migrateToRecs(t=>{ if(log) log.textContent=t; });
+      if(log) log.innerHTML=`<b style="color:var(--good)">✓ המעבר הושלם — ${r.count} רשומות נבדקו מול השרת.</b> הדף נטען מחדש…`;
+      setTimeout(()=>location.reload(), 2500);
+    }catch(e){ console.error(e); if(log) log.innerHTML=`<b style="color:var(--bad)">${esc((e&&e.message)||String(e))}</b>`; rmBtn.disabled=false; }
+  };
   const ab=$("#admins-box");
   const admins=(DB.settings.admins||[]);
   ab.innerHTML = admins.length
