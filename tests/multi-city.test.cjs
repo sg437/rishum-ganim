@@ -28,7 +28,7 @@ Object.defineProperty(window,'ORG',{get:()=>ORG,set:v=>{ORG=v},configurable:true
 Object.defineProperty(window,'_pending',{get:()=>_pending,configurable:true});
 Object.defineProperty(window,'currentUser',{get:()=>currentUser,set:v=>{currentUser=v},configurable:true});
 window.__resetCity=()=>{ _cityResolved=false; };
-Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, renderOrgPanel, route, openGan, makeGan, ganGender, GENDERS, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, saveOrg, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
+Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, saveOrg, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -273,42 +273,16 @@ const server=require('http').createServer((req,res)=>{
     return one && many;
   }));
 
-  /* ---- הגדרות: פאנל המרשם ---- */
-  await step('פאנל "ערים ומשתמשים (מרכזי)" — קיים למרכז ונעלם למשתמש/ת עיר', ()=>pg.evaluate(()=>{
+  /* ---- הגדרות: המרשם המרכזי מנוהל במרכזי בלבד ---- */
+  await step('ניהול "ערים ומשתמשים" אינו בתוכנת העיר — גם לא למרכז; למרכז יש קישור למרכזי', ()=>pg.evaluate(()=>{
     currentUser={email:'hq@example.com'}; CITY=cityById('modiin-illit'); document.body.classList.remove('locked');
     window.__set('active','settings'); route();
-    const hqHas = !!document.querySelector('[data-set="cities"]') && !!document.getElementById('org-box') && settingsNavHtml().includes('data-setjump="cities"');
-    const rows=[...document.querySelectorAll('#org-box table')][0];
-    const citiesListed = rows && rows.textContent.includes('ירושלים') && rows.textContent.includes('אשדוד') && rows.textContent.includes('עיר הבית');
+    const hqNoPanel = !document.querySelector('[data-set="cities"]') && !document.getElementById('org-box') && !settingsNavHtml().includes('data-setjump="cities"');
+    const hqLink = !!document.querySelector('a[href="management.html"]');
     currentUser={email:'modiin@example.com'}; route();
-    const cityUserHas = !!document.querySelector('[data-set="cities"]') || settingsNavHtml().includes('data-setjump="cities"');
-    return hqHas && citiesListed && !cityUserHas;
+    const cityNoPanel = !document.querySelector('[data-set="cities"]') && !document.getElementById('org-box');
+    return hqNoPanel && hqLink && cityNoPanel;
   }));
-  await step('הוספת עיר מהפאנל — נשמרת למרשם עם מזהה תקני', async()=>{
-    return await pg.evaluate(async()=>{
-      currentUser={email:'hq@example.com'}; route();
-      document.getElementById('org-city-name').value='בית שמש';
-      document.getElementById('org-city-name').dispatchEvent(new Event('input'));
-      window.__writes.length=0;
-      document.getElementById('org-city-add').click();
-      await new Promise(r=>setTimeout(r,30));
-      const w=window.__writes.find(x=>x.path==='org/meta');
-      const c=w && w.data.cities.find(x=>x.name==='בית שמש');
-      return !!c && c.id==='byt-shmsh' && c.active===true && cityById('byt-shmsh')!==null;
-    });
-  });
-  await step('שיוך משתמש/ת חדש/ה לעיר עם תפקיד', async()=>{
-    return await pg.evaluate(async()=>{
-      document.getElementById('org-user-email').value='new@example.com';
-      document.getElementById('org-user-city').value='jerusalem';
-      document.getElementById('org-user-role').value='view';
-      window.__writes.length=0;
-      document.getElementById('org-user-add').click();
-      await new Promise(r=>setTimeout(r,30));
-      const w=window.__writes.find(x=>x.path==='org/meta');
-      return !!w && w.data.users['new@example.com'] && w.data.users['new@example.com'].cities.jerusalem==='view' && cityRole('jerusalem','new@example.com')==='view';
-    });
-  });
 
   /* ---- מגדר ורישיון בגן ---- */
   await step('כרטיס הגן: מגדר ורישיון נשמרים; התלמיד/ה יורש/ת מגדר מהגן', async()=>{
