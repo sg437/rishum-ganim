@@ -1344,7 +1344,7 @@ function saveErrHe(){
   const code=lastSaveError.code||"", msg=lastSaveError.message||"";
   const big=/rg\/doc-too-large|invalid-argument|maximum|too large|exceeds/i.test(code+" "+msg);
   if(big) return `<b style="color:var(--bad)">המסמך בענן מלא — לא בעיית רשת.</b> ${esc(msg)}`;
-  if(/permission-denied/i.test(code)) return `<b style="color:var(--bad)">השרת דחה את הכתיבה (הרשאות).</b> ${_appCheckErr?`אימות האפליקציה (App Check) נכשל בדפדפן זה: ${esc(_appCheckErr)} — נסה/י לכבות חוסם פרסומות/מצב פרטי או דפדפן אחר. `:""}אם זה חוזר — לפנות למנהל עם צילום מסך של "בדיקת חיבור".`;
+  if(/permission-denied/i.test(code)) return `<b style="color:var(--bad)">השרת לא מזהה את החשבון <span dir="ltr">${esc(myEmail())}</span> כמורשה לעיר הזו.</b> מה שהוזן <b>שמור במכשיר</b> ויעלה לבד ברגע שהגישה תתוקן. <b>למנהל/ת:</b> הגדרות ← ניהול משתמשים ← להזין את המייל הזה וללחוץ "הוסף" (גם אם הוא כבר מופיע ברשימה — זה כותב אותו מחדש לשרת).${_appCheckErr?` <br>אימות האפליקציה (App Check) נכשל בדפדפן זה: ${esc(_appCheckErr)}.`:""}`;
   if(/unauthenticated/i.test(code)) return `<b style="color:var(--bad)">ההתחברות פגה.</b> יש להתנתק ולהתחבר מחדש.`;
   if(/resource-exhausted/i.test(code)) return `<b style="color:var(--bad)">מכסת הכתיבה של הפרויקט נגמרה להיום.</b> יש לפנות למנהל.`;
   if(/unavailable|deadline-exceeded|failed to fetch|network/i.test(code+" "+msg))
@@ -1918,6 +1918,11 @@ function metaForWrite(){
    השרת ממזג את השאר מהמסמך הקיים, ו-privUnchanged תמיד מתקיים לעובדת רגילה.
    SDK: setDoc(..., {mergeFields}) · REST: updateMask. נבדק ב-tests/meta-mask.test.cjs. */
 const META_PRIV_FIELDS = ["admins","allowedEmails","editScopes","userNames"];
+/* שדות הרשאה נכתבים *רק* כשמנהל/ת שינה/תה אותם עכשיו במסך ניהול המשתמשים.
+   בלי זה, כל שמירה של מנהל/ת (גם עריכת תיק) כתבה את רשימות ההרשאות מהעותק שבמכשיר —
+   ומנהל/ת עם עותק ישן מחק/ה בשקט עובדות שנוספו בינתיים, והשרת התחיל לדחות אותן. */
+const _privDirty = new Set();
+function markPrivDirty(field){ if(META_PRIV_FIELDS.includes(field)) _privDirty.add(field); }
 function metaWriteSpec(){
   const data=metaForWrite(), st=data.settings||{}, admin=isAdmin(), em=myEmail();
   const paths=[];
@@ -1925,7 +1930,7 @@ function metaWriteSpec(){
   for(const k in st){
     if(st[k]===undefined) continue;
     if(k==="userActivity"){ if(em && st.userActivity && st.userActivity[em]) paths.push(["settings","userActivity",em]); continue; }
-    if(!admin && META_PRIV_FIELDS.includes(k)) continue;
+    if(META_PRIV_FIELDS.includes(k) && !(admin && _privDirty.has(k))) continue;
     paths.push(["settings",k]);
   }
   return { data, paths };
@@ -2108,10 +2113,11 @@ async function runPush(){
   if(_pushInFlight){ _pushAgain=true; return; } // דחיפה קודמת עוד רצה — נרוץ מיד אחריה
   _pushInFlight=true;
   const gen=++_pushGen;
+  const privSent=new Set(_privDirty); // שדות ההרשאה שהדחיפה הזאת כותבת — מתנקים רק אם הצליחה
   if(RESILIENT_SAVE) recordPending(); // רשום את מה שעומדים לכתוב *לפני* הכתיבה (בסיס = מצב השרת שלפנינו)
   if(TEST_DB_MODE) dlog("▶ runPush: pending="+_pending.size+" restMode="+restMode+" online="+navigator.onLine);
   let ok=false;
-  try{ await _withTimeout(pushAll(gen), PUSH_TIMEOUT_MS); ok=true; lastSaveError=null; _lastSaveErrShown=""; if(TEST_DB_MODE) dlog("  pushAll OK"); if(restMode) setSyncStatus("synced"); }
+  try{ await _withTimeout(pushAll(gen), PUSH_TIMEOUT_MS); ok=true; privSent.forEach(f=>_privDirty.delete(f)); lastSaveError=null; _lastSaveErrShown=""; if(TEST_DB_MODE) dlog("  pushAll OK"); if(restMode) setSyncStatus("synced"); }
   catch(e){
     console.error(e);
     if(e && e.code==="rg-timeout"){ _pushGen++; _sdkStuckUntil=Date.now()+SDK_STUCK_FALLBACK_MS; } // הדחיפה התקועה כבר לא תכתוב; הבאות דרך REST
@@ -5368,7 +5374,10 @@ function startDataSync(){
     if(!cloudDocs.has("meta") && !md.fromCache) save();
     if($("#overlay").classList.contains("show")){ pendingRender=true; }
     else rerenderKeepScroll();
-  }, err=>{ console.error(err); if(TEST_DB_MODE) dlog("❌ snapshot ERROR: "+(err&&(err.code||err.message)||"unknown")+" (pending="+_pending.size+")"); lastSyncError=(err&&(err.code||err.message))||"unknown"; setSyncStatus("error"); toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
+  }, err=>{ console.error(err); if(TEST_DB_MODE) dlog("❌ snapshot ERROR: "+(err&&(err.code||err.message)||"unknown")+" (pending="+_pending.size+")"); lastSyncError=(err&&(err.code||err.message))||"unknown"; setSyncStatus("error");
+    if(/permission-denied/i.test(lastSyncError)){ // השרת מסרב גם לקריאה: מה שמוצג הוא עותק ישן מהמכשיר — אומרים זאת מיד ובמפורש
+      lastSaveError={ code:"permission-denied", message:"read", ts:Date.now() }; _offlineDismissed=false; showOfflineBanner();
+    } else toast("שגיאת גישה לנתונים — ודא/י הרשאות (Firestore rules)"); });
   // מעבר אוטומטי למצב חלופי (REST) אם חיבור ה-SDK לא הצליח למשוך נתונים תוך ~12 שניות
   setTimeout(()=>{ if(currentUser && !serverConfirmed && !restMode) loadViaRest(); }, 12000);
   setTimeout(()=>verifyFreshness("אחרי התחברות"), FRESH_START_MS); // בקרת אמת — גם כשהמאזין "עובד" אך מאחר
@@ -16765,27 +16774,29 @@ function viewSettings(root){
         const em=b.dataset.rm;
         if(!confirm(`להסיר את ההרשאה של ${em}? הוא/היא לא יוכל/תוכל יותר להיכנס למערכת.`)) return;
         DB.settings.allowedEmails=(DB.settings.allowedEmails||[]).filter(x=>String(x).toLowerCase()!==em);
-        save(); toast(`ההרשאה של ${em} הוסרה`); renderUsers();
+        markPrivDirty("allowedEmails"); save(); toast(`ההרשאה של ${em} הוסרה`); renderUsers();
       });
       usersBox.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>addAllowed(b.dataset.add));
       usersBox.querySelectorAll(".nu-nm").forEach(inp=>inp.onchange=()=>{
         const em=inp.dataset.em, v=inp.value.trim();
         DB.settings.userNames=Object.assign({}, DB.settings.userNames||{});
         if(v) DB.settings.userNames[em]=v; else delete DB.settings.userNames[em];
-        save(); toast("השם נשמר");
+        markPrivDirty("userNames"); save(); toast("השם נשמר");
       });
       usersBox.querySelectorAll(".nu-scope").forEach(sel=>sel.onchange=()=>{
         const em=sel.dataset.em, v=sel.value;
         const m=Object.assign({}, DB.settings.editScopes||{});
         if(v) m[em]=v; else delete m[em];
-        DB.settings.editScopes=m; save(); toast("הרשאת העריכה עודכנה"); renderUsers();
+        DB.settings.editScopes=m; markPrivDirty("editScopes"); save(); toast("הרשאת העריכה עודכנה"); renderUsers();
       });
     };
     const addAllowed=(raw, rawName)=>{
       const em=String(raw||"").trim().toLowerCase();
       if(!isEmail(em)){ showNuMsg("יש להזין כתובת אימייל תקינה.", false); return; }
       const nm=String(rawName||"").trim();
-      if(nm){ DB.settings.userNames=Object.assign({}, DB.settings.userNames||{}); DB.settings.userNames[em]=nm; }
+      if(nm){ DB.settings.userNames=Object.assign({}, DB.settings.userNames||{}); DB.settings.userNames[em]=nm; markPrivDirty("userNames"); }
+      // גם כשהמייל כבר ברשימה — כותבים אותה שוב לשרת: "הוסף" מחדש מתקן עובדת שהשרת "שכח"
+      markPrivDirty("allowedEmails"); markPrivDirty("admins");
       const cur=(DB.settings.allowedEmails||[]).map(x=>String(x).toLowerCase());
       const admins=(DB.settings.admins||[]).map(x=>String(x).toLowerCase());
       if(admins.includes(em)){ save(); showNuMsg(`${em} כבר מנהל מערכת — מורשה ממילא.`, true); renderUsers(); return; }
@@ -16859,10 +16870,10 @@ function viewSettings(root){
   if(admin){
     ab.querySelectorAll("[data-delA]").forEach(b=>b.onclick=()=>{ const e=b.dataset.dela;
       if(admins.length===1 && !confirm("זהו המנהל האחרון. לאחר הסרתו כל משתמש יוכל לשנות הגדרות. להמשיך?")) return;
-      DB.settings.admins=admins.filter(x=>x!==e); save(); route(); toast("הוסר מנהל"); });
+      DB.settings.admins=admins.filter(x=>x!==e); markPrivDirty("admins"); save(); route(); toast("הוסר מנהל"); });
     $("#addAdmin").onclick=()=>{ const e=$("#new-admin").value.trim().toLowerCase(); if(!e)return;
       if(admins.map(x=>x.toLowerCase()).includes(e)){ toast("כבר ברשימה"); return; }
-      DB.settings.admins=admins.concat(e); save(); route(); toast("נוסף מנהל"); };
+      DB.settings.admins=admins.concat(e); markPrivDirty("admins"); save(); route(); toast("נוסף מנהל"); };
   }
 
   // פניות והצעות שיפור
