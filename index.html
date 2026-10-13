@@ -2494,13 +2494,28 @@ async function recsPushRest(gen){
 /* ---------- המעבר החד-פעמי ---------- */
 /* הרשימות מתוך המבנה הישן — בדיוק כמו rebuildDB, בלי לגעת ב-DB */
 function legacyListsFromDocs(docsMap){
-  const studs=[]; for(const [id,v] of docsMap){ if(id.startsWith("students_") && v && Array.isArray(v.students)) studs.push(...v.students); }
+  // רשומה ישנה בלי מזהה מקבלת מזהה *יציב* לפי התוכן (ולא אקראי) — כך שתי קריאות של אותם
+  // נתונים נותנות אותם מזהים, והבדיקה "מה השתנה בזמן המעבר" לא תיצור כפילויות.
+  const fix=(o,k)=> (o && o.id!=null && o.id!=="") ? o : Object.assign({}, o, { id:"L"+k+_recHash(JSON.stringify(o)) });
+  const studs=[]; for(const [id,v] of docsMap){ if(id.startsWith("students_") && v && Array.isArray(v.students)) studs.push(...v.students.filter(Boolean)); }
   return {
-    stu:  studs.map(s=>normStudent(s)),
-    gan:  ((docsMap.get("gans")||{}).gans||[]).filter(Boolean).map(g=>Object.assign({}, g, { id:g.id||uid() })),
-    staff:((docsMap.get("staff")||{}).staff||[]).filter(Boolean).map(normStaff),
-    mgmt: ((docsMap.get("management")||{}).management||[]).filter(Boolean).map(m=>Object.assign({}, m, { id:m.id||uid() }))
+    stu:  studs.map(s=>normStudent(fix(s,"s"))),
+    gan:  ((docsMap.get("gans")||{}).gans||[]).filter(Boolean).map(g=>Object.assign({}, fix(g,"g"))),
+    staff:((docsMap.get("staff")||{}).staff||[]).filter(Boolean).map(m=>normStaff(Object.assign({}, fix(m,"t")))),
+    mgmt: ((docsMap.get("management")||{}).management||[]).filter(Boolean).map(m=>Object.assign({}, fix(m,"m")))
   };
+}
+/* מה השתנה במבנה הישן בזמן המעבר — בין הקריאה הראשונה לסימון. אחרי הסימון כללי השרת חוסמים
+   כתיבה למבנה הישן, ולכן הקריאה שאחרי הסימון סופית. מחזיר כתיבות-השלמה — רק לרשומות שלא נערכו
+   בינתיים במבנה החדש (u זהה למה שהמעבר כתב), כדי לא לדרוס עריכה חדשה יותר. */
+function recsLateOps(ops, lastDocs){
+  const lists=legacyListsFromDocs(lastDocs), ops2=recsMigrationOps(lists);
+  const prev=new Map(ops.map(o=>[o.id,o])), now=new Map(ops2.map(o=>[o.id,o]));
+  const untouched=id=>{ const v=lastDocs.get(id), p=prev.get(id); return !v || (p && v.u===p.data.u); };
+  const late=[];
+  for(const [id,o] of now){ const p=prev.get(id); if((!p || _mk(p.data.d)!==_mk(o.data.d)) && untouched(id)) late.push(o); }
+  for(const [id] of prev){ if(!now.has(id) && untouched(id)) late.push({ id, data:null }); }
+  return late;
 }
 /* כל מסמכי-הרשומה שהמעבר כותב: o = המקום ברשימה הישנה (שומר את סדר התצוגה) */
 function recsMigrationOps(lists){
@@ -2548,7 +2563,15 @@ async function migrateToRecs(onStep){
   if(bad.length) throw new Error(`האימות נכשל ב-${bad.length} רשומות (${bad.slice(0,3).join(", ")}…). לא בוצע מעבר — הכול ממשיך במבנה הקיים.`);
   step("מסמן את העיר כמעבר שהושלם…");
   await _raceTimeout(setDoc(cityDoc("meta"), { model:"recs", modelAt:Date.now(), modelBy:myEmail(), modelCounts:{ stu:lists.stu.length, gan:lists.gan.length, staff:lists.staff.length, mgmt:lists.mgmt.length } }, { merge:true }), 30000);
-  return { count:ops.length, lists };
+  // מישהו שמר בדיוק בשניות של המעבר? מה שנכנס למבנה הישן עד הסימון — מועתק עכשיו גם לחדש.
+  step("בודק אם נשמרו שינויים בזמן המעבר…");
+  const late=recsLateOps(ops, await read());
+  for(let i=0;i<late.length;i+=400){
+    const b=writeBatch(db);
+    late.slice(i,i+400).forEach(op=>{ if(op.data) b.set(cityDoc(op.id), op.data); else b.delete(cityDoc(op.id)); });
+    await _raceTimeout(b.commit(), 60000);
+  }
+  return { count:ops.length, late:late.length, lists };
 }
 async function pushAll(gen){
   if(!db) return;

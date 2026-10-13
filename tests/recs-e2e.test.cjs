@@ -75,7 +75,7 @@ export const onSnapshot=(ref,opts,cb)=>{ cb=typeof opts==='function'?opts:cb;
   const l={ path:ref.path, coll:!!ref.coll, cb }; listeners.push(l);
   setTimeout(()=>{ if(l.coll){ const ch=[...store.keys()].filter(p=>collOf(p)===ref.path).map(p=>({ type:'added', doc:{ id:idOf(p), data:()=>clone(store.get(p)) } })); cb({ metadata:meta, docChanges:()=>ch }); } else cb(docSnap(ref.path)); },0);
   return ()=>{ const i=listeners.indexOf(l); if(i>=0) listeners.splice(i,1); }; };
-export const getDocsFromServer=async(ref)=>{ const ds=[...store.keys()].filter(p=>collOf(p)===ref.path).map(p=>({ id:idOf(p), data:()=>clone(store.get(p)) })); return { forEach:f=>ds.forEach(f), docs:ds }; };
+export const getDocsFromServer=async(ref)=>{ window.__reads=(window.__reads||0)+1; if(window.__reads===2 && window.__duringMigration) window.__duringMigration(); const ds=[...store.keys()].filter(p=>collOf(p)===ref.path).map(p=>({ id:idOf(p), data:()=>clone(store.get(p)) })); return { forEach:f=>ds.forEach(f), docs:ds }; };
 export const writeBatch=()=>{ const ops=[]; return { set:(r,d,o)=>ops.push(['set',r,d,o]), delete:r=>ops.push(['del',r]),
   commit:()=>{ const ps=[]; ops.forEach(([t,r,d,o])=>{ if(t==='set') applySet(r.path,d,o); else { store.delete(r.path); window.__ops.push({op:'delete',path:r.path}); } ps.push(r.path); }); emit(ps); return P(); } }; };
 export const runTransaction=async(db,fn)=>{ const sets=[]; await fn({ get:async r=>docSnap(r.path), set:(r,d)=>sets.push([r,d]) }); sets.forEach(([r,d])=>applySet(r.path,d)); emit(sets.map(([r])=>r.path)); };
@@ -120,17 +120,20 @@ let pass=0, fail=0; const check=(n,c,d)=>{ if(c){pass++;console.log('  ✓ '+n);
 
   console.log('2) המעבר');
   await pg.waitForFunction(()=>!window.savePending, null, { timeout:10000 });
+  /* עובדת שומרת בדיוק בשניות של המעבר: אחרי שהמעבר קרא את הנתונים, לפני הסימון */
+  await pg.evaluate(()=>{ window.__reads=0; window.__duringMigration=()=>{ const d=window.__store.get('app/students_תשפ_ז'); d.students.find(x=>x.id==='s3').notes='נשמר בזמן המעבר'; window.__store.set('app/students_תשפ_ז', d); }; });
   const r=await pg.evaluate(async()=>{ window.__ops.length=0; try{ const r=await migrateToRecs(); return { ok:true, count:r.count }; }catch(e){ return { ok:false, err:e.message }; } });
   check('המעבר הושלם ואומת', r.ok && r.count===7, JSON.stringify(r));
   const recDocs=await pg.evaluate(()=>[...window.__store.keys()].filter(k=>k.startsWith('app/r_')).sort());
   check('נכתבו 7 מסמכי-רשומה', recDocs.length===7, recDocs.join(','));
   check('meta מסומן model:"recs"', await pg.evaluate(()=>window.__store.get('app/meta').model==='recs'));
-  check('המסמכים הישנים לא נגעו (גיבוי)', legacyBefore===await pg.evaluate(()=>JSON.stringify(['app/students_תשפ_ז','app/gans','app/staff','app/management'].map(p=>window.__store.get(p)))));
+  check('שינוי שנשמר בזמן המעבר — הגיע גם למבנה החדש', await pg.evaluate(()=>window.__store.get('app/r_s_s3').d.notes==='נשמר בזמן המעבר'));
+  check('המעבר לא כתב לשום מסמך ישן (גיבוי)', await pg.evaluate(()=>!window.__ops.some(o=>/students_|app\/gans$|app\/staff$|app\/management$/.test(o.path))));
 
   console.log('3) אחרי המעבר — אותו מסך');
   await pg.waitForFunction(()=>RECS===true, null, { timeout:10000 });
   check('התוכנה עברה למבנה החדש', await pg.evaluate(()=>RECS));
-  check('אותן רשומות, אותו סדר', before===await sig(), await sig());
+  check('אותן רשומות, אותו סדר — כולל השינוי שנשמר בזמן המעבר', before.replace('["s3","שרה",""]','["s3","שרה","נשמר בזמן המעבר"]')===await sig(), await sig());
 
   console.log('4) עריכת תלמידה אחת');
   await pg.waitForFunction(()=>!window.savePending, null, { timeout:10000 });
