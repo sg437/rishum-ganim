@@ -1137,22 +1137,7 @@ function normOrg(d){
   if(d && d.users && typeof d.users==="object"){ for(const k in d.users){ const v=d.users[k]; if(v&&typeof v==="object") o.users[String(k).toLowerCase()]=Object.assign({},v); } }
   return o;
 }
-function orgForWrite(){
-  return { cities:orgCities().map(c=>Object.assign({},c)), users:Object.assign({},ORG.users||{}), updatedAt:Date.now(), updatedBy:myEmail() };
-}
-async function saveOrg(){
-  if(!db || !currentUser) return;
-  if(!isHQ()) throw new Error("not-hq");
-  const payload=orgForWrite();
-  if(restMode){
-    const token=await currentUser.getIdToken();
-    const r=await fetch(restRoot()+"org/meta",{ method:"PATCH", headers:{ "Authorization":"Bearer "+token, "Content-Type":"application/json" }, body:JSON.stringify({fields:encFsFields(payload)}) });
-    if(!r.ok) throw new Error("write org ("+r.status+")");
-  } else {
-    await setDoc(doc(db,ORG_DOC[0],ORG_DOC[1]), payload);
-  }
-  ORG=normOrg(payload);
-}
+/* תוכנת העיר אינה כותבת את המרשם — רק קוראת אותו. הכתיבה (במיזוג לפי רשומה) — במרכזי בלבד. */
 /* מה קורה כשהמרשם הגיע (או שהוחלט שאין): בוחרים עיר ומתחילים את הסנכרון */
 let _cityResolved=false;
 function onOrgReady(){
