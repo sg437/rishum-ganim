@@ -43,7 +43,7 @@ vm.runInContext([
   line('const RECS_KINDS'), line('const _recOrd'),
   line('function _recHash('), grab('function recDocId('), grab('function recsListsFromDocs('),
   grab('function recDoc('), grab('function recsOps('),
-  grab('function legacyListsFromDocs('), grab('function recsMigrationOps('), grab('function recsVerify('), grab('function recsLateOps('),
+  grab('function legacyListsFromDocs('), grab('function recsMigrationOps('), grab('function _canon('), grab('function _firstDiff('), grab('function recsVerify('), grab('function recsLateOps('),
 ].join('\n'), sb);
 const G=k=>vm.runInContext(k, sb);
 
@@ -82,6 +82,17 @@ const norm=a=>a.map(x=>G('normStudent')(x));
 check('תלמידות — אותן רשומות, אותו סדר', J(norm(L.s))===J(lists.stu));
 check('גנים / צוות / הנהלה — אותן רשומות, אותו סדר', J(L.g)===J(lists.gan) && J(L.t.map(G('normStaff')))===J(lists.staff) && J(L.m)===J(lists.mgmt));
 check('תלמידה שסומנה "סיימה" ושנה קודמת — נשמרות', norm(L.s).some(x=>x.id==='s4' && x.finished===true && x.year==='תשפ"ו'));
+
+console.log('2ב) השרת מחזיר את השדות בסדר אחר — זה לא "שינוי"');
+{ const sortDeep=v=>Array.isArray(v)?v.map(sortDeep):(v&&typeof v==='object')?Object.keys(v).sort().reduce((o,k)=>(o[k]=sortDeep(v[k]),o),{}):v;
+  const rich=G('normStudent')(mkS('s9','תשפ"ז',{ docFiles:{ zeta:{ name:'z', id:'1', link:'l' }, alpha:{ link:'l', id:'2', name:'a' } }, special:{ otherText:'x', divorced:true }, extraField:{ b:1, a:2 }, zzz:'1', aaa:'2' }));
+  const ops1=G('recsMigrationOps')({ stu:[rich], gan:[], staff:[], mgmt:[] });
+  const srv=new Map(ops1.map(op=>[op.id, sortDeep(JSON.parse(J(op.data)))]));   // "השרת": אותו תוכן, שדות בסדר אלפביתי
+  check('תוכן זהה בסדר שדות אחר — האימות עובר', G('recsVerify')(ops1, srv).length===0, J(G('recsVerify')(ops1, srv)));
+  const srv2=new Map(srv); const v2=JSON.parse(J(srv2.get('r_s_s9'))); v2.d.docFiles.alpha.name='שונה'; srv2.set('r_s_s9', v2);
+  const rep=G('recsVerify')(ops1, srv2);
+  check('הבדל אמיתי — מדווח עם שם השדה המדויק, בלי התוכן', rep.length===1 && rep[0].includes('docFiles.alpha.name') && !rep[0].includes('שונה'.repeat(2)), J(rep));
+}
 
 console.log('3) האימות תופס תקלה — ואז אין מעבר');
 const missing=new Map(after); missing.delete('r_s_s2');
