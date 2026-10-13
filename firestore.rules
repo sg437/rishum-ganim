@@ -46,33 +46,40 @@ service cloud.firestore {
     // מחזיר את הערך כרשימה, או רשימה ריקה אם המפתח חסר / אינו רשימה
     function asList(m, k)  { return (k in m) && (m[k] is list) ? m[k] : []; }
 
+    /* ── מגבלת המנוע: כל קריאה למסמך אחר (get/exists) בבדיקה אחת נספרת, ויש לה תקרה.
+          הגרסה הקודמת קראה את org/meta עשרות פעמים בכל בדיקה (inOrg / orgUser / orgKey /
+          isHQ / cityRole — כל אחת מחדש), ואצל מי שמופיע/ה במרשם הספירה עברה את התקרה:
+          השרת ענה "אין הרשאה" גם למנהלת עיר — אף שכל תנאי לבדו התקיים. נמצא ושוחזר באמולטור.
+          עכשיו: כל מסמך נקרא פעם אחת לכל בדיקה (let), והערך עובר לפונקציות כפרמטר. ── */
+
     /* ── המרשם המרכזי ──────────────────────────────────────────────────── */
     function orgPath()   { return /databases/$(database)/documents/org/meta; }
-    function orgUsers()  {
-      return exists(orgPath()) && ('users' in get(orgPath()).data) && (get(orgPath()).data.users is map)
-             ? get(orgPath()).data.users : {};
+    function usersOf(d)  { return ('users' in d) && (d.users is map) ? d.users : {}; }
+    function orgUsers()  { return exists(orgPath()) ? usersOf(get(orgPath()).data) : {}; }
+    // הרשומה של המשתמש/ת במרשם (null = לא במרשם) — מתוך מפת משתמשים שכבר נקראה
+    function userIn(users) {
+      return (emailLower() in users) ? users[emailLower()]
+           : ((authEmail() in users) ? users[authEmail()] : null);
     }
-    function orgKey()    { return (emailLower() in orgUsers()) ? emailLower() : authEmail(); }
-    function inOrg()     { return request.auth != null && (emailLower() in orgUsers() || authEmail() in orgUsers()); }
-    function orgUser()   { return inOrg() ? orgUsers()[orgKey()] : {}; }
-    function isHQ()      { return isOwner() || (inOrg() && (orgUser() is map) && orgUser().get('hq', false) == true); }
+    function me()        { return userIn(orgUsers()); }
+    function hqOf(u)     { return isOwner() || (u is map && u.get('hq', false) == true); }
     // התפקיד בעיר לפי המרשם: מפה {cityId: role}; צורה ישנה — רשימת מזהים = עריכה
-    function cityRole(cityId) {
-      let c = (orgUser() is map) ? orgUser().get('cities', {}) : {};
+    function roleOf(u, cityId) {
+      let c = (u is map) ? u.get('cities', {}) : {};
       return (c is map && cityId in c) ? string(c[cityId])
            : ((c is list && cityId in c) ? 'edit' : '');
     }
-    function hasCity(cityId)    { return inOrg() && cityRole(cityId) != ''; }
-    function cityAdmin(cityId)  { return inOrg() && cityRole(cityId) == 'admin'; }
     // צפייה בלבד לפי המרשם — אלא אם המשתמש/ת מרכז (המרכז גובר)
-    function cityViewer(cityId) { return !isHQ() && inOrg() && cityRole(cityId) == 'view'; }
+    function viewerOf(u, cityId) { return !hqOf(u) && roleOf(u, cityId) == 'view'; }
+    function inOrg()     { return request.auth != null && me() != null; }
+    function isHQ()      { return hqOf(me()); }
 
     /* ── רשימת המורשים של עיר (settings שבמסמך meta של העיר) ────────────── */
     function homeMetaPath()        { return /databases/$(database)/documents/app/meta; }
     function cityMetaPath(cityId)  { return /databases/$(database)/documents/cities/$(cityId)/app/meta; }
-    function settingsAt(p) {
-      return exists(p) && ('settings' in get(p).data) && (get(p).data.settings is map) ? get(p).data.settings : {};
-    }
+    function dataAt(p)   { return exists(p) ? get(p).data : {}; }
+    function settingsOf(d) { return ('settings' in d) && (d.settings is map) ? d.settings : {}; }
+    function settingsAt(p) { return settingsOf(dataAt(p)); }
     function knownIn(s) {
       return inList(asList(s, 'admins'))
           || inList(asList(s, 'allowedEmails'))
@@ -81,45 +88,43 @@ service cloud.firestore {
     function adminIn(s) { return inList(asList(s, 'admins')); }
 
     /* ── גישה לעיר ─────────────────────────────────────────────────────── */
-    // עיר הבית: בעלים / מרכז / משויך/ת במרשם / משתמש/ת ותיק/ה שאינו/ה במרשם — לפי רשימת העיר
-    // רשימת המורשים של עיר הבית (admins / allowedEmails / userActivity) מכניסה *תמיד* — גם מי
-    // שמופיע/ה במרשם המרכזי. קודם המרשם "גבר": עובדת שהופיעה בו בלי תפקיד בעיר הבית (או
-    // שהרשומה שלה שם השתבשה) ננעלה לגמרי — גם בקריאה — אף שהיא מנהלת ברשימת העיר. ההגבלה
-    // "צפייה בלבד" במרשם ממשיכה לחול (homeCanWrite).
-    function homeAllowed() {
-      return isOwner() || isHQ() || hasCity(homeCityId())
-          || knownIn(settingsAt(homeMetaPath()));
+    // עיר הבית: בעלים / מרכז / תפקיד במרשם / או רשימת המורשים של עיר הבית — תמיד (גם למי
+    // שמופיע/ה במרשם). "צפייה בלבד" במרשם מגבילה כתיבה.
+    function homeAllowedFor(u, s) { return hqOf(u) || roleOf(u, homeCityId()) != '' || knownIn(s); }
+    function homeAdminFor(u, s) {
+      return hqOf(u) || roleOf(u, homeCityId()) == 'admin'
+          || ( !viewerOf(u, homeCityId()) && adminIn(s) );
     }
-    function homeAdmin() {
-      return isOwner() || isHQ() || cityAdmin(homeCityId())
-          || ( homeAllowed() && !cityViewer(homeCityId()) && adminIn(settingsAt(homeMetaPath())) );
-    }
-    function homeCanWrite() { return homeAllowed() && !cityViewer(homeCityId()); }
+    function homeAllowed()  { return homeAllowedFor(me(), settingsAt(homeMetaPath())); }
+    function homeCanWrite() { let u = me(); return homeAllowedFor(u, settingsAt(homeMetaPath())) && !viewerOf(u, homeCityId()); }
+    function homeAdmin()    { return homeAdminFor(me(), settingsAt(homeMetaPath())); }
     // עיר נוספת: רק דרך המרשם (אין "ותיקים" בעיר שנפתחה אחרי המרשם)
-    function cityAllowed(cityId)  { return isOwner() || isHQ() || hasCity(cityId); }
-    function cityCanWrite(cityId) { return cityAllowed(cityId) && !cityViewer(cityId); }
+    function cityAllowedFor(u, cityId) { return hqOf(u) || roleOf(u, cityId) != ''; }
+    function cityAllowed(cityId)  { return cityAllowedFor(me(), cityId); }
+    function cityCanWrite(cityId) { let u = me(); return cityAllowedFor(u, cityId) && !viewerOf(u, cityId); }
     function cityIsAdmin(cityId) {
-      return isOwner() || isHQ() || cityAdmin(cityId)
-          || ( cityCanWrite(cityId) && adminIn(settingsAt(cityMetaPath(cityId))) );
+      let u = me();
+      return hqOf(u) || roleOf(u, cityId) == 'admin'
+          || ( cityAllowedFor(u, cityId) && !viewerOf(u, cityId) && adminIn(settingsAt(cityMetaPath(cityId))) );
     }
 
     /* השדות הרגישים שבתוך settings — מי שאינו מנהל אינו רשאי לשנותם (מניעת הסלמה).
        ההשוואה היא בין הקיים לנכנס; שאר settings (כמו userActivity, מיתוג, שנים)
        נשמר כרגיל גם ע"י משתמש מורשה שאינו מנהל — כי save() כותב את כל מסמך meta. */
-    function oldSettings(p) { return settingsAt(p); }
     function newSettings()  { return request.resource.data.get('settings', {}); }
-    function privUnchanged(p) {
-      return oldSettings(p).get('admins', [])        == newSettings().get('admins', [])
-          && oldSettings(p).get('allowedEmails', []) == newSettings().get('allowedEmails', [])
-          && oldSettings(p).get('editScopes', {})    == newSettings().get('editScopes', {});
+    function privSame(o, n) {
+      return o.get('admins', [])        == n.get('admins', [])
+          && o.get('allowedEmails', []) == n.get('allowedEmails', [])
+          && o.get('editScopes', {})    == n.get('editScopes', {});
     }
+    function privUnchanged(p) { return privSame(settingsAt(p), newSettings()); }
 
     /* ── מסמך לכל רשומה (RECS): אחרי שעיר עברה (meta.model == 'recs'), המסמכים הישנים —
           students_<שנה>, gans, staff, management — הם גיבוי בלבד. גרסה ישנה של התוכנה
           שעוד לא התעדכנה הייתה כותבת אליהם עריכה שאף אחד לא יראה; חסימה כאן מחזירה לה
           שגיאה, והעריכה נשמרת אצלה ועולה במבנה החדש אחרי העדכון האוטומטי. ── */
     function legacyListDoc(docId) { return docId.matches('students_.*') || docId in ['gans', 'staff', 'management']; }
-    function modelIsRecs(p)       { return exists(p) && get(p).data.get('model', '') == 'recs'; }
+    function modelIsRecs(p)       { return dataAt(p).get('model', '') == 'recs'; }
 
     /* ── המרשם המרכזי: כל מי שמוכר למערכת קורא (כדי לדעת מהן הערים שלו);
           כותבים רק בעלים ומרכז. ─────────────────────────────────────────── */
