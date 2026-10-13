@@ -2513,7 +2513,7 @@ function recsLateOps(ops, lastDocs){
   const prev=new Map(ops.map(o=>[o.id,o])), now=new Map(ops2.map(o=>[o.id,o]));
   const untouched=id=>{ const v=lastDocs.get(id), p=prev.get(id); return !v || (p && v.u===p.data.u); };
   const late=[];
-  for(const [id,o] of now){ const p=prev.get(id); if((!p || _mk(p.data.d)!==_mk(o.data.d)) && untouched(id)) late.push(o); }
+  for(const [id,o] of now){ const p=prev.get(id); if((!p || _canon(p.data.d)!==_canon(o.data.d)) && untouched(id)) late.push(o); }
   for(const [id] of prev){ if(!now.has(id) && untouched(id)) late.push({ id, data:null }); }
   return late;
 }
@@ -2528,6 +2528,28 @@ function recsMigrationOps(lists){
   return ops;
 }
 /* אימות: כל רשומה מהמבנה הישן קיימת במבנה החדש וזהה לה. מחזיר רשימת בעיות (ריקה = תקין). */
+/* השוואה לפי תוכן — בלי תלות בסדר השדות. השרת מחזיר את שדות המפה בסדר משלו (לא בסדר
+   שבו נכתבו), ולכן השוואת JSON רגילה מצאה "הבדל" ברשומות זהות לגמרי. */
+function _canon(v){
+  if(Array.isArray(v)) return "["+v.map(_canon).join(",")+"]";
+  if(v && typeof v==="object"){
+    if(typeof v.toMillis==="function") return "T"+v.toMillis();          // Timestamp של Firestore
+    return "{"+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+":"+_canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v===undefined?null:v);
+}
+/* איפה בדיוק שתי רשומות נבדלות — שם השדה וסוג הערכים (בלי התוכן עצמו, שהוא מידע אישי) */
+function _firstDiff(a, b, path){
+  path=path||"";
+  const t=x=> x===null?"null" : Array.isArray(x)?`array(${x.length})` : typeof x==="string"?`string(${x.length})` : typeof x;
+  if(_canon(a)===_canon(b)) return "";
+  if(a && b && typeof a==="object" && typeof b==="object" && !Array.isArray(a) && !Array.isArray(b)){
+    for(const k of [...new Set([...Object.keys(a),...Object.keys(b)])].sort()){
+      const d=_firstDiff(a[k], b[k], path?path+"."+k:k); if(d) return d;
+    }
+  }
+  return `${path||"(שורש)"}: ${t(b)} ≠ ${t(a)}`;
+}
 function recsVerify(ops, docsMap){
   const bad=[];
   for(const op of ops){
@@ -2535,7 +2557,7 @@ function recsVerify(ops, docsMap){
     if(!v || v._t!=="rec" || !v.d){ bad.push("חסר: "+op.id); continue; }
     const got = op.kind==="stu" ? normStudent(v.d) : (op.kind==="staff" ? normStaff(JSON.parse(JSON.stringify(v.d))) : v.d);
     const want= op.kind==="stu" ? normStudent(op.data.d) : (op.kind==="staff" ? normStaff(JSON.parse(JSON.stringify(op.src))) : op.src);
-    if(_mk(got)!==_mk(want)) bad.push("שונה: "+op.id);
+    if(_canon(got)!==_canon(want)) bad.push(`שונה: ${op.id} (${_firstDiff(got, want)})`);
   }
   return bad;
 }

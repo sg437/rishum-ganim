@@ -38,6 +38,8 @@ fs.writeFileSync(path.join(TMP,'ui-lab.js'),'');
 fs.writeFileSync(path.join(TMP,'fbstub.js'),`
 const noop=()=>{}; const P=()=>Promise.resolve();
 const clone=o=>o==null?o:JSON.parse(JSON.stringify(o));
+/* כמו השרת האמיתי: שדות המפה נשמרים וחוזרים בסדר אלפביתי, לא בסדר שבו נכתבו */
+const sortDeep=v=>Array.isArray(v)?v.map(sortDeep):(v&&typeof v==='object')?Object.keys(v).sort().reduce((o,k)=>(o[k]=sortDeep(v[k]),o),{}):v;
 const store=window.__store=new Map(Object.entries(window.__SEED||{}));   // "app/meta" → data
 window.__ops=[];                                                          // יומן כתיבות: {op, path}
 const listeners=[];
@@ -54,9 +56,9 @@ function emit(paths){
 const setPath=(o,segs,v)=>{ let c=o; for(let i=0;i<segs.length-1;i++){ if(typeof c[segs[i]]!=='object'||c[segs[i]]===null) c[segs[i]]={}; c=c[segs[i]]; } c[segs[segs.length-1]]=v; };
 const getPath=(o,segs)=>segs.reduce((a,k)=>a==null?undefined:a[k],o);
 function applySet(p,data,opts){
-  if(opts&&opts.mergeFields){ const cur=clone(store.get(p))||{}; opts.mergeFields.forEach(fp=>setPath(cur,fp.segments,clone(getPath(data,fp.segments)))); store.set(p,cur); }
+  if(opts&&opts.mergeFields){ const cur=clone(store.get(p))||{}; opts.mergeFields.forEach(fp=>setPath(cur,fp.segments,clone(getPath(data,fp.segments)))); store.set(p,sortDeep(cur)); }
   else if(opts&&opts.merge){ store.set(p,Object.assign(clone(store.get(p))||{},clone(data))); }
-  else store.set(p,clone(data));
+  else store.set(p,sortDeep(clone(data)));
   window.__ops.push({op:'set',path:p});
 }
 export const initializeApp=()=>({name:'stub'});
@@ -86,7 +88,7 @@ export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; ex
 const Y='תשפ"ז';
 const SEED={
   'app/meta': { years:[Y], activeYear:Y, settings:{ admins:['sg@taharat.org'], allowedEmails:[] } },
-  'app/students_תשפ_ז': { year:Y, students:[ { id:'s1', year:Y, firstName:'רחל', lastName:'כהן' }, { id:'s2', year:Y, firstName:'לאה', lastName:'לוי', notes:'ישן' }, { id:'s3', year:Y, firstName:'שרה', lastName:'אברהם' } ] },
+  'app/students_תשפ_ז': { year:Y, students:[ { id:'s1', year:Y, firstName:'רחל', lastName:'כהן' }, { id:'s2', year:Y, firstName:'לאה', lastName:'לוי', notes:'ישן', docFiles:{ zeta:{ name:'ז', id:'1' }, alpha:{ name:'א', id:'2' } }, extraField:'x' }, { id:'s3', year:Y, firstName:'שרה', lastName:'אברהם' } ] },
   'app/gans': { gans:[ { id:'g1', ganName:'גן ורד' }, { id:'g2', ganName:'גן חצב' } ] },
   'app/staff': { staff:[ { id:'t1', name:'כהן מרים', role:'סייעת' } ] },
   'app/management': { management:[ { id:'m1', name:'מנהלת' } ] },
