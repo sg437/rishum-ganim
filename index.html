@@ -1904,6 +1904,24 @@ async function cleanupNewModelDocs(){
   return {found:ids.length, deleted:n};
 }
 let _cleanupDone=false;
+/* עיר שכבר עברה, אבל לפני כן היה ניסיון מעבר שלא הושלם: מסמכי-רשומה שנכתבו אז ולא נכתבו
+   מחדש במעבר שהצליח (u ישן בהרבה מרגע המעבר) — שייכים לרשומות שנמחקו בינתיים. מנהל/ת מוחק/ת
+   אותם פעם אחת, אחרת הן "חוזרות" למסך. (רשומה שנכתבה במעבר שהצליח — u שלה קרוב לרגע המעבר.) */
+let _recsOrphansDone=false;
+function recsOrphanIds(docsMap){
+  const meta=docsMap.get("meta")||{}; const at=+meta.modelAt||0; if(meta.model!=="recs" || !at) return [];
+  const out=[]; for(const [id,v] of docsMap){ if(id.startsWith("r_") && v && v._t==="rec" && (+v.u||0) < at-15*60*1000) out.push(id); }
+  return out;
+}
+async function maybeCleanupRecsOrphans(){
+  if(_recsOrphansDone || !RECS || !serverConfirmed || !currentUser || !isAdmin()) return;
+  _recsOrphansDone=true;
+  const ids=recsOrphanIds(cloudDocs); if(!ids.length) return;
+  try{
+    for(let i=0;i<ids.length;i+=400){ const b=writeBatch(db); ids.slice(i,i+400).forEach(id=>b.delete(cityDoc(id))); await _raceTimeout(b.commit(), 60000); }
+    toast(`נוקו ${ids.length} רשומות ישנות שנשארו מניסיון המעבר הקודם`, 6000);
+  }catch(e){ _recsOrphansDone=false; console.error("recs orphans", e); }
+}
 function maybeCleanupNewModel(){
   if(!NEW_MODEL_CLEANUP || _cleanupDone || !serverConfirmed || !currentUser) return;
   _cleanupDone=true;
@@ -2510,7 +2528,7 @@ function legacyListsFromDocs(docsMap){
    בינתיים במבנה החדש (u זהה למה שהמעבר כתב), כדי לא לדרוס עריכה חדשה יותר. */
 function recsLateOps(ops, lastDocs){
   const lists=legacyListsFromDocs(lastDocs), ops2=recsMigrationOps(lists);
-  const prev=new Map(ops.map(o=>[o.id,o])), now=new Map(ops2.map(o=>[o.id,o]));
+  const prev=new Map(ops.filter(o=>o.data).map(o=>[o.id,o])), now=new Map(ops2.map(o=>[o.id,o]));
   const untouched=id=>{ const v=lastDocs.get(id), p=prev.get(id); return !v || (p && v.u===p.data.u); };
   const late=[];
   for(const [id,o] of now){ const p=prev.get(id); if((!p || _canon(p.data.d)!==_canon(o.data.d)) && untouched(id)) late.push(o); }
@@ -2553,6 +2571,7 @@ function _firstDiff(a, b, path){
 function recsVerify(ops, docsMap){
   const bad=[];
   for(const op of ops){
+    if(op.kind==="orphan"){ if(docsMap.has(op.id)) bad.push("לא נמחק: "+op.id); continue; }
     const v=docsMap.get(op.id);
     if(!v || v._t!=="rec" || !v.d){ bad.push("חסר: "+op.id); continue; }
     const got = op.kind==="stu" ? normStudent(v.d) : (op.kind==="staff" ? normStaff(JSON.parse(JSON.stringify(v.d))) : v.d);
@@ -2593,10 +2612,13 @@ async function _migrateToRecs(onStep){
   if((before.get("meta")||{}).model==="recs") throw new Error("העיר כבר במבנה החדש");
   const lists=legacyListsFromDocs(before);
   const ops=recsMigrationOps(lists);
+  // מסמכי-רשומה שנשארו מניסיון קודם שלא הושלם — ושהרשומה שלהם כבר לא קיימת — נמחקים, אחרת היא "תחזור"
+  const want=new Set(ops.map(o=>o.id));
+  [...before.keys()].filter(id=>id.startsWith("r_") && !want.has(id)).forEach(id=>ops.push({ id, kind:"orphan", data:null }));
   step(`כותב ${ops.length} רשומות (${lists.stu.length} תלמידות · ${lists.gan.length} גנים · ${lists.staff.length} צוות · ${lists.mgmt.length} הנהלה)…`);
   for(let i=0;i<ops.length;i+=400){
     const b=writeBatch(db);
-    ops.slice(i,i+400).forEach(op=>b.set(cityDoc(op.id), op.data));
+    ops.slice(i,i+400).forEach(op=>{ if(op.data) b.set(cityDoc(op.id), op.data); else b.delete(cityDoc(op.id)); });
     try{ await _raceTimeout(b.commit(), 60000); }
     catch(e){ throw new Error("הכתיבה לשרת לא הצליחה ("+((e&&(e.code||e.message))||e)+"). העיר לא עברה — הכול ממשיך במבנה הקיים. אפשר לנסות שוב."); }
     step(`נכתבו ${Math.min(i+400,ops.length)} מתוך ${ops.length}…`);
@@ -2615,7 +2637,7 @@ async function _migrateToRecs(onStep){
     late.slice(i,i+400).forEach(op=>{ if(op.data) b.set(cityDoc(op.id), op.data); else b.delete(cityDoc(op.id)); });
     await _raceTimeout(b.commit(), 60000);
   }
-  return { count:ops.length, late:late.length, lists };
+  return { count:ops.filter(o=>o.data).length, late:late.length, lists };
 }
 async function pushAll(gen){
   if(!db) return;
@@ -5689,6 +5711,7 @@ function startDataSync(){
     if(_restored) _pendingResume(); // ...ואם נשארו — כתוב אותם עכשיו
     maybeMigrateBranding();
     maybeCleanupNewModel();
+    maybeCleanupRecsOrphans();
     if(!md.fromCache) maybeDailyBackup(); // גיבוי אוטומטי יומי (רק לאחר אישור מהשרת)
     if(!md.fromCache && !enforceAccess()) return; // חסימת התחברות Google לא-מורשית (רק לאחר אישור מהשרת)
     // איתחול meta רק כשהשרת אישר שהוא באמת ריק (לא ממטמון אופליין) —
