@@ -2559,9 +2559,14 @@ async function _migrateToRecs(onStep){
   const step=t=>{ _recsMig.text=t; _recsMigPaint(); try{ onStep&&onStep(t); }catch(_){} };
   if(RECS) throw new Error("העיר כבר במבנה החדש");
   if(!isAdmin()) throw new Error("רק מנהל/ת יכול/ה להריץ את המעבר");
-  if(!serverConfirmed || _pending.size || savePending || _pushInFlight) throw new Error("יש שינויים שעוד לא עלו לענן — חכו ל\"נשמר בענן\" ונסו שוב");
+  if(!serverConfirmed) throw new Error("עוד לא התקבלו נתונים מהשרת במכשיר הזה — חכו ל\"נשמר בענן\" ונסו שוב");
+  if(_pending.size || savePending || _pushInFlight) throw new Error(`יש ${_pending.size||"כמה"} שינויים שעוד לא עלו לענן — חכו ל"נשמר בענן" (או רעננו) ונסו שוב`);
   step("קורא את כל הנתונים מהשרת…");
-  const read=async()=>{ const m=new Map(); (await getDocsFromServer(cityColl())).forEach(d=>m.set(d.id, d.data())); return m; };
+  // קריאה מהשרת עם גבול-זמן — בלי זה קריאה תקועה השאירה את המעבר "רץ" לנצח, בלי שום הודעה
+  const read=async()=>{ const m=new Map();
+    try{ (await _raceTimeout(getDocsFromServer(cityColl()), 60000)).forEach(d=>m.set(d.id, d.data())); }
+    catch(e){ throw new Error("קריאת הנתונים מהשרת לא הצליחה ("+((e&&(e.code||e.message))||e)+"). לא בוצע שינוי — נסו שוב בעוד דקה, או מרשת אחרת."); }
+    return m; };
   const before=await read();
   if((before.get("meta")||{}).model==="recs") throw new Error("העיר כבר במבנה החדש");
   const lists=legacyListsFromDocs(before);
@@ -2570,7 +2575,8 @@ async function _migrateToRecs(onStep){
   for(let i=0;i<ops.length;i+=400){
     const b=writeBatch(db);
     ops.slice(i,i+400).forEach(op=>b.set(cityDoc(op.id), op.data));
-    await _raceTimeout(b.commit(), 60000);
+    try{ await _raceTimeout(b.commit(), 60000); }
+    catch(e){ throw new Error("הכתיבה לשרת לא הצליחה ("+((e&&(e.code||e.message))||e)+"). העיר לא עברה — הכול ממשיך במבנה הקיים. אפשר לנסות שוב."); }
     step(`נכתבו ${Math.min(i+400,ops.length)} מתוך ${ops.length}…`);
   }
   step("מאמת מול השרת שכל רשומה הגיעה…");
