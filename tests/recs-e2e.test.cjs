@@ -25,7 +25,7 @@ const expose=`
 Object.defineProperty(window,'DB',{get:()=>DB,configurable:true});
 Object.defineProperty(window,'RECS',{get:()=>RECS,configurable:true});
 Object.defineProperty(window,'savePending',{get:()=>savePending,configurable:true});
-Object.assign(window,{ migrateToRecs, save, isAdmin });
+Object.assign(window,{ migrateToRecs, save, isAdmin, route }); window.__goSettings=()=>{ active='settings'; route(); };
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -151,6 +151,23 @@ let pass=0, fail=0; const check=(n,c,d)=>{ if(c){pass++;console.log('  ✓ '+n);
   check('מחיקת גן = מחיקת המסמך שלו', ops2.includes('delete:app/r_g_g1'), ops2.join(', '));
   check('גן חדש = מסמך חדש', ops2.includes('set:app/r_g_g9'));
   check('המסך: הגן נמחק, החדש בסוף', await pg.evaluate(()=>JSON.stringify(DB.gans.map(g=>g.id)))==='["g2","g9"]');
+
+  console.log('6) דרך הכפתור במסך — ההתקדמות והתוצאה נשארות על המסך גם כשהוא נבנה מחדש');
+  const p2=await b.newPage(); p2.on('dialog',d=>d.accept());
+  await p2.addInitScript(s=>{ window.__SEED=s; try{ localStorage.clear(); }catch(_){} }, SEED);
+  await p2.goto('http://127.0.0.1:'+PORT+'/app.html',{ waitUntil:'domcontentloaded' });
+  await p2.waitForFunction(()=>window.__ready && window.__authCb, null, { timeout:15000 });
+  await p2.evaluate(()=>window.__authCb({ email:'sg@taharat.org', displayName:'מנהל', getIdToken:async()=>'t' }));
+  await p2.waitForFunction(()=>window.DB && window.DB.students.length===3 && !window.savePending, null, { timeout:15000 });
+  await p2.evaluate(()=>{ window.__noReload=true; const orig=location.reload.bind(location); try{ Object.defineProperty(location,'reload',{value:()=>{ window.__reloaded=true; }}); }catch(_){} window.__goSettings(); });
+  const hasBtn=await p2.evaluate(()=>!!document.getElementById('recs-migrate'));
+  check('הכפתור מופיע בהגדרות למנהל/ת', hasBtn);
+  await p2.click('#recs-migrate');
+  await p2.waitForFunction(()=>/המעבר הושלם/.test((document.getElementById('recs-log')||{}).textContent||'') || /המעבר הושלם/.test(document.body.textContent), null, { timeout:15000 }).catch(()=>{});
+  const shown=await p2.evaluate(()=>((document.getElementById('recs-log')||{}).textContent||'')+' | '+(document.getElementById('toast')||{}).textContent);
+  check('אחרי המעבר — "המעבר הושלם" מוצג (גם אחרי שהמסך נבנה מחדש)', /המעבר הושלם/.test(shown), shown);
+  check('המעבר באמת בוצע', await p2.evaluate(()=>window.__store.get('app/meta').model==='recs'));
+  await p2.close();
 
   const real=errors.filter(e=>!/Failed to fetch|NetworkError|net::/.test(e));
   check('אין שגיאות JavaScript', !real.length, real.join(' | '));

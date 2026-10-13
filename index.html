@@ -2539,8 +2539,24 @@ function recsVerify(ops, docsMap){
   }
   return bad;
 }
+/* מצב המעבר — מחוץ ל-DOM: המסך נבנה מחדש בכל סנאפשוט (והמעבר עצמו מייצר כאלה), ובלי זה
+   ההתקדמות והתוצאה נמחקו מהמסך באמצע — והכפתור חזר להיות לחיץ. */
+let _recsMig = { running:false, text:"", ok:null };
+function _recsMigPaint(){
+  const log=$("#recs-log"), btn=$("#recs-migrate");
+  if(btn) btn.disabled=_recsMig.running;
+  if(log) log.innerHTML = _recsMig.ok===false ? `<b style="color:var(--bad)">${esc(_recsMig.text)}</b>`
+                        : _recsMig.ok===true  ? `<b style="color:var(--good)">${esc(_recsMig.text)}</b>`
+                        : (_recsMig.running ? `⏳ ${esc(_recsMig.text)}` : "");
+}
+let _recsMigActive=false;
 async function migrateToRecs(onStep){
-  const step=t=>{ try{ onStep&&onStep(t); }catch(_){} };
+  if(_recsMigActive) throw new Error("המעבר כבר רץ — נא להמתין");
+  _recsMigActive=true;
+  try{ return await _migrateToRecs(onStep); } finally{ _recsMigActive=false; }
+}
+async function _migrateToRecs(onStep){
+  const step=t=>{ _recsMig.text=t; _recsMigPaint(); try{ onStep&&onStep(t); }catch(_){} };
   if(RECS) throw new Error("העיר כבר במבנה החדש");
   if(!isAdmin()) throw new Error("רק מנהל/ת יכול/ה להריץ את המעבר");
   if(!serverConfirmed || _pending.size || savePending || _pushInFlight) throw new Error("יש שינויים שעוד לא עלו לענן — חכו ל\"נשמר בענן\" ונסו שוב");
@@ -17013,14 +17029,16 @@ function viewSettings(root){
 
   // מנהלי מערכת
   const rmBtn=$("#recs-migrate");
+  _recsMigPaint(); // המסך נבנה מחדש באמצע המעבר — מציגים שוב את ההתקדמות/התוצאה
   if(rmBtn) rmBtn.onclick=async()=>{
     if(!confirm(`מעבר "${cityName()}" למבנה "מסמך לכל רשומה".\n\n• לבצע רק כשאף אחד לא עובד במערכת.\n• הפרויקט ב-Firebase חייב להיות בתוכנית Blaze.\n• אם האימות נכשל — לא מתבצע שום שינוי.\n\nלהמשיך?`)) return;
-    const log=$("#recs-log"); rmBtn.disabled=true;
+    _recsMig={ running:true, text:"מתחיל…", ok:null }; _recsMigPaint();
     try{
-      const r=await migrateToRecs(t=>{ if(log) log.textContent=t; });
-      if(log) log.innerHTML=`<b style="color:var(--good)">✓ המעבר הושלם — ${r.count} רשומות נבדקו מול השרת.</b> הדף נטען מחדש…`;
-      setTimeout(()=>location.reload(), 2500);
-    }catch(e){ console.error(e); if(log) log.innerHTML=`<b style="color:var(--bad)">${esc((e&&e.message)||String(e))}</b>`; rmBtn.disabled=false; }
+      const r=await migrateToRecs();
+      _recsMig={ running:false, ok:true, text:`✓ המעבר הושלם — ${r.count} רשומות נבדקו מול השרת${r.late?` (ועוד ${r.late} שינויים שנשמרו בזמן המעבר)`:""}. הדף נטען מחדש…` };
+      _recsMigPaint(); toast(_recsMig.text, 4000);
+      setTimeout(()=>location.reload(), 3000);
+    }catch(e){ console.error(e); _recsMig={ running:false, ok:false, text:(e&&e.message)||String(e) }; _recsMigPaint(); toast("המעבר לא בוצע: "+_recsMig.text, 9000); }
   };
   const ab=$("#admins-box");
   const admins=(DB.settings.admins||[]);

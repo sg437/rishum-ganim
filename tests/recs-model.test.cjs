@@ -88,7 +88,7 @@ const missing=new Map(after); missing.delete('r_s_s2');
 check('רשומה חסרה — מדווחת', G('recsVerify')(ops, missing).some(x=>x.includes('r_s_s2')));
 const changed=new Map(after); const v=JSON.parse(J(changed.get('r_g_g2'))); v.d.capacity='99'; changed.set('r_g_g2', v);
 check('רשומה שונה — מדווחת', G('recsVerify')(ops, changed).some(x=>x.includes('r_g_g2')));
-check('הקוד מסמן את המעבר רק אחרי אימות נקי', (()=>{ const m=grab('async function migrateToRecs('); return m.indexOf('recsVerify(')>0 && m.indexOf('if(bad.length) throw')>m.indexOf('recsVerify(') && m.indexOf('model:"recs"')>m.indexOf('if(bad.length) throw'); })());
+check('הקוד מסמן את המעבר רק אחרי אימות נקי', (()=>{ const m=grab('async function _migrateToRecs('); return m.indexOf('recsVerify(')>0 && m.indexOf('if(bad.length) throw')>m.indexOf('recsVerify(') && m.indexOf('model:"recs"')>m.indexOf('if(bad.length) throw'); })());
 
 console.log('3ב) שינוי שנשמר בשניות של המעבר — מועתק גם למבנה החדש');
 { const last=new Map(after);
