@@ -1847,11 +1847,45 @@ function startOrg(){
   });
 }
 function requireHQ(){ if(!user || !isHQ(user.email)) throw new Error("not-hq"); }
+/* שמירת המרשם — מיזוג לפי רשומה, לא דריסה של כל המסמך.
+   עד עכשיו כל שמירה כתבה את *כל* המרשם (ערים ומשתמשים) מהעותק שבמסך. שני משתמשי מרכז
+   שעובדים יחד — או מסך שנפתח לפני שינוי של מישהו אחר — היו מוחקים זה לזה משתמשים והרשאות.
+   עכשיו: מחשבים מה *המשתמש/ת הזה/זו* שינה/תה מול המרשם שעל המסך (ORG), ובטרנזקציה מחילים
+   רק את זה על המרשם העדכני בשרת. עיר/משתמש/ת שלא נגעו בהם — נשארים כפי שהם בשרת.
+   (orgDiff/orgApply טהורות — נבדקות ב-tests/org-merge.test.cjs) */
+function _canonOrg(v){
+  if(Array.isArray(v)) return "["+v.map(_canonOrg).join(",")+"]";
+  if(v && typeof v==="object") return "{"+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+":"+_canonOrg(v[k])).join(",")+"}";
+  return JSON.stringify(v===undefined?null:v);
+}
+function orgDiff(base, next){
+  const bC=new Map(base.cities.map(c=>[c.id,c])), nC=new Map(next.cities.map(c=>[c.id,c]));
+  const d={ cSet:[], cDel:[], uSet:[], uDel:[] };
+  for(const [id,c] of nC){ const b=bC.get(id); if(!b || _canonOrg(b)!==_canonOrg(c)) d.cSet.push(c); }
+  for(const id of bC.keys()) if(!nC.has(id)) d.cDel.push(id);
+  for(const k in next.users){ const b=base.users[k]; if(!b || _canonOrg(b)!==_canonOrg(next.users[k])) d.uSet.push([k, next.users[k]]); }
+  for(const k in base.users) if(!(k in next.users)) d.uDel.push(k);
+  return d;
+}
+function orgApply(cur, d){
+  const cm=new Map(cur.cities.map(c=>[c.id,c]));
+  d.cSet.forEach(c=>cm.set(c.id, c)); d.cDel.forEach(id=>cm.delete(id));
+  const um=Object.assign({}, cur.users);
+  d.uSet.forEach(([k,v])=>{ um[k]=v; }); d.uDel.forEach(k=>{ delete um[k]; });
+  return { cities:[...cm.values()], users:um };
+}
 async function saveOrg(next){
   requireHQ();
-  const payload={ cities:(next.cities||[]).map(c=>Object.assign({},c)), users:Object.assign({},next.users||{}), updatedAt:Date.now(), updatedBy:lower(user.email) };
-  await setDoc(doc(db,"org","meta"), payload);
-  ORG=normOrg(payload);
+  const d=orgDiff(normOrg(ORG), normOrg(next));
+  if(!d.cSet.length && !d.cDel.length && !d.uSet.length && !d.uDel.length) return;
+  const ref=doc(db,"org","meta"); let out=null;
+  await runTransaction(db, async tx=>{
+    const snap=await tx.get(ref);
+    const merged=orgApply(normOrg(snap.exists()?snap.data():null), d);
+    out=Object.assign(merged, { updatedAt:Date.now(), updatedBy:lower(user.email) });
+    tx.set(ref, out);
+  });
+  ORG=normOrg(out);
   syncCityWatchers();
 }
 /* הגדרות המרכזי — מיזוג שטחי של השדות שנשלחו */

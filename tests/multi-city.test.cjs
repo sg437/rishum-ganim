@@ -28,7 +28,7 @@ Object.defineProperty(window,'ORG',{get:()=>ORG,set:v=>{ORG=v},configurable:true
 Object.defineProperty(window,'_pending',{get:()=>_pending,configurable:true});
 Object.defineProperty(window,'currentUser',{get:()=>currentUser,set:v=>{currentUser=v},configurable:true});
 window.__resetCity=()=>{ _cityResolved=false; };
-Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, saveOrg, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
+Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -183,16 +183,7 @@ const server=require('http').createServer((req,res)=>{
       return ok && localStorage.getItem('rg-city')==='modiin-illit';
     });
   });
-  await step('שמירת המרשם — רק מרכז, ולמסמך org/meta', async()=>{
-    return await pg.evaluate(async()=>{
-      currentUser={email:'modiin@example.com'};
-      let denied=false; try{ await saveOrg(); }catch(e){ denied=/not-hq/.test(e.message); }
-      currentUser={email:'hq@example.com'}; window.__writes.length=0;
-      await saveOrg();
-      const w=window.__writes.find(x=>x.path==='org/meta');
-      return denied && !!w && Array.isArray(w.data.cities) && w.data.cities.some(c=>c.id==='modiin-illit') && w.data.updatedBy==='hq@example.com';
-    });
-  });
+  await step('תוכנת העיר אינה כותבת את המרשם (רק המרכזי, במיזוג)', ()=>pg.evaluate(()=>typeof window.saveOrg==='undefined' && typeof window.orgForWrite==='undefined'));
   await step('הגשר מקבל את העיר בכל קריאה (cityId/cityName)', ()=>pg.evaluate(()=>{
     CITY=cityById('jerusalem'); const a=cityBridgeArgs();
     CITY=cityById('modiin-illit'); const b=cityBridgeArgs();
