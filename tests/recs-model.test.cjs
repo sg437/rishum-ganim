@@ -43,7 +43,7 @@ vm.runInContext([
   line('const RECS_KINDS'), line('const _recOrd'),
   line('function _recHash('), grab('function recDocId('), grab('function recsListsFromDocs('),
   grab('function recDoc('), grab('function recsOps('),
-  grab('function legacyListsFromDocs('), grab('function recsMigrationOps('), grab('function recsVerify('),
+  grab('function legacyListsFromDocs('), grab('function recsMigrationOps('), grab('function recsVerify('), grab('function recsLateOps('),
 ].join('\n'), sb);
 const G=k=>vm.runInContext(k, sb);
 
@@ -89,6 +89,22 @@ check('רשומה חסרה — מדווחת', G('recsVerify')(ops, missing).some
 const changed=new Map(after); const v=JSON.parse(J(changed.get('r_g_g2'))); v.d.capacity='99'; changed.set('r_g_g2', v);
 check('רשומה שונה — מדווחת', G('recsVerify')(ops, changed).some(x=>x.includes('r_g_g2')));
 check('הקוד מסמן את המעבר רק אחרי אימות נקי', (()=>{ const m=grab('async function migrateToRecs('); return m.indexOf('recsVerify(')>0 && m.indexOf('if(bad.length) throw')>m.indexOf('recsVerify(') && m.indexOf('model:"recs"')>m.indexOf('if(bad.length) throw'); })());
+
+console.log('3ב) שינוי שנשמר בשניות של המעבר — מועתק גם למבנה החדש');
+{ const last=new Map(after);
+  const sd=JSON.parse(J(last.get('students_תשפ_ז'))); const n=G('normStudent')(sd.students[0]); n.notes='נשמר בזמן המעבר'; sd.students[0]=G('packStudent')(n);
+  sd.students.push(G('packStudent')(mkS('s5','תשפ"ז'))); last.set('students_תשפ_ז', sd);
+  const gd=JSON.parse(J(last.get('gans'))); gd.gans=gd.gans.filter(g=>g.id!=='g2'); last.set('gans', gd);
+  const late=G('recsLateOps')(ops, last);
+  check('תיק שנערך בזמן המעבר — נכתב שוב', late.some(o=>o.id==='r_s_s1' && o.data && o.data.d.notes==='נשמר בזמן המעבר'), J(late.map(o=>o.id)));
+  check('תיק שנוסף בזמן המעבר — נכתב', late.some(o=>o.id==='r_s_s5' && o.data));
+  check('גן שנמחק בזמן המעבר — נמחק גם בחדש', late.some(o=>o.id==='r_g_g2' && o.data===null));
+  check('מה שלא השתנה — לא נכתב שוב', late.length===3, J(late.map(o=>o.id)));
+  const newer=new Map(last); const v=JSON.parse(J(newer.get('r_s_s1'))); v.u=v.u+5000; v.d.notes='עריכה חדשה במבנה החדש'; newer.set('r_s_s1', v);
+  check('רשומה שכבר נערכה במבנה החדש — לא נדרסת', !G('recsLateOps')(ops, newer).some(o=>o.id==='r_s_s1'));
+  const noId=new Map([['gans',{ gans:[{ ganName:'בלי מזהה' }] }]]);
+  check('רשומה בלי מזהה — מזהה יציב בין קריאות (בלי כפילויות)', G('legacyListsFromDocs')(noId).gan[0].id===G('legacyListsFromDocs')(noId).gan[0].id);
+}
 
 console.log('4) עריכה במבנה החדש — רק מה שהשתנה');
 sb.DB.students=norm(L.s); sb.DB.gans=JSON.parse(J(L.g)); sb.DB.staff=L.t.map(G('normStaff')); sb.DB.management=JSON.parse(J(L.m));
