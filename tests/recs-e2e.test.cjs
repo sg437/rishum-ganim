@@ -92,6 +92,8 @@ const SEED={
   'app/gans': { gans:[ { id:'g1', ganName:'גן ורד' }, { id:'g2', ganName:'גן חצב' } ] },
   'app/staff': { staff:[ { id:'t1', name:'כהן מרים', role:'סייעת' } ] },
   'app/management': { management:[ { id:'m1', name:'מנהלת' } ] },
+  /* שארית מניסיון מעבר קודם שלא הושלם — התיק נמחק אחר כך מהמבנה הישן, ואסור שיחזור */
+  'app/r_s_gone': { _t:'rec', k:'s', d:{ id:'gone', year:Y, firstName:'נמחקה', lastName:'מזמן' }, o:9, u:1 },
 };
 const PORT=8763;
 /* השרת מגיש רק את הקבצים שהבדיקה כתבה — מרשימה שנבנית מראש, לא מנתיב שבבקשה */
@@ -127,7 +129,7 @@ let pass=0, fail=0; const check=(n,c,d)=>{ if(c){pass++;console.log('  ✓ '+n);
   const r=await pg.evaluate(async()=>{ window.__ops.length=0; try{ const r=await migrateToRecs(); return { ok:true, count:r.count }; }catch(e){ return { ok:false, err:e.message }; } });
   check('המעבר הושלם ואומת', r.ok && r.count===7, JSON.stringify(r));
   const recDocs=await pg.evaluate(()=>[...window.__store.keys()].filter(k=>k.startsWith('app/r_')).sort());
-  check('נכתבו 7 מסמכי-רשומה', recDocs.length===7, recDocs.join(','));
+  check('נכתבו 7 מסמכי-רשומה, והשארית מניסיון קודם נמחקה', recDocs.length===7 && !recDocs.includes('app/r_s_gone'), recDocs.join(','));
   check('meta מסומן model:"recs"', await pg.evaluate(()=>window.__store.get('app/meta').model==='recs'));
   check('שינוי שנשמר בזמן המעבר — הגיע גם למבנה החדש', await pg.evaluate(()=>window.__store.get('app/r_s_s3').d.notes==='נשמר בזמן המעבר'));
   check('המעבר לא כתב לשום מסמך ישן (גיבוי)', await pg.evaluate(()=>!window.__ops.some(o=>/students_|app\/gans$|app\/staff$|app\/management$/.test(o.path))));

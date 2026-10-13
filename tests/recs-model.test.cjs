@@ -43,7 +43,7 @@ vm.runInContext([
   line('const RECS_KINDS'), line('const _recOrd'),
   line('function _recHash('), grab('function recDocId('), grab('function recsListsFromDocs('),
   grab('function recDoc('), grab('function recsOps('),
-  grab('function legacyListsFromDocs('), grab('function recsMigrationOps('), grab('function _canon('), grab('function _firstDiff('), grab('function recsVerify('), grab('function recsLateOps('),
+  grab('function legacyListsFromDocs('), grab('function recsMigrationOps('), grab('function _canon('), grab('function _firstDiff('), grab('function recsVerify('), grab('function recsLateOps('), grab('function recsOrphanIds('),
 ].join('\n'), sb);
 const G=k=>vm.runInContext(k, sb);
 
@@ -115,6 +115,16 @@ console.log('3ב) שינוי שנשמר בשניות של המעבר — מוע�
   check('רשומה שכבר נערכה במבנה החדש — לא נדרסת', !G('recsLateOps')(ops, newer).some(o=>o.id==='r_s_s1'));
   const noId=new Map([['gans',{ gans:[{ ganName:'בלי מזהה' }] }]]);
   check('רשומה בלי מזהה — מזהה יציב בין קריאות (בלי כפילויות)', G('legacyListsFromDocs')(noId).gan[0].id===G('legacyListsFromDocs')(noId).gan[0].id);
+}
+
+console.log('3ג) שאריות מניסיון מעבר קודם שלא הושלם');
+{ const at=Date.now();
+  const m=new Map([['meta',{ model:'recs', modelAt:at }],
+    ['r_s_keep', { _t:'rec', k:'s', d:{ id:'keep' }, u:at-60*1000 }],          // נכתב במעבר שהצליח
+    ['r_s_new',  { _t:'rec', k:'s', d:{ id:'new' },  u:at+3600*1000 }],        // נערך אחרי המעבר
+    ['r_s_old',  { _t:'rec', k:'s', d:{ id:'old' },  u:at-5*3600*1000 }]]);    // שארית מניסיון שנכשל
+  check('רק השארית מזוהה למחיקה', J(G('recsOrphanIds')(m))==='["r_s_old"]', J(G('recsOrphanIds')(m)));
+  check('עיר שלא עברה — אין מה לנקות', G('recsOrphanIds')(new Map([['meta',{}],['r_s_old',{ _t:'rec', u:1 }]])).length===0);
 }
 
 console.log('4) עריכה במבנה החדש — רק מה שהשתנה');
