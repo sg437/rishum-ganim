@@ -137,10 +137,15 @@ const server=require('http').createServer((req,res)=>{
   await step('צורה ישנה של המרשם (רשימת מזהים) = עריכה', ()=>pg.evaluate(()=>{
     currentUser={email:'legacy-list@example.com'}; return cityRole('ashdod')==='edit' && cityAccess('ashdod') && !cityAccess('modiin-illit');
   }));
-  await step('משתמש/ת שבמרשם בלי אף עיר — אין גישה לשום עיר (גם לא לעיר הבית)', ()=>pg.evaluate(()=>{
-    currentUser={email:'nowhere@example.com'}; DB.settings.allowedEmails=['nowhere@example.com'];
-    const r = myCities().length===0 && !cityAccess('modiin-illit') && !emailAllowed('nowhere@example.com');
-    DB.settings.allowedEmails=[]; return r;
+  await step('משתמש/ת שבמרשם בלי אף עיר — עיר הבית לפי רשימת המורשים שלה (ולא ערים אחרות); לא ברשימה — אין גישה', ()=>pg.evaluate(()=>{
+    currentUser={email:'nowhere@example.com'};
+    DB.settings.allowedEmails=['nowhere@example.com'];
+    CITY=cityById('modiin-illit');
+    const dbg=[myCities().map(c=>c.id).join(), cityAccess('modiin-illit'), emailAllowed('nowhere@example.com'), cityAccess('jerusalem')];
+    const inList = dbg[0]==='modiin-illit' && dbg[1] && dbg[2] && !dbg[3];
+    DB.settings.allowedEmails=[];
+    const notInList = !cityAccess('modiin-illit') && !emailAllowed('nowhere@example.com');
+    return inList && notInList;
   }));
   await step('משתמש/ת ותיק/ה שאינו/ה במרשם — עיר הבית לפי רשימת המורשים של העיר, ולא ערים אחרות', ()=>pg.evaluate(()=>{
     currentUser={email:'old@example.com'};
@@ -223,10 +228,10 @@ const server=require('http').createServer((req,res)=>{
       stopDataSync(); return ok || ('city='+(CITY&&CITY.id));
     });
   });
-  await step('משתמש/ת במרשם בלי עיר — מסך "אין עיר משויכת"', ()=>pg.evaluate(()=>{
+  await step('משתמש/ת במרשם בלי עיר — נכנס/ת לעיר הבית (האימות מול רשימת העיר — אחרי טעינה)', ()=>pg.evaluate(()=>{
     stopDataSync(); CITY=null; currentUser={email:'nowhere@example.com'}; window.__resetCity();
     onOrgReady();
-    return !!document.getElementById('nc-out') && document.getElementById('view').textContent.includes('אין עיר משויכת') && CITY===null;
+    return CITY && CITY.id==='modiin-illit';
   }));
   await step('החלפת עיר חסומה כשיש עריכה שטרם נשמרה, ועוברת כשאין', async()=>{
     return await pg.evaluate(async()=>{

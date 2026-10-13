@@ -82,9 +82,13 @@ service cloud.firestore {
 
     /* ── גישה לעיר ─────────────────────────────────────────────────────── */
     // עיר הבית: בעלים / מרכז / משויך/ת במרשם / משתמש/ת ותיק/ה שאינו/ה במרשם — לפי רשימת העיר
+    // רשימת המורשים של עיר הבית (admins / allowedEmails / userActivity) מכניסה *תמיד* — גם מי
+    // שמופיע/ה במרשם המרכזי. קודם המרשם "גבר": עובדת שהופיעה בו בלי תפקיד בעיר הבית (או
+    // שהרשומה שלה שם השתבשה) ננעלה לגמרי — גם בקריאה — אף שהיא מנהלת ברשימת העיר. ההגבלה
+    // "צפייה בלבד" במרשם ממשיכה לחול (homeCanWrite).
     function homeAllowed() {
       return isOwner() || isHQ() || hasCity(homeCityId())
-          || ( !inOrg() && knownIn(settingsAt(homeMetaPath())) );
+          || knownIn(settingsAt(homeMetaPath()));
     }
     function homeAdmin() {
       return isOwner() || isHQ() || cityAdmin(homeCityId())

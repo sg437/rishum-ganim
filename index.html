@@ -1108,8 +1108,8 @@ function cityAccess(cityId, email){
   const em=String(email==null?myEmail():email).toLowerCase(); if(!em||!cityId) return false;
   if(isOwnerEmail(em)) return true;
   const u=orgUser(em);
-  if(u){ if(u.hq) return true; return !!cityRole(cityId, em); }
-  if(cityId===HOME_CITY.id) return knownEmails().has(em);   // משתמש/ת ותיק/ה — כמו היום
+  if(u){ if(u.hq) return true; if(cityRole(cityId, em)) return true; }
+  if(cityId===HOME_CITY.id) return knownEmails().has(em);   // רשימת המורשים של עיר הבית — תמיד (גם למי שבמרשם; זהה לכללי השרת)
   return false;
 }
 /* הערים שהמשתמש/ת רשאי/ת לראות — לבורר. משתמש/ת ותיק/ה שאינו/ה במרשם מקבל/ת
@@ -1119,8 +1119,10 @@ function myCities(){
   const all=orgCities().filter(c=>c.active!==false);
   if(isHQ(em)) return all;
   const u=orgUser(em);
-  if(!u) return all.filter(c=>c.id===HOME_CITY.id);
-  return all.filter(c=>!!cityRole(c.id, em));
+  // לא במרשם, או במרשם בלי אף עיר — עיר הבית (האימות מול רשימת המורשים שלה — אחרי טעינת הנתונים)
+  const hasAny = u && u.cities && (Array.isArray(u.cities) ? u.cities.length : Object.keys(u.cities).length);
+  if(!u || !hasAny) return all.filter(c=>c.id===HOME_CITY.id);
+  return all.filter(c=>!!cityRole(c.id, em) || (c.id===HOME_CITY.id && cityAccess(c.id, em)));
 }
 function getCityPref(){ try{ return localStorage.getItem("rg-city")||""; }catch(_){ return ""; } }
 function setCityPref(id){ try{ if(id) localStorage.setItem("rg-city", id); else localStorage.removeItem("rg-city"); }catch(_){} }
