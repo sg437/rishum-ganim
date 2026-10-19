@@ -311,9 +311,23 @@ const server=require('http').createServer((req,res)=>{
     const r=await pg2.evaluate(()=>({ gateShown:!document.getElementById('gate').hidden, err:document.getElementById('gateErr').textContent, kpis:document.querySelectorAll('#homeTicker .tk').length, hasPerms:!!document.getElementById('orgAdmin') }));
     return (r.gateShown && /המודול החי/.test(r.err) && r.kpis>=5 && r.hasPerms) || JSON.stringify(r);
   });
-  await step('המרכזי: "כניסה להדמיה" מסירה את השער', async()=>{
-    await pg2.click('#gateDemo'); await pg2.waitForTimeout(100);
-    return await pg2.evaluate(()=>document.getElementById('gate').hidden===true);
+  await step('המרכזי: "כניסה להדמיה" עוברת לקישור ?demo=1 (שומר על שאר הפרמטרים) ושם השער יורד', async()=>{
+    await Promise.all([pg2.waitForURL(/[?&]demo=1/), pg2.click('#gateDemo')]);
+    await pg2.waitForTimeout(600);
+    const r=await pg2.evaluate(()=>({ url:location.search, gate:document.getElementById('gate').hidden }));
+    return (/ui=new/.test(r.url) && r.gate===true) || JSON.stringify(r);
+  });
+  await step('המרכזי: בלי ?demo=1 — השער מוצג מההתחלה ולא יורד אחרי "loading" (ההדמיה לא נחשפת)', async()=>{
+    const p=await b.newPage();
+    await p.route('**',r=>{ const u=r.request().url(); if(u.startsWith('http://127.0.0.1:'+PORT+'/')) return r.continue(); return r.abort(); });
+    await p.goto('http://127.0.0.1:'+PORT+'/management.html');
+    const r=await p.evaluate(()=>{ const g=document.getElementById('gate'); const first=!g.hidden;
+      document.dispatchEvent(new CustomEvent('central:auth',{detail:{state:'loading',email:'x@example.com'}}));
+      const afterLoading=!g.hidden;
+      document.dispatchEvent(new CustomEvent('central:auth',{detail:{state:'denied',email:'x@example.com'}}));
+      return { first, afterLoading, denied:!g.hidden && /אינו מוגדר כמשתמש/.test(document.getElementById('gateErr').textContent) }; });
+    await p.close();
+    return (r.first && r.afterLoading && r.denied) || JSON.stringify(r);
   });
   /* ---- המרכזי במצב חי: מדמים את האירועים שהמודול החי משדר ---- */
   await step('המרכזי: כניסה מוחקת את כל ההדמיה — פידים, ערים מומצאות, מסכי הדמיה', async()=>{

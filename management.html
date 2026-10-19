@@ -785,7 +785,7 @@
 </style>
 
 <!-- שער הכניסה — המרכזי פתוח למשתמשי המרכז בלבד (בעלי המערכת ומי שסומן "מרכז" במרשם) -->
-<div class="gate" id="gate" hidden>
+<div class="gate" id="gate">
   <div class="gate-ribbon">
     <span class="mk" aria-hidden="true"><i></i><i></i><i></i></span>
     <span class="t1">מרכז ניהול ארצי</span>
@@ -3548,17 +3548,20 @@ try{
   document.addEventListener('central:event', function(e){ if(feedEl) pushFeed(feedEl, e.detail, 14); if(e.detail.c==='reg') pushFeed($('#regFeed'), e.detail, 12); });
   var gate=$('#gate'), gateErr=$('#gateErr');
   var DEMO_REQ = /(^|[?&])demo=1(&|$)/.test(location.search);
+  /* ההדמיה נפתחת רק בקישור עם ?demo=1. בלי זה — שער הכניסה נשאר עד שנכנסים כמשתמש/ת מרכז. */
+  var GATE_MSG=$('#gateMsg').textContent;
+  gate.hidden=DEMO_REQ;
   document.addEventListener('central:auth', function(e){
     var st=e.detail.state;
     if(st==='in'){ gate.hidden=true; gateErr.style.display='none'; $('#gateMsg').textContent='הכניסה למרכז היא עם חשבון Google של המשרד הראשי.'; if(e.detail.name) LIVE_NAME=e.detail.name; if(!LIVEMODE){ wipeDemo(); LIVEMODE=true; LIVE_USER=e.detail.email||''; liveBadges(); } }
-    else if(st==='loading'){ gate.hidden=true; }
-    else if(st==='out'){ if(LIVEMODE){ location.href=location.pathname; return; } gate.hidden=DEMO_REQ; }
-    else if(st==='denied'){ gate.hidden=false; gateErr.style.display='block'; gateErr.textContent='החשבון '+(e.detail.email||'')+' אינו מוגדר כמשתמש/ת מרכז. משתמשי הערים נכנסים לתוכנת הרישום של העיר (index.html); הרשאת מרכז ניתנת במרשם המרכזי.'; }
+    else if(st==='loading'){ gate.hidden=DEMO_REQ; if(!DEMO_REQ) $('#gateMsg').textContent='מתחבר… בודק הרשאת מרכז עבור '+(e.detail.email||'')+'.'; }
+    else if(st==='out'){ if(LIVEMODE){ location.href=location.pathname; return; } gate.hidden=DEMO_REQ; $('#gateMsg').textContent=GATE_MSG; }
+    else if(st==='denied'){ gate.hidden=false; $('#gateMsg').textContent=GATE_MSG; gateErr.style.display='block'; gateErr.textContent='החשבון '+(e.detail.email||'')+' אינו מוגדר כמשתמש/ת מרכז. משתמשי הערים נכנסים לתוכנת הרישום של העיר (index.html); הרשאת מרכז ניתנת במרשם המרכזי.'; }
     else if(st==='error'){ gate.hidden=false; gateErr.style.display='block'; gateErr.textContent='החיבור לענן נכשל: '+(e.detail.reason||''); }
   });
   $('#gateGoogle').addEventListener('click',function(){ gateErr.style.display='none'; window.__centralLive.signIn().catch(function(err){ if(/popup-closed|cancelled/i.test(err&&err.code||'')) return; gateErr.style.display='block'; gateErr.textContent='ההתחברות נכשלה: '+((err&&err.code)||err); }); });
-  $('#gateDemo').addEventListener('click',function(){ gate.hidden=true; });
-  if(!window.__centralLive){ gate.hidden=false; gateErr.style.display='block'; gateErr.textContent='המודול החי לא נטען (ייתכן שהרשת חוסמת את Firebase). אפשר להמשיך להדמיה.'; }
+  $('#gateDemo').addEventListener('click',function(){ if(DEMO_REQ){ gate.hidden=true; return; } var q=new URLSearchParams(location.search); q.set('demo','1'); location.href=location.pathname+'?'+q.toString(); });
+  if(!window.__centralLive){ gate.hidden=DEMO_REQ; gateErr.style.display='block'; gateErr.textContent='המודול החי לא נטען (ייתכן שהרשת חוסמת את Firebase). אפשר להמשיך להדמיה.'; }
   else if(window.__centralLive.testDb){ var tb=document.createElement('div'); tb.className='testbar'; tb.textContent=' סביבת בדיקה — נתוני משחק בלבד (testdb). זו אינה המערכת האמיתית.'; document.body.insertBefore(tb, document.body.firstChild); }
 
   /* ---------- INIT ---------- */
