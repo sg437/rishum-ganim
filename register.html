@@ -367,8 +367,9 @@ function render(){
   wireGan(); wireFiles();
   if(CONFIG.cityName) $("#mainTitle").textContent = "רישום לגני ילדים " + (CONFIG.year || "") + " · " + CONFIG.cityName;
   $("#tzBox").style.display = CONFIG.tzaharonOffer ? "" : "none";
-  if(/^https:\/\//i.test(CONFIG.insurancePayUrl||"")){ $("#insPay").style.display=""; $("#insPayBtn").href=CONFIG.insurancePayUrl; }
-  else { $("#insPledgeBox").style.display="flex"; }
+  { let payUrl=null; try{ const u=new URL(String(CONFIG.insurancePayUrl||"")); if(u.protocol==="https:") payUrl=u; }catch(e){}
+    if(payUrl){ $("#insPay").style.display=""; $("#insPayBtn").setAttribute("href", "https://"+payUrl.host+payUrl.pathname+payUrl.search+payUrl.hash); }
+    else { $("#insPledgeBox").style.display="flex"; } }
   $("#appealLinkBox").style.display = CONFIG.appealsOn===false ? "none" : "";
   $("#appealLink").href = "?appeal=1" + (CUR_CITY.id ? "&city="+encodeURIComponent(CUR_CITY.id) : "");
   $("#loading").style.display="none";
@@ -548,7 +549,7 @@ $("#submitBtn").onclick = async ()=>{
   if(!signatureDataUrl()){ return fail("יש לחתום בחלון החתימה"); }
   const passport=$("#isPassport").checked;
   if(passport && (!$("#fileNispachB").files.length || !$("#filePassChild").files.length || (!$("#filePassDad").files.length && !$("#filePassMom").files.length))){ return fail("בעלי דרכון: יש לצרף נספח ב׳, דרכון של התלמיד/ה ודרכונים של ההורים"); }
-  const payOn=/^https:\/\//i.test(CONFIG.insurancePayUrl||""), insRef=String(($("#insRef")||{}).value||"").trim();
+  const payOn=$("#insPay").style.display!=="none", insRef=String(($("#insRef")||{}).value||"").trim();
   if(payOn && !insRef){ return fail("יש לשלם את ביטוח התלמידים ולהזין את מספר האישור"); }
   if(!payOn && !$("#insPledge").checked){ return fail("יש לסמן התחייבות לתשלום ביטוח התלמידים"); }
   const btn=$("#submitBtn"); btn.disabled=true; msg("שולח…","");

@@ -5584,9 +5584,9 @@ function xlsToRows(buf){
     var from=(String(m.from||'').match(/[^<\s]+@[^>\s]+/)||[])[0]; if(from){ var e=ix.byEmail[from.toLowerCase()]; if(e && e!=='multi') return e; }
     return null;
   }
-  function mailSeen(){ var t=(H.HQ().tracking||[]).filter(function(x){ return x.id==='mailsync'; })[0]; return (t&&t.seen)||{}; }
+  function mailSeen(){ var t=(H.HQ().tracking||[]).filter(function(x){ return x.id==='mailsync'; })[0]; var out={}; var src=(t&&t.seen)||{}; Object.keys(src).forEach(function(k){ if(/^m_[A-Za-z0-9_-]{1,64}$/.test(k)) out[k]=src[k]; }); return out; }
   function markSeen(ids, how){ var seen=Object.assign({}, mailSeen()); var cut=Date.now()-60*86400000; Object.keys(seen).forEach(function(k){ if((seen[k].at||0)<cut) delete seen[k]; });
-    ids.forEach(function(id){ seen[id]={ at:Date.now(), how:how||'' }; }); return LIVE.hqSet('tracking', 'mailsync', { kind:'mailsync', seen:seen }); }
+    ids.forEach(function(id){ if(/^[A-Za-z0-9_-]{1,64}$/.test(String(id))) seen['m_'+id]={ at:Date.now(), how:how||'' }; }); return LIVE.hqSet('tracking', 'mailsync', { kind:'mailsync', seen:seen }); }
   function attachMail(m, r){
     var e={ id:H.uid(), at:m.date||new Date().toISOString(), by:'מייל נכנס', type:'emailIn', from:m.from||'', subject:m.subject||'', text:String(m.body||'').slice(0,6000), ref:'mail:'+m.id };
     var mut=function(x){ x.journal=Array.isArray(x.journal)?x.journal.slice():[]; if(x.journal.some(function(j){ return j.ref===e.ref; })) return; x.journal.push(e); if(x.journal.length>300) x.journal=x.journal.slice(-300); };
@@ -5600,7 +5600,7 @@ function xlsToRows(buf){
     _mailBusy=true; _mailAt=Date.now();
     return LIVE.bridge('mailInbox', { query:'in:inbox newer_than:14d', max:50 }).then(function(res){
       var seen=mailSeen(), ix=mailIndex(), done=[], auto=0, chain=Promise.resolve();
-      var fresh=((res&&res.items)||[]).filter(function(m){ return m && m.id && !seen[m.id]; });
+      var fresh=((res&&res.items)||[]).filter(function(m){ return m && typeof m.id==='string' && /^[A-Za-z0-9_-]{1,64}$/.test(m.id) && !seen['m_'+m.id]; });
       MAIL_PENDING=[];
       fresh.forEach(function(m){ var r=matchMail(m, ix);
         if(r) chain=chain.then(function(){ return attachMail(m, r).then(function(){ done.push(m.id); auto++; }).catch(function(e){ console.error('mail attach', e); MAIL_PENDING.push(m); }); });
