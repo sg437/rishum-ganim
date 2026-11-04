@@ -1624,13 +1624,14 @@ function stuTemplate(){ return {
   id:"", year:"", tz:"", firstName:"", lastName:"", dob:"",
   motherName:"", fatherName:"", phone:"", mobile:"", dadMobile:"", momMobile:"", email:"", street:"", building:"", city:"",
   campus:"", ganId:"", age:"", period:"א", education:"רגיל",
-  registeredByUs:true, absorbedMunicipality:false, finished:false, placed:true, retentionNext:false,
+  registeredByUs:true, absorbedMunicipality:false, absorbedMinistry:false, finished:false, placed:true, retentionNext:false,
   docs:{ nispach:false, idCopy:false, takanon:false }, docFiles:{},
   programs:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false },
   programsPaid:{ tzaharon:false, campHanukkah:false, campNisan:false, campEndYear:false },
   insurancePaid:false,
   special:{ divorced:false, approvalFather:false, approvalMother:false, idFather:false, idMother:false, approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false, outOfCity:false, paymentArrangement:false, retention:false, retentionDoc:false, other:false, otherText:"" },
   support:{ shiluv:false, salIshi:false, medical:false, behavior:false, prepA:false },
+  leftDate:"", leftReason:"", leftReported:"",
   regDate:"", regChannel:"",
   driveFolder:"", driveFolderId:"", notes:"", createdAt:""
 };}
@@ -1711,7 +1712,7 @@ function buildCity(c, docs){
       age:String(g.age||""), edu:(g.education==='ח"מ')?'spc':'reg', gender:String(g.gender||""), campus:g.campus||"", region:c.region||"",
       cap:capN, enrolled:list.length, placed, on:g.active!==false,
       teacher:g.teacherName||((roles["גננת"]&&roles["גננת"].name)||""),
-      licenseCap:+String(g.licenseCap||"").replace(/[^\d]/g,"")||0, licenseAges:String(g.licenseAges||""),
+      licenseCap:+String(g.licenseCap||"").replace(/[^\d]/g,"")||0, licenseAges:String(g.licenseAges||""), licenseExpiry:String(g.licenseExpiry||"").slice(0,10),
       assignCap:+String(g.assignCap||"").replace(/[^\d]/g,"")||0,
       address:[g.street||g.address||"", g.building||""].filter(Boolean).join(" "), zone:g.zone||"", phoneGan:g.phoneGan||"", city:g.city||"",
       geo:(g.geo && g.geo.lat!=null) ? { lat:g.geo.lat, lng:g.geo.lng } : null,
@@ -1750,7 +1751,7 @@ function buildCity(c, docs){
     brand:{ title:(settings.appTitle||""), sub:(settings.appSubtitle||"") },
     /* --- הנתונים המלאים (למסכי התלמידים/הצוות/הייצוא של המרכזי) --- */
     stuFull, staffFull, gansRaw:gansRaw.map(g=>Object.assign({},g)), management:mgmtRaw.map(m=>Object.assign({},m)),
-    asg:asgYear, settings:{ ages:settings.ages||settings.childAges||[], campuses:settings.campuses||[], staffRoles:settings.staffRoles||[], assignCaps:settings.assignCaps||{}, tzaharonLimits:settings.tzaharonLimits||null, gansTarget:settings.gansTarget||"", userNames:settings.userNames||{}, msgLog:Array.isArray(settings.msgLog)?settings.msgLog.slice(-20):[] },
+    asg:asgYear, settings:{ retentionPolicy:settings.retentionPolicy==='obligated'?'obligated':'space', ages:settings.ages||settings.childAges||[], campuses:settings.campuses||[], staffRoles:settings.staffRoles||[], assignCaps:settings.assignCaps||{}, tzaharonLimits:settings.tzaharonLimits||null, gansTarget:settings.gansTarget||"", userNames:settings.userNames||{}, msgLog:Array.isArray(settings.msgLog)?settings.msgLog.slice(-20):[] },
     municipality:meta.municipality||{}, visitors, visitors30:visitors.filter(v=>v.ts>monthAgo).length,
     docs:docs.size, loaded:docs.has("meta")||docs.has("gans")||all.length>0, error:cityErr.get(c.id)||"", lastUpdate:Date.now(), live:true
   };
@@ -2001,6 +2002,39 @@ async function addStudents(cityId, year, list){
   });
   return added;
 }
+/* ---- הוספת גנים / אנשי צוות לעיר (ייבוא מהמרכזי) — זהה ל-makeGan / makeStaff בתוכנת העיר ---- */
+function ganTemplate(){ return { id:"", ganName:"", internalSymbol:"", ganSymbol:"", citySymbol:"", nickname:"", teacherName:"", age:"", education:"רגיל",
+  address:"", building:"", street:"", zone:"", phoneGan:"", phoneHome:"", teacherMobile:"", assistantName:"", assistantMobile:"",
+  campus:"", city:"", gender:"", licenseExpiry:"", licenseAges:"", licenseCap:"", capacity:"", assignCap:"", assignCapNote:"", active:true, docsNote:"", createdAt:"" }; }
+function staffTemplate(){ return { id:"", lastName:"", firstName:"", name:"", tz:"", email:"", role:"סייעת", education:"רגיל", phone:"", mobile:"", city:"", street:"", building:"",
+  weeklyHours:"", notes:"", active:true, certificate:false, movements:[], notesList:[], absences:[], lateness:[], docFiles:{}, driveFolder:"", driveFolderId:"", createdAt:"" }; }
+async function addRecords(cityId, kind, list){
+  requireHQ(); if(kind!=="gan" && kind!=="staff") throw new Error("bad-kind");
+  const c=cityById(cityId); if(!c) throw new Error("no-city");
+  const tpl=kind==="gan"?ganTemplate:staffTemplate, now=Date.now(), by=lower(user&&user.email);
+  const full=list.map(x=>Object.assign(tpl(), x, { id:x.id||uid(), createdAt:x.createdAt||new Date().toISOString() }));
+  if(cityIsRecs(cityDocs.get(c.id))){
+    const docs=cityDocs.get(c.id); let n=0;
+    for(let i=0;i<full.length;i+=400){
+      const b=writeBatch(db);
+      full.slice(i,i+400).forEach((o,j)=>{ if(docs && docs.has(recDocId(kind, o.id))) o.id=uid(); b.set(docFor(c, recDocId(kind, o.id)), { _t:"rec", k:RECS_KINDS[kind], d:o, o:now+i+j, u:now, by }); n++; });
+      await b.commit();
+    }
+    return n;
+  }
+  const field=kind==="gan"?"gans":"staff", ref=docFor(c, field); let added=0;
+  await runTransaction(db, async tx=>{
+    const snap=await tx.get(ref);
+    const cur=snap.exists()?snap.data():{};
+    const arr=Array.isArray(cur[field])?cur[field].slice():[];
+    const ids=new Set(arr.map(o=>o&&o.id)); added=0;
+    full.forEach(o=>{ if(ids.has(o.id)) o.id=uid(); arr.push(o); added++; });
+    const payload=Object.assign({}, cur, { [field]:arr });
+    if(JSON.stringify(payload).length>1000000) throw new Error("doc-too-large");
+    tx.set(ref, payload);
+  });
+  return added;
+}
 /* ---- הגשר (Apps Script): מייל, שער הודעות, עוזר חכם ----
    Apps Script מגביל ל-1,000 הרצות בו-זמנית לכל הפרויקט (המרכזי והעיריות יחד),
    ולכן גם כאן: תקרה של קריאות שרצות יחד, איחוד קריאות-קריאה זהות שבדרך,
@@ -2074,7 +2108,7 @@ window.__centralLive = {
   async signOut(){ stopAll(); await signOut(auth); },
   saveOrg, org:()=>({ cities:orgCities(), users:ORG.users }), isOwner,
   hq:()=>HQ, hqSaveSettings, hqSet, hqDelete, hqAudit,
-  updateStudent, updateGan, addStudents, bridge, normStudent, packStudent, stuTemplate, uid
+  updateStudent, updateGan, addStudents, addRecords, bridge, normStudent, packStudent, stuTemplate, uid
 };
 try{
   app=initializeApp(firebaseConfig);
@@ -3978,6 +4012,8 @@ try{
     ['placed','שיבוץ',function(s){ return s.ganId ? (s.placed!==false?'משובץ/ת':'ממתין/ה') : 'ללא גן'; }],
     ['registeredByUs','נרשמה על ידינו',function(s){ return yn(s.registeredByUs); }],
     ['absorbedMunicipality','קלוט בעירייה',function(s){ return yn(s.absorbedMunicipality); }],
+    ['absorbedMinistry','קלוט במשרד החינוך',function(s){ return yn(s.absorbedMinistry); }],
+    ['leftDate','תאריך עזיבה',function(s){ return s.leftDate?fmtDate(s.leftDate):''; }],['leftReason','סיבת עזיבה',function(s){ return s.leftReason||''; }],
     ['ministry','משרד החינוך',function(s){ return ministryLabel(s); }],
     ['nispach','נספח',function(s){ return yes(s.docs&&s.docs.nispach); }],
     ['idCopy','צילום ת"ז',function(s){ return yes(s.docs&&s.docs.idCopy); }],
@@ -4057,8 +4093,10 @@ try{
     var th=thresholds().assistantB; if(!g.on) return null;
     var girls=g.gender==='בנים'?0:g.enrolled; var mandatory=String(g.age||'').trim()==='5';
     var has=(g.roster||[]).some(function(r){ return /סייעת ב/.test(r.r); });
-    var eligible=girls>=th && !mandatory;
-    return { eligible:eligible, has:has, girls:girls, mandatory:mandatory };
+    /* זכאות: רישיון בתוקף · גן גיל 3 או 4 (לא גן חובה) · מספר הילדות הגיע לסף */
+    var expired=!!g.licenseExpiry && g.licenseExpiry < todayISO();
+    var eligible=girls>=th && !mandatory && !expired;
+    return { eligible:eligible, has:has, girls:girls, mandatory:mandatory, expired:expired, conflict:has && !eligible };
   }
   function flagId(kind, cityId, ganId){ return kind+'_'+cityId+'_'+ganId; }
   function flagFor(kind, cityId, ganId){ return (HQ.flags||[]).filter(function(f){ return f.id===flagId(kind,cityId,ganId); })[0]||null; }
@@ -4248,7 +4286,7 @@ try{
       '<div><div class="sec-h">שיבוץ</div><div class="kv">'+[['גן',s.gan],['סמל גן',s.ganSym],['גננת',g?g.teacher:''],['שיבוץ סופי',s.ganId?(s.placed!==false?'כן':'לא — ממתינה לאישור'):'אין גן'],['אופן השיבוץ בעיר',c.placement==='office'?'שיבוץ במשרד הראשי (מרכזי)':'שיבוץ בעיר']].map(function(r){ return '<div class="r"><span class="k">'+esc(r[0])+'</span><span class="v'+(r[1]?'':' empty')+'">'+(r[1]?esc(r[1]):'—')+'</span></div>'; }).join('')+'</div></div>'+
       '<div><div class="sec-h">פרטי התלמידה</div><div class="kv-grid">'+kvRow('עיר',c.name)+kvRow('שנה',s.year)+kvRow('ת"ז',s.tz)+kvRow('תאריך לידה',H.fmtDate(s.dob))+kvRow('גיל',s.age)+kvRow('מועד',s.period)+kvRow('חינוך',H.eduL(s.education))+kvRow('מגדר (לפי הגן)',s.gender)+kvRow('קמפוס',s.campus)+'</div></div>'+
       '<div><div class="sec-h">הורים וכתובת</div><div class="kv-grid">'+kvRow('שם האם',s.motherName)+kvRow('שם האב',s.fatherName)+kvRow('טלפון בית',s.phone)+kvRow('נייד',s.mobile)+kvRow('נייד אב',s.dadMobile)+kvRow('נייד אם',s.momMobile)+kvRow('דוא"ל',s.email+(H.bouncedFor(s)?' (חזר)':''))+kvRow('כתובת',[s.street,s.building,s.city].filter(Boolean).join(' '))+'</div></div>'+
-      '<div><div class="sec-h">קליטה, מסמכים ותוכניות</div><div class="kv-grid">'+kvRow('נרשמה על ידינו',H.yn(s.registeredByUs))+kvRow('קלוט בעירייה',H.yn(s.absorbedMunicipality))+kvRow('משרד החינוך',H.ministryLabel(s))+kvRow('נספח',H.yn(d.nispach))+kvRow('צילום ת"ז',H.yn(d.idCopy))+kvRow('תקנון',H.yn(d.takanon))+kvRow('צהרון',H.yn(pr.tzaharon))+kvRow('קייטנת חנוכה',H.yn(pr.campHanukkah))+kvRow('קייטנת ניסן',H.yn(pr.campNisan))+kvRow('קייטנת סוף שנה',H.yn(pr.campEndYear))+kvRow('ביטוח שולם',H.yn(s.insurancePaid))+'</div></div>'+
+      '<div><div class="sec-h">קליטה, מסמכים ותוכניות</div><div class="kv-grid">'+kvRow('נרשמה על ידינו',H.yn(s.registeredByUs))+kvRow('קלוט בעירייה',H.yn(s.absorbedMunicipality))+kvRow('קלוט במשרד החינוך',H.yn(s.absorbedMinistry))+kvRow('משרד החינוך',H.ministryLabel(s))+kvRow('נספח',H.yn(d.nispach))+kvRow('צילום ת"ז',H.yn(d.idCopy))+kvRow('תקנון',H.yn(d.takanon))+kvRow('צהרון',H.yn(pr.tzaharon))+kvRow('קייטנת חנוכה',H.yn(pr.campHanukkah))+kvRow('קייטנת ניסן',H.yn(pr.campNisan))+kvRow('קייטנת סוף שנה',H.yn(pr.campEndYear))+kvRow('ביטוח שולם',H.yn(s.insurancePaid))+'</div></div>'+
       '<div><div class="sec-h">סימונים</div><div class="kv-grid">'+kvRow('גרושים',H.yn(sp.divorced))+kvRow('ילדת חוץ',H.yn(sp.outOfCity))+kvRow('הסדר תשלום',H.yn(sp.paymentArrangement))+kvRow('השארות',H.yn(sp.retention))+kvRow('השארות לשנה הבאה',H.yn(s.retentionNext))+kvRow('אחר',sp.other?(sp.otherText||'כן'):'')+kvRow('שילוב',H.yn(su.shiluv))+kvRow('סל אישי',H.yn(su.salIshi))+kvRow('מנתחת התנהגות',H.yn(su.behavior))+kvRow('הכנה לא׳',H.yn(su.prepA))+kvRow('תיקיית דרייב',s.driveFolder?'קיימת':'')+kvRow('הערות',s.notes)+kvRow('נפתח',H.fmtDT(s.createdAt))+'</div></div>'+
       '<div><div class="sec-h">יומן מעקב <span class="hq-count">'+reqs.length+' פניות</span></div>'+(reqs.length?'<div class="timeline">'+reqs.map(function(r){ return '<div class="ti"><span class="d">'+esc(H.fmtD(r.createdAt))+'</span><div><b>'+esc(r.type||'')+'</b> · '+reqStatus(r)+'<br>'+esc(r.text||'')+(r.decision?'<br><i>החלטה: '+esc(r.decision)+'</i>':'')+'</div></div>'; }).join('')+'</div>':'<div class="hq-count">אין פניות מתועדות.</div>')+'</div>';
     var foot=(H.canEdit('students')?'<button class="btn-primary" id="sd-place" style="flex:1">שיבוץ מרכזי</button><button class="btn-ghost" id="sd-final">'+(s.placed!==false?'סימון כממתינה':'סימון שיבוץ סופי')+'</button>':'')+
@@ -4285,7 +4323,8 @@ try{
     $('#pl-ok').addEventListener('click',function(){
       var ganId=$('#pl-gan').value, fin=$('#pl-final').value==='1', note=$('#pl-note').value.trim(); var g=gans.filter(function(x){ return x.id===ganId; })[0];
       if(ganId && fin && noDoc.length){ toast(' אין שיבוץ סופי לילדת השארות בלי מסמך השארות ('+noDoc.map(H.stuName).join(', ')+') — אפשר לבחור "ממתין/ה לאישור"'); return; }
-      if(g && g.assignCap && (g.enrolled+students.filter(function(s){ return s.ganId!==ganId; }).length)>g.assignCap && !H.confirmBox('הגן '+g.name+' יעבור את רף השיבוץ ('+g.assignCap+'). להמשיך בכל זאת?')) return;
+      var obligedRet=students.length && students.every(function(s){ var cc=H.cityById(s.cityId); return s.special&&s.special.retention && cc && cc.settings && cc.settings.retentionPolicy==='obligated'; });
+      if(g && g.assignCap && !obligedRet && (g.enrolled+students.filter(function(s){ return s.ganId!==ganId; }).length)>g.assignCap && !H.confirmBox('הגן '+g.name+' יעבור את רף השיבוץ ('+g.assignCap+'). להמשיך בכל זאת?')) return;
       H.closeModal(); $('#pl-ok')&&($('#pl-ok').disabled=true);
       run(students, function(s){ s.ganId=ganId; s.placed=ganId?fin:true; if(g&&g.campus) s.campus=g.campus; if(note) s.notes=(s.notes?s.notes+' | ':'')+note; }, 'שיבוץ מרכזי → '+(g?g.name:'ללא גן'));
     });
@@ -4902,7 +4941,15 @@ function xlsToRows(buf){
     "טלפון":"phone","טלפוןבית":"phone","טל":"phone","נייד":"mobile","טלפוןנייד":"mobile","סלולרי":"mobile","פלאפון":"mobile","ניידאב":"dadMobile","ניידאם":"momMobile","דואל":"email","אימייל":"email","מייל":"email","email":"email",
     "רחוב":"street","כתובת":"street","בניין":"building","מספרבית":"building","בית":"building","מסבית":"building","עיר":"city","יישוב":"city","ישוב":"city","קמפוס":"campus",
     "גן":"gan","שםהגן":"gan","גננת":"gan","שםגננת":"gan","שיבוץ":"gan","סמלגן":"gan","סמלמוסד":"gan","גיל":"age","מועד":"period","מועדרישום":"period","חינוך":"education","סוגחינוך":"education","הערות":"notes","הערה":"notes","קלוטבעירייה":"absorbed","קלוט":"absorbed","נרשמהעלידינו":"regByUs","נרשמה":"regByUs","צהרון":"tzaharon" };
-  var IMP={ cityId:'', rows:null, map:[], opts:{ regByUs:true, absorbed:false, tzaharon:false, skipDup:true, edu:'רגיל', period:'א' }, fileName:'' };
+  /* ייבוא גנים ואנשי צוות (בנוסף לתלמידים) — אותו זרם: עיר → קובץ → מיפוי → תצוגה מקדימה */
+  var GAN_FIELDS=[['','— לא לקלוט —'],['ganName','שם הגן'],['nickname','כינוי הגן'],['internalSymbol','סמל פנימי'],['ganSymbol','סמל הגן'],['citySymbol','סמל עירוני'],['teacherName','שם הגננת'],['age','גיל'],['education','חינוך'],['gender','מגדר'],['campus','קמפוס'],['address','כתובת'],['street','רחוב'],['building','מספר'],['city','עיר'],['zone','אזור'],['phoneGan','טלפון הגן'],['teacherMobile','נייד גננת'],['capacity','קיבולת'],['assignCap','רף שיבוץ'],['licenseCap','מכסת רישיון'],['licenseExpiry','רישיון בתוקף עד'],['docsNote','הערות']];
+  var GAN_HMAP={ "שםהגן":"ganName","שםגן":"ganName","גן":"ganName","כינוי":"nickname","כינויגן":"nickname","כינויהגן":"nickname","סמלפנימי":"internalSymbol","פנימי":"internalSymbol","סמלהגן":"ganSymbol","סמלגן":"ganSymbol","סמל":"ganSymbol","סמלמוסד":"ganSymbol","סמלעירוני":"citySymbol","סמלעירייה":"citySymbol","גננת":"teacherName","שםהגננת":"teacherName","שםגננת":"teacherName","גיל":"age","גילהגן":"age","חינוך":"education","סוגחינוך":"education","מגדר":"gender","קמפוס":"campus","כתובת":"address","כתובתהגן":"address","רחוב":"street","מספר":"building","בניין":"building","עיר":"city","יישוב":"city","ישוב":"city","אזור":"zone","טלפון":"phoneGan","טלפוןהגן":"phoneGan","טלפוןגן":"phoneGan","ניידגננת":"teacherMobile","קיבולת":"capacity","מקומות":"capacity","תפוסה":"capacity","רףשיבוץ":"assignCap","מכסתרישיון":"licenseCap","רישיון":"licenseCap","תוקףרישיון":"licenseExpiry","רישיוןבתוקףעד":"licenseExpiry","הערות":"docsNote" };
+  var STAFF_FIELDS=[['','— לא לקלוט —'],['lastName','שם משפחה'],['firstName','שם פרטי'],['fullName','שם מלא (משפחה + פרטי)'],['tz','ת"ז'],['email','מייל'],['role','תפקיד'],['education','חינוך'],['phone','טלפון'],['mobile','נייד'],['city','עיר'],['street','רחוב'],['building','בניין'],['weeklyHours','שעות שבועיות'],['notes','הערות']];
+  var STAFF_HMAP={ "שםמשפחה":"lastName","משפחה":"lastName","שםפרטי":"firstName","פרטי":"firstName","שם":"fullName","שםמלא":"fullName","שםהעובדת":"fullName","תז":"tz","תעודתזהות":"tz","מספרזהות":"tz","זהות":"tz","מייל":"email","דואל":"email","אימייל":"email","תפקיד":"role","חינוך":"education","סוגחינוך":"education","טלפון":"phone","טל":"phone","נייד":"mobile","פלאפון":"mobile","טלפוןנייד":"mobile","עיר":"city","יישוב":"city","רחוב":"street","כתובת":"street","בניין":"building","מספרבית":"building","שעות":"weeklyHours","שעותשבועיות":"weeklyHours","הערות":"notes" };
+  var KIND_L={ stu:'תלמידים', gan:'גנים', staff:'אנשי צוות' };
+  function curFields(){ return IMP.kind==='gan'?GAN_FIELDS:IMP.kind==='staff'?STAFF_FIELDS:FIELDS; }
+  function curHmap(){ return IMP.kind==='gan'?GAN_HMAP:IMP.kind==='staff'?STAFF_HMAP:HMAP; }
+  var IMP={ kind:'stu', cityId:'', rows:null, map:[], opts:{ regByUs:true, absorbed:false, tzaharon:false, skipDup:true, edu:'רגיל', period:'א' }, fileName:'' };
   function render(){
     var host=$('#hqImport'); if(!host) return;
     if(!C.live){ host.innerHTML=H.emptyHTML('זמין אחרי כניסה למרכז','הייבוא כותב למסמך השנה של העיר.'); H.hoist('import',[]); return; }
@@ -4911,13 +4958,16 @@ function xlsToRows(buf){
     var cs=H.cities(); if(!IMP.cityId && cs.length) IMP.cityId=cs[0].id;
     var c=H.cityById(IMP.cityId);
     host.innerHTML='<div class="proc"><div class="card proc-steps" id="impSteps"></div><div class="proc-main">'+
-      '<div class="card pad" style="margin-bottom:14px"><div class="sec-title">1 · לאיזו עיר ולאיזו שנה</div><div class="hq-toolbar" style="margin-top:8px"><select class="txtin" id="impCity">'+cs.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===IMP.cityId?' selected':'')+'>'+esc(x.name)+' · '+esc(x.year||'—')+' · '+he(x.students)+' תיקים</option>'; }).join('')+'</select>'+
+      '<div class="card pad" style="margin-bottom:14px"><div class="sec-title">1 · מה מייבאים, לאיזו עיר ולאיזו שנה</div><div class="hq-toolbar" style="margin-top:8px"><select class="txtin" id="impKind" aria-label="סוג הרשומות">'+['stu','gan','staff'].map(function(k){ return '<option value="'+k+'"'+(IMP.kind===k?' selected':'')+'>'+KIND_L[k]+'</option>'; }).join('')+'</select><select class="txtin" id="impCity">'+cs.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===IMP.cityId?' selected':'')+'>'+esc(x.name)+' · '+esc(x.year||'—')+' · '+he(x.students)+' תיקים</option>'; }).join('')+'</select>'+
       '<span class="hq-count">התיקים נפתחים בשנת הרישום הפעילה של העיר ('+esc(c?c.year:'')+'). גנים שבקובץ מותאמים לגני העיר לפי שם / סמל / גננת.</span></div>'+
       '<div class="frm" style="margin-top:10px"><label class="chk"><input type="checkbox" id="impReg"'+(IMP.opts.regByUs?' checked':'')+'> סמן את כולם "נרשמה על ידינו"</label><label class="chk"><input type="checkbox" id="impAbs"'+(IMP.opts.absorbed?' checked':'')+'> סמן את כולם "קלוט בעירייה" (כבוי כברירת מחדל — רק העירייה קובעת)</label><label class="chk"><input type="checkbox" id="impTz"'+(IMP.opts.tzaharon?' checked':'')+'> סמן את כולם כרשומים לצהרון</label><label class="chk"><input type="checkbox" id="impDup"'+(IMP.opts.skipDup?' checked':'')+'> דלג על ת"ז שכבר קיימת בעיר</label><label>חינוך (כשאין עמודה)<select class="txtin" id="impEdu"><option value="רגיל">רגיל</option><option value=\'ח"מ\''+(IMP.opts.edu==='ח"מ'?' selected':'')+'>חינוך מיוחד</option></select></label><label>מועד (כשאין עמודה)<select class="txtin" id="impPer">'+['א','ב','ג','סופי'].map(function(p){ return '<option'+(IMP.opts.period===p?' selected':'')+'>'+p+'</option>'; }).join('')+'</select></label></div></div>'+
       '<div class="card pad" style="margin-bottom:14px"><div class="sec-title">2 · הקובץ</div><div class="hq-toolbar" style="margin-top:8px"><input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt" class="txtin"><button class="btn-ghost" id="impTemplate"> תבנית לאקסל</button><span class="hq-count">או להדביק מאקסל:</span></div><textarea class="txtin" id="impPaste" rows="4" style="width:100%" placeholder="הדבקה ישירה מאקסל (כולל שורת כותרות)…"></textarea><div class="hq-toolbar" style="margin-top:8px;margin-bottom:0"><button class="btn-ghost" id="impPasteBtn">קריאת ההדבקה</button><span class="hq-count" id="impFileNote">'+esc(IMP.fileName?('נקרא: '+IMP.fileName):'')+'</span></div></div>'+
       '<div id="impMap"></div><div id="impPreview"></div></div></div>';
     impSteps();
     $('#impCity').addEventListener('change',function(){ IMP.cityId=this.value; render(); });
+    $('#impKind').addEventListener('change',function(){ IMP.kind=this.value; IMP.rows=null; IMP.map=[]; IMP.fileName=''; render(); });
+    /* גנים / צוות: רק "דלג על קיימים" ובחירת חינוך רלוונטיים — שאר אפשרויות התלמידים מוסתרות */
+    if(IMP.kind!=='stu'){ ['impReg','impAbs','impTz','impPer'].forEach(function(id){ var el=$('#'+id); if(el){ var lb=el.closest('label'); (lb||el).style.display='none'; } }); }
     $('#impReg').addEventListener('change',function(){ IMP.opts.regByUs=this.checked; preview(); });
     $('#impAbs').addEventListener('change',function(){ IMP.opts.absorbed=this.checked; preview(); });
     $('#impTz').addEventListener('change',function(){ IMP.opts.tzaharon=this.checked; preview(); });
@@ -4926,7 +4976,7 @@ function xlsToRows(buf){
     $('#impPer').addEventListener('change',function(){ IMP.opts.period=this.value; preview(); });
     $('#impFile').addEventListener('change',function(){ var f=this.files&&this.files[0]; if(f) readFile(f); });
     $('#impPasteBtn').addEventListener('click',function(){ var t=$('#impPaste').value; if(!t.trim()){ toast('אין מה לקרוא'); return; } IMP.fileName='הדבקה'; setRows(parseTable(t)); });
-    $('#impTemplate').addEventListener('click',function(){ var hd=['שם משפחה','שם פרטי','ת"ז','תאריך לידה','שם האם','שם האב','טלפון בית','נייד','נייד אב','נייד אם','דוא"ל','רחוב','בניין','עיר','קמפוס','גן','גיל','מועד','חינוך','קלוט בעירייה','צהרון','הערות']; H.exportCSV('תבנית ייבוא תלמידים', hd, [['כהן','שרה','012345678','01/09/2022','רבקה','משה','','0501234567','','','','הרב שך','12','','','גן הדקל','3','א','רגיל','לא','כן','']]); });
+    $('#impTemplate').addEventListener('click',function(e){ if(IMP.kind!=='stu'){ e.stopImmediatePropagation(); var f=curFields().filter(function(x){ return x[0] && x[0]!=='fullName'; }).map(function(x){ return x[1]; }); H.exportCSV('תבנית ייבוא '+KIND_L[IMP.kind], f, []); return; } var hd=['שם משפחה','שם פרטי','ת"ז','תאריך לידה','שם האם','שם האב','טלפון בית','נייד','נייד אב','נייד אם','דוא"ל','רחוב','בניין','עיר','קמפוס','גן','גיל','מועד','חינוך','קלוט בעירייה','צהרון','הערות']; H.exportCSV('תבנית ייבוא תלמידים', hd, [['כהן','שרה','012345678','01/09/2022','רבקה','משה','','0501234567','','','','הרב שך','12','','','גן הדקל','3','א','רגיל','לא','כן','']]); });
     if(IMP.rows) renderMap();
     H.hoist('import', ['impTemplate']);
   }
@@ -4956,11 +5006,11 @@ function xlsToRows(buf){
     var targets=['impCity','impFile','impMap','impPreview'];
     $$('#impSteps [data-imp-step]').forEach(function(bt){ bt.addEventListener('click',function(){ var el=$('#'+targets[+bt.dataset.impStep]); if(el&&el.scrollIntoView) el.scrollIntoView({ block:'start', behavior:'smooth' }); }); });
   }
-  function setRows(rows){ IMP.rows=rows; var hdr=rows[0]||[]; IMP.map=hdr.map(function(h){ return HMAP[normHeader(h)]||''; }); var n=$('#impFileNote'); if(n) n.textContent='נקרא: '+IMP.fileName+' · '+(rows.length-1)+' שורות · '+hdr.length+' עמודות'; renderMap(); }
+  function setRows(rows){ IMP.rows=rows; var hdr=rows[0]||[]; IMP.map=hdr.map(function(h){ return curHmap()[normHeader(h)]||''; }); var n=$('#impFileNote'); if(n) n.textContent='נקרא: '+IMP.fileName+' · '+(rows.length-1)+' שורות · '+hdr.length+' עמודות'; renderMap(); }
   function renderMap(){
     var host=$('#impMap'); if(!host||!IMP.rows) return;
     var hdr=IMP.rows[0], ex=IMP.rows[1]||[];
-    host.innerHTML='<div class="card pad" style="margin-bottom:14px"><div class="sec-title">3 · מיפוי עמודות <span class="hq-count">רק עמודה מסומנת נקלטת · כותרת שכתובה כשם השדה מזוהה לבד</span></div><div class="hq-scroll" style="max-height:44vh;margin-top:8px"><table class="hq-table" style="min-width:auto"><thead><tr><th>עמודה בקובץ</th><th>דוגמה (שורה 1)</th><th>נכנסת לשדה</th></tr></thead><tbody>'+hdr.map(function(h,i){ return '<tr><td class="strong">'+esc(h)+'</td><td class="hq-count">'+esc(ex[i]||'')+'</td><td><select class="txtin imp-sel" data-i="'+i+'">'+FIELDS.map(function(f){ return '<option value="'+esc(f[0])+'"'+(IMP.map[i]===f[0]?' selected':'')+'>'+esc(f[1])+'</option>'; }).join('')+'</select></td></tr>'; }).join('')+'</tbody></table></div></div>';
+    host.innerHTML='<div class="card pad" style="margin-bottom:14px"><div class="sec-title">3 · מיפוי עמודות <span class="hq-count">רק עמודה מסומנת נקלטת · כותרת שכתובה כשם השדה מזוהה לבד</span></div><div class="hq-scroll" style="max-height:44vh;margin-top:8px"><table class="hq-table" style="min-width:auto"><thead><tr><th>עמודה בקובץ</th><th>דוגמה (שורה 1)</th><th>נכנסת לשדה</th></tr></thead><tbody>'+hdr.map(function(h,i){ return '<tr><td class="strong">'+esc(h)+'</td><td class="hq-count">'+esc(ex[i]||'')+'</td><td><select class="txtin imp-sel" data-i="'+i+'">'+curFields().map(function(f){ return '<option value="'+esc(f[0])+'"'+(IMP.map[i]===f[0]?' selected':'')+'>'+esc(f[1])+'</option>'; }).join('')+'</select></td></tr>'; }).join('')+'</tbody></table></div></div>';
     $$('.imp-sel',host).forEach(function(sel){ sel.addEventListener('change',function(){ IMP.map[+sel.dataset.i]=sel.value; preview(); }); });
     preview();
   }
@@ -4995,7 +5045,58 @@ function xlsToRows(buf){
     }
     return { list:out, dup:dup, dupFile:dupFile, noGan:noGan, noTz:noTz, city:c };
   }
+  /* גנים / אנשי צוות — בנייה ותצוגה מקדימה */
+  function buildRecs(){
+    var c=H.cityById(IMP.cityId); if(!c||!IMP.rows) return null;
+    var idx={}; IMP.map.forEach(function(k,i){ if(k){ (idx[k]=idx[k]||[]).push(i); } });
+    var get=function(cells,k){ var arr=idx[k]||[]; for(var i=0;i<arr.length;i++){ var v=String(cells[arr[i]]==null?'':cells[arr[i]]).trim(); if(v) return v; } return ''; };
+    var nz=function(x){ return String(x||'').trim().toLowerCase(); };
+    var out=[], dup=0, dupFile=0, seen={};
+    if(IMP.kind==='gan'){
+      var ex=c.gansRaw||[];
+      var exists=function(g){ return ex.some(function(x){ return (g.ganSymbol&&nz(x.ganSymbol)===nz(g.ganSymbol)) || (g.internalSymbol&&nz(x.internalSymbol)===nz(g.internalSymbol)) || (g.citySymbol&&nz(x.citySymbol)===nz(g.citySymbol)) || (g.ganName&&nz(x.ganName)===nz(g.ganName)); }); };
+      for(var r=1;r<IMP.rows.length;r++){ var cells=IMP.rows[r]; var g={}; GAN_FIELDS.forEach(function(f){ if(f[0]) g[f[0]]=get(cells,f[0]); });
+        if(!g.ganName && !g.ganSymbol && !g.internalSymbol && !g.citySymbol && !g.teacherName) continue;
+        g.age=String(g.age||'').replace(/\s/g,''); if(g.education) g.education=normEduVal(g.education); else g.education=IMP.opts.edu;
+        ['capacity','assignCap','licenseCap'].forEach(function(k){ g[k]=String(g[k]||'').replace(/[^\d]/g,''); }); if(g.licenseExpiry) g.licenseExpiry=normDateVal(g.licenseExpiry);
+        if(g.gender && !/^(בנות|בנים|מעורב)$/.test(g.gender)) g.gender=/בנים/.test(g.gender)?'בנים':/בנות/.test(g.gender)?'בנות':/מעורב/.test(g.gender)?'מעורב':'';
+        g.teacherMobile=H.fixPhone(g.teacherMobile); g.id=H.uid();
+        var key=nz(g.ganSymbol)+'|'+nz(g.internalSymbol)+'|'+nz(g.ganName); if(seen[key]){ dupFile++; continue; } seen[key]=1;
+        if(exists(g)){ dup++; if(IMP.opts.skipDup) continue; }
+        out.push(g); }
+    } else {
+      var exS=c.staffFull||[];
+      for(var r2=1;r2<IMP.rows.length;r2++){ var cl=IMP.rows[r2]; var m={}; STAFF_FIELDS.forEach(function(f){ if(f[0]) m[f[0]]=get(cl,f[0]); });
+        if(m.fullName && !m.lastName && !m.firstName){ var p=m.fullName.split(/\s+/); m.lastName=p.shift()||''; m.firstName=p.join(' '); } delete m.fullName;
+        if(!m.lastName && !m.firstName && !m.tz) continue;
+        m.name=[m.firstName,m.lastName].filter(Boolean).join(' '); m.tz=H.digits(m.tz); m.phone=H.fixPhone(m.phone); m.mobile=H.fixPhone(m.mobile);
+        if(m.education) m.education=normEduVal(m.education); else m.education=IMP.opts.edu; if(!m.role) m.role='סייעת'; m.id=H.uid();
+        var k=m.tz?('tz:'+H.tzKey(m.tz)):('n:'+nz(m.name)); if(seen[k]){ dupFile++; continue; } seen[k]=1;
+        var isDup=exS.some(function(x){ return m.tz ? H.tzKey(x.tz)===H.tzKey(m.tz) : nz(x.name||[x.firstName,x.lastName].join(' '))===nz(m.name); });
+        if(isDup){ dup++; if(IMP.opts.skipDup) continue; }
+        out.push(m); }
+    }
+    return { list:out, dup:dup, dupFile:dupFile, city:c };
+  }
+  function previewRecs(){
+    var host=$('#impPreview'); if(!host) return; var b=buildRecs(); if(!b){ host.innerHTML=''; return; }
+    var isGan=IMP.kind==='gan', what=KIND_L[IMP.kind];
+    var cols=isGan
+      ? [{l:'שם הגן',v:function(g){ return g.ganName; }},{l:'כינוי',v:function(g){ return g.nickname; }},{l:'סמל',v:function(g){ return g.ganSymbol||g.internalSymbol||g.citySymbol; },ltr:true},{l:'גיל',v:function(g){ return g.age; }},{l:'חינוך',v:function(g){ return g.education; }},{l:'מגדר',v:function(g){ return g.gender; }},{l:'קיבולת',v:function(g){ return g.capacity; }}]
+      : [{l:'שם',v:function(m){ return m.name; }},{l:'ת"ז',v:function(m){ return m.tz; },ltr:true},{l:'תפקיד',v:function(m){ return m.role; }},{l:'חינוך',v:function(m){ return m.education; }},{l:'נייד',v:function(m){ return m.mobile; },ltr:true},{l:'מייל',v:function(m){ return m.email; },ltr:true}];
+    host.innerHTML='<div class="card pad"><div class="sec-title">4 · תצוגה מקדימה וביצוע</div><div class="kpis" style="margin:10px 0">'+[{l:'ייווספו',v:he(b.list.length),cls:'kaccent'},{l:isGan?'כבר קיימים בעיר (סמל / שם)':'כבר קיימים בעיר (ת"ז / שם)',v:he(b.dup),s:IMP.opts.skipDup?'מדולגים':'ייווספו כפולים'},{l:'כפולים בתוך הקובץ',v:he(b.dupFile),s:'נקלטים פעם אחת'}].map(H.kpiHTML).join('')+'</div>'+
+      H.tableHTML('impPrevT', cols, b.list.slice(0,200))+(b.list.length>200?'<div class="hq-count">מוצגים 200 ראשונים מתוך '+he(b.list.length)+'</div>':'')+
+      '<div class="hq-toolbar" style="margin-top:10px;margin-bottom:0"><button class="btn-primary" id="impGo"'+(b.list.length?'':' disabled')+'> ייבוא '+he(b.list.length)+' '+what+' ל'+esc(b.city.name)+'</button><span class="hq-count">נכתב ישירות לרשימת ה'+what+' של העיר.</span></div></div>';
+    var go=$('#impGo'); if(go) go.addEventListener('click',function(){
+      if(!H.confirmBox('להוסיף '+b.list.length+' '+what+' לעיר '+b.city.name+'?')) return;
+      go.disabled=true; go.textContent='מייבא…';
+      LIVE.addRecords(b.city.id, IMP.kind, b.list).then(function(n){ toast('✓ נוספו '+n+' '+what+' ל'+b.city.name); LIVE.hqAudit('import', b.city.name+' · '+n+' '+what+' · '+IMP.fileName); IMP.rows=null; IMP.fileName=''; render(); })
+        .catch(function(e){ toast('הייבוא נכשל: '+H.hqErr(e)); go.disabled=false; go.textContent=' ייבוא'; });
+    });
+    impSteps();
+  }
   function preview(){
+    if(IMP.kind!=='stu') return previewRecs();
     var host=$('#impPreview'); if(!host) return; var b=build(); if(!b){ host.innerHTML=''; return; }
     host.innerHTML='<div class="card pad"><div class="sec-title">4 · תצוגה מקדימה וביצוע</div><div class="kpis" style="margin:10px 0">'+[{l:'ייפתחו תיקים',v:he(b.list.length),cls:'kaccent'},{l:'ת"ז שכבר קיימת בעיר',v:he(b.dup),s:IMP.opts.skipDup?'מדולגות':'ייפתחו כפולות!'},{l:'כפולות בתוך הקובץ',v:he(b.dupFile)},{l:'גן לא זוהה',v:he(b.noGan)},{l:'בלי ת"ז',v:he(b.noTz)}].map(H.kpiHTML).join('')+'</div>'+
       H.tableHTML('impPrevT',[{l:'שם',v:function(s){ return H.stuName(s); }},{l:'ת"ז',v:function(s){ return s.tz; },ltr:true},{l:'לידה',v:function(s){ return H.fmtDate(s.dob); }},{l:'אם',v:function(s){ return s.motherName; }},{l:'נייד',v:function(s){ return s.mobile||s.momMobile||s.dadMobile; },ltr:true},{l:'כתובת',v:function(s){ return [s.street,s.building,s.city].filter(Boolean).join(' '); }},{l:'גן',v:function(s){ var g=(b.city.gansRaw||[]).filter(function(x){ return x.id===s.ganId; })[0]; return g?(g.ganName||g.teacherName):''; }},{l:'גיל',v:function(s){ return s.age; }},{l:'מועד',v:function(s){ return s.period; }},{l:'חינוך',v:function(s){ return H.eduL(s.education); }},{l:'עירייה',v:function(s){ return H.yn(s.absorbedMunicipality); }},{l:'צהרון',v:function(s){ return H.yes(s.programs.tzaharon); }}], b.list.slice(0,300), { style:'max-height:40vh' })+
@@ -5115,7 +5216,7 @@ function xlsToRows(buf){
   ];
   function cityRows(cs){ return cs.map(function(c){ return Object.assign({ s:stats((c.stuFull||[]).filter(function(x){ return !x.finished; })) }, c); }); }
   function citiesHTML(cs){ var rows=cityRows(cs); var tot=stats(H.allStudents(cs).filter(function(x){ return !x.finished; })); return '<div class="card pad"><div class="sec-title">לפי עיר <span class="hq-count">'+rows.length+' ערים</span><span class="sp" style="flex:1"></span><button class="btn-mini" id="bdExpCities"> אקסל</button></div><div style="margin-top:8px">'+H.tableHTML('bdCityT', CITY_COLS, rows, { clickable:true, rowAttr:function(r){ return 'data-c="'+esc(r.id)+'"'; } })+'</div><div class="hq-count" style="margin-top:8px">סה"כ: '+he(tot.n)+' תלמידים · '+he(tot.placed)+' משובצים · '+he(tot.waiting)+' ממתינים · '+he(tot.muni)+' קלוטים בעירייה · '+he(tot.moeOk)+' מתוקצבים</div></div>'; }
-  var GAN_COLS=[{l:'עיר',v:function(g){ return g.cityName; }},{l:'גן',v:function(g){ return g.name; },h:function(g){ return '<span class="strong">'+esc(g.name)+'</span> <span class="hq-count">'+esc(g.sym||'')+'</span>'; }},{l:'גיל',v:function(g){ return g.age; }},{l:'חינוך',v:function(g){ return g.edu==='spc'?'מיוחד':'רגיל'; }},{l:'מגדר',v:function(g){ return g.gender; }},{l:'רשומים',v:function(g){ return g.enrolled; },num:true},{l:'משובצים',v:function(g){ return g.placed; },num:true},{l:'קיבולת',v:function(g){ return g.cap||''; },num:true},{l:'מלאות',v:function(g){ return H.pct(g.enrolled,g.cap||g.enrolled||1); },num:true,h:function(g){ var p=H.pct(g.enrolled,g.cap||g.enrolled||1); return '<span class="fillbar" style="display:inline-block;width:70px;vertical-align:middle"><i class="'+(p>=92?'hot':'')+'" style="width:'+Math.min(100,p)+'%"></i></span> '+p+'%'; }},{l:'רישיון',v:function(g){ return H.licenseState(g).label; },h:function(g){ var st=H.licenseState(g); return st.code==='ok'?'<span class="tag ok">תקין</span>':(st.code==='near'?'<span class="tag warn">על הגבול</span>':(st.code==='off'?'—':'<span class="tag bad">'+esc(st.label)+'</span>')); }},{l:'סייעת ב׳',v:function(g){ var a=H.assistantBState(g); return a?(a.eligible?(a.has?'משובצת':'זכאי — חסרה'):''):''; },h:function(g){ var a=H.assistantBState(g); if(!a||!a.eligible) return '—'; return a.has?'<span class="tag ok">משובצת</span>':'<span class="tag warn">זכאי · חסרה</span>'; }},{l:'צהרון',v:function(g){ return g.prog.tzaharon; },num:true},{l:'גננת',v:function(g){ return g.teacher; }}];
+  var GAN_COLS=[{l:'עיר',v:function(g){ return g.cityName; }},{l:'גן',v:function(g){ return g.name; },h:function(g){ return '<span class="strong">'+esc(g.name)+'</span> <span class="hq-count">'+esc(g.sym||'')+'</span>'; }},{l:'גיל',v:function(g){ return g.age; }},{l:'חינוך',v:function(g){ return g.edu==='spc'?'מיוחד':'רגיל'; }},{l:'מגדר',v:function(g){ return g.gender; }},{l:'רשומים',v:function(g){ return g.enrolled; },num:true},{l:'משובצים',v:function(g){ return g.placed; },num:true},{l:'קיבולת',v:function(g){ return g.cap||''; },num:true},{l:'מלאות',v:function(g){ return H.pct(g.enrolled,g.cap||g.enrolled||1); },num:true,h:function(g){ var p=H.pct(g.enrolled,g.cap||g.enrolled||1); return '<span class="fillbar" style="display:inline-block;width:70px;vertical-align:middle"><i class="'+(p>=92?'hot':'')+'" style="width:'+Math.min(100,p)+'%"></i></span> '+p+'%'; }},{l:'רישיון',v:function(g){ return H.licenseState(g).label; },h:function(g){ var st=H.licenseState(g); return st.code==='ok'?'<span class="tag ok">תקין</span>':(st.code==='near'?'<span class="tag warn">על הגבול</span>':(st.code==='off'?'—':'<span class="tag bad">'+esc(st.label)+'</span>')); }},{l:'סייעת ב׳',v:function(g){ var a=H.assistantBState(g); return a?(a.conflict?'משובצת ללא זכאות':(a.eligible?(a.has?'משובצת':'זכאי — חסרה'):'')):''; },h:function(g){ var a=H.assistantBState(g); if(a&&a.conflict) return '<span class="tag bad" title="'+(a.expired?'הרישיון אינו בתוקף':(a.mandatory?'גן חובה':'מתחת לסף'))+'">משובצת ללא זכאות</span>'; if(!a||!a.eligible) return '—'; return a.has?'<span class="tag ok">משובצת</span>':'<span class="tag warn">זכאי · חסרה</span>'; }},{l:'צהרון',v:function(g){ return g.prog.tzaharon; },num:true},{l:'גננת',v:function(g){ return g.teacher; }}];
   var GST={ sort:{i:8,d:-1} };
   function gansHTML(cs){ var rows=H.sortRows(H.allGans(cs).filter(function(g){ return g.on; }), GAN_COLS, GST.sort); return '<div class="card pad"><div class="sec-title">לפי גן <span class="hq-count">'+rows.length+' גנים</span><span style="flex:1"></span><button class="btn-mini" id="bdExpGans"> ייצוא לפי בחירת שדות</button></div><div style="margin-top:8px">'+H.tableHTML('bdGanT', GAN_COLS, rows, { sort:GST.sort })+'</div></div>'; }
   function mgmtHTML(cs, S){
@@ -5496,12 +5597,20 @@ function xlsToRows(buf){
 
   /* ===== בקרת משרד החינוך ===== */
   var MOE={ cityId:'', only:'', step:2, sel:{} };
+  /* סימון "קלוט במשרד החינוך" בתיק עצמו (בתוכנת העיר) — נגזר ממצב הבקרה: נקלט/ה ומתוקצב/ת = כן.
+     "בבדיקה" לא משנה את הסימון. נכתב רק כשהערך משתנה, תיק אחר תיק. */
+  function syncMinistryFlag(pairs){
+    var todo=pairs.filter(function(p){ return p.s && p.status!=='pending' && !!p.s.absorbedMinistry!==(p.status==='ok'); });
+    var chain=Promise.resolve(), fail=0;
+    todo.forEach(function(p){ var v=p.status==='ok'; chain=chain.then(function(){ return LIVE.updateStudent(p.s.cityId, p.s.year, p.s.id, function(x){ x.absorbedMinistry=v; }).catch(function(e){ fail++; console.error(e); }); }); });
+    return chain.then(function(){ if(fail) toast('סימון "קלוט במשרד החינוך" לא עודכן ב-'+fail+' תיקים'); return todo.length-fail; });
+  }
   function moeDoc(cityId){ return (H.HQ().ministry||[]).filter(function(m){ return m.id===cityId; })[0]||{ students:{} }; }
   function setStatus(s){
     var r=H.ministryRec(s)||{};
     H.promptForm('מצב במשרד החינוך · '+H.stuName(s), [{k:'status',l:'מצב',t:'select',opts:[['ok','נקלט/ה ומתוקצב/ת'],['missing','לא נקלט/ה'],['error','שגוי — דורש תיקון'],['pending','בבדיקה']],v:r.status||'pending'},{k:'note',l:'מה הבעיה / מה נדרש מהרכז/ת',t:'textarea',v:r.note||''},{k:'owner',l:'לטיפול מול',v:r.owner||''}], function(o){
       var d=moeDoc(s.cityId); var st=Object.assign({}, d.students||{}); st[H.tzKey(s.tz)||('id:'+s.id)]=Object.assign(o,{ name:H.stuName(s), sid:s.id, at:Date.now(), by:H.me() });
-      H.save('ministry', s.cityId, { cityName:s.cityName, students:st }, '✓ עודכן').then(function(){ H.closeDrawer(); });
+      H.save('ministry', s.cityId, { cityName:s.cityName, students:st }, '✓ עודכן').then(function(){ H.closeDrawer(); syncMinistryFlag([{ s:s, status:o.status }]); });
     });
   }
   function moeLamp(st){ return st==='ok'?H.lamp('done','מתוקצב/ת'):(st==='missing'?H.lamp('bad','לא נקלט/ה'):(st==='error'?H.lamp('warn','שגוי'):(st==='pending'?H.lamp('wait','בבדיקה'):H.lamp('wait','לא נבדק',true)))); }
@@ -5558,7 +5667,7 @@ function xlsToRows(buf){
     if((b=$('#moeExp'))) b.addEventListener('click',function(){ expRows(list); });
     if((b=$('#moeExpOk'))) b.addEventListener('click',function(){ expRows(okList); });
     if((b=$('#moeSelNone'))) b.addEventListener('click',function(){ MOE.sel={}; renderMinistry(); });
-    var bulk=function(status){ var l=rows.filter(function(x){ return MOE.sel[x.key]; }); if(!l.length) return; var st=Object.assign({}, d.students||{}); l.forEach(function(x){ var k=H.tzKey(x.s.tz)||('id:'+x.s.id); st[k]=Object.assign({}, st[k]||{}, { name:H.stuName(x.s), sid:x.s.id, status:status, at:Date.now(), by:H.me() }); }); H.save('ministry', c.id, { cityName:c.name, students:st }, '✓ עודכנו '+l.length+' תיקים').then(function(){ MOE.sel={}; }); };
+    var bulk=function(status){ var l=rows.filter(function(x){ return MOE.sel[x.key]; }); if(!l.length) return; var st=Object.assign({}, d.students||{}); l.forEach(function(x){ var k=H.tzKey(x.s.tz)||('id:'+x.s.id); st[k]=Object.assign({}, st[k]||{}, { name:H.stuName(x.s), sid:x.s.id, status:status, at:Date.now(), by:H.me() }); }); H.save('ministry', c.id, { cityName:c.name, students:st }, '✓ עודכנו '+l.length+' תיקים').then(function(){ MOE.sel={}; syncMinistryFlag(l.map(function(x){ return { s:x.s, status:status }; })); }); };
     if((b=$('#moeBulkOk'))) b.addEventListener('click',function(){ bulk('ok'); });
     if((b=$('#moeBulkPend'))) b.addEventListener('click',function(){ bulk('pending'); });
     var f=$('#moeFile'); if(f) f.addEventListener('change',function(){ var file=this.files&&this.files[0]; if(!file) return; window.__hqImport.readRows(file,function(rows){ crossCheck(c, rows, file.name); }); });
@@ -5576,7 +5685,7 @@ function xlsToRows(buf){
       if(f){ var badSym=f.sym && s.ganSym && H.digits(f.sym)!==H.digits(s.ganSym); if(badSym){ st[k]=Object.assign({},prev,{ name:H.stuName(s), sid:s.id, status:'error', note:'סמל מוסד שונה במשרד החינוך ('+f.sym+') מול הגן אצלנו ('+s.ganSym+')', at:Date.now(), by:H.me(), auto:true }); sym++; } else { st[k]=Object.assign({},prev,{ name:H.stuName(s), sid:s.id, status:'ok', note:(prev.status==='ok'?prev.note:'')||'', at:Date.now(), by:H.me(), auto:true }); ok++; } }
       else { if(prev.status!=='missing'||!prev.note) st[k]=Object.assign({},prev,{ name:H.stuName(s), sid:s.id, status:'missing', note:prev.note||'לא מופיע/ה במצבת משרד החינוך — לבדוק דיווח מול הרכז/ת', at:Date.now(), by:H.me(), auto:true }); miss++; } });
     var extra=Object.keys(inFile).filter(function(k){ return !mine[k]; });
-    H.save('ministry', c.id, { cityName:c.name, students:st, extra:extra, checkedAt:Date.now(), file:fileName, fileRows:rows.length-1 }, '✓ הצלבה: '+ok+' מתוקצבים · '+miss+' לא נקלטו · '+sym+' סמל שונה · '+extra.length+' במצבה בלבד').then(function(){ LIVE.hqAudit('ministry', c.name+' · '+fileName+' · '+ok+'/'+miss+'/'+sym); });
+    H.save('ministry', c.id, { cityName:c.name, students:st, extra:extra, checkedAt:Date.now(), file:fileName, fileRows:rows.length-1 }, '✓ הצלבה: '+ok+' מתוקצבים · '+miss+' לא נקלטו · '+sym+' סמל שונה · '+extra.length+' במצבה בלבד').then(function(){ LIVE.hqAudit('ministry', c.name+' · '+fileName+' · '+ok+'/'+miss+'/'+sym); syncMinistryFlag((c.stuFull||[]).filter(function(s){ return !s.finished && st[H.tzKey(s.tz)]; }).map(function(s){ return { s:s, status:st[H.tzKey(s.tz)].status }; })); });
     H.hoist('ministry', ['moeExp']);
   }
   H.reg('ministry', renderMinistry);

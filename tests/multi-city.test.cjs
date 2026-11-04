@@ -28,7 +28,7 @@ Object.defineProperty(window,'ORG',{get:()=>ORG,set:v=>{ORG=v},configurable:true
 Object.defineProperty(window,'_pending',{get:()=>_pending,configurable:true});
 Object.defineProperty(window,'currentUser',{get:()=>currentUser,set:v=>{currentUser=v},configurable:true});
 window.__resetCity=()=>{ _cityResolved=false; };
-Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
+Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -327,6 +327,49 @@ const server=require('http').createServer((req,res)=>{
       await approveReg({id:'r1',at:Date.parse('2026-09-15T08:00:00Z'),data:{childFirst:'חדשה',childLast:'פרץ',ganName:'גן הרימון',submittedAt:'2026-09-15T08:00:00Z',year:DB.activeYear},files:[]});
       const nw=DB.students.find(s=>s.firstName==='חדשה');
       return link==='אבג' && other==='ד' && range==='ג' && !!nw && nw.regChannel==='link' && nw.regDate==='2026-09-15';
+    });
+  });
+
+  /* ---- שלב 2: קלוט במשרד החינוך · עזיבה · השארות לפי עיר · זכאות סייעת ב' ---- */
+  await step('תיק: "קלוט במשרד החינוך" נשמר ומסונן; עזיבה באמצע שנה מסמנת "יצאה" ונוסח המייל כולל את הפרטים', async()=>{
+    return await pg.evaluate(async()=>{
+      DB.gans=[]; DB.students=[]; const g=makeGan(); g.ganName='גן התאנה'; g.ganSymbol='4455'; DB.gans.push(g);
+      const s=Object.assign(makeStudent(),{firstName:'רות',lastName:'מזרחי',tz:'123456782',year:DB.activeYear,ganId:g.id}); DB.students.push(s);
+      openStudent(s);
+      document.getElementById('s-absorbedMinistry').checked=true;
+      document.getElementById('s-leftDate').value='2026-12-01'; document.getElementById('s-leftReason').value='עברה לירושלים';
+      document.getElementById('saveStu').click(); await new Promise(r=>setTimeout(r,50)); closeModal();
+      const rec=DB.students.find(x=>x.id===s.id);
+      stuFilterSet({status:'all', moe:'yes'}); const moeYes=filteredStudents().length===1;
+      stuFilterSet({moe:'no'}); const moeNo=filteredStudents().length===0; stuFilterSet({moe:'', status:'active'});
+      const t=leaveReportText(rec);
+      return rec.absorbedMinistry===true && rec.finished===true && rec.leftDate==='2026-12-01' && moeYes && moeNo
+        && /רות/.test(t.body) && /123456782/.test(t.body) && /גן התאנה/.test(t.body) && /4455/.test(t.body) && /01\/12\/2026/.test(t.body) && /עברה לירושלים/.test(t.body);
+    });
+  });
+  await step('ילדת השארות: "רק על בסיס מקום פנוי" — נחסמת בגן מלא; "העיר מחויבת" — משובצת מעל הרף עם אזהרה', async()=>{
+    return await pg.evaluate(()=>{
+      DB.gans=[]; DB.students=[]; const g=makeGan(); g.ganName='גן מלא'; g.assignCap='1'; DB.gans.push(g);
+      DB.students.push(Object.assign(makeStudent(),{firstName:'א',year:DB.activeYear,ganId:g.id,placed:true}));
+      const ret=Object.assign(makeStudent(),{firstName:'ב',year:DB.activeYear}); ret.special.retention=true; ret.special.retentionDoc=true;
+      const reg=Object.assign(makeStudent(),{firstName:'ג',year:DB.activeYear});
+      DB.settings.retentionPolicy='space'; const spaceBlocked=!canAssignStudent(g, ret).ok;
+      DB.settings.retentionPolicy='obligated'; const o=canAssignStudent(g, ret); const obligedOk=o.ok && o.over;
+      const regularStill=!canAssignStudent(g, reg).ok;
+      const noDoc=Object.assign(makeStudent(),{year:DB.activeYear}); noDoc.special.retention=true; const docStill=!canAssignStudent(g, noDoc).ok;
+      delete DB.settings.retentionPolicy;
+      return spaceBlocked && obligedOk && regularStill && docStill;
+    });
+  });
+  await step("זכאות לסייעת ב': רישיון בתוקף · גיל 3/4 · סף ילדות — והתראה על שיבוץ ללא זכאות", async()=>{
+    return await pg.evaluate(()=>{
+      const mk=(age,exp)=>{ const g=makeGan(); g.ganName='גן '+age; g.age=age; g.licenseExpiry=exp||''; return g; };
+      const ok=assistantBEligibility(mk('4','2099-01-01'), ASSISTANT_B_MIN).eligible;
+      const expired=assistantBEligibility(mk('4','2020-01-01'), ASSISTANT_B_MIN);
+      const five=assistantBEligibility(mk('5','2099-01-01'), ASSISTANT_B_MIN).eligible;
+      const few=assistantBEligibility(mk('3','2099-01-01'), ASSISTANT_B_MIN-1).eligible;
+      const noExp=assistantBEligibility(mk('3',''), ASSISTANT_B_MIN);
+      return ok && !expired.eligible && /אינו בתוקף/.test(expired.reasons.join()) && !five && !few && noExp.eligible && noExp.noExpiry;
     });
   });
 
