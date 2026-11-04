@@ -378,7 +378,8 @@ function render(){
 const QS = new URLSearchParams(location.search);
 async function load(){
   try{
-    const want = (QS.get("city")||"").trim().toLowerCase();
+    const want0 = (QS.get("city")||"").trim().toLowerCase();
+    const want = /^[a-z0-9][a-z0-9-]{1,39}$/.test(want0) ? want0 : "";
     if(want) CUR_CITY = { id:want, name:"" };
     const res = await bridge("regConfigGet", {});
     const cities = (res && Array.isArray(res.cities)) ? res.cities : [];
@@ -387,7 +388,9 @@ async function load(){
     if(!want && cities.length>1){
       $("#loading").style.display="none"; $("#cityCard").style.display="";
       $("#citySel").innerHTML='<option value="">— בחירת עיר —</option>'+cities.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
-      $("#cityGo").onclick=()=>{ const id=$("#citySel").value; if(!id){ $("#citySel").focus(); return; } const q=new URLSearchParams(location.search); q.set("city", id); location.search=q.toString(); };
+      $("#cityGo").onclick=()=>{ const id=$("#citySel").value; const ok=cities.some(c=>c.id===id) && /^[a-z0-9][a-z0-9-]{1,39}$/.test(id);
+        if(!ok){ $("#citySel").focus(); return; }
+        location.assign(location.pathname+"?city="+encodeURIComponent(id)); };
       return;
     }
     if(!want && cities.length===1) CUR_CITY = { id:cities[0].id, name:cities[0].name };

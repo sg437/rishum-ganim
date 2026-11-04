@@ -35,7 +35,8 @@ const CFG={ beitar:{ cityId:'beitar', cityName:'ביתר עילית', year:'תש
   await pg.route('**',async r=>{
     const u=r.request().url();
     if(u.startsWith('http://127.0.0.1:'+PORT+'/')) return r.continue();
-    if(u.indexOf('script.google.com')>=0){
+    let host=''; try{ host=new URL(u).hostname; }catch(e){}
+    if(host==='script.google.com'){
       let body={}; try{ const q=new URL(u).searchParams.get('data'); body=JSON.parse(q||r.request().postData()||'{}'); }catch(e){}
       calls.push(body);
       const city=body.cityId==='beitar'?CFG.beitar:(body.cityId==='modiin-illit'?CFG.modiin:null);
