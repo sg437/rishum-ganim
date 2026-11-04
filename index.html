@@ -937,6 +937,13 @@ function assignRoles(){
   return order.map(role=>({ role, extra: EXTRA_BY_ROLE[role]||"" }));
 }
 const ASSISTANT_B_ROLE = "סייעת ב'";   // תפקיד שנפתח רק כשהגן הגיע לסף בנות (סעיף חדש 2)
+/* "סייעת ב'" נכתבת בערים בכמה צורות — "סייעת שנייה", "סייעת שניה", "סייעת ב׳", "סייעת ב", "סייעת 2".
+   כולן אותו תפקיד: בזכאות, בבדיקת "משובצת", במסמכים ובייבוא. */
+function isAssistantBRole(r){ const t=String(r||"").replace(/[\s"'׳״`.\-_]/g,""); return /^סייעת(ב|שנייה|שניה|2)$/.test(t); }
+/* שיבוץ סייעת ב' בגן — לפי כל שם תפקיד שהוא סייעת ב' (המפתח הראשון שיש בו שם או עובד/ת) */
+function asgAssistantBKey(a){ a=a||{}; if(a[ASSISTANT_B_ROLE] && (a[ASSISTANT_B_ROLE].staffId||a[ASSISTANT_B_ROLE].name)) return ASSISTANT_B_ROLE;
+  return Object.keys(a).find(k=>isAssistantBRole(k) && a[k] && (a[k].staffId||a[k].name)) || ""; }
+function asgAssistantB(a){ const k=asgAssistantBKey(a); return k ? a[k] : null; }
 const ASSISTANT_B_MIN  = 30;           // מספר בנות מינימלי בגן כדי לאפשר שיבוץ "סייעת ב'"
 /* הקשרי שיבוץ — פעילות הגן / צהרונים / קייטנות (סעיף 8) */
 const ASSIGN_CONTEXTS = [
@@ -4189,8 +4196,8 @@ if(document.documentElement.classList.contains("ui-lab")){
               edu:eduLabel(g),
               campus:String(g.campus||"").trim(),
               reg, mandatory,
-              bRole:ASSISTANT_B_ROLE, bMin:ASSISTANT_B_MIN,
-              bEligible: reg>=ASSISTANT_B_MIN && !mandatory,
+              bRole:asgAssistantBKey(a)||ASSISTANT_B_ROLE, bMin:ASSISTANT_B_MIN,   /* סייעת ב' בשם שבו שובצה (למשל "סייעת שנייה") */
+              bEligible: assistantBEligibility(g, reg).eligible,
               filled,
               freeDays: Object.keys(free).map(r=>({role:r, days:free[r]||[]}))
             };
@@ -4319,7 +4326,7 @@ if(document.documentElement.classList.contains("ui-lab")){
           const a = ganAsg(g.id);
           const need = ["גננת","סייעת"].concat(isMandatoryGan(g) ? [ASSISTANT_B_ROLE] : []);
           let got = 0;
-          need.forEach(r=>{ const c=a[r]; if(c && (c.name||c.staffId)) got++; });
+          need.forEach(r=>{ const c=isAssistantBRole(r)?asgAssistantB(a):a[r]; if(c && (c.name||c.staffId)) got++; });
           return {need:need.length, got};
         };
 
@@ -4816,7 +4823,7 @@ if(document.documentElement.classList.contains("ui-lab")){
               edu,
               color:/^#[0-9a-fA-F]{6}$/.test(rm.color||"")?rm.color:"#8a8f98",
               /* התג שבשורה — הכלל שהתפקיד נושא בלוח השיבוץ */
-              note: r===ASSISTANT_B_ROLE ? ("נפתחת מ-"+ASSISTANT_B_MIN+" · לא בגן חובה")
+              note: isAssistantBRole(r) ? ("נפתחת מ-"+ASSISTANT_B_MIN+" · לא בגן חובה")
                   : extra==="ימים" ? "עם בחירת ימים"
                   : extra==="תקופה" ? "עם תקופה" : ""
             };
@@ -11625,7 +11632,7 @@ function moeHeaderData(){ return Object.assign({ city:DB.municipality||"", distr
 function moeRow(g,h){
   const a=ganAsg(g.id,'activity');
   const gannet=asgStaffInfo(a,'גננת'), mash=asgStaffInfo(a,'גננת משלימה'), shiluv=asgStaffInfo(a,'גננת שילוב'),
-        saya=asgStaffInfo(a,'סייעת'), sayaB=asgStaffInfo(a,"סייעת ב'");
+        saya=asgStaffInfo(a,'סייעת'), sayaB=asgStaffInfo(a, asgAssistantBKey(a)||"סייעת ב'");
   const t=gannet.m;
   const inGan=studentsOfYear().filter(s=>s.ganId===g.id && !s.finished);
   const byAge=n=>inGan.filter(s=>String(s.age)===n).length||"";
@@ -13399,7 +13406,7 @@ function normStaffRole(v){
   if(has("סייעת","משלימה")) return "סייעת משלימה";
   if(has("גננת","ממלאתמקום")||has("גננת","ממלאת")) return "גננת ממלאת מקום";
   if(has("סייעת","ממלאתמקום")||has("סייעת","ממלאת")) return "סייעת ממלאת מקום";
-  return t.includes("גננת")?"גננת":(t.includes("רפואי")?"סייעת רפואית":(t.includes("צמוד")?"סייעת צמודה":(/ב'?$/.test(t)&&t.includes("סייעת")?"סייעת ב'":"סייעת")));
+  return t.includes("גננת")?"גננת":(t.includes("רפואי")?"סייעת רפואית":(t.includes("צמוד")?"סייעת צמודה":((/ב'?$/.test(t)||/שניי?ה$|2$/.test(t))&&t.includes("סייעת")?"סייעת ב'":"סייעת")));
 }
 
 /* כל השדות שאפשר לעדכן בתיק איש/אשת צוות, במקום אחד: התווית שמוצגת,
@@ -14023,7 +14030,7 @@ function assistantBEligibility(g, reg){
 /* גנים שמשובצת בהם סייעת ב' בלי זכאות — להתראה במסך שיבוץ הצוות */
 function assistantBConflicts(){
   return DB.gans.filter(g=>g.active!==false).map(g=>{
-    const a=ganAsg(g.id), b=a&&a[ASSISTANT_B_ROLE];
+    const a=ganAsg(g.id), b=asgAssistantB(a);
     if(!(b && (b.staffId||b.name))) return null;
     const e=assistantBEligibility(g); return e.eligible ? null : { g, reasons:e.reasons, name:b.name||"" };
   }).filter(Boolean);
@@ -14041,11 +14048,11 @@ function openGanAssign(ganId){
      בגני חובה (גיל 5) אין "סייעת ב'" כלל (סעיף 14). */
   /* "סייעת ב'" וגן חובה הם כללים של פעילות הגן — בקבוצת צהרון אין להם משמעות */
   const mandatory = g ? isMandatoryGan(g) : false;
-  const bAssigned = !!(a[ASSISTANT_B_ROLE] && (a[ASSISTANT_B_ROLE].staffId||a[ASSISTANT_B_ROLE].name));
+  const bAssigned = !!asgAssistantB(a);
   const bElig = g ? assistantBEligibility(g, reg) : { eligible:false, reasons:[] };
   const bEligible = !!g && bElig.eligible;
   const roles = assignRoles()   // לפי הסדר שנקבע בהגדרות
-    .filter(m=> m.role!==ASSISTANT_B_ROLE || ((bEligible || bAssigned) && !mandatory))
+    .filter(m=> !isAssistantBRole(m.role) || ((bEligible || bAssigned) && !mandatory))
     .filter(m=> roleFitsEdu(m.role, ganEdu)); // רק תפקידים המשויכים לחינוך הגן
   /* בניית רשימת עובדות לבחירה — משלים אוטומטי מקובץ, עם הפרדה לפי חינוך הגן (רגיל/מיוחד) */
   const byNameHe=(x,y)=>staffName(x).localeCompare(staffName(y),"he");
@@ -14264,7 +14271,7 @@ function openStaffAssign(staffId){
     const mand = isMandatoryGan(g), reg = ganReg(ganId);
     return assignRoles()
       .filter(x=> roleFitsEdu(x.role, edu))
-      .filter(x=> x.role!==ASSISTANT_B_ROLE || assistantBEligibility(g, reg).eligible);
+      .filter(x=> !isAssistantBRole(x.role) || assistantBEligibility(g, reg).eligible);
   }
 
   /* ימים שהעובד/ת כבר תפוס/ה בהם בגן אחר, באותו הקשר → { יום: שם הגן } */

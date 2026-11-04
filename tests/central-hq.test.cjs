@@ -265,6 +265,10 @@ const DATA={
     });
     return (r.cap==='37' && r.ac==='36' && r.lc==='40' && r.name==='גן הדקל' && r.g2cap==='' && r.n===3) || JSON.stringify(r);
   });
+  await step('סייעת ב׳ במרכזי: תפקיד "סייעת שנייה" נחשב משובצת', async()=>{
+    const r=await pg.evaluate(()=>{ const H=window.__hq; const g={ on:true, gender:'בנות', enrolled:40, age:'4', roster:[{ r:'סייעת שנייה', n:'רחל' }] }; const b=H.assistantBState(g); const g2=Object.assign({}, g, { roster:[{ r:'סייעת', n:'לאה' }] }); return { has:b.has, has2:H.assistantBState(g2).has }; });
+    return (r.has===true && r.has2===false) || JSON.stringify(r);
+  });
   await step('ייבוא גנים ואנשי צוות מהמרכזי: נוספים לעיר, ושום רשומה קיימת לא נדרסת', async()=>{
     const r=await pg.evaluate(async()=>{
       const before=window.__docs['app/gans'].gans.length;
