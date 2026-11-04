@@ -28,7 +28,7 @@ Object.defineProperty(window,'ORG',{get:()=>ORG,set:v=>{ORG=v},configurable:true
 Object.defineProperty(window,'_pending',{get:()=>_pending,configurable:true});
 Object.defineProperty(window,'currentUser',{get:()=>currentUser,set:v=>{currentUser=v},configurable:true});
 window.__resetCity=()=>{ _cityResolved=false; };
-Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, journalAdd, cityRequests, waitlistReady, viewRequests, alertItems, viewAlerts, alertSave, rgCode, returningMap, openListReport, openStaff, makeStaff, setCloudDoc:(id,d)=>{ cloudDocs.set(id,d); }, getCloudDoc:(id)=>cloudDocs.get(id), stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
+Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, journalAdd, cityRequests, waitlistReady, viewRequests, alertItems, viewAlerts, alertSave, rgCode, returningMap, isAssistantBRole, asgAssistantB, openListReport, openStaff, makeStaff, setCloudDoc:(id,d)=>{ cloudDocs.set(id,d); }, getCloudDoc:(id)=>cloudDocs.get(id), stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -459,6 +459,14 @@ const server=require('http').createServer((req,res)=>{
       const m=await returningMap(); const vals=Object.values(m), keys=Object.keys(m);
       const flat=JSON.stringify(m);
       return keys.length===1 && /^[0-9a-f]{64}$/.test(keys[0]) && vals[0].s==='444' && vals[0].n==='גן גדולים' && !/ענבל|123456782|כהן/.test(flat);
+    });
+  });
+
+  await step("\"סייעת שנייה\" (וכל צורת כתיבה) נחשבת סייעת ב׳ — משובצת, בלי התראת \"ללא זכאות\" שגויה", async()=>{
+    return await pg.evaluate(()=>{
+      const forms=["סייעת ב'","סייעת ב׳",'סייעת ב','סייעת שנייה','סייעת שניה','סייעת 2'].every(isAssistantBRole) && !isAssistantBRole('סייעת') && !isAssistantBRole('סייעת רפואית');
+      const found=!!asgAssistantB({ 'סייעת שנייה':{ name:'רחל' } }) && !asgAssistantB({ 'סייעת':{ name:'לאה' } });
+      return forms && found;
     });
   });
 

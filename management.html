@@ -4149,7 +4149,8 @@ try{
   function assistantBState(g){
     var th=thresholds().assistantB; if(!g.on) return null;
     var girls=g.gender==='בנים'?0:g.enrolled; var mandatory=String(g.age||'').trim()==='5';
-    var has=(g.roster||[]).some(function(r){ return /סייעת ב/.test(r.r); });
+    /* "סייעת ב'" בכל צורת כתיבה: סייעת ב / ב׳ / שנייה / שניה / 2 */
+    var has=(g.roster||[]).some(function(r){ return /^סייעת(ב|שנייה|שניה|2)$/.test(String(r.r||'').replace(/[\s"'׳״`.\-_]/g,'')); });
     /* זכאות: רישיון בתוקף · גן גיל 3 או 4 (לא גן חובה) · מספר הילדות הגיע לסף */
     var expired=!!g.licenseExpiry && g.licenseExpiry < todayISO();
     var eligible=girls>=th && !mandatory && !expired;
