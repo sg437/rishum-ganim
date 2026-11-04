@@ -184,6 +184,23 @@ const DATA={
     const r=await pg.evaluate(()=>{ return new Promise(res=>{ const f=new File(['ת"ז,סמל מוסד\n18,111\n26,999\n77,111\n'],'moe.csv',{type:'text/csv'}); const inp=document.getElementById('moeFile'); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); setTimeout(()=>{ res(window.__docs['org/hq/ministry/modiin-illit']); },500); }); });
     return (ok && r && r.students['000000018'].status==='ok' && r.students['000000026'].status==='error' && r.extra.includes('000000077')) || JSON.stringify({ok, r:r&&r.students});
   });
+  await step('משרד החינוך — תבנית "מצבת גני ילדים": מזוהה לפי הכותרות, תאריכי שיבוץ נשמרים, סמל שונה = שגוי', async()=>{
+    await go('ministry');
+    const up=(name, text)=>pg.evaluate(([name,text])=>new Promise(res=>{ const f=new File([text],name,{type:'text/csv'}); const inp=document.getElementById('moeFile'); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); setTimeout(()=>res(window.__docs['org/hq/ministry/modiin-illit']),500); }), [name,text]);
+    const hdr='מספר זהות,מספר דרכון,מספר סידורי בדרכון,שם תלמיד,מין,סמל מוסד,מוסד,סוג חינוך,קוד סוג כיתה,סוג כיתה,ישוב מגורי תלמיד,כתה,מקבילה,כתובת,מספר בית,תאריך לידה,ארץ לידה,מספר זהות אם,שם אם,מספר זהות אב,שם אב,תאריך שיבוץ מ,תאריך שיבוץ עד';
+    const r=await up('mazeva.csv', hdr+'\n18,,,ילדה א,נ,111,גן הדקל,רגיל,,,,,,,,,,,,,,01/09/2026,30/06/2027\n26,,,ילדה ב,נ,999,אחר,רגיל,,,,,,,,,,,,,,05/09/2026,\n');
+    const a=r.students['000000018'], b=r.students['000000026'];
+    return (a.status==='ok' && a.placedFrom==='2026-09-01' && a.placedTo==='2027-06-30' && a.inRoster===true && b.status==='error' && /סמל מוסד שונה/.test(b.note)) || JSON.stringify({a,b});
+  });
+  await step('משרד החינוך — תבנית "שגויים": קודי השגיאה ותיאורן, תאריך קליטת התנועה ו"משובץ בגן" נשמרים; יש סינון "תאריך שונה"', async()=>{
+    const hdr=' מספר זהות, סמל מוסד , שם מוסד , סוג זהות, שם משפחה, שם פרטי, גורם מדווח, תאריך קליטת תנועה, תאריך שיבוץ , עד תאריך שיבוץ , קוד ישוב מוסד , שם ישוב מוסד, מעמד משפטי , סוג פיקוח , סוג חינוך , קוד שגיאה 1, תיאור שגיאה 1, קוד שגיאה 2, תיאור שגיאה 2, קוד שגיאה 3, תיאור שגיאה 3, קוד שגיאה 4, תיאור שגיאה 4, קוד שגיאה 5, תיאור שגיאה 5,סמל מוסד משיבוץ  , שם מוסד משיבוץ, תאריך שיבוץ מ- , תאריך שיבוץ עד , קוד ישוב מוסד 1, שם ישוב מוסד , כיתה משיבוץ,משובץ בגן , קיים במרשם, שנת לימודים';
+    await pg.evaluate(()=>{ window.__setRegDate=true; });
+    const r=await pg.evaluate(([hdr])=>new Promise(res=>{ const row='18,111,גן הדקל,ת"ז,א,ילדה,רשות,15/09/2026,01/09/2026,,,,,,רגיל,E12,גיל לא תואם,E40,כתובת חסרה,,,,,,,111,גן הדקל,01/09/2026,,,,,כן,לא,תשפ"ז';
+      const f=new File([hdr+'\n'+row+'\n'],'errors.csv',{type:'text/csv'}); const inp=document.getElementById('moeFile'); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); setTimeout(()=>res(window.__docs['org/hq/ministry/modiin-illit']),500); }), [hdr]);
+    const a=r.students['000000018'];
+    const t=await txt('#hqMinistry');
+    return (a.status==='error' && a.errors.length===2 && a.errors[0].code==='E12' && /גיל לא תואם/.test(a.note) && /כתובת חסרה/.test(a.note) && a.entryDate==='2026-09-15' && a.errInGan==='כן' && r.errorsFile==='errors.csv' && /תאריך שונה/.test(t)) || JSON.stringify(a);
+  });
   await step('פניות וערעורים: הפנייה הפתוחה באיחור, ופתיחת פנייה חדשה מהמסך', async()=>{
     await go('requests'); const t=await txt('#hqRequests');
     await pg.click('#rqAdd'); await pg.waitForTimeout(80); await pg.fill('#pf-who','משפחת בדיקה'); await pg.fill('#pf-text','בקשה'); await pg.click('#pf-ok'); await pg.waitForTimeout(200);
@@ -267,6 +284,48 @@ const DATA={
     const pv=await pg.evaluate(()=>{ const t=(document.getElementById('impPreview')||{}).textContent||''; return { t:t.slice(0,300), go:(document.getElementById('impGo')||{}).textContent||'' }; });
     await pg.selectOption('#impKind','stu');
     return (r.kind==='gan' && r.opts===3 && r.regHidden && /ייבוא 1 גנים/.test(pv.go) && /גן הזית/.test(pv.t) && !/גן הדקל/.test(pv.t.split('ייבוא')[0].replace(/כבר קיימים[^]*?מדולגים/,''))) || JSON.stringify({r,pv});
+  });
+  await step('פנייה על תלמיד/ה: משתקפת לתוכנת העיר (hq_requests) ונרשמת ביומן התיק; שינוי סטטוס נרשם גם הוא', async()=>{
+    const r=await pg.evaluate(async()=>{
+      const L=window.__centralLive;
+      const id=await L.hqSet('requests', null, { cityId:'modiin-illit', cityName:'מודיעין עילית', studentId:'s1', year:'תשפ"ז', who:'בדיקה', type:'ערעור על שיבוץ', text:'מבקשים גן אחר', wantGan:'גן התמר', status:'open', log:[] });
+      await new Promise(r=>setTimeout(r,150));
+      const mir=(window.__docs['app/hq_requests']||{}).items||{};
+      await L.hqSet('requests', id, { status:'closed', decision:'אושר מעבר' });
+      await new Promise(r=>setTimeout(r,150));
+      const mir2=(window.__docs['app/hq_requests']||{}).items||{};
+      const yearDoc=Object.keys(window.__docs).filter(k=>/^app\/students_/.test(k)).map(k=>window.__docs[k]).find(d=>(d.students||[]).some(x=>x.id==='s1'));
+      const s1=yearDoc && yearDoc.students.find(x=>x.id==='s1');
+      const jr=(s1&&s1.journal)||[];
+      return { mirrored:!!mir[id] && mir[id].wantGan==='גן התמר', closed:mir2[id] && mir2[id].status==='closed' && mir2[id].decision==='אושר מעבר', jr:jr.filter(e=>e.type==='appeal').length, hasDecision:jr.some(e=>/אושר מעבר/.test(e.text||'')) };
+    });
+    return (r.mirrored && r.closed && r.jr>=2 && r.hasDecision) || JSON.stringify(r);
+  });
+  await step('דורש טיפול: מקובץ לפי נושא, עם כפתור "טיפול" ששומר מצב, אחראי/ת והערה', async()=>{
+    await go('followups'); await pg.waitForTimeout(150);
+    const r=await pg.evaluate(async()=>{
+      const host=document.getElementById('hqFollowups'); const chips=host.querySelectorAll('[data-fu-topic]').length;
+      const h=host.querySelector('[data-fu-h]'); if(!h) return { chips, noItems:true };
+      h.click(); await new Promise(r=>setTimeout(r,50));
+      document.getElementById('pf-status').value='progress'; document.getElementById('pf-note').value='דיברנו עם הרכזת';
+      document.getElementById('pf-ok').click(); await new Promise(r=>setTimeout(r,200));
+      const fu=Object.keys(window.__docs).filter(k=>k.startsWith('org/hq/tracking/fu_')).map(k=>window.__docs[k]);
+      return { chips, saved:fu.length>0 && fu[0].status==='progress' && /דיברנו/.test(fu[0].note||'') };
+    });
+    return (r.chips>=2 && r.saved) || JSON.stringify(r);
+  });
+  await step('מייל נכנס: משויך לתיק לפי מספר התיק בנושא, לפי ת"ז בגוף או לפי השולח — ולא משויך כשאין התאמה', async()=>{
+    const r=await pg.evaluate(()=>{
+      const M=window.__hqMail; const code=M.code('modiin-illit','stu','s1');
+      const s1=window.__hq.findStudent('modiin-illit','s1');
+      const byCode=M.match({ subject:'Re: פנייה · תיק '+code, body:'תודה', from:'x@y.com' });
+      /* ת"ז 18 של s1 — כפי שהיא כתובה במייל, 9 ספרות עם אפסים מובילים */
+      const full=s1; const byTz=M.match({ subject:'שאלה', body:'מספר זהות 000000018 בבקשה', from:'zz@q.com' });
+      const byFrom=M.match({ subject:'שאלה', body:'שלום', from:'אמא <'+s1.email+'>' });
+      const none=M.match({ subject:'פרסומת', body:'מבצע', from:'ads@shop.com' });
+      return { code:byCode&&byCode.id, tz:byTz&&byTz.id, want:full&&full.id, from:byFrom&&byFrom.id, none };
+    });
+    return (r.code==='s1' && r.want && r.tz===r.want && r.from==='s1' && r.none===null) || JSON.stringify(r);
   });
   await step('סינון תלמידים במרכזי: מגדר "מעורב", ערוץ רישום ותאריך רישום', async()=>{
     await go('students'); const t=await pg.evaluate(()=>document.getElementById('hqStudents').innerHTML);

@@ -1631,7 +1631,7 @@ function stuTemplate(){ return {
   insurancePaid:false,
   special:{ divorced:false, approvalFather:false, approvalMother:false, idFather:false, idMother:false, approvalDoc:false, approvalFatherSig:false, approvalMotherSig:false, outOfCity:false, paymentArrangement:false, retention:false, retentionDoc:false, other:false, otherText:"" },
   support:{ shiluv:false, salIshi:false, medical:false, behavior:false, prepA:false },
-  leftDate:"", leftReason:"", leftReported:"",
+  journal:[], leftDate:"", leftReason:"", leftReported:"",
   regDate:"", regChannel:"",
   driveFolder:"", driveFolderId:"", notes:"", createdAt:""
 };}
@@ -1665,6 +1665,7 @@ function packStudent(s){
       if(any) out[k]=sub;
       continue;
     }
+    if(Array.isArray(dv) && Array.isArray(v) && !v.length && !dv.length) continue;   // רשימה ריקה (למשל תיעוד) — לא נשמרת
     if(v!==dv && v!==undefined) out[k]=v;
   }
   return out;
@@ -1751,7 +1752,7 @@ function buildCity(c, docs){
     brand:{ title:(settings.appTitle||""), sub:(settings.appSubtitle||"") },
     /* --- הנתונים המלאים (למסכי התלמידים/הצוות/הייצוא של המרכזי) --- */
     stuFull, staffFull, gansRaw:gansRaw.map(g=>Object.assign({},g)), management:mgmtRaw.map(m=>Object.assign({},m)),
-    asg:asgYear, settings:{ retentionPolicy:settings.retentionPolicy==='obligated'?'obligated':'space', ages:settings.ages||settings.childAges||[], campuses:settings.campuses||[], staffRoles:settings.staffRoles||[], assignCaps:settings.assignCaps||{}, tzaharonLimits:settings.tzaharonLimits||null, gansTarget:settings.gansTarget||"", userNames:settings.userNames||{}, msgLog:Array.isArray(settings.msgLog)?settings.msgLog.slice(-20):[] },
+    asg:asgYear, settings:{ reportContacts:settings.reportContacts||{}, retentionPolicy:settings.retentionPolicy==='obligated'?'obligated':'space', ages:settings.ages||settings.childAges||[], campuses:settings.campuses||[], staffRoles:settings.staffRoles||[], assignCaps:settings.assignCaps||{}, tzaharonLimits:settings.tzaharonLimits||null, gansTarget:settings.gansTarget||"", userNames:settings.userNames||{}, msgLog:Array.isArray(settings.msgLog)?settings.msgLog.slice(-20):[] },
     municipality:meta.municipality||{}, visitors, visitors30:visitors.filter(v=>v.ts>monthAgo).length,
     docs:docs.size, loaded:docs.has("meta")||docs.has("gans")||all.length>0, error:cityErr.get(c.id)||"", lastUpdate:Date.now(), live:true
   };
@@ -1902,12 +1903,50 @@ async function hqSet(coll, id, data){
   id=id||uid();
   const cur=(HQ[coll]||[]).find(x=>x.id===id)||{};
   const payload=Object.assign({}, cur, data, { updatedAt:Date.now(), updatedBy:lower(user.email) });
-  if(!payload.createdAt){ payload.createdAt=Date.now(); payload.createdBy=lower(user.email); }
+  const isNew=!payload.createdAt;
+  if(isNew){ payload.createdAt=Date.now(); payload.createdBy=lower(user.email); }
   delete payload.id;
   await setDoc(doc(db,"org","hq",coll,id), payload);
+  if(coll==="requests"){ try{ await requestSideEffects(id, cur, payload, isNew); }catch(e){ console.error("request mirror", e); } }
   return id;
 }
-async function hqDelete(coll, id){ requireHQ(); if(!HQ_COLLS.includes(coll)) throw new Error("bad-coll"); await deleteDoc(doc(db,"org","hq",coll,id)); }
+async function hqDelete(coll, id){ requireHQ(); if(!HQ_COLLS.includes(coll)) throw new Error("bad-coll");
+  const cur=coll==="requests" ? (HQ.requests||[]).find(x=>x.id===id) : null;
+  await deleteDoc(doc(db,"org","hq",coll,id));
+  if(cur && cur.cityId){ try{ await mirrorRequest(cur.cityId, id, null); }catch(e){ console.error("request mirror", e); } } }
+/* ---- פניות וערעורים: שיקוף לתוכנת העיר + תיעוד בתיק ----
+   המקור הוא org/hq/requests (המרכזי). כל פנייה של עיר משוקפת למסמך "hq_requests"
+   באוסף של אותה עיר — כך העיר רואה את הפניות שלה ואת מצבן בלי גישה למרכזי.
+   פנייה על תלמיד/ה נרשמת גם ביומן התיק: בפתיחה, בשינוי סטטוס ובהחלטה. */
+const REQ_MIRROR_FIELDS=["type","channel","by","phone","email","who","studentId","gan","wantGan","text","status","decision","owner","due","createdAt","closedAt","log","source"];
+async function mirrorRequest(cityId, id, rec){
+  const c=cityById(cityId); if(!c) return;
+  const ref=docFor(c, "hq_requests");
+  await runTransaction(db, async tx=>{
+    const snap=await tx.get(ref);
+    const items=Object.assign({}, (snap.exists() && snap.data().items) || {});
+    if(rec){ const slim={}; REQ_MIRROR_FIELDS.forEach(k=>{ if(rec[k]!==undefined && rec[k]!==null) slim[k]=rec[k]; }); if(Array.isArray(slim.log)) slim.log=slim.log.slice(-30); items[id]=slim; }
+    else delete items[id];
+    tx.set(ref, { items, updatedAt:Date.now() });
+  });
+}
+async function requestSideEffects(id, cur, rec, isNew){
+  if(cur && cur.cityId && cur.cityId!==rec.cityId) await mirrorRequest(cur.cityId, id, null);
+  if(rec.cityId) await mirrorRequest(rec.cityId, id, rec);
+  if(!rec.cityId || !rec.studentId) return;
+  const notes=[];
+  if(isNew) notes.push({ subject:(rec.type||"פנייה"), text:(rec.text||"")+(rec.wantGan?"\nגן מבוקש: "+rec.wantGan:"") });
+  else {
+    if(cur.status!==rec.status) notes.push({ subject:(rec.type||"פנייה")+" · סטטוס", text:({open:"פתוחה",progress:"בטיפול",closed:"נסגרה"})[rec.status]||rec.status });
+    if(rec.decision && cur.decision!==rec.decision) notes.push({ subject:(rec.type||"פנייה")+" · החלטה", text:rec.decision });
+  }
+  if(!notes.length) return;
+  const meta=(cityDocs.get(rec.cityId)||new Map()).get("meta")||{};
+  const year=rec.year || meta.activeYear || "";
+  await updateStudent(rec.cityId, year, rec.studentId, x=>{ x.journal=Array.isArray(x.journal)?x.journal.slice():[];
+    notes.forEach(n=>x.journal.push({ id:uid(), at:new Date().toISOString(), by:lower(user&&user.email), type:"appeal", subject:n.subject, text:String(n.text||"").slice(0,6000), ref:"request:"+id, status:({open:"פתוחה",progress:"בטיפול",closed:"נסגרה"})[rec.status]||"" }));
+    if(x.journal.length>300) x.journal=x.journal.slice(-300); });
+}
 /* יומן פעולות המרכזי — מי עשה מה ומתי (לבקרה ולשקיפות) */
 async function hqAudit(action, detail){ try{ await hqSet("audit", "a"+Date.now().toString(36)+Math.random().toString(36).slice(2,5), { action, detail:detail||"", at:Date.now(), by:lower(user&&user.email) }); }catch(e){ console.error("audit", e); } }
 
@@ -1971,6 +2010,22 @@ async function updateGan(cityId, ganId, mutate){
   });
   return after;
 }
+/* ---- כתיבה נקודתית לתיק איש/אשת צוות בעיר (למשל שיוך מייל נכנס ליומן) ---- */
+async function updateStaff(cityId, staffId, mutate){
+  requireHQ();
+  const c=cityById(cityId); if(!c) throw new Error("no-city");
+  if(cityIsRecs(cityDocs.get(c.id))){
+    const rref=docFor(c, recDocId("staff", staffId)); let out=null;
+    await runTransaction(db, async tx=>{ const snap=await tx.get(rref); if(!snap.exists() || !snap.data().d) throw new Error("no-staff");
+      const v=snap.data(), full=Object.assign({}, v.d); mutate(full); tx.set(rref, Object.assign({}, v, { d:full, u:Date.now(), by:lower(user&&user.email) })); out=full; });
+    return out;
+  }
+  const ref=docFor(c, "staff"); let after=null;
+  await runTransaction(db, async tx=>{ const snap=await tx.get(ref); const cur=snap.exists()?snap.data():{};
+    const arr=Array.isArray(cur.staff)?cur.staff.slice():[]; const i=arr.findIndex(o=>o&&o.id===staffId); if(i<0) throw new Error("no-staff");
+    const full=Object.assign({}, arr[i]); mutate(full); arr[i]=full; after=full; tx.set(ref, Object.assign({}, cur, { staff:arr })); });
+  return after;
+}
 /* הוספת תיקים לעיר (ייבוא מהמרכזי) — מתווספים למסמך השנה בלי לגעת בקיימים */
 async function addStudents(cityId, year, list){
   requireHQ();
@@ -2005,9 +2060,9 @@ async function addStudents(cityId, year, list){
 /* ---- הוספת גנים / אנשי צוות לעיר (ייבוא מהמרכזי) — זהה ל-makeGan / makeStaff בתוכנת העיר ---- */
 function ganTemplate(){ return { id:"", ganName:"", internalSymbol:"", ganSymbol:"", citySymbol:"", nickname:"", teacherName:"", age:"", education:"רגיל",
   address:"", building:"", street:"", zone:"", phoneGan:"", phoneHome:"", teacherMobile:"", assistantName:"", assistantMobile:"",
-  campus:"", city:"", gender:"", licenseExpiry:"", licenseAges:"", licenseCap:"", capacity:"", assignCap:"", assignCapNote:"", active:true, docsNote:"", createdAt:"" }; }
+  campus:"", city:"", gender:"", licenseExpiry:"", licenseAges:"", licenseCap:"", capacity:"", assignCap:"", assignCapNote:"", journal:[], active:true, docsNote:"", createdAt:"" }; }
 function staffTemplate(){ return { id:"", lastName:"", firstName:"", name:"", tz:"", email:"", role:"סייעת", education:"רגיל", phone:"", mobile:"", city:"", street:"", building:"",
-  weeklyHours:"", notes:"", active:true, certificate:false, movements:[], notesList:[], absences:[], lateness:[], docFiles:{}, driveFolder:"", driveFolderId:"", createdAt:"" }; }
+  weeklyHours:"", notes:"", active:true, certificate:false, movements:[], notesList:[], absences:[], lateness:[], docFiles:{}, journal:[], driveFolder:"", driveFolderId:"", createdAt:"" }; }
 async function addRecords(cityId, kind, list){
   requireHQ(); if(kind!=="gan" && kind!=="staff") throw new Error("bad-kind");
   const c=cityById(cityId); if(!c) throw new Error("no-city");
@@ -2108,7 +2163,7 @@ window.__centralLive = {
   async signOut(){ stopAll(); await signOut(auth); },
   saveOrg, org:()=>({ cities:orgCities(), users:ORG.users }), isOwner,
   hq:()=>HQ, hqSaveSettings, hqSet, hqDelete, hqAudit,
-  updateStudent, updateGan, addStudents, addRecords, bridge, normStudent, packStudent, stuTemplate, uid
+  updateStudent, updateGan, updateStaff, addStudents, addRecords, bridge, normStudent, packStudent, stuTemplate, uid
 };
 try{
   app=initializeApp(firebaseConfig);
@@ -3723,6 +3778,8 @@ try{
   function fmtDT(ts){ if(!ts) return "—"; var d=new Date(ts); if(isNaN(d)) return String(ts); return d.toLocaleDateString('he-IL')+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
   function fmtD(ts){ if(!ts) return "—"; var d=new Date(ts); if(isNaN(d)) return String(ts); return d.toLocaleDateString('he-IL'); }
   function fmtDate(v){ var t=String(v||"").trim(); var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(t); return m?(m[3]+'/'+m[2]+'/'+m[1]):t; }
+  /* בדיקת כתובת מייל — בלי ביטוי רגולרי עם חזרות מקוננות (ReDoS) */
+  function isEmail(x){ x=String(x==null?'':x).trim(); if(!x || x.length>254 || /\s/.test(x)) return false; var at=x.indexOf('@'); if(at<1 || at!==x.lastIndexOf('@')) return false; var dom=x.slice(at+1), dot=dom.lastIndexOf('.'); return dot>0 && dot<dom.length-1; }
   function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   function digits(s){ return String(s||"").replace(/\D/g,""); }
   function tzKey(s){ var d=digits(s); return d?d.padStart(9,'0'):""; }
@@ -4114,7 +4171,7 @@ try{
     save:save, remove:remove, saveSettings:saveSettings, hqErr:hqErr, selCities:selCities, citySelHTML:citySelHTML, wireCitySel:wireCitySel, SEL:function(){ return SEL_CITIES; },
     exportCSV:exportCSV, exportXLS:exportXLS, printTable:printTable, exportDialog:exportDialog, withSeq:withSeq, tableHTML:tableHTML, sortRows:sortRows, wireSort:wireSort, reg:reg, rerender:rerenderCurrent,
     lamp:lamp, initials:initials, nameCell:nameCell, cell2:cell2, tabsHTML:tabsHTML, emptyHTML:emptyHTML, hoist:hoist,
-    cities:cities, cityById:cityById, me:me, isOwner:isOwner, fmtDT:fmtDT, fmtD:fmtD, fmtDate:fmtDate, todayISO:todayISO, digits:digits, tzKey:tzKey, fixPhone:fixPhone, stuName:stuName, eduL:eduL, yes:yes, yn:yn, uid:uid, sortHe:sortHe, debounce:debounce,
+    cities:cities, cityById:cityById, me:me, isOwner:isOwner, fmtDT:fmtDT, fmtD:fmtD, fmtDate:fmtDate, todayISO:todayISO, isEmail:isEmail, digits:digits, tzKey:tzKey, fixPhone:fixPhone, stuName:stuName, eduL:eduL, yes:yes, yn:yn, uid:uid, sortHe:sortHe, debounce:debounce,
     STU_FIELDS:STU_FIELDS, STU_DEFAULT:STU_DEFAULT, STAFF_FIELDS:STAFF_FIELDS, STAFF_DEFAULT:STAFF_DEFAULT, GAN_FIELDS:GAN_FIELDS, ctxLabel:ctxLabel, asgText:asgText, MODULES:MODULES,
     allStudents:allStudents, allStaff:allStaff, allGans:allGans, findStudent:findStudent, thresholds:thresholds, licenseState:licenseState, assistantBState:assistantBState, flagId:flagId, flagFor:flagFor,
     openRequestsFor:openRequestsFor, bouncedFor:bouncedFor, ministryRec:ministryRec, ministryLabel:ministryLabel, $:$, $$:$$, he:he, esc:esc, toast:toast, kpiHTML:kpiHTML, pct:pct, C:C, LIVE:LIVE };
@@ -4289,11 +4346,16 @@ try{
       '<div><div class="sec-h">קליטה, מסמכים ותוכניות</div><div class="kv-grid">'+kvRow('נרשמה על ידינו',H.yn(s.registeredByUs))+kvRow('קלוט בעירייה',H.yn(s.absorbedMunicipality))+kvRow('קלוט במשרד החינוך',H.yn(s.absorbedMinistry))+kvRow('משרד החינוך',H.ministryLabel(s))+kvRow('נספח',H.yn(d.nispach))+kvRow('צילום ת"ז',H.yn(d.idCopy))+kvRow('תקנון',H.yn(d.takanon))+kvRow('צהרון',H.yn(pr.tzaharon))+kvRow('קייטנת חנוכה',H.yn(pr.campHanukkah))+kvRow('קייטנת ניסן',H.yn(pr.campNisan))+kvRow('קייטנת סוף שנה',H.yn(pr.campEndYear))+kvRow('ביטוח שולם',H.yn(s.insurancePaid))+'</div></div>'+
       '<div><div class="sec-h">סימונים</div><div class="kv-grid">'+kvRow('גרושים',H.yn(sp.divorced))+kvRow('ילדת חוץ',H.yn(sp.outOfCity))+kvRow('הסדר תשלום',H.yn(sp.paymentArrangement))+kvRow('השארות',H.yn(sp.retention))+kvRow('השארות לשנה הבאה',H.yn(s.retentionNext))+kvRow('אחר',sp.other?(sp.otherText||'כן'):'')+kvRow('שילוב',H.yn(su.shiluv))+kvRow('סל אישי',H.yn(su.salIshi))+kvRow('מנתחת התנהגות',H.yn(su.behavior))+kvRow('הכנה לא׳',H.yn(su.prepA))+kvRow('תיקיית דרייב',s.driveFolder?'קיימת':'')+kvRow('הערות',s.notes)+kvRow('נפתח',H.fmtDT(s.createdAt))+'</div></div>'+
       '<div><div class="sec-h">יומן מעקב <span class="hq-count">'+reqs.length+' פניות</span></div>'+(reqs.length?'<div class="timeline">'+reqs.map(function(r){ return '<div class="ti"><span class="d">'+esc(H.fmtD(r.createdAt))+'</span><div><b>'+esc(r.type||'')+'</b> · '+reqStatus(r)+'<br>'+esc(r.text||'')+(r.decision?'<br><i>החלטה: '+esc(r.decision)+'</i>':'')+'</div></div>'; }).join('')+'</div>':'<div class="hq-count">אין פניות מתועדות.</div>')+'</div>';
-    var foot=(H.canEdit('students')?'<button class="btn-primary" id="sd-place" style="flex:1">שיבוץ מרכזי</button><button class="btn-ghost" id="sd-final">'+(s.placed!==false?'סימון כממתינה':'סימון שיבוץ סופי')+'</button>':'')+
+    /* תיעוד והתכתבות בתיק — אותו יומן שבתוכנת העיר (שיחות, מיילים, פניות) */
+    var JT={ call:'📞 שיחה', note:'📝 הערה', emailOut:'📧 מייל יוצא', emailIn:'📨 מייל נכנס', appeal:'⚖️ פנייה / ערעור', system:'⚙️ מערכת' };
+    var jr=(Array.isArray(s.journal)?s.journal:[]).slice().sort(function(a,b){ return String(b.at).localeCompare(String(a.at)); });
+    body+='<div><div class="sec-h">תיעוד והתכתבות <span class="hq-count">'+jr.length+' רשומות</span></div>'+(jr.length?'<div class="timeline">'+jr.slice(0,40).map(function(e){ return '<div class="ti"><span class="d">'+esc(H.fmtDT(Date.parse(e.at)||e.at))+'</span><div><b>'+esc(JT[e.type]||e.type||'')+'</b>'+(e.subject?' · '+esc(e.subject):'')+(e.to?' <span class="hq-count" dir="ltr">→ '+esc(e.to)+'</span>':'')+'<div style="white-space:pre-wrap">'+esc(e.text||'')+'</div>'+(e.by?'<span class="hq-count">'+esc(e.by)+'</span>':'')+'</div></div>'; }).join('')+'</div>':'<div class="hq-count">אין עדיין תיעוד בתיק.</div>')+'</div>';
+    var foot=(H.canEdit('students')?'<button class="btn-ghost" id="sd-jr">📞 תיעוד שיחה / הערה</button>':'')+(H.canEdit('students')?'<button class="btn-primary" id="sd-place" style="flex:1">שיבוץ מרכזי</button><button class="btn-ghost" id="sd-final">'+(s.placed!==false?'סימון כממתינה':'סימון שיבוץ סופי')+'</button>':'')+
       (H.canEdit('requests')?'<button class="btn-ghost" id="sd-req">תיעוד פנייה</button>':'')+(H.canEdit('ministry')?'<button class="btn-ghost" id="sd-moe">מצב במשרד החינוך</button>':'')+(H.canEdit('smoove')&&s.email?'<button class="btn-ghost" id="sd-bounce">'+(H.bouncedFor(s)?'המייל תקין':'סימון: מייל חזר')+'</button>':'');
     H.openDrawer(H.stuName(s), body, foot, { label:'תיק תלמידה', meta:'<span dir="ltr">'+esc(s.tz||'')+'</span>'+(s.tz?' · ':'')+esc(c.name)+(s.gan?' · '+esc(s.gan):'') });
     var b;
     if((b=$('#sd-place'))) b.addEventListener('click',function(){ placeDialog([s]); });
+    if((b=$('#sd-jr'))) b.addEventListener('click',function(){ addJournal(s); });
     if((b=$('#sd-final'))) b.addEventListener('click',function(){ if(!s.ganId){ toast('אין גן — קודם שיבוץ'); return; }
       if(s.placed===false && retentionNeedsDoc(s)){ toast(' ילדת השארות בלי מסמך השארות — אין שיבוץ סופי עד שהמסמך יסומן בתיק שבתוכנת העיר'); return; }
       setFinal([s], s.placed===false); });
@@ -4301,6 +4363,16 @@ try{
     if((b=$('#sd-moe'))) b.addEventListener('click',function(){ window.__hqMoe && window.__hqMoe.setStatus(s); });
     if((b=$('#sd-bounce'))) b.addEventListener('click',function(){ window.__hqSmoove && window.__hqSmoove.toggleBounce(s); });
   }
+  /* הוספת רשומה ליומן התיק מהמרכזי — נכתבת לתיק בעיר (טרנזקציה), והעיר רואה מיד */
+  function addJournal(s, preset){
+    preset=preset||{};
+    H.promptForm('תיעוד בתיק · '+H.stuName(s), [{k:'type',l:'סוג',t:'select',opts:[['call','📞 שיחה'],['note','📝 הערה'],['emailIn','📨 מייל שהתקבל']],v:preset.type||'call'},{k:'subject',l:'עם מי / נושא',v:preset.subject||''},{k:'text',l:'סיכום',t:'textarea',rows:5,v:preset.text||'',req:true}], function(o){
+      var e={ id:H.uid(), at:new Date().toISOString(), by:H.me(), type:o.type, subject:o.subject, text:String(o.text||'').slice(0,6000) };
+      LIVE.updateStudent(s.cityId, s.year, s.id, function(x){ x.journal=(Array.isArray(x.journal)?x.journal.slice():[]); x.journal.push(e); if(x.journal.length>300) x.journal=x.journal.slice(-300); })
+        .then(function(){ toast('✓ נוסף לתיעוד בתיק'); H.closeDrawer(); }).catch(function(e2){ toast('השמירה נכשלה: '+H.hqErr(e2)); });
+    }, 'הוספה');
+  }
+  window.__hqJournal={ add:addJournal };
   function reqStatus(r){ return r.status==='closed'?H.lamp('done','נסגרה'):(r.status==='progress'?H.lamp('warn','בטיפול'):H.lamp('ok','פתוחה')); }
   /* ---- שיבוץ מרכזי: כתיבה לתיק בעיר, העיר רואה חי ---- */
   /* ילדת השארות בלי מסמך השארות — כמו בתוכנת העיר, אין לה שיבוץ סופי עד
@@ -5430,12 +5502,25 @@ function xlsToRows(buf){
   function addRequest(s, preset){
     var fields=[{k:'type',l:'סוג הפנייה',t:'select',opts:TYPES,v:preset&&preset.type},{k:'channel',l:'ערוץ',t:'select',opts:[['phone','טלפון'],['email','מייל'],['inperson','פרונטלי'],['whatsapp','וואטסאפ']]},{k:'by',l:'מי פנה/תה',v:s?(s.motherName||s.fatherName||''):''},{k:'phone',l:'טלפון לחזרה',v:s?(s.mobile||s.momMobile||s.dadMobile||s.phone||''):'',dir:'ltr'},{k:'text',l:'תוכן הפנייה',t:'textarea',rows:4},{k:'wantGan',l:'גן מבוקש (אם רלוונטי)'},{k:'owner',l:'אחראי/ת לטיפול',v:H.me()},{k:'due',l:'יעד לתשובה',t:'date',v:new Date(Date.now()+H.thresholds().requestDays*86400000).toISOString().slice(0,10)}];
     if(!s) fields.unshift({k:'cityId',l:'עיר',t:'select',opts:cityOpts()},{k:'who',l:'שם התלמיד/ה (טקסט חופשי)'});
+    fields.push({k:'email',l:'מייל ההורים (לאישור קבלה)',v:s?(s.email||''):'',dir:'ltr'},{k:'mailAck',l:'לשלוח להורים מייל אוטומטי שהפנייה התקבלה',t:'check',v:!!(s&&s.email)});
     H.promptForm('תיעוד פנייה'+(s?' · '+H.stuName(s):''), fields, function(o){
       var rec=Object.assign({ status:'open', log:[{ at:Date.now(), by:H.me(), text:'הפנייה נפתחה' }] }, o);
-      if(s){ rec.cityId=s.cityId; rec.studentId=s.id; rec.who=H.stuName(s); rec.cityName=s.cityName; rec.gan=s.gan||''; }
+      if(s){ rec.cityId=s.cityId; rec.studentId=s.id; rec.year=s.year||''; rec.who=H.stuName(s); rec.cityName=s.cityName; rec.gan=s.gan||''; }
       else { var c=H.cityById(rec.cityId); rec.cityName=c?c.name:''; rec.studentId=''; }
-      H.save('requests', null, rec, '✓ הפנייה תועדה').then(function(){ H.closeDrawer(); });
+      var ack=!!rec.mailAck; delete rec.mailAck;
+      H.save('requests', null, rec, '✓ הפנייה תועדה').then(function(id){ H.closeDrawer(); if(ack) sendAck(id, rec); });
     }, 'תיעוד');
+  }
+  /* אישור קבלה אוטומטי להורים — "הפנייה התקבלה ותטופל", ותיעוד במעקב הפנייה */
+  function sendAck(id, rec){
+    var to=String(rec.email||'').trim(); if(!H.isEmail(to)){ toast('לא נשלח אישור קבלה — אין מייל תקין'); return; }
+    var subject='הפנייה שלכם התקבלה'+(rec.who?' · '+rec.who:'');
+    var body='שלום'+(rec.by?' '+rec.by:'')+',\n\nפנייתכם ('+(rec.type||'פנייה')+')'+(rec.who?' בעניין '+rec.who:'')+' התקבלה במחלקת הרישום ותטופל בהקדם.'+(rec.due?'\nמועד משוער לתשובה: '+H.fmtDate(rec.due):'')+'\n\nבברכה,\nמחלקת הרישום';
+    LIVE.bridge('sendMailBulk', { items:[{ to:to, subject:subject, body:body }], opts:{ fromName:'מחלקת הרישום' } }).then(function(r){
+      if(!r || !r.sent){ toast('אישור הקבלה לא נשלח'); return; }
+      var cur=(H.HQ().requests||[]).filter(function(x){ return x.id===id; })[0]||rec; var log=(cur.log||[]).slice(); log.push({ at:Date.now(), by:H.me(), text:'נשלח להורים מייל אישור קבלה ('+to+')' });
+      H.save('requests', id, { log:log, ackAt:Date.now() }, '✓ נשלח להורים אישור קבלה');
+    }).catch(function(e){ toast('אישור הקבלה לא נשלח: '+H.hqErr(e)); });
   }
   function openRequest(id){
     var r=(H.HQ().requests||[]).filter(function(x){ return x.id===id; })[0]; if(!r) return;
@@ -5454,8 +5539,93 @@ function xlsToRows(buf){
     if((b=$('#rq-dec-btn'))) b.addEventListener('click',function(){ addDecision({ title:'ערעור: '+(r.who||''), context:(r.type||'')+' · '+(r.cityName||'')+(r.gan?' · '+r.gan:'')+'\n'+(r.text||''), source:'request:'+r.id }); });
     if((b=$('#rq-del'))) b.addEventListener('click',function(){ if(H.confirmBox('למחוק את הפנייה?')) H.remove('requests', r.id).then(H.closeDrawer); });
   }
+  /* קליטת ערעורים מהטופס הציבורי: לכל עיר — הממתינים בגשר נפתחים כפנייה
+     (עם שיוך לתיק לפי ת"ז), משתקפים לעיר, ונמחקים מהגשר. רץ פעם בכמה דקות לכל היותר. */
+  var _apImportAt=0, _apImporting=false;
+  function importFormAppeals(force){
+    if(!C.live || !H.canEdit('requests') || _apImporting) return Promise.resolve(0);
+    if(!force && Date.now()-_apImportAt<5*60*1000) return Promise.resolve(0);
+    _apImporting=true; _apImportAt=Date.now(); var n=0;
+    var chain=Promise.resolve();
+    H.cities().forEach(function(c){ chain=chain.then(function(){ return LIVE.bridge('appealList', {}, c.id).then(function(res){
+      var items=(res&&res.items)||[]; var inner=Promise.resolve();
+      items.forEach(function(a){ inner=inner.then(function(){ var d=a.data||{}; var tz=H.tzKey(d.childTz);
+        var s=tz?(c.stuFull||[]).filter(function(x){ return H.tzKey(x.tz)===tz; })[0]:null;
+        var rec={ cityId:c.id, cityName:c.name, studentId:s?s.id:'', year:s?s.year:'', who:s?H.stuName(s):(d.childName||''), gan:s?(s.gan||''):(d.currentGan||''),
+          type:d.type||'ערעור', channel:'form', by:d.parentName||'', phone:d.phone||'', email:d.email||'', text:d.text||'', wantGan:d.wantGan||'', status:'open', source:'form:'+a.id, ackAt:Date.now(),
+          due:new Date(Date.now()+H.thresholds().requestDays*86400000).toISOString().slice(0,10),
+          log:[{ at:Date.parse(a.at)||Date.now(), by:'טופס ציבורי', text:'הפנייה התקבלה מהטופס הציבורי'+(d.email?' · נשלח להורים אישור קבלה':'') }] };
+        return LIVE.hqSet('requests', null, rec).then(function(){ n++; return LIVE.bridge('appealRemove', { id:a.id }, c.id); }); }).catch(function(e){ console.error('appeal import', e); }); });
+      return inner; }).catch(function(e){ console.warn('appealList '+c.id, String(e&&e.message||e)); }); }); });
+    return chain.then(function(){ _apImporting=false; if(n){ toast('✓ נקלטו '+n+' פניות חדשות מהטופס הציבורי'); LIVE.hqAudit('requests', 'נקלטו '+n+' פניות מהטופס'); } return n; });
+  }
+  window.__hqAppeals={ importNow:function(){ return importFormAppeals(true); } };
+
+  /* ===== מיילים נכנסים — שיוך אוטומטי לתיק =====
+     הגשר קורא את תיבת המייל המוסדית. כל מייל משויך לתיק לפי (1) מספר התיק שבנושא
+     ("תיק RG…" — נוסף לכל מייל שנשלח מתיק), (2) ת"ז שמופיעה בנושא/בגוף ושייכת לתיק אחד,
+     (3) כתובת השולח ששמורה בתיק אחד. שיוך ודאי — נכתב ליומן התיק לבד. אחרת — נכנס
+     ל"דורש טיפול" לשיוך ידני. מייל שטופל נרשם ב-tracking/mailsync ולא נקלט שוב. */
+  var _mailAt=0, _mailBusy=false, MAIL_PENDING=[];
+  function rgCode(cityId, kind, id){ var k=cityId+'|'+kind+'|'+id, h=2166136261; for(var i=0;i<k.length;i++){ h^=k.charCodeAt(i); h=Math.imul(h,16777619); } return 'RG'+(h>>>0).toString(36).toUpperCase(); }
+  function mailIndex(){
+    var byCode={}, byTz={}, byEmail={};
+    var put=function(map,k,v){ if(!k) return; k=String(k).toLowerCase(); if(map[k]&&map[k]!=='multi'&&(map[k].id!==v.id||map[k].cityId!==v.cityId)) map[k]='multi'; else if(!map[k]) map[k]=v; };
+    H.cities().forEach(function(c){
+      (c.stuFull||[]).forEach(function(x){ var r={ kind:'stu', cityId:c.id, cityName:c.name, id:x.id, year:x.year, name:H.stuName(x) }; byCode[rgCode(c.id,'stu',x.id)]=r; put(byTz, H.tzKey(x.tz), r); put(byEmail, String(x.email||'').trim(), r); });
+      (c.staffFull||[]).forEach(function(x){ var r={ kind:'staff', cityId:c.id, cityName:c.name, id:x.id, name:x.name||[x.firstName,x.lastName].filter(Boolean).join(' ') }; byCode[rgCode(c.id,'staff',x.id)]=r; put(byTz, H.tzKey(x.tz), r); put(byEmail, String(x.email||'').trim(), r); });
+      (c.gans||[]).forEach(function(g){ byCode[rgCode(c.id,'gan',g.id)]={ kind:'gan', cityId:c.id, cityName:c.name, id:g.id, name:g.name }; });
+    });
+    return { byCode:byCode, byTz:byTz, byEmail:byEmail };
+  }
+  function matchMail(m, ix){
+    var txt=(m.subject||'')+'\n'+(m.body||'');
+    var code=(String(m.subject||'').match(/RG[0-9A-Z]{4,8}/)||[])[0]; if(code && ix.byCode[code]) return ix.byCode[code];
+    var tzs=(txt.match(/\b\d{8,9}\b/g)||[]).map(H.tzKey).filter(function(k){ return ix.byTz[k] && ix.byTz[k]!=='multi'; });
+    var uniq=tzs.filter(function(v,i){ return tzs.indexOf(v)===i; }); if(uniq.length===1) return ix.byTz[uniq[0]];
+    var fr=String(m.from||'').slice(0,320), lt=fr.lastIndexOf('<'), gt=fr.lastIndexOf('>'); var from=(lt>=0&&gt>lt)?fr.slice(lt+1,gt).trim():fr.trim(); if(!H.isEmail(from)) from=''; if(from){ var e=ix.byEmail[from.toLowerCase()]; if(e && e!=='multi') return e; }
+    return null;
+  }
+  function mailSeen(){ var t=(H.HQ().tracking||[]).filter(function(x){ return x.id==='mailsync'; })[0]; var out={}; var src=(t&&t.seen)||{}; Object.keys(src).forEach(function(k){ if(/^m_[A-Za-z0-9_-]{1,64}$/.test(k)) out[k]=src[k]; }); return out; }
+  function markSeen(ids, how){ var seen=Object.assign({}, mailSeen()); var cut=Date.now()-60*86400000; Object.keys(seen).forEach(function(k){ if((seen[k].at||0)<cut) delete seen[k]; });
+    ids.forEach(function(id){ if(/^[A-Za-z0-9_-]{1,64}$/.test(String(id))) seen['m_'+id]={ at:Date.now(), how:how||'' }; }); return LIVE.hqSet('tracking', 'mailsync', { kind:'mailsync', seen:seen }); }
+  function attachMail(m, r){
+    var e={ id:H.uid(), at:m.date||new Date().toISOString(), by:'מייל נכנס', type:'emailIn', from:m.from||'', subject:m.subject||'', text:String(m.body||'').slice(0,6000), ref:'mail:'+m.id };
+    var mut=function(x){ x.journal=Array.isArray(x.journal)?x.journal.slice():[]; if(x.journal.some(function(j){ return j.ref===e.ref; })) return; x.journal.push(e); if(x.journal.length>300) x.journal=x.journal.slice(-300); };
+    if(r.kind==='stu') return LIVE.updateStudent(r.cityId, r.year, r.id, mut);
+    if(r.kind==='staff') return LIVE.updateStaff(r.cityId, r.id, mut);
+    return LIVE.updateGan(r.cityId, r.id, mut);
+  }
+  function syncMail(force){
+    if(!C.live || !H.canEdit('requests') || _mailBusy) return Promise.resolve();
+    if(!force && Date.now()-_mailAt<5*60*1000) return Promise.resolve();
+    _mailBusy=true; _mailAt=Date.now();
+    return LIVE.bridge('mailInbox', { query:'in:inbox newer_than:14d', max:50 }).then(function(res){
+      var seen=mailSeen(), ix=mailIndex(), done=[], auto=0, chain=Promise.resolve();
+      var fresh=((res&&res.items)||[]).filter(function(m){ return m && typeof m.id==='string' && /^[A-Za-z0-9_-]{1,64}$/.test(m.id) && !seen['m_'+m.id]; });
+      MAIL_PENDING=[];
+      fresh.forEach(function(m){ var r=matchMail(m, ix);
+        if(r) chain=chain.then(function(){ return attachMail(m, r).then(function(){ done.push(m.id); auto++; }).catch(function(e){ console.error('mail attach', e); MAIL_PENDING.push(m); }); });
+        else MAIL_PENDING.push(m); });
+      return chain.then(function(){ if(done.length) return markSeen(done, 'auto'); }).then(function(){ if(auto) toast('✓ '+auto+' מיילים נכנסים שויכו לתיקים'); });
+    }).catch(function(e){ console.warn('mailInbox', String(e&&e.message||e)); }).then(function(){ _mailBusy=false; if(C.view==='followups') renderFollow(); });
+  }
+  function assignMail(m){
+    var all=[]; H.cities().forEach(function(c){ (c.stuFull||[]).forEach(function(x){ all.push({ kind:'stu', cityId:c.id, cityName:c.name, id:x.id, year:x.year, name:H.stuName(x), sub:'ת"ז '+(x.tz||'—')+' · '+(x.gan||'ללא גן') }); }); (c.staffFull||[]).forEach(function(x){ all.push({ kind:'staff', cityId:c.id, cityName:c.name, id:x.id, name:x.name||'', sub:'צוות · '+(x.role||'') }); }); (c.gans||[]).forEach(function(g){ all.push({ kind:'gan', cityId:c.id, cityName:c.name, id:g.id, name:g.name, sub:'גן' }); }); });
+    H.modal('שיוך מייל לתיק', '<div class="sec-note"><b>'+esc(m.subject||'(ללא נושא)')+'</b> · '+esc(m.from||'')+'</div><div class="ai-m bot" style="max-width:none;max-height:160px;overflow:auto;white-space:pre-wrap">'+esc(String(m.body||'').slice(0,1500))+'</div>'+
+      '<input class="txtin" id="ma-q" placeholder="חיפוש תיק — שם, ת״ז, גן, צוות" style="width:100%;margin-top:10px"><div id="ma-res" style="max-height:260px;overflow:auto;margin-top:6px"></div>',
+      '<button class="btn-ghost" id="ma-ignore">לא רלוונטי — להתעלם</button><button class="btn-ghost" id="ma-cancel">ביטול</button>');
+    var draw=function(){ var q=String($('#ma-q').value||'').trim().toLowerCase(); var l=q?all.filter(function(r){ return (r.name+' '+r.sub+' '+r.cityName).toLowerCase().indexOf(q)>=0; }).slice(0,40):[];
+      $('#ma-res').innerHTML=l.map(function(r,i){ return '<div class="flag-row sev-ok" data-ma="'+i+'" style="cursor:pointer"><div><div class="ft">'+esc(r.name)+'</div><div class="fs">'+esc(r.cityName+' · '+r.sub)+'</div></div></div>'; }).join('')||'<div class="hq-count">'+(q?'לא נמצא':'הקלידו לחיפוש')+'</div>';
+      $$('[data-ma]').forEach(function(d){ d.addEventListener('click',function(){ var r=l[+d.dataset.ma]; attachMail(m, r).then(function(){ return markSeen([m.id], 'manual'); }).then(function(){ MAIL_PENDING=MAIL_PENDING.filter(function(x){ return x.id!==m.id; }); H.closeModal(); toast('✓ המייל שויך לתיק של '+r.name); renderFollow(); }).catch(function(e){ toast('השיוך נכשל: '+H.hqErr(e)); }); }); }); };
+    $('#ma-q').addEventListener('input', H.debounce(draw, 200)); draw();
+    $('#ma-cancel').addEventListener('click', H.closeModal);
+    $('#ma-ignore').addEventListener('click', function(){ markSeen([m.id], 'ignored').then(function(){ MAIL_PENDING=MAIL_PENDING.filter(function(x){ return x.id!==m.id; }); H.closeModal(); renderFollow(); }); });
+  }
+  window.__hqMail={ sync:function(){ return syncMail(true); }, code:rgCode, match:function(m){ return matchMail(m, mailIndex()); }, pending:function(){ return MAIL_PENDING; } };
   function renderRequests(){
     var host=$('#hqRequests'); if(!host||offline(host,'requests')) return;
+    importFormAppeals(false);
     var all=(H.HQ().requests||[]).slice().sort(byNew); var sel=H.selCities().map(function(c){ return c.id; });
     var list=all.filter(function(r){ if(sel.length<H.cities().length && sel.indexOf(r.cityId)<0) return false; if(RQ.status&&r.status!==RQ.status) return false; if(RQ.type&&r.type!==RQ.type) return false; if(RQ.q){ var q=RQ.q.toLowerCase(); if([r.who,r.text,r.by,r.gan,r.wantGan,r.decision].join(' ').toLowerCase().indexOf(q)<0) return false; } return true; });
     var now=Date.now(); var overdue=all.filter(function(r){ return r.status!=='closed' && r.due && new Date(r.due).getTime()<now; });
@@ -5609,7 +5779,7 @@ function xlsToRows(buf){
   function setStatus(s){
     var r=H.ministryRec(s)||{};
     H.promptForm('מצב במשרד החינוך · '+H.stuName(s), [{k:'status',l:'מצב',t:'select',opts:[['ok','נקלט/ה ומתוקצב/ת'],['missing','לא נקלט/ה'],['error','שגוי — דורש תיקון'],['pending','בבדיקה']],v:r.status||'pending'},{k:'note',l:'מה הבעיה / מה נדרש מהרכז/ת',t:'textarea',v:r.note||''},{k:'owner',l:'לטיפול מול',v:r.owner||''}], function(o){
-      var d=moeDoc(s.cityId); var st=Object.assign({}, d.students||{}); st[H.tzKey(s.tz)||('id:'+s.id)]=Object.assign(o,{ name:H.stuName(s), sid:s.id, at:Date.now(), by:H.me() });
+      var d=moeDoc(s.cityId); var st=Object.assign({}, d.students||{}); var k0=H.tzKey(s.tz)||('id:'+s.id); st[k0]=Object.assign({}, st[k0]||{}, o, { name:H.stuName(s), sid:s.id, at:Date.now(), by:H.me(), manual:true });
       H.save('ministry', s.cityId, { cityName:s.cityName, students:st }, '✓ עודכן').then(function(){ H.closeDrawer(); syncMinistryFlag([{ s:s, status:o.status }]); });
     });
   }
@@ -5630,7 +5800,9 @@ function xlsToRows(buf){
       { n:2, t:'בדיקת אי־התאמות', s:he(nIssues)+' לתיקון · '+he(cnt('pending'))+' בבדיקה', state:MOE.step===2?'on':(d.checkedAt&&nIssues===0?'done':'') },
       { n:3, t:'מתוקצבים ודיווח', s:he(cnt('ok'))+' מתוקצבים מתוך '+he(rows.length), state:MOE.step===3?'on':(d.checkedAt&&nOpen===0?'done':'') }
     ];
-    var chips=[['','הכל',rows.length,'ntr'],['missing','לא נקלטו',cnt('missing'),'bad'],['error','שגויים',cnt('error'),'warn'],['pending','בבדיקה',cnt('pending'),'wait'],['ok','מתוקצבים',cnt('ok'),'done'],['none','לא נבדקו',nNone,'wait']];
+    var nDate=rows.filter(function(x){ return x.r && x.r.dateAlert; }).length;
+    if(MOE.only==='date') list=rows.filter(function(x){ return x.r && x.r.dateAlert; });
+    var chips=[['','הכל',rows.length,'ntr'],['date','תאריך שונה',nDate,'warn'],['missing','לא נקלטו',cnt('missing'),'bad'],['error','שגויים',cnt('error'),'warn'],['pending','בבדיקה',cnt('pending'),'wait'],['ok','מתוקצבים',cnt('ok'),'done'],['none','לא נבדקו',nNone,'wait']];
     var COLS=[
       { l:'', v:function(){ return ''; }, h:function(x){ return '<input type="checkbox" class="moe-ck" data-k="'+esc(x.key)+'"'+(MOE.sel[x.key]?' checked':'')+' aria-label="בחירה">'; } },
       { l:'מצב', v:function(x){ return x.st; }, h:function(x){ return moeLamp(x.st); } },
@@ -5639,6 +5811,8 @@ function xlsToRows(buf){
       { l:'גן', v:function(x){ return x.s.gan; }, h:function(x){ return H.cell2(esc(x.s.gan||'—'), x.s.ganSym?'סמל '+esc(x.s.ganSym):''); } },
       { l:'עירייה', v:function(x){ return x.s.absorbedMunicipality?'קלוט':'טרם'; }, h:function(x){ return x.s.absorbedMunicipality?H.lamp('ok','קלוט/ה'):H.lamp('wait','טרם',true); } },
       { l:'הבעיה ומה נדרש', v:function(x){ return x.r?x.r.note||'':''; }, h:function(x){ return x.r?H.cell2(esc(x.r.note||'—'), x.r.owner?'לטיפול מול '+esc(x.r.owner):''):'<span class="hq-count">—</span>'; } },
+      { l:'שיבוץ / כניסה במשרד', v:function(x){ return x.r?(x.r.entryDate||x.r.placedFrom||''):''; }, h:function(x){ if(!x.r) return '<span class="hq-count">—</span>'; var md=x.r.entryDate||x.r.placedFrom||'';
+          return H.cell2(md?esc(H.fmtDate(md)):'—', (x.r.placedFrom?'שובץ מ-'+esc(H.fmtDate(x.r.placedFrom)):'')+(x.r.dateAlert?' · <b style="color:var(--bad)">שונה מהתיק ('+esc(H.fmtDate(x.s.regDate)||'—')+')</b> <button type="button" class="btn-mini" data-moe-date="1" data-sid="'+esc(x.s.id)+'">עדכון בתיק</button> <button type="button" class="btn-mini" data-moe-date="0" data-sid="'+esc(x.s.id)+'">ביטול ההתראה</button>':'')); } },
       { l:'עודכן', v:function(x){ return x.r?x.r.at:0; }, h:function(x){ return x.r&&x.r.at?'<span class="hq-count">'+esc(H.fmtD(x.r.at))+'</span>':'<span class="hq-count">—</span>'; } },
       { l:'', v:function(){ return ''; }, h:function(){ return '‹'; }, chev:true }
     ];
@@ -5646,7 +5820,7 @@ function xlsToRows(buf){
     host.innerHTML=H.roNote('ministry')+
       '<div class="hq-toolbar"><select class="txtin" id="moeCity" aria-label="עיר">'+cs.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===MOE.cityId?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('')+'</select><span class="hq-count">'+(d.checkedAt?'בדיקה אחרונה: '+esc(H.fmtDT(d.checkedAt))+' · '+esc(d.file||''):'טרם הועלתה מצבה')+'</span></div>'+
       '<div class="proc"><div class="card proc-steps"><div class="hm-title">שלבי הבקרה</div><div class="steps">'+steps.map(function(st){ return '<button type="button" class="s '+st.state+'" data-step="'+st.n+'"><span>'+st.t+'<small>'+st.s+'</small></span></button>'; }).join('')+'</div>'+
-        '<div class="proc-foot"><label class="btn-ghost" style="width:100%;cursor:pointer">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'<input type="file" id="moeFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"'+(canE?'':' disabled')+'></label><div class="hq-count" style="margin-top:8px">אקסל עם עמודת ת״ז, ואם יש — סמל מוסד. ההצלבה מסמנת מתוקצבים, לא נקלטו, וסמל שונה.</div></div></div>'+
+        '<div class="proc-foot"><label class="btn-ghost" style="width:100%;cursor:pointer">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'<input type="file" id="moeFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"'+(canE?'':' disabled')+'></label><div class="hq-count" style="margin-top:8px">שתי התבניות של משרד החינוך — <b>מצבת גני ילדים</b> ו<b>שגויים בגני ילדים</b> — מזוהות לבד לפי הכותרות. ההצלבה לפי ת״ז: מתוקצבים, לא נקלטו, שגויים (עם תיאור השגיאה), סמל שונה ותאריך שונה מהתיק.</div>'+(d.errorsAt?'<div class="hq-count" style="margin-top:4px">שגויים אחרון: '+esc(d.errorsFile||'')+' · '+esc(H.fmtD(d.errorsAt))+'</div>':'')+'</div></div>'+
       '<div class="proc-main">'+
         (MOE.step===1?'<div class="kpis" style="margin-bottom:12px">'+[['תיקים בעיר',rows.length,''],['במצבת המשרד',d.fileRows||0,d.file||'—'],['במצבה ואינם אצלנו',(d.extra||[]).length,'ת״ז במשרד בלי תיק בעיר'],['לא נבדקו',nNone,'תיקים בלי ת״ז או לפני הצלבה']].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+he(k[1])+'</div>'+(k[2]?'<div class="ks">'+esc(String(k[2]))+'</div>':'')+'</div>'; }).join('')+'</div>'+
           '<div class="card pad"><div class="sec-title">מקורות הנתונים</div><div class="sec-note" style="margin:4px 0 8px">ההצלבה משווה את תיקי העיר מול מצבת משרד החינוך לפי ת״ז</div><div class="kv">'+[['תיקי '+c.name,he(rows.length)+' תיקים פעילים · '+(c.year||'')],['מצבת משרד החינוך',d.checkedAt?esc(d.file||'קובץ')+' · '+he(d.fileRows||0)+' שורות · '+esc(H.fmtDT(d.checkedAt)):'טרם הועלתה'],['סימונים ידניים',he(rows.filter(function(x){ return x.r&&!x.r.auto; }).length)+' תיקים']].map(function(r){ return '<div class="r"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>'; }).join('')+'</div>'+
@@ -5654,7 +5828,7 @@ function xlsToRows(buf){
         :MOE.step===3?'<div class="kpis" style="margin-bottom:12px">'+[['מתוקצבים',cnt('ok'),H.pct(cnt('ok'),rows.length)+'%'],['לא נקלטו',cnt('missing'),''],['שגויים',cnt('error'),''],['בבדיקה',cnt('pending'),'']].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+he(k[1])+'</div>'+(k[2]?'<div class="ks">'+k[2]+'</div>':'')+'</div>'; }).join('')+'</div>'+
           H.tableHTML('moeOkT', COLS.slice(1,6).concat([COLS[7]]), okList, { widths:['116px','196px','108px','178px','92px','1fr'], foot:'<div>'+he(okList.length)+' מתוקצבים · '+esc(c.name)+'</div><div class="acts"><button type="button" class="btn-mini" id="moeExpOk">ייצוא לאקסל</button></div>', empty:'עדיין אין תיקים מתוקצבים בעיר הזאת.' })
         :'<div class="chips" style="margin-bottom:12px">'+chips.map(function(o){ return '<button type="button" class="chipbtn" data-only="'+o[0]+'" aria-pressed="'+(MOE.only===o[0]?'true':'false')+'"><i class="lamp '+o[3]+'" style="width:8px;height:8px"></i>'+o[1]+' <span class="hq-count">'+he(o[2])+'</span></button>'; }).join('')+'</div>'+
-          H.tableHTML('moeT', COLS, list, { clickable:true, rowAttr:function(x){ return 'data-id="'+esc(x.s.id)+'"'; }, widths:['38px','116px','190px','104px','172px','92px','1fr','92px','30px'], foot:'<div>'+he(list.length)+' מוצגים · '+he(nOpen)+' אי־התאמות פתוחות</div><div class="acts"><button type="button" class="btn-mini" id="moeExp">ייצוא לאקסל</button></div>', fab:selN>0, empty:'אין תיקים בסינון הזה.' }))+
+          H.tableHTML('moeT', COLS, list, { clickable:true, rowAttr:function(x){ return 'data-id="'+esc(x.s.id)+'"'; }, widths:['38px','116px','180px','104px','160px','86px','1fr','170px','86px','30px'], foot:'<div>'+he(list.length)+' מוצגים · '+he(nOpen)+' אי־התאמות פתוחות</div><div class="acts">'+(canE?'<button type="button" class="btn-mini" id="moeMailMiss">📧 דיווח לא נקלטו</button><button type="button" class="btn-mini" id="moeMailErr">📧 דיווח שגויים</button>':'')+'<button type="button" class="btn-mini" id="moeExpErr">דוח שגויים לאקסל</button><button type="button" class="btn-mini" id="moeExp">ייצוא לאקסל</button></div>', fab:selN>0, empty:'אין תיקים בסינון הזה.' }))+
       '</div></div>'+
       (selN?'<div class="fab" id="moeFab"><span>'+he(selN)+' תיקים נבחרו</span>'+(canE?'<button type="button" class="btn main" id="moeBulkOk">סימון כמתוקצבים</button><button type="button" class="btn" id="moeBulkPend">סימון בבדיקה</button>':'')+'<button type="button" class="btn x" id="moeSelNone" aria-label="ביטול הבחירה">✕</button></div>':'');
     $('#moeCity').addEventListener('change',function(){ MOE.cityId=this.value; MOE.sel={}; renderMinistry(); });
@@ -5667,26 +5841,114 @@ function xlsToRows(buf){
     if((b=$('#moeExp'))) b.addEventListener('click',function(){ expRows(list); });
     if((b=$('#moeExpOk'))) b.addEventListener('click',function(){ expRows(okList); });
     if((b=$('#moeSelNone'))) b.addEventListener('click',function(){ MOE.sel={}; renderMinistry(); });
+    $$('#hqMinistry [data-moe-date]').forEach(function(bt){ bt.addEventListener('click',function(e){ e.stopPropagation(); var s=H.findStudent(c.id, bt.dataset.sid); if(s && canE) moeDateFix(s, bt.dataset.moeDate==='1'); }); });
+    if((b=$('#moeMailMiss'))) b.addEventListener('click',function(){ moeMail(c, rows.filter(function(x){ return x.st==='missing'; }), 'תלמידים שאינם קלוטים במשרד החינוך'); });
+    if((b=$('#moeMailErr'))) b.addEventListener('click',function(){ moeMail(c, rows.filter(function(x){ return x.st==='error'; }), 'רשומות שגויות במשרד החינוך'); });
+    if((b=$('#moeExpErr'))) b.addEventListener('click',function(){ var l=rows.filter(function(x){ return x.st==='error'; }); H.exportXLS('שגויים משרד החינוך '+c.name+' '+H.todayISO(),['תלמיד/ה','ת"ז','גן','סמל אצלנו','סמל במשרד','קודי שגיאה','תיאור השגיאות','תאריך קליטת תנועה','שובץ מ-','משובץ בגן','קיים במרשם'],l.map(function(x){ var r=x.r||{}; return [H.stuName(x.s),x.s.tz,x.s.gan,x.s.ganSym,r.errPlSym||r.rosterSym||'',(r.errors||[]).map(function(e){ return e.code; }).join(', '),r.note||'',H.fmtDate(r.entryDate||''),H.fmtDate(r.placedFrom||''),r.errInGan||'',r.errInReg||'']; }),'שגויים'); });
     var bulk=function(status){ var l=rows.filter(function(x){ return MOE.sel[x.key]; }); if(!l.length) return; var st=Object.assign({}, d.students||{}); l.forEach(function(x){ var k=H.tzKey(x.s.tz)||('id:'+x.s.id); st[k]=Object.assign({}, st[k]||{}, { name:H.stuName(x.s), sid:x.s.id, status:status, at:Date.now(), by:H.me() }); }); H.save('ministry', c.id, { cityName:c.name, students:st }, '✓ עודכנו '+l.length+' תיקים').then(function(){ MOE.sel={}; syncMinistryFlag(l.map(function(x){ return { s:x.s, status:status }; })); }); };
     if((b=$('#moeBulkOk'))) b.addEventListener('click',function(){ bulk('ok'); });
     if((b=$('#moeBulkPend'))) b.addEventListener('click',function(){ bulk('pending'); });
     var f=$('#moeFile'); if(f) f.addEventListener('change',function(){ var file=this.files&&this.files[0]; if(!file) return; window.__hqImport.readRows(file,function(rows){ crossCheck(c, rows, file.name); }); });
     var acts=$('#ministryActions'); if(acts){ acts.innerHTML='<button type="button" class="btn-ghost" id="moeExpHead">ייצוא לאקסל</button>'+(canE?'<button type="button" class="btn-primary" id="moeUpHead">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'</button>':''); $('#moeExpHead').addEventListener('click',function(){ expRows(rows); }); var u=$('#moeUpHead'); if(u) u.addEventListener('click',function(){ var fi=$('#moeFile'); if(fi) fi.click(); }); }
   }
+  /* ===== ייבוא ממשרד החינוך — שתי התבניות הקבועות, הצלבה לפי ת"ז =====
+     1. "מצבת גני ילדים" — מי קלוט/ה במשרד: סמל מוסד, תאריכי שיבוץ (מתי הרשות שיבצה).
+     2. "שגויים בגני ילדים" — הרשומות השגויות: עד 5 קודי שגיאה עם תיאור, תאריך קליטת
+        התנועה (מה רשום אצלם כתאריך הרישום), סמל המוסד מהשיבוץ, משובץ בגן, קיים במרשם.
+     כל קובץ מעדכן את החלק שלו בכל תיק, והמצב נגזר משניהם: יש שגיאות → שגוי · במצבה
+     ובסמל שלנו → מתוקצב · במצבה בסמל אחר → שגוי (סמל) · לא במצבה → לא נקלט/ה.
+     תאריך הכניסה לפי משרד החינוך הוא המדד לרישום בפועל: כשהוא שונה מתאריך הרישום
+     בתיק — מוצגת התראה עם "עדכון בתיק" או "ביטול ההתראה" (לתלמידה הזו). */
+  var MOE_KIND_L={ roster:'מצבת גני ילדים', errors:'שגויים בגני ילדים', generic:'מצבה' };
+  function moeDetect(hdr){
+    var has=function(h){ return hdr.indexOf(h)>=0; };
+    if(has('קודשגיאה1')||has('תיאורשגיאה1')) return 'errors';
+    if(has('שםתלמיד') && hdr.some(function(h){ return /^תאריךשיבוץמ/.test(h); })) return 'roster';
+    return 'generic';
+  }
+  function moeStatus(rec){
+    if(rec.manual) return rec.status;
+    if(rec.errors && rec.errors.length) return 'error';
+    if(rec.inRoster===true) return rec.symMismatch?'error':'ok';
+    if(rec.inRoster===false) return 'missing';
+    return rec.status||'pending';
+  }
+  function moeNote(rec){
+    if(rec.errors && rec.errors.length) return rec.errors.map(function(e){ return (e.code?e.code+' · ':'')+e.desc; }).join(' | ');
+    if(rec.inRoster===true && rec.symMismatch) return 'סמל מוסד שונה במשרד החינוך ('+rec.rosterSym+') מול הגן אצלנו ('+rec.ourSym+')';
+    if(rec.inRoster===false) return 'לא מופיע/ה במצבת משרד החינוך — לבדוק מול העירייה (קלוט/ה שם?) ודיווח מול הרכז/ת';
+    return rec.note||'';
+  }
+  function moeOurDate(s){ return String(s.regDate||'').slice(0,10); }
   function crossCheck(c, rows, fileName){
     if(!rows.length){ toast('הקובץ ריק'); return; }
-    var hdr=rows[0].map(window.__hqImport.normHeader); var tzCol=-1, symCol=-1, stCol=-1;
-    hdr.forEach(function(h,i){ if(tzCol<0&&/^(תז|תעודתזהות|מספרזהות|זהות|מסזהות|תזתלמיד)$/.test(h)) tzCol=i; if(symCol<0&&/סמל/.test(h)) symCol=i; if(stCol<0&&/(סטטוס|מצב|תקצוב|קליטה)/.test(h)) stCol=i; });
+    var NH=function(h){ return window.__hqImport.normHeader(h).replace(/-/g,''); };
+    var hdr=rows[0].map(NH), kind=moeDetect(hdr);
+    var col=function(){ for(var a=0;a<arguments.length;a++){ var i=hdr.indexOf(arguments[a]); if(i>=0) return i; } return -1; };
+    var colRe=function(re, skip){ for(var i=0;i<hdr.length;i++){ if(re.test(hdr[i]) && i!==skip) return i; } return -1; };
+    var tzCol=col('מספרזהות','תז','תעודתזהות','זהות','מסזהות','תזתלמיד');
     if(tzCol<0){ var best=-1, bestN=0; rows[0].forEach(function(_,i){ var n=0; rows.slice(1,50).forEach(function(r){ var d=H.digits(r[i]); if(d.length>=8&&d.length<=9) n++; }); if(n>bestN){ bestN=n; best=i; } }); if(bestN>=3) tzCol=best; }
-    if(tzCol<0){ toast('לא נמצאה עמודת ת"ז בקובץ'); return; }
-    var inFile={}; rows.slice(1).forEach(function(r){ var k=H.tzKey(r[tzCol]); if(k) inFile[k]={ sym:symCol>=0?String(r[symCol]||'').trim():'', st:stCol>=0?String(r[stCol]||'').trim():'' }; });
-    var d=moeDoc(c.id); var st=Object.assign({}, d.students||{}); var ok=0, miss=0, sym=0; var mine={};
-    (c.stuFull||[]).forEach(function(s){ if(s.finished) return; var k=H.tzKey(s.tz); if(!k){ return; } mine[k]=1; var prev=st[k]||{}; var f=inFile[k];
-      if(f){ var badSym=f.sym && s.ganSym && H.digits(f.sym)!==H.digits(s.ganSym); if(badSym){ st[k]=Object.assign({},prev,{ name:H.stuName(s), sid:s.id, status:'error', note:'סמל מוסד שונה במשרד החינוך ('+f.sym+') מול הגן אצלנו ('+s.ganSym+')', at:Date.now(), by:H.me(), auto:true }); sym++; } else { st[k]=Object.assign({},prev,{ name:H.stuName(s), sid:s.id, status:'ok', note:(prev.status==='ok'?prev.note:'')||'', at:Date.now(), by:H.me(), auto:true }); ok++; } }
-      else { if(prev.status!=='missing'||!prev.note) st[k]=Object.assign({},prev,{ name:H.stuName(s), sid:s.id, status:'missing', note:prev.note||'לא מופיע/ה במצבת משרד החינוך — לבדוק דיווח מול הרכז/ת', at:Date.now(), by:H.me(), auto:true }); miss++; } });
-    var extra=Object.keys(inFile).filter(function(k){ return !mine[k]; });
-    H.save('ministry', c.id, { cityName:c.name, students:st, extra:extra, checkedAt:Date.now(), file:fileName, fileRows:rows.length-1 }, '✓ הצלבה: '+ok+' מתוקצבים · '+miss+' לא נקלטו · '+sym+' סמל שונה · '+extra.length+' במצבה בלבד').then(function(){ LIVE.hqAudit('ministry', c.name+' · '+fileName+' · '+ok+'/'+miss+'/'+sym); syncMinistryFlag((c.stuFull||[]).filter(function(s){ return !s.finished && st[H.tzKey(s.tz)]; }).map(function(s){ return { s:s, status:st[H.tzKey(s.tz)].status }; })); });
+    var passCol=col('מספרדרכון');
+    if(tzCol<0 && passCol<0){ toast('לא נמצאה עמודת ת"ז בקובץ'); return; }
+    var cell=function(r,i){ return i>=0 ? String(r[i]==null?'':r[i]).trim() : ''; };
+    var nd=window.__hqImport.normDateVal;
+    var symCol= kind==='errors' ? col('סמלמוסד') : colRe(/^סמלמוסד$/) >= 0 ? colRe(/^סמלמוסד$/) : colRe(/סמל/);
+    var plSymCol=col('סמלמוסדמשיבוץ'), fromCol=colRe(/^תאריךשיבוץמ/), toCol=colRe(/^תאריךשיבוץעד|^עדתאריךשיבוץ/), entryCol=col('תאריךקליטתתנועה'), plDateCol=col('תאריךשיבוץ');
+    var inGanCol=col('משובץבגן'), regCol=col('קייםבמרשם'), stCol=kind==='generic'?colRe(/(סטטוס|מצב|תקצוב|קליטה)/):-1;
+    var errCols=[]; for(var n=1;n<=5;n++){ errCols.push([col('קודשגיאה'+n), col('תיאורשגיאה'+n)]); }
+    var inFile={};
+    rows.slice(1).forEach(function(r){
+      var k=H.tzKey(cell(r,tzCol)) || H.tzKey(cell(r,passCol)); if(!k) return;
+      var f={ sym:cell(r,symCol), from:nd(cell(r,fromCol)), to:nd(cell(r,toCol)), st:cell(r,stCol) };
+      if(kind==='errors'){ f.errors=errCols.map(function(p){ return { code:cell(r,p[0]), desc:cell(r,p[1]) }; }).filter(function(e){ return e.code||e.desc; });
+        f.entry=nd(cell(r,entryCol)); f.plDate=nd(cell(r,plDateCol)); f.plSym=cell(r,plSymCol); f.inGan=cell(r,inGanCol); f.inReg=cell(r,regCol); }
+      inFile[k]=f; });
+    var d=moeDoc(c.id); var st=Object.assign({}, d.students||{}); var cnt={ ok:0, missing:0, error:0, date:0 }; var mine={};
+    (c.stuFull||[]).forEach(function(s){ if(s.finished) return; var k=H.tzKey(s.tz); if(!k) return; mine[k]=1;
+      var prev=Object.assign({}, st[k]||{}), f=inFile[k];
+      var rec=Object.assign(prev, { name:H.stuName(s), sid:s.id, at:Date.now(), by:H.me(), auto:true, ourSym:s.ganSym||'' });
+      delete rec.manual;
+      if(kind==='roster' || kind==='generic'){
+        rec.inRoster=!!f; rec.rosterAt=Date.now();
+        if(f){ rec.rosterSym=f.sym; rec.symMismatch=!!(f.sym && s.ganSym && H.digits(f.sym)!==H.digits(s.ganSym)); if(f.from) rec.placedFrom=f.from; if(f.to) rec.placedTo=f.to; }
+        else { rec.symMismatch=false; }
+      }
+      if(kind==='errors'){
+        rec.errorsAt=Date.now();
+        if(f){ rec.errors=f.errors; rec.entryDate=f.entry||rec.entryDate||''; rec.errPlSym=f.plSym; rec.errInGan=f.inGan; rec.errInReg=f.inReg; if(f.from) rec.placedFrom=f.from; if(f.to) rec.placedTo=f.to; }
+        else rec.errors=[];
+      }
+      /* תאריך הכניסה במשרד (קליטת התנועה, ואם אין — תחילת השיבוץ) מול תאריך הרישום בתיק */
+      var moeDate=rec.entryDate||rec.placedFrom||'';
+      rec.dateAlert=!!(moeDate && moeOurDate(s) && moeDate!==moeOurDate(s) && rec.dateDismissed!==moeDate);
+      if(rec.dateAlert) cnt.date++;
+      rec.status=moeStatus(rec); rec.note=moeNote(rec);
+      cnt[rec.status]=(cnt[rec.status]||0)+1;
+      st[k]=rec; });
+    var patch={ cityName:c.name, students:st };
+    if(kind==='errors'){ patch.errorsAt=Date.now(); patch.errorsFile=fileName; patch.errorsRows=rows.length-1; }
+    else { patch.extra=Object.keys(inFile).filter(function(k){ return !mine[k]; }); patch.checkedAt=Date.now(); patch.file=fileName; patch.fileRows=rows.length-1; }
+    H.save('ministry', c.id, patch, '✓ '+MOE_KIND_L[kind]+': '+cnt.ok+' מתוקצבים · '+cnt.missing+' לא נקלטו · '+cnt.error+' שגויים'+(cnt.date?' · '+cnt.date+' תאריך שונה':'')+(patch.extra?' · '+patch.extra.length+' במצבה בלבד':''))
+      .then(function(){ LIVE.hqAudit('ministry', c.name+' · '+MOE_KIND_L[kind]+' · '+fileName+' · '+cnt.ok+'/'+cnt.missing+'/'+cnt.error);
+        syncMinistryFlag((c.stuFull||[]).filter(function(s){ return !s.finished && st[H.tzKey(s.tz)]; }).map(function(s){ return { s:s, status:st[H.tzKey(s.tz)].status }; })); });
     H.hoist('ministry', ['moeExp']);
+  }
+  /* התראת תאריך: עדכון תאריך הרישום בתיק לתאריך שבמשרד החינוך, או ביטול ההתראה לתלמידה הזו */
+  function moeDateFix(s, apply){
+    var d=moeDoc(s.cityId), k=H.tzKey(s.tz), st=Object.assign({}, d.students||{}), rec=Object.assign({}, st[k]||{}); var md=rec.entryDate||rec.placedFrom||''; if(!md) return;
+    var done=function(){ rec.dateAlert=false; if(!apply) rec.dateDismissed=md; st[k]=rec; return H.save('ministry', s.cityId, { students:st }, apply?'✓ תאריך הרישום עודכן בתיק':'✓ ההתראה בוטלה לתלמידה זו'); };
+    if(apply) LIVE.updateStudent(s.cityId, s.year, s.id, function(x){ x.regDate=md; x.journal=Array.isArray(x.journal)?x.journal.slice():[]; x.journal.push({ id:H.uid(), at:new Date().toISOString(), by:H.me(), type:'system', subject:'תאריך רישום', text:'עודכן לפי משרד החינוך: '+H.fmtDate(md) }); }).then(done).catch(function(e){ toast('העדכון נכשל: '+H.hqErr(e)); });
+    else done();
+  }
+  /* דיווח במייל על הלא-קלוטים / השגויים — לאיש הקשר שמקבל את הנתונים */
+  function moeMail(c, list, what){
+    if(!list.length){ toast('אין תיקים לדיווח'); return; }
+    var rc=(c.settings&&c.settings.reportContacts)||{};
+    var body='שלום רב,\n\nמצורפת רשימת '+what+' ('+list.length+') — '+c.name+':\n\n'+list.map(function(x,i){ return (i+1)+'. '+H.stuName(x.s)+' · ת"ז '+(x.s.tz||'—')+' · '+(x.s.gan||'ללא גן')+(x.s.ganSym?' (סמל '+x.s.ganSym+')':'')+(x.r&&x.r.note?' — '+x.r.note:''); }).join('\n')+'\n\nנשמח לבדיקתכם ולעדכון.\n\nבברכה,\nמחלקת הרישום';
+    H.promptForm('דיווח במייל · '+what, [{k:'to',l:'אל (מייל)',v:rc.moe||rc.muni||'',dir:'ltr',req:true},{k:'subject',l:'נושא',v:what+' · '+c.name},{k:'body',l:'תוכן',t:'textarea',rows:12,v:body}], function(o){
+      var to=String(o.to||'').split(/[,;\s]+/).filter(H.isEmail); if(!to.length){ toast('יש להזין מייל תקין'); return false; }
+      LIVE.bridge('sendMailBulk', { items:to.map(function(t){ return { to:t, subject:o.subject, body:o.body }; }), opts:{ fromName:'מחלקת הרישום' } }).then(function(){ toast('✓ הדיווח נשלח'); LIVE.hqAudit('ministry', c.name+' · דיווח '+what+' ל-'+to.join(', ')); }).catch(function(e){ toast('השליחה נכשלה: '+H.hqErr(e)); });
+    }, 'שליחה');
   }
   H.reg('ministry', renderMinistry);
   window.__hqMoe={ setStatus:setStatus };
@@ -5780,13 +6042,85 @@ function xlsToRows(buf){
     H.cities().forEach(function(c){ if(c.unplaced) out.push({ sev:'low', ic:'', t:c.unplaced+' ממתינים לשיבוץ', s:c.name+(c.placement==='office'?' · השיבוץ במשרד הראשי':''), go:'students', city:c.id }); if(c.error) out.push({ sev:'high', ic:'', t:'אין גישה לנתוני '+c.name, s:c.error, go:'perms' }); });
     var bounces=(H.HQ().settings||{}).bounces||{}; var nb=Object.keys(bounces).length; if(nb) out.push({ sev:'low', ic:'', t:nb+' מיילים חזרו', s:'לתקן כתובת בתיק או לשלוח בערוץ אחר', go:'smoove' });
     H.cities().forEach(function(c){ var t=(H.HQ().tracking||[]).filter(function(x){ return x.id==='dist_'+c.id; })[0]; var st=t&&t.steps||{}; var done=DSTEPS.filter(function(s){ return st[s[0]]&&st[s[0]].done; }).length; if((H.HQ().settings||{}).season && done<DSTEPS.length && done>0) out.push({ sev:'low', ic:'', t:'הפצה בעיצומה · '+c.name, s:done+'/'+DSTEPS.length+' שלבים', go:'distribution' }); });
+    /* סייעת ב' משובצת בגן ללא זכאות (רישיון שפג / גן חובה / מתחת לסף) */
+    H.cities().forEach(function(c){ (c.gans||[]).forEach(function(g){ var a=H.assistantBState(Object.assign({cityId:c.id, cityName:c.name}, g)); if(a&&a.conflict) out.push({ sev:'mid', ic:'', t:'סייעת ב׳ משובצת ללא זכאות · '+g.name, s:c.name+' · '+(a.expired?'הרישיון אינו בתוקף':(a.mandatory?'גן חובה':'מתחת לסף')), go:'license', key:'abx|'+c.id+'|'+g.id }); }); });
+    /* רשימת המתנה: פנייה פתוחה עם גן מבוקש — והגן התפנה */
+    (H.HQ().requests||[]).forEach(function(r){ if(r.status==='closed'||!r.wantGan||!r.cityId) return; var c=H.cityById(r.cityId); if(!c) return; var t=String(r.wantGan).trim().toLowerCase();
+      var g=(c.gans||[]).filter(function(x){ return [x.name,x.nickname,x.sym,x.ganSymbol,x.internalSymbol,x.citySymbol].filter(Boolean).some(function(v){ return String(v).trim().toLowerCase()===t; }); })[0]||(c.gans||[]).filter(function(x){ var n=String(x.name||'').toLowerCase(); return n&&(n.indexOf(t)>=0||t.indexOf(n)>=0); })[0];
+      if(!g||!g.on) return; var cap=g.assignCap||g.cap; if(!cap) return; var room=cap-(g.placed||0);
+      if(room>0) out.push({ sev:'high', ic:'', t:'התפנה מקום בגן מבוקש · '+g.name, s:(r.who||'')+' ממתין/ה · '+c.name+' · '+room+' פנויים', go:'requests', id:r.id, key:'wait|'+r.id }); });
+    MAIL_PENDING.forEach(function(m){ out.push({ sev:'mid', ic:'', t:'מייל נכנס לשיוך · '+(m.subject||'(ללא נושא)'), s:(m.from||'')+' · '+H.fmtDT(Date.parse(m.date)||Date.now()), go:'mail', mail:m, key:'mail|'+m.id }); });
     var order={high:0,mid:1,low:2}; return out.sort(function(a,b){ return order[a.sev]-order[b.sev]; });
   }
+  /* נושאים — כל פריט שייך לנושא אחד, לפי המסך שמטפל בו */
+  var FU_TOPIC={ mail:'מיילים נכנסים', license:'רישיון וסייעת ב׳', requests:'פניות וערעורים', ministry:'משרד החינוך', decisions:'החלטות', breakdowns:'רשומות שגויות', students:'שיבוץ', perms:'גישה והרשאות', smoove:'מיילים', distribution:'הפצה' };
+  var FU_ST={ open:'פתוח', progress:'בטיפול', done:'טופל' };
+  var FU={ topic:'', showDone:false };
+  function fuKey(x){ return x.key || (x.go+'|'+(x.id||x.city||'')+'|'+String(x.t||'').replace(/[\d,]+/g,'#')); }
+  function fuId(x){ var k=fuKey(x), h=2166136261; for(var i=0;i<k.length;i++){ h^=k.charCodeAt(i); h=Math.imul(h,16777619); } return 'fu_'+(h>>>0).toString(36); }
+  function fuState(x){ return (H.HQ().tracking||[]).filter(function(t){ return t.id===fuId(x); })[0]||null; }
+  function fuHandle(x){
+    var st=fuState(x)||{};
+    var f=[{k:'status',l:'מצב הטיפול',t:'select',opts:[['progress','⏳ בטיפול — המשך טיפול ומעקב'],['done','✔️ טופל'],['open','פתוח']],v:st.status||'progress'},
+           {k:'due',l:'תאריך להמשך טיפול / תזכורת',t:'date',v:st.due||new Date(Date.now()+3*86400000).toISOString().slice(0,10)},
+           {k:'owner',l:'בטיפול של (מייל — להעברה לגורם אחר)',v:st.owner||H.me(),dir:'ltr'},
+           {k:'mail',l:'לשלוח לגורם המטפל מייל עם פרטי הטיפול (כשהוא לא אני)',t:'check',v:true},
+           {k:'note',l:'מה נעשה / מה הלאה',t:'textarea',rows:3,v:''}];
+    f.note='פריט "בטיפול" חוזר לראש הרשימה כתזכורת כשמגיע התאריך, עד שמסמנים "טופל".';
+    H.promptForm('טיפול · '+x.t, f, function(o){
+      var owner=String(o.owner||'').trim().toLowerCase(), moved=owner && owner!==String(st.owner||'').toLowerCase() && owner!==String(H.me()).toLowerCase();
+      var log=(st.log||[]).slice(); log.push({ at:Date.now(), by:H.me(), text:FU_ST[o.status]+(o.status==='progress'&&o.due?' עד '+H.fmtDate(o.due):'')+(moved?' · הועבר ל-'+owner:'')+(o.note?' · '+o.note:'') });
+      H.save('tracking', fuId(x), { kind:'followup', key:fuKey(x), title:x.t, topic:FU_TOPIC[x.go]||'', status:o.status, owner:owner, due:o.status==='done'?'':(o.due||''), note:o.note||st.note||'', log:log.slice(-30) }, '✓ עודכן מצב הטיפול').then(function(){
+        if(moved && o.mail && H.isEmail(owner)) LIVE.bridge('sendMailBulk', { items:[{ to:owner, subject:'הועבר אליך לטיפול: '+x.t, body:'שלום,\n\nהועבר אליך לטיפול:\n'+x.t+'\n'+(x.s||'')+(o.due?'\nיעד: '+H.fmtDate(o.due):'')+(o.note?'\nהערה: '+o.note:'')+'\n\nהפריט מופיע במרכזי במסך "דורש טיפול".\n\nמחלקת הרישום' }], opts:{ fromName:'מחלקת הרישום' } }).then(function(){ toast('✓ נשלח מייל ל-'+owner); }).catch(function(e){ toast('המייל לא נשלח: '+H.hqErr(e)); });
+        renderFollow(); });
+    }, 'שמירה');
+  }
+  /* מייל תזכורת ביום היעד — לגורם המטפל בכל פריט "בטיפול" שהגיע תאריך ההמשך שלו.
+     נשלח פעם אחת לכל תאריך (remindedFor). נבדק כשנכנסים למרכזי ואחר כך כל חצי שעה. */
+  var _remAt=0, _remBusy=false;
+  function sendDueReminders(){
+    if(!C.live || _remBusy || Date.now()-_remAt<30*60*1000) return;
+    _remBusy=true; _remAt=Date.now();
+    var today=H.todayISO(), byId={}; items().forEach(function(x){ byId[fuId(x)]=x; });
+    var due=(H.HQ().tracking||[]).filter(function(t){ return t.kind==='followup' && t.status==='progress' && t.due && t.due<=today && t.remindedFor!==t.due && H.isEmail(t.owner||''); });
+    var chain=Promise.resolve();
+    due.forEach(function(t){ var x=byId[t.id]; chain=chain.then(function(){
+      return LIVE.bridge('sendMailBulk', { items:[{ to:t.owner, subject:'⏰ תזכורת לטיפול: '+(t.title||(x&&x.t)||''), body:'שלום,\n\nתזכורת — הגיע מועד ההמשך לטיפול:\n'+(t.title||'')+'\n'+((x&&x.s)||'')+(t.note?'\nהערה אחרונה: '+t.note:'')+'\nתאריך היעד: '+H.fmtDate(t.due)+'\n\nהפריט מופיע במרכזי במסך "דורש טיפול".\n\nמחלקת הרישום' }], opts:{ fromName:'מחלקת הרישום' } })
+        .then(function(){ var log=(t.log||[]).slice(); log.push({ at:Date.now(), by:H.me(), text:'נשלחה תזכורת במייל ל-'+t.owner }); return LIVE.hqSet('tracking', t.id, { remindedFor:t.due, log:log.slice(-30) }); })
+        .catch(function(e){ console.warn('reminder', String(e&&e.message||e)); }); }); });
+    chain.then(function(){ _remBusy=false; });
+  }
+  setInterval(sendDueReminders, 30*60*1000+5000);
+  document.addEventListener('central:hq', function(){ if(!_remAt) setTimeout(sendDueReminders, 20000); });
   function renderFollow(){
     var host=$('#hqFollowups'); if(!host||offline(host,'license')) return;
-    var list=items();
-    host.innerHTML='<div class="kpis" style="margin-bottom:14px">'+[{l:'פריטים לטיפול',v:he(list.length),cls:'kaccent'},{l:'דחופים',v:he(list.filter(function(x){ return x.sev==='high'; }).length)},{l:'בינוניים',v:he(list.filter(function(x){ return x.sev==='mid'; }).length)},{l:'למעקב',v:he(list.filter(function(x){ return x.sev==='low'; }).length)}].map(H.kpiHTML).join('')+'</div><div class="card pad">'+(list.length?list.map(function(x){ return '<div class="flag-row sev-'+(x.sev==='high'?'high':(x.sev==='mid'?'mid':'ok'))+'" data-go="'+esc(x.go)+'"'+(x.id?' data-id="'+esc(x.id)+'"':'')+(x.city?' data-city="'+esc(x.city)+'"':'')+(x.errors?' data-errors="1"':'')+' style="cursor:pointer"><div class="fi">'+x.ic+'</div><div><div class="ft">'+esc(x.t)+'</div><div class="fs">'+esc(x.s)+'</div></div><span class="tag '+(x.sev==='high'?'bad':(x.sev==='mid'?'warn':''))+'">'+(x.sev==='high'?'דחוף':(x.sev==='mid'?'לטיפול':'למעקב'))+'</span></div>'; }).join(''):'<div class="hq-count" style="padding:16px;text-align:center">אין פריטים פתוחים — הכל מטופל </div>')+'</div>';
-    $$('#hqFollowups [data-go]').forEach(function(r){ r.addEventListener('click',function(){ if(r.dataset.errors){ window.__hqReports.showErrors(); return; } if(r.dataset.city){ var s=H.SEL(); Object.keys(s).forEach(function(k){ delete s[k]; }); s[r.dataset.city]=true; window.__hqStudents.filterTo({ place:'waiting' }); } C.switchTab(r.dataset.go); if(r.dataset.id) setTimeout(function(){ openRequest(r.dataset.id); },150); }); });
+    sendDueReminders();
+    importFormAppeals(false); syncMail(false);
+    var today=H.todayISO();
+    var all=items().map(function(x){ x.topic=FU_TOPIC[x.go]||'אחר'; x.st=fuState(x); if(x.st&&x.st.status==='progress'&&x.st.due&&x.st.due<=today){ x.sev='high'; x.remind=true; } return x; });
+    all.sort(function(a,b){ var o={high:0,mid:1,low:2}; return (o[a.sev]-o[b.sev]) || ((b.remind?1:0)-(a.remind?1:0)); });
+    var openList=all.filter(function(x){ return !(x.st&&x.st.status==='done'); });
+    var list=(FU.showDone?all:openList).filter(function(x){ return !FU.topic || x.topic===FU.topic; });
+    var topics={}; openList.forEach(function(x){ topics[x.topic]=(topics[x.topic]||0)+1; });
+    var sevTag=function(x){ return '<span class="tag '+(x.sev==='high'?'bad':(x.sev==='mid'?'warn':''))+'">'+(x.sev==='high'?'דחוף':(x.sev==='mid'?'לטיפול':'למעקב'))+'</span>'; };
+    var stTag=function(x){ if(!x.st) return ''; return (x.remind?' <span class="tag bad">⏰ תזכורת</span>':'')+' <span class="tag '+(x.st.status==='done'?'ok':'')+'" title="'+esc(x.st.note||'')+'">'+esc(FU_ST[x.st.status]||'')+(x.st.owner?' · '+esc(x.st.owner):'')+(x.st.due&&x.st.status!=='done'?' · עד '+esc(H.fmtDate(x.st.due)):'')+'</span>'; };
+    var groups={}; list.forEach(function(x){ (groups[x.topic]=groups[x.topic]||[]).push(x); });
+    var canEd=H.canEdit('license')||H.canEdit('requests');
+    host.innerHTML='<div class="kpis" style="margin-bottom:14px">'+[{l:'פריטים לטיפול',v:he(openList.length),cls:'kaccent'},{l:'דחופים',v:he(openList.filter(function(x){ return x.sev==='high'; }).length)},{l:'בטיפול',v:he(all.filter(function(x){ return x.st&&x.st.status==='progress'; }).length)},{l:'טופלו',v:he(all.filter(function(x){ return x.st&&x.st.status==='done'; }).length)}].map(H.kpiHTML).join('')+'</div>'+
+      '<div class="hq-toolbar"><button type="button" class="btn-mini" data-fu-topic=""'+(FU.topic?'':' aria-pressed="true" style="font-weight:800"')+'>הכל · '+he(openList.length)+'</button>'+Object.keys(topics).map(function(t){ return '<button type="button" class="btn-mini" data-fu-topic="'+esc(t)+'"'+(FU.topic===t?' aria-pressed="true" style="font-weight:800"':'')+'>'+esc(t)+' · '+he(topics[t])+'</button>'; }).join('')+
+      '<label class="hq-count" style="display:flex;gap:5px;align-items:center;margin-inline-start:auto"><input type="checkbox" id="fuDone"'+(FU.showDone?' checked':'')+'> הצגת פריטים שטופלו</label></div>'+
+      '<div class="card pad">'+(list.length?Object.keys(groups).map(function(t){ return '<div class="sec-h" style="margin-top:6px">'+esc(t)+' <span class="hq-count">'+groups[t].length+'</span></div>'+groups[t].map(function(x){ var n=all.indexOf(x);
+        return '<div class="flag-row sev-'+(x.sev==='high'?'high':(x.sev==='mid'?'mid':'ok'))+'"><div class="fi">'+x.ic+'</div><div style="flex:1;cursor:pointer" data-fu-go="'+n+'"><div class="ft">'+esc(x.t)+stTag(x)+'</div><div class="fs">'+esc(x.s)+(x.st&&x.st.note?' · '+esc(x.st.note):'')+'</div></div>'+sevTag(x)+
+          (canEd?'<button type="button" class="btn-mini" data-fu-h="'+n+'">טיפול</button>':'')+'<button type="button" class="btn-mini" data-fu-go="'+n+'">'+(x.go==='mail'?'שיוך לתיק':(x.go==='requests'&&x.id?'פתיחה':'למסך'))+'</button></div>'; }).join(''); }).join(''):'<div class="hq-count" style="padding:16px;text-align:center">אין פריטים פתוחים — הכל מטופל </div>')+'</div>';
+    $$('#hqFollowups [data-fu-topic]').forEach(function(b){ b.addEventListener('click',function(){ FU.topic=b.dataset.fuTopic; renderFollow(); }); });
+    var fd=$('#fuDone'); if(fd) fd.addEventListener('change',function(){ FU.showDone=this.checked; renderFollow(); });
+    $$('#hqFollowups [data-fu-h]').forEach(function(b){ b.addEventListener('click',function(e){ e.stopPropagation(); fuHandle(all[+b.dataset.fuH]); }); });
+    $$('#hqFollowups [data-fu-go]').forEach(function(r){ r.addEventListener('click',function(e){ e.stopPropagation(); var x=all[+r.dataset.fuGo]; if(!x) return;
+      if(x.errors){ window.__hqReports.showErrors(); return; }
+      if(x.go==='requests' && x.id){ openRequest(x.id); return; }   /* טיפול ישיר — הפנייה נפתחת כאן, בלי לעבור מסך */
+      if(x.go==='mail' && x.mail){ assignMail(x.mail); return; }
+      if(x.city){ var sl=H.SEL(); Object.keys(sl).forEach(function(k){ delete sl[k]; }); sl[x.city]=true; window.__hqStudents.filterTo({ place:'waiting' }); }
+      C.switchTab(x.go); }); });
   }
   H.reg('followups', renderFollow);
   window.__hqFollow={ items:items };

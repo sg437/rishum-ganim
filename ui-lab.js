@@ -50,7 +50,7 @@ if(!document.documentElement.classList.contains("ui-lab")) return;
    (הייצוא יושב בתוך המסכים). "מדריך" אינו מופיע במפרט כלל — שובץ כאן בסוף
    קבוצת הניתוח וההפקה, כמסך עיון. שתי הנקודות פתוחות להחלטה. */
 var GROUPS = [
-  { title:"יומיום",        tabs:["home","students","gans","map","staff","assign"] },
+  { title:"יומיום",        tabs:["home","alerts","students","gans","map","staff","assign"] },
   { title:"ניתוח והפקה",   tabs:["templates","reports","management",
                                  "messages","tools","settings","guide"] }
 ];
@@ -65,7 +65,7 @@ var LABELS = { home:"מסך בית", students:"תלמידות", staff:"צוות"
    (HANDOFF.md מתיר "אימוג׳י או גליפים"; הקנבס, שהוא המקור המחייב, בחר גליפים.)
    "מדריך" אינו מופיע בקנבס כלל, ולכן הגליף שלו הוא בחירה שלי. */
 var ICONS = {
-  home:"◫", students:"☰", gans:"⌂", map:"⌖", staff:"◈", assign:"⇄",
+  home:"◫", alerts:"◉", students:"☰", gans:"⌂", map:"⌖", staff:"◈", assign:"⇄",
   templates:"▢", reports:"◔", management:"☏",
   messages:"✉", tools:"⚒", settings:"⚙", guide:"▧"
 };
