@@ -236,6 +236,22 @@ const DATA={
     const th=await pg.evaluate(()=>window.__docs['org/hq'].thresholds);
     return (/view@example.com/.test(t) && /מה כל אחד\/ת יכול\/ה לערוך/.test(t) && th && th.license===33) || JSON.stringify(th);
   });
+  await step('עריכת תפוסה מהמרכזי: קיבולת · רף שיבוץ · מכסת רישיון נכתבים לכרטיס הגן בעיר, ושאר הגנים לא נוגעים', async()=>{
+    const r=await pg.evaluate(async()=>{
+      const H=window.__hq; const g={ id:'g1', name:'גן הדקל', cap:35, assignCap:0, licenseCap:2, enrolled:1 };
+      if(!H.canEditGan()) return { noEdit:true };
+      H.editGanCapacity('modiin-illit', g);
+      document.getElementById('pf-cap').value='37'; document.getElementById('pf-assignCap').value='36'; document.getElementById('pf-licenseCap').value='40';
+      document.getElementById('pf-ok').click(); await new Promise(r=>setTimeout(r,200));
+      const gs=window.__docs['app/gans'].gans; const g1=gs.find(x=>x.id==='g1'), g2=gs.find(x=>x.id==='g2');
+      return { cap:g1.capacity, ac:g1.assignCap, lc:g1.licenseCap, name:g1.ganName, g2cap:g2.capacity, n:gs.length };
+    });
+    return (r.cap==='37' && r.ac==='36' && r.lc==='40' && r.name==='גן הדקל' && r.g2cap==='' && r.n===3) || JSON.stringify(r);
+  });
+  await step('סינון תלמידים במרכזי: מגדר "מעורב", ערוץ רישום ותאריך רישום', async()=>{
+    await go('students'); const t=await pg.evaluate(()=>document.getElementById('hqStudents').innerHTML);
+    return (/value="מעורב"/.test(t) && /data-f="regVia"/.test(t) && /data-f="regFrom"/.test(t) && /data-f="regTo"/.test(t)) || 'missing filters';
+  });
   await step('מפה, עוזר חכם ומדריך נפתחים בלי שגיאות (Leaflet חסום ברשת — הודעה מסודרת)', async()=>{
     await go('map'); await pg.waitForTimeout(300); const tm=await txt('#hqMap');
     await go('assistant'); const ta=await txt('#hqAssistant');
