@@ -28,7 +28,7 @@ Object.defineProperty(window,'ORG',{get:()=>ORG,set:v=>{ORG=v},configurable:true
 Object.defineProperty(window,'_pending',{get:()=>_pending,configurable:true});
 Object.defineProperty(window,'currentUser',{get:()=>currentUser,set:v=>{currentUser=v},configurable:true});
 window.__resetCity=()=>{ _cityResolved=false; };
-Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
+Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -292,7 +292,41 @@ const server=require('http').createServer((req,res)=>{
       document.getElementById('saveGan').click();
       await new Promise(r=>setTimeout(r,30));
       const saved=DB.gans.find(x=>x.ganName==='גן הבנים');
-      return !!saved && saved.gender==='בנים' && saved.licenseAges==='3-4' && saved.licenseCap==='35' && ganGender(saved.id)==='בנים' && GENDERS.length===2 && 'gender' in makeGan();
+      return !!saved && saved.gender==='בנים' && saved.licenseAges==='3-4' && saved.licenseCap==='35' && ganGender(saved.id)==='בנים' && GENDERS.length===3 && GENDERS.includes('מעורב') && 'gender' in makeGan();
+    });
+  });
+
+  /* ---- כינוי גן · סמל עירוני · רב-גילאי · חיפוש לפי סמלים · סינון לפי תאריך רישום ---- */
+  await step('כרטיס הגן: כינוי, סמל עירוני, מגדר מעורב וגיל 3/4/5 נשמרים; חיפוש לפי כל הסמלים', async()=>{
+    return await pg.evaluate(async()=>{
+      DB.gans=[]; DB.students=[];
+      const g=makeGan(); g.ganName='גן הרימון'; openGan(g);
+      const set=(id,v)=>{ document.getElementById(id).value=v; };
+      set('g-gender','מעורב'); set('g-age','3/4/5'); set('g-nickname','הרימון הקטן'); set('g-citySymbol','C-777'); set('g-internalSymbol','P-12');
+      document.getElementById('saveGan').click(); await new Promise(r=>setTimeout(r,30));
+      const sg=DB.gans.find(x=>x.ganName==='גן הרימון');
+      const okSaved=!!sg && sg.gender==='מעורב' && sg.age==='3/4/5' && sg.nickname==='הרימון הקטן' && sg.citySymbol==='C-777' && GAN_AGES.includes('3/4/5');
+      ganFilterSet({q:'c-777'}); const byCity=gansScoped().length===1;
+      ganFilterSet({q:'הרימון הקטן'}); const byNick=gansScoped().length===1; ganFilterSet({q:''});
+      const s=Object.assign(makeStudent(),{firstName:'נועה',lastName:'כהן',year:DB.activeYear,ganId:sg.id}); DB.students.push(s);
+      stuFilterSet({q:'p-12'}); const stuByInternal=studentsScopeBase().length===1; stuFilterSet({q:''});
+      return okSaved && byCity && byNick && stuByInternal;
+    });
+  });
+  await step('רישום דרך הקישור: התיק נפתח עם ערוץ ותאריך רישום, והסינון לפי ערוץ וטווח תאריכים עובד', async()=>{
+    return await pg.evaluate(async()=>{
+      const g=DB.gans[0];
+      const mk=(fn,extra)=>{ const s=Object.assign(makeStudent(),{firstName:fn,lastName:'לוי',year:DB.activeYear,ganId:g.id},extra||{}); DB.students.push(s); };
+      mk('א',{regChannel:'link',regDate:'2026-10-05'}); mk('ב',{regChannel:'link',regDate:'2026-11-01'});
+      mk('ג',{notes:'נרשמה דרך טופס דיגיטלי · הורה: x',createdAt:'2026-10-20T10:00:00Z'}); mk('ד',{});
+      const names=()=>studentsScopeBase().filter(s=>s.lastName==='לוי').map(s=>s.firstName).sort().join('');
+      stuFilterSet({regVia:'link'}); const link=names();
+      stuFilterSet({regVia:'other'}); const other=names();
+      stuFilterSet({regVia:'',regFrom:'2026-10-10',regTo:'2026-10-31'}); const range=names();
+      stuFilterSet({regFrom:'',regTo:''});
+      await approveReg({id:'r1',at:Date.parse('2026-09-15T08:00:00Z'),data:{childFirst:'חדשה',childLast:'פרץ',ganName:'גן הרימון',submittedAt:'2026-09-15T08:00:00Z',year:DB.activeYear},files:[]});
+      const nw=DB.students.find(s=>s.firstName==='חדשה');
+      return link==='אבג' && other==='ד' && range==='ג' && !!nw && nw.regChannel==='link' && nw.regDate==='2026-09-15';
     });
   });
 

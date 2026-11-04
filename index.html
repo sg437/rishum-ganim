@@ -894,7 +894,7 @@ const OWNER_EMAILS = ["7684252sg@gmail.com", "sg@taharat.org"].map(x=>x.toLowerC
 function isOwnerEmail(email){ return OWNER_EMAILS.includes(String(email||"").toLowerCase()); }
 const PERIODS = ["א","ב","ג","סופי"]; // מועדי רישום
 const EDU_TYPES = ["רגיל",'ח"מ']; // סוג חינוך: רגיל / חינוך מיוחד
-const GENDERS = ["בנות","בנים"];   // מגדר הגן — יש גני בנות ויש גני בנים; התלמיד/ה יורש/ת מהגן
+const GENDERS = ["בנות","בנים","מעורב"];   // מגדר הגן — גני בנות, גני בנים וגנים מעורבים; התלמיד/ה יורש/ת מהגן
 const DEFAULT_YEARS = ['תשפ"ה','תשפ"ו','תשפ"ז','תשפ"ח'];
 const DEFAULT_STAFF_ROLES = ["גננת","סייעת","סייעת ב'","סייעת רפואית","סייעת רפואית משלימה","סייעת רפואית ממלאת מקום","סייעת צמודה","גננת משלימה","סייעת משלימה","העשרה","גננת שילוב","מנתחת התנהגות",'הכנה לכיתה א׳',"סייעת תגבור","פרא רפואי","גננת ממלאת מקום","סייעת ממלאת מקום"]; // תפקידי צוות (סעיף 2)
 const DEFAULT_CHILD_AGES = ["2","3","4","5","6"]; // גיל ילדה בודדת (סעיף 6)
@@ -904,7 +904,7 @@ const HOURS_ROLES = ["סייעת רפואית","סייעת רפואית ממלא
 let STAFF_ROLES = DEFAULT_STAFF_ROLES.slice();
 let CHILD_AGES = DEFAULT_CHILD_AGES.slice();
 let CAMPUSES = [];   // רשימת קמפוסים מוגדרת בהגדרות (מקור לבחירה בגנים)
-const GAN_AGES = ["3","4","5","3/4","4/5"]; // גיל הגן — כולל גנים דו-גלאיים 3/4, 4/5 (סעיף 6)
+const GAN_AGES = ["3","4","5","3/4","4/5","3/4/5"]; // גיל הגן — כולל גנים דו-גלאיים 3/4, 4/5 ורב-גילאי 3/4/5 (סעיף 6)
 const WEEK_DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי"]; // ימי שיבוץ למשלימה (סעיף 7)
 /* תפקידי שיבוץ + שדות נוספים לכל תפקיד (סעיף 7):
    extra:"days" — בחירת ימים (משלימה) · extra:"duration" — שנה / מספר חודשים (ממלאת מקום) */
@@ -3512,8 +3512,14 @@ function makeStudent(){ return {
             retention:false, retentionDoc:false,
             other:false, otherText:"" }, // סעיף 3 — "אחר" עם טקסט חופשי
   support:{ shiluv:false, salIshi:false, medical:false, behavior:false, prepA:false }, // סעיף 15 — סיוע/העשרה
+  regDate:"",      // תאריך הרישום (YYYY-MM-DD) — מהטופס הדיגיטלי, או מהעירייה כשהרישום נעשה שם
+  regChannel:"",   // ערוץ הרישום: "link" = טופס הרישום הדיגיטלי (הקישור שלנו); ריק = אחר / לא ידוע
   driveFolder:"", driveFolderId:"", notes:"", createdAt:new Date().toISOString()
 };}
+/* רישום דרך הקישור: סימון מפורש, או תיק ישן שנפתח מטופס דיגיטלי (לפני שנשמר הסימון) */
+function regViaLink(s){ return s.regChannel==="link" || /^נרשמה דרך טופס דיגיטלי/.test(String(s.notes||"")); }
+/* תאריך הרישום: שדה מפורש; לתיק ישן מהקישור — מועד פתיחת התיק */
+function regDateOf(s){ if(s.regDate) return String(s.regDate).slice(0,10); return (regViaLink(s) && s.createdAt) ? String(s.createdAt).slice(0,10) : ""; }
 function makeStaff(){ return {
   id:uid(), lastName:"", firstName:"", name:"", tz:"", email:"", // ת"ז, מייל, שם משפחה/פרטי בנפרד (סעיף 1)
   role:"סייעת", education:"רגיל", phone:"", mobile:"", city:"", street:"", building:"", weeklyHours:"", notes:"",
@@ -3533,12 +3539,14 @@ function makeGan(){ return {
   teacherMobile:"", assistantName:"", assistantMobile:"",
   campus:"",   // קמפוס הגן — מקור האמת; אצל התלמידות נגזר מהגן
   city:"",     // עיר הגן — נדרשת לגאוקוד מדויק; בלעדיה הכתובת נשאלת מהתלמידות
-  gender:"",   // "בנות" / "בנים" — ריק = לא צוין (גנים ותיקים)
+  gender:"",   // "בנות" / "בנים" / "מעורב" — ריק = לא צוין (גנים ותיקים)
+  nickname:"",     // כינוי הגן — שם נוסף שבו מכירים את הגן (מוצג ליד השם, נכלל בחיפוש)
+  citySymbol:"",   // סמל עירוני — סמל נוסף שחלק מהערים עובדות לפיו (בנוסף לסמל פנימי ולסמל הגן)
   licenseAges:"", licenseCap:"",   // רישיון משרד החינוך: גילאים מורשים ומכסת ילדים (בקרת תפוסה מול הרישיון)
   capacity:"", assignCap:"", active:true, docsNote:"", createdAt:new Date().toISOString()
 };}
 function ganGender(ganId){ const g=ganById(ganId); return g ? String(g.gender||"") : ""; }
-function genderBadge(g){ const v=String((g&&g.gender)||""); if(!v) return '<span class="pill neutral" style="opacity:.6">—</span>'; return v==="בנים" ? '<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">בנים</span>' : '<span class="pill ok">בנות</span>'; }
+function genderBadge(g){ const v=String((g&&g.gender)||""); if(!v) return '<span class="pill neutral" style="opacity:.6">—</span>'; if(v==="מעורב") return '<span class="pill warn">מעורב</span>'; return v==="בנים" ? '<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">בנים</span>' : '<span class="pill ok">בנות</span>'; }
 
 /* ============================================================
    ניווט / טאבים
@@ -6261,12 +6269,12 @@ function renderInstallBox(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"" }; // gans = ריבוי גנים (אפשר לבחור כמה); age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
+let stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"", regVia:"", regFrom:"", regTo:"" }; // gans = ריבוי גנים (אפשר לבחור כמה); age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
 let stuFiltersOpen=false; // האם פאנל הסינון המתקדם פתוח
 function stuActiveFilterCount(){ const f=stuFilter; let n=0;
-  if(f.gans&&f.gans.length)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.gender)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
+  if(f.gans&&f.gans.length)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.gender)n++; if(f.regVia)n++; if(f.regFrom||f.regTo)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
 /* איפוס כל סינוני התלמידות לברירת המחדל (כפתור "ניקוי") */
-function clearStuFilter(){ stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"" }; }
+function clearStuFilter(){ stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"", regVia:"", regFrom:"", regTo:"" }; }
 /* תווית התקציר לרשימת הגנים הנפתחת (בחירה מרובה) */
 function ganFilterLabel(){ const sel=stuFilter.gans||[];
   if(!sel.length) return "כל הגנים";
@@ -6511,6 +6519,9 @@ function viewStudents(root){
         <div class="field"><label>מועד</label><select id="f-period"><option value="">הכל</option>${PERIODS.map(p=>`<option ${stuFilter.period===p?'selected':''}>${p}</option>`).join("")}</select></div>
         ${activeEdu?"":`<div class="field"><label>חינוך</label><select id="f-edu"><option value="">הכל</option>${EDU_TYPES.map(t=>`<option ${stuFilter.edu===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`}
         ${DB.gans.some(g=>g.gender)?`<div class="field"><label>מגדר (לפי הגן)</label><select id="f-gender"><option value="">הכל</option>${GENDERS.map(t=>`<option ${stuFilter.gender===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>`:""}
+        <div class="field"><label>נרשמה דרך הקישור</label><select id="f-regVia"><option value="">הכל</option><option value="link" ${stuFilter.regVia==='link'?'selected':''}>דרך הקישור</option><option value="other" ${stuFilter.regVia==='other'?'selected':''}>לא דרך הקישור</option></select></div>
+        <div class="field"><label>תאריך רישום — מ־</label><input type="date" id="f-regFrom" value="${esc(stuFilter.regFrom||"")}"></div>
+        <div class="field"><label>תאריך רישום — עד</label><input type="date" id="f-regTo" value="${esc(stuFilter.regTo||"")}"></div>
         <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
         <div class="field"><label>שיבוץ</label><select id="f-placed"><option value="">הכל</option><option value="yes" ${stuFilter.placed==='yes'?'selected':''}>משובצת</option><option value="no" ${stuFilter.placed==='no'?'selected':''}>לא משובצת</option></select></div>
         <div class="field"><label>מאפיין</label><select id="f-flag"><option value="">הכל</option>${Object.entries(STU_FLAGS).map(([k,d])=>`<option value="${k}" ${stuFilter.flag===k?'selected':''}>${esc(d.label)}</option>`).join("")}</select></div>
@@ -6539,7 +6550,7 @@ function viewStudents(root){
   $("#importStu").onclick = ()=> openImport();
   $("#stuFilterToggle").onclick = ()=>{ stuFiltersOpen = $("#stuFilterPanel").hasAttribute("hidden"); viewStudents(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-gender","gender");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");
+  bind("#f-q","q");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-gender","gender");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");bind("#f-regVia","regVia");bind("#f-regFrom","regFrom");bind("#f-regTo","regTo");
   const clr=$("#f-clear"); if(clr) clr.onclick=()=>{ clearStuFilter(); stuFiltersOpen=true; viewStudents(root); };
   // סינון גן בריבוי בחירה — רשימה נפתחת עם תיבות סימון (אפשר לבחור כמה גנים יחד)
   const ganBox=$("#f-gan");
@@ -6575,7 +6586,11 @@ function studentsScopeBase(){
   return studentsOfYear().filter(s=>{
     if(f.status==='active' && s.finished) return false;
     if(f.status==='finished' && !s.finished) return false;
-    if(q){ const hay=(s.firstName+" "+s.lastName+" "+s.tz).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(q){ const g=s.ganId?ganById(s.ganId):null;   // גם לפי הגן: שם, כינוי, סמל גן, סמל פנימי, סמל עירוני
+      const hay=(s.firstName+" "+s.lastName+" "+s.tz+(g?" "+[g.ganName,g.nickname,g.ganSymbol,g.internalSymbol,g.citySymbol].filter(Boolean).join(" "):"")).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(f.regVia==='link' && !regViaLink(s)) return false;
+    if(f.regVia==='other' && regViaLink(s)) return false;
+    if(f.regFrom||f.regTo){ const d=regDateOf(s); if(!d) return false; if(f.regFrom && d<f.regFrom) return false; if(f.regTo && d>f.regTo) return false; }
     if(f.gans && f.gans.length){ // ריבוי גנים — התלמידה שייכת לאחד הגנים שנבחרו (או "ללא גן" למי שהוצאה)
       const noneSel=f.gans.includes('__none__');
       const ok = (noneSel && !s.ganId) || (s.ganId && f.gans.includes(s.ganId));
@@ -6844,6 +6859,8 @@ function stuFilterChips(){
   if(f.period) add("period","מועד "+f.period, ()=>{ f.period=""; });
   if(f.edu) add("edu",f.edu, ()=>{ f.edu=""; });
   if(f.muni) add("muni", f.muni==='yes'?"קלוט בעירייה":"לא קלוט בעירייה", ()=>{ f.muni=""; });
+  if(f.regVia) add("regVia", f.regVia==='link'?"נרשמו דרך הקישור":"לא דרך הקישור", ()=>{ f.regVia=""; });
+  if(f.regFrom||f.regTo) add("regDate", "תאריך רישום "+(f.regFrom?fmtDate(f.regFrom):"…")+" – "+(f.regTo?fmtDate(f.regTo):"…"), ()=>{ f.regFrom=""; f.regTo=""; });
   if(f.placed) add("placed", f.placed==='yes'?"משובצות":"ממתינות לשיבוץ", ()=>{ f.placed=""; });
   if(f.flag && STU_FLAGS[f.flag]) add("flag", STU_FLAGS[f.flag].label, ()=>{ f.flag=""; });
   if(f.status && f.status!=='active') add("status", f.status==='finished'?"שסיימו / יצאו":"כל הסטטוסים", ()=>{ f.status='active'; });
@@ -7315,7 +7332,7 @@ function openStudent(s){
     if(!g || !g.age){ if(hint) hint.textContent=""; return; }
     const ages=String(g.age).split("/").map(x=>x.trim()).filter(Boolean);
     if(ages.length===1){ ageSel.value=ages[0]; if(hint) hint.textContent="הגיל נקבע אוטומטית לפי הגן ("+ages[0]+")."; }
-    else if(ages.length>=2){ if(!ages.includes(ageSel.value)) ageSel.value=""; if(hint) hint.textContent="גן דו-גילאי — בחר/י גיל: "+ages.join(" / "); }
+    else if(ages.length>=2){ if(!ages.includes(ageSel.value)) ageSel.value=""; if(hint) hint.textContent=(ages.length>2?"גן רב-גילאי":"גן דו-גילאי")+" — בחר/י גיל: "+ages.join(" / "); }
   }
   /* חיווי חי של רף השיבוץ לגן הנבחר (סעיף 2) + חסימת השארות בלי מסמך */
   function ganRoomHint(){
@@ -7895,7 +7912,7 @@ let ganFilter = { q:"", zone:"", status:"", age:"", campus:"", full:"", gender:"
 let ganFiltersOpen=false;
 let ganSort = { key:"name", dir:1 }; // מיון רשימת הגנים לפי עמודה
 const GAN_SORT_VAL = {
-  name:g=>ganName(g.id), internalSymbol:g=>g.internalSymbol, ganSymbol:g=>g.ganSymbol,
+  name:g=>ganName(g.id), internalSymbol:g=>g.internalSymbol, ganSymbol:g=>g.ganSymbol, citySymbol:g=>g.citySymbol||"",
   age:g=>g.age, teacherName:g=>g.teacherName, gender:g=>g.gender||"",
   address:g=>[g.address,g.building].filter(Boolean).join(" "), zone:g=>g.zone,
   capacity:g=>+g.capacity||0, city:g=>(g.city||"").toLowerCase(), reg:g=>studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length,
@@ -7909,7 +7926,7 @@ function sortGans(list){
 function gansScoped(){
   return sortGans(eduScope(DB.gans.slice()).filter(g=>{
     const q=ganFilter.q.trim().toLowerCase();
-    if(q){ const hay=(g.ganName+" "+g.teacherName+" "+g.ganSymbol+" "+g.internalSymbol+" "+g.address+" "+g.zone).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(q){ const hay=(g.ganName+" "+(g.nickname||"")+" "+g.teacherName+" "+g.ganSymbol+" "+g.internalSymbol+" "+(g.citySymbol||"")+" "+g.address+" "+g.zone).toLowerCase(); if(!hay.includes(q)) return false; }
     if(ganFilter.zone && g.zone!==ganFilter.zone) return false;
     if(ganFilter.status==='active' && !g.active) return false;
     if(ganFilter.status==='off' && g.active) return false;
@@ -10275,16 +10292,18 @@ function renderGanTable(){
   const shownActive = list.filter(g=>g.active).length;
   const totalActive = eduScope(DB.gans.filter(g=>g.active)).length;
   const eduNote = activeEdu ? ` (חינוך ${activeEdu==='ח"מ'?'מיוחד':'רגיל'})` : "";
+  const showCitySym = DB.gans.some(g=>g.citySymbol);   // עמודת "סמל עירוני" — רק בעיר שמשתמשת בו
   host.innerHTML=`<div class="table-wrap"><table><thead><tr>
-    ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${th("age","גיל")}${th("","חינוך")}${th("gender","מגדר")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("city","עיר")}${th("zone","אזור")}
+    ${th("name","שם הגן")}${th("internalSymbol","סמל פנימי")}${th("ganSymbol","סמל גן")}${showCitySym?th("citySymbol","סמל עירוני"):""}${th("age","גיל")}${th("","חינוך")}${th("gender","מגדר")}${th("teacherName","גננת")}${th("address","כתובת")}${th("","מספר")}${th("city","עיר")}${th("zone","אזור")}
     ${th("","טל' גן")}${th("capacity","קיבולת")}${th("reg","רשומות")}${th("assigned","משובצות / רף")}${th("","סטטוס")}</tr></thead><tbody>
     ${list.map(g=>{
       const reg = studentsOfYear().filter(s=>s.ganId===g.id && !s.finished).length;
       const ageBg=ganAgeBg(g);
       return `<tr data-gid="${esc(g.id)}" class="clickable"${ageBg?` style="${ageBg}"`:''}>
-        <td><b>${esc(ganName(g.id))}</b></td>
+        <td><b>${esc(ganName(g.id))}</b>${g.nickname?`<div class="hint" style="margin:0">${esc(g.nickname)}</div>`:''}</td>
         <td>${esc(g.internalSymbol)||'—'}</td>
         <td>${esc(g.ganSymbol)||'—'}</td>
+        ${showCitySym?`<td>${esc(g.citySymbol||"")||'—'}</td>`:''}
         <td>${esc(g.age)||'—'}</td>
         <td>${eduBadge(g)}</td>
         <td>${genderBadge(g)}</td>
@@ -10360,10 +10379,12 @@ function openGan(g){
       <div><label>שם הגן</label><input id="g-ganName" value="${esc(g.ganName)}"></div>
       <div><label>סמל פנימי</label><input id="g-internalSymbol" value="${esc(g.internalSymbol)}"></div>
       <div><label>סמל הגן</label><input id="g-ganSymbol" value="${esc(g.ganSymbol)}"></div>
+      <div><label>כינוי הגן</label><input id="g-nickname" value="${esc(g.nickname||"")}" placeholder="שם נוסף שבו מכירים את הגן"></div>
+      <div><label>סמל עירוני</label><input id="g-citySymbol" value="${esc(g.citySymbol||"")}" placeholder="אם העיר עובדת לפי סמל משלה"></div>
       <div><label>גיל</label><select id="g-age"><option value="">—</option>${GAN_AGES.map(a=>`<option ${String(g.age)===String(a)?'selected':''}>${a}</option>`).join("")}</select></div>
       <div><label>חינוך</label><select id="g-education">${EDU_TYPES.map(t=>`<option ${eduLabel(g)===t?'selected':''}>${esc(t)}</option>`).join("")}</select></div>
       <div><label>מגדר הגן</label><select id="g-gender"><option value="">— לא צוין —</option>${GENDERS.map(t=>`<option ${String(g.gender||"")===t?'selected':''}>${esc(t)}</option>`).join("")}</select>
-        <div class="hint">גן בנות / גן בנים. הילדים בגן יורשים את המגדר מהגן.</div></div>
+        <div class="hint">גן בנות / גן בנים / גן מעורב. הילדים בגן יורשים את המגדר מהגן.</div></div>
       <div><label>שם הגננת</label><input id="g-teacherName" value="${esc(g.teacherName)}"></div>
       <div><label>קיבולת (מספר מקומות)</label><input id="g-capacity" inputmode="numeric" value="${esc(g.capacity)}">
         <div class="hint">חיווי בלבד על הרישום — חריגה נצבעת אך מותרת.</div></div>
@@ -10412,6 +10433,7 @@ function openGan(g){
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{
       ganName:val("g-ganName"),internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),education:val("g-education"),
+      nickname:val("g-nickname"),citySymbol:val("g-citySymbol"),
       teacherName:val("g-teacherName"),capacity:val("g-capacity"),
       assignCap:String(val("g-assignCap")||"").replace(/[^\d]/g,""),campus:val("g-campus"),
       address:val("g-address"),building:val("g-building"),street:val("g-street"),zone:val("g-zone"),
@@ -10419,7 +10441,7 @@ function openGan(g){
       licenseAges:val("g-licenseAges"), licenseCap:String(val("g-licenseCap")||"").replace(/[^\d]/g,""),
       phoneGan:val("g-phoneGan"),docsNote:val("g-docsNote"),active:chk("g-active")
     });
-    if(!data.ganName && !data.teacherName && !data.ganSymbol && !data.internalSymbol){ toast("יש להזין שם הגן, גננת או סמל"); return; }
+    if(!data.ganName && !data.teacherName && !data.ganSymbol && !data.internalSymbol && !data.citySymbol){ toast("יש להזין שם הגן, גננת או סמל"); return; }
     const origGan=DB.gans.find(x=>x.id===g.id);
     if(!(isNew ? canEditEdu(data.education) : canEditRec(origGan||g))){ toast("אין הרשאת עריכה בחינוך זה"); return; }
     const i=DB.gans.findIndex(x=>x.id===g.id); if(i>=0)DB.gans[i]=data; else DB.gans.push(data);
@@ -10441,6 +10463,8 @@ const GAN_HEADER_MAP = {
   "שםהגן":"ganName","גן":"ganName","שם":"ganName","שםגן":"ganName",
   "סמלפנימי":"internalSymbol","פנימי":"internalSymbol","סמלמוסד":"internalSymbol",
   "סמלהגן":"ganSymbol","סמלגן":"ganSymbol","סמל":"ganSymbol","סמלמשרד":"ganSymbol",
+  "סמלעירוני":"citySymbol","סמלעירייה":"citySymbol","סמלרשות":"citySymbol",
+  "כינוי":"nickname","כינויגן":"nickname","כינויהגן":"nickname",
   "שםהגננת":"teacherName","גננת":"teacherName","שםגננת":"teacherName","מורה":"teacherName",
   "גיל":"age","קבוצתגיל":"age",
   "חינוך":"education","סוגחינוך":"education",
@@ -10476,6 +10500,7 @@ function buildGanImportRows(rows){
     const cells=rows[r]; const g=key=> idx[key]!=null ? String(cells[idx[key]]??"").trim() : "";
     const gn=makeGan();
     gn.ganName=g("ganName"); gn.internalSymbol=g("internalSymbol"); gn.ganSymbol=g("ganSymbol");
+    gn.citySymbol=g("citySymbol"); gn.nickname=g("nickname");
     gn.teacherName=g("teacherName");
     const a=g("age").replace(/\s/g,""); gn.age=GAN_AGES.includes(a)?a:a.replace(/[^\d/]/g,"");
     if(idx.education!=null) gn.education=normEduVal(g("education")); else if(activeEdu) gn.education=activeEdu;
@@ -10485,7 +10510,7 @@ function buildGanImportRows(rows){
     gn.assistantName=g("assistantName"); gn.assistantMobile=fixPhone(g("assistantMobile"));
     gn.capacity=g("capacity").replace(/[^\d]/g,""); gn.assignCap=g("assignCap").replace(/[^\d]/g,""); gn.docsNote=g("docsNote");
     if(idx.active!=null){ const av=g("active").trim(); gn.active=!/^(לא|כבוי|לאפעיל|0|false|no|off|inactive)$/i.test(av); }
-    if(!gn.ganName && !gn.teacherName && !gn.ganSymbol && !gn.internalSymbol) continue; // שורה ריקה
+    if(!gn.ganName && !gn.teacherName && !gn.ganSymbol && !gn.internalSymbol && !gn.citySymbol) continue; // שורה ריקה
     const key=(gn.ganSymbol||"")+"|"+(gn.internalSymbol||"")+"|"+(gn.ganName||gn.teacherName||"");
     const fileDup = seen.has(key); seen.add(key);
     list.push({ gan:gn, dup:ganExists(gn), fileDup });
@@ -14926,6 +14951,8 @@ async function approveReg(rec, after){
     const ages=String(g.age||"").split("/").map(x=>x.trim()).filter(Boolean); if(ages.length===1) s.age=ages[0];
   }
   s.placed=false; s.registeredByUs=true;
+  s.regChannel="link";
+  { const t=d.submittedAt||rec.at; const dt=t?new Date(t):null; if(dt && !isNaN(dt)) s.regDate=dt.toLocaleDateString("en-CA"); }
   // סימון המסמכים שצורפו בטופס (ת"ז / ספח) + קישור לקבצים
   (rec.files||[]).forEach(f=>{ const k=String(f.kind||"");
     if(k.indexOf("תעודת זהות")>=0){ s.docs.idCopy=true; s.docFiles.idCopy={id:f.id,name:f.name,link:f.link}; }

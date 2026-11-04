@@ -151,7 +151,7 @@ const Lm=vm.runInContext('recsLists', msb)(after);
 check('המרכזי: אותו סדר בדיוק', J(Lm.s.map(x=>x.id))===J(L.s.map(x=>x.id)) && J(Lm.g.map(x=>x.id))===J(L.g.map(x=>x.id)));
 check('המרכזי מזהה עיר שעברה לפי meta.model', vm.runInContext('cityIsRecs', msb)(new Map([['meta',{model:'recs'}]])) && !vm.runInContext('cityIsRecs', msb)(legacy));
 check('המרכזי בונה את העיר מהמבנה החדש כשעברה', /const R=cityIsRecs\(docs\) \? recsLists\(docs\) : null;/.test(MGMT));
-check('המרכזי כותב תיק במבנה החדש (updateStudent/addStudents)', (MGMT.match(/if\(cityIsRecs\(cityDocs\.get\(c\.id\)\)\)\{/g)||[]).length===2);
+check('המרכזי כותב תיק וכרטיס גן במבנה החדש (updateStudent/updateGan/addStudents)', (MGMT.match(/if\(cityIsRecs\(cityDocs\.get\(c\.id\)\)\)\{/g)||[]).length===3 && /recDocId\("gan", ganId\)/.test(MGMT));
 
 console.log('6) תוכנת העיר וכללי השרת');
 check('rebuildDB עובר למבנה החדש לפי meta.model', /RECS = meta\.model==="recs";/.test(SRC));
