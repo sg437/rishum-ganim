@@ -184,6 +184,23 @@ const DATA={
     const r=await pg.evaluate(()=>{ return new Promise(res=>{ const f=new File(['ת"ז,סמל מוסד\n18,111\n26,999\n77,111\n'],'moe.csv',{type:'text/csv'}); const inp=document.getElementById('moeFile'); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); setTimeout(()=>{ res(window.__docs['org/hq/ministry/modiin-illit']); },500); }); });
     return (ok && r && r.students['000000018'].status==='ok' && r.students['000000026'].status==='error' && r.extra.includes('000000077')) || JSON.stringify({ok, r:r&&r.students});
   });
+  await step('משרד החינוך — תבנית "מצבת גני ילדים": מזוהה לפי הכותרות, תאריכי שיבוץ נשמרים, סמל שונה = שגוי', async()=>{
+    await go('ministry');
+    const up=(name, text)=>pg.evaluate(([name,text])=>new Promise(res=>{ const f=new File([text],name,{type:'text/csv'}); const inp=document.getElementById('moeFile'); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); setTimeout(()=>res(window.__docs['org/hq/ministry/modiin-illit']),500); }), [name,text]);
+    const hdr='מספר זהות,מספר דרכון,מספר סידורי בדרכון,שם תלמיד,מין,סמל מוסד,מוסד,סוג חינוך,קוד סוג כיתה,סוג כיתה,ישוב מגורי תלמיד,כתה,מקבילה,כתובת,מספר בית,תאריך לידה,ארץ לידה,מספר זהות אם,שם אם,מספר זהות אב,שם אב,תאריך שיבוץ מ,תאריך שיבוץ עד';
+    const r=await up('mazeva.csv', hdr+'\n18,,,ילדה א,נ,111,גן הדקל,רגיל,,,,,,,,,,,,,,01/09/2026,30/06/2027\n26,,,ילדה ב,נ,999,אחר,רגיל,,,,,,,,,,,,,,05/09/2026,\n');
+    const a=r.students['000000018'], b=r.students['000000026'];
+    return (a.status==='ok' && a.placedFrom==='2026-09-01' && a.placedTo==='2027-06-30' && a.inRoster===true && b.status==='error' && /סמל מוסד שונה/.test(b.note)) || JSON.stringify({a,b});
+  });
+  await step('משרד החינוך — תבנית "שגויים": קודי השגיאה ותיאורן, תאריך קליטת התנועה ו"משובץ בגן" נשמרים; יש סינון "תאריך שונה"', async()=>{
+    const hdr=' מספר זהות, סמל מוסד , שם מוסד , סוג זהות, שם משפחה, שם פרטי, גורם מדווח, תאריך קליטת תנועה, תאריך שיבוץ , עד תאריך שיבוץ , קוד ישוב מוסד , שם ישוב מוסד, מעמד משפטי , סוג פיקוח , סוג חינוך , קוד שגיאה 1, תיאור שגיאה 1, קוד שגיאה 2, תיאור שגיאה 2, קוד שגיאה 3, תיאור שגיאה 3, קוד שגיאה 4, תיאור שגיאה 4, קוד שגיאה 5, תיאור שגיאה 5,סמל מוסד משיבוץ  , שם מוסד משיבוץ, תאריך שיבוץ מ- , תאריך שיבוץ עד , קוד ישוב מוסד 1, שם ישוב מוסד , כיתה משיבוץ,משובץ בגן , קיים במרשם, שנת לימודים';
+    await pg.evaluate(()=>{ window.__setRegDate=true; });
+    const r=await pg.evaluate(([hdr])=>new Promise(res=>{ const row='18,111,גן הדקל,ת"ז,א,ילדה,רשות,15/09/2026,01/09/2026,,,,,,רגיל,E12,גיל לא תואם,E40,כתובת חסרה,,,,,,,111,גן הדקל,01/09/2026,,,,,כן,לא,תשפ"ז';
+      const f=new File([hdr+'\n'+row+'\n'],'errors.csv',{type:'text/csv'}); const inp=document.getElementById('moeFile'); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); setTimeout(()=>res(window.__docs['org/hq/ministry/modiin-illit']),500); }), [hdr]);
+    const a=r.students['000000018'];
+    const t=await txt('#hqMinistry');
+    return (a.status==='error' && a.errors.length===2 && a.errors[0].code==='E12' && /גיל לא תואם/.test(a.note) && /כתובת חסרה/.test(a.note) && a.entryDate==='2026-09-15' && a.errInGan==='כן' && r.errorsFile==='errors.csv' && /תאריך שונה/.test(t)) || JSON.stringify(a);
+  });
   await step('פניות וערעורים: הפנייה הפתוחה באיחור, ופתיחת פנייה חדשה מהמסך', async()=>{
     await go('requests'); const t=await txt('#hqRequests');
     await pg.click('#rqAdd'); await pg.waitForTimeout(80); await pg.fill('#pf-who','משפחת בדיקה'); await pg.fill('#pf-text','בקשה'); await pg.click('#pf-ok'); await pg.waitForTimeout(200);

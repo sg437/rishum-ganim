@@ -1752,7 +1752,7 @@ function buildCity(c, docs){
     brand:{ title:(settings.appTitle||""), sub:(settings.appSubtitle||"") },
     /* --- הנתונים המלאים (למסכי התלמידים/הצוות/הייצוא של המרכזי) --- */
     stuFull, staffFull, gansRaw:gansRaw.map(g=>Object.assign({},g)), management:mgmtRaw.map(m=>Object.assign({},m)),
-    asg:asgYear, settings:{ retentionPolicy:settings.retentionPolicy==='obligated'?'obligated':'space', ages:settings.ages||settings.childAges||[], campuses:settings.campuses||[], staffRoles:settings.staffRoles||[], assignCaps:settings.assignCaps||{}, tzaharonLimits:settings.tzaharonLimits||null, gansTarget:settings.gansTarget||"", userNames:settings.userNames||{}, msgLog:Array.isArray(settings.msgLog)?settings.msgLog.slice(-20):[] },
+    asg:asgYear, settings:{ reportContacts:settings.reportContacts||{}, retentionPolicy:settings.retentionPolicy==='obligated'?'obligated':'space', ages:settings.ages||settings.childAges||[], campuses:settings.campuses||[], staffRoles:settings.staffRoles||[], assignCaps:settings.assignCaps||{}, tzaharonLimits:settings.tzaharonLimits||null, gansTarget:settings.gansTarget||"", userNames:settings.userNames||{}, msgLog:Array.isArray(settings.msgLog)?settings.msgLog.slice(-20):[] },
     municipality:meta.municipality||{}, visitors, visitors30:visitors.filter(v=>v.ts>monthAgo).length,
     docs:docs.size, loaded:docs.has("meta")||docs.has("gans")||all.length>0, error:cityErr.get(c.id)||"", lastUpdate:Date.now(), live:true
   };
@@ -5779,7 +5779,7 @@ function xlsToRows(buf){
   function setStatus(s){
     var r=H.ministryRec(s)||{};
     H.promptForm('מצב במשרד החינוך · '+H.stuName(s), [{k:'status',l:'מצב',t:'select',opts:[['ok','נקלט/ה ומתוקצב/ת'],['missing','לא נקלט/ה'],['error','שגוי — דורש תיקון'],['pending','בבדיקה']],v:r.status||'pending'},{k:'note',l:'מה הבעיה / מה נדרש מהרכז/ת',t:'textarea',v:r.note||''},{k:'owner',l:'לטיפול מול',v:r.owner||''}], function(o){
-      var d=moeDoc(s.cityId); var st=Object.assign({}, d.students||{}); st[H.tzKey(s.tz)||('id:'+s.id)]=Object.assign(o,{ name:H.stuName(s), sid:s.id, at:Date.now(), by:H.me() });
+      var d=moeDoc(s.cityId); var st=Object.assign({}, d.students||{}); var k0=H.tzKey(s.tz)||('id:'+s.id); st[k0]=Object.assign({}, st[k0]||{}, o, { name:H.stuName(s), sid:s.id, at:Date.now(), by:H.me(), manual:true });
       H.save('ministry', s.cityId, { cityName:s.cityName, students:st }, '✓ עודכן').then(function(){ H.closeDrawer(); syncMinistryFlag([{ s:s, status:o.status }]); });
     });
   }
@@ -5800,7 +5800,9 @@ function xlsToRows(buf){
       { n:2, t:'בדיקת אי־התאמות', s:he(nIssues)+' לתיקון · '+he(cnt('pending'))+' בבדיקה', state:MOE.step===2?'on':(d.checkedAt&&nIssues===0?'done':'') },
       { n:3, t:'מתוקצבים ודיווח', s:he(cnt('ok'))+' מתוקצבים מתוך '+he(rows.length), state:MOE.step===3?'on':(d.checkedAt&&nOpen===0?'done':'') }
     ];
-    var chips=[['','הכל',rows.length,'ntr'],['missing','לא נקלטו',cnt('missing'),'bad'],['error','שגויים',cnt('error'),'warn'],['pending','בבדיקה',cnt('pending'),'wait'],['ok','מתוקצבים',cnt('ok'),'done'],['none','לא נבדקו',nNone,'wait']];
+    var nDate=rows.filter(function(x){ return x.r && x.r.dateAlert; }).length;
+    if(MOE.only==='date') list=rows.filter(function(x){ return x.r && x.r.dateAlert; });
+    var chips=[['','הכל',rows.length,'ntr'],['date','תאריך שונה',nDate,'warn'],['missing','לא נקלטו',cnt('missing'),'bad'],['error','שגויים',cnt('error'),'warn'],['pending','בבדיקה',cnt('pending'),'wait'],['ok','מתוקצבים',cnt('ok'),'done'],['none','לא נבדקו',nNone,'wait']];
     var COLS=[
       { l:'', v:function(){ return ''; }, h:function(x){ return '<input type="checkbox" class="moe-ck" data-k="'+esc(x.key)+'"'+(MOE.sel[x.key]?' checked':'')+' aria-label="בחירה">'; } },
       { l:'מצב', v:function(x){ return x.st; }, h:function(x){ return moeLamp(x.st); } },
@@ -5809,6 +5811,8 @@ function xlsToRows(buf){
       { l:'גן', v:function(x){ return x.s.gan; }, h:function(x){ return H.cell2(esc(x.s.gan||'—'), x.s.ganSym?'סמל '+esc(x.s.ganSym):''); } },
       { l:'עירייה', v:function(x){ return x.s.absorbedMunicipality?'קלוט':'טרם'; }, h:function(x){ return x.s.absorbedMunicipality?H.lamp('ok','קלוט/ה'):H.lamp('wait','טרם',true); } },
       { l:'הבעיה ומה נדרש', v:function(x){ return x.r?x.r.note||'':''; }, h:function(x){ return x.r?H.cell2(esc(x.r.note||'—'), x.r.owner?'לטיפול מול '+esc(x.r.owner):''):'<span class="hq-count">—</span>'; } },
+      { l:'שיבוץ / כניסה במשרד', v:function(x){ return x.r?(x.r.entryDate||x.r.placedFrom||''):''; }, h:function(x){ if(!x.r) return '<span class="hq-count">—</span>'; var md=x.r.entryDate||x.r.placedFrom||'';
+          return H.cell2(md?esc(H.fmtDate(md)):'—', (x.r.placedFrom?'שובץ מ-'+esc(H.fmtDate(x.r.placedFrom)):'')+(x.r.dateAlert?' · <b style="color:var(--bad)">שונה מהתיק ('+esc(H.fmtDate(x.s.regDate)||'—')+')</b> <button type="button" class="btn-mini" data-moe-date="1" data-sid="'+esc(x.s.id)+'">עדכון בתיק</button> <button type="button" class="btn-mini" data-moe-date="0" data-sid="'+esc(x.s.id)+'">ביטול ההתראה</button>':'')); } },
       { l:'עודכן', v:function(x){ return x.r?x.r.at:0; }, h:function(x){ return x.r&&x.r.at?'<span class="hq-count">'+esc(H.fmtD(x.r.at))+'</span>':'<span class="hq-count">—</span>'; } },
       { l:'', v:function(){ return ''; }, h:function(){ return '‹'; }, chev:true }
     ];
@@ -5816,7 +5820,7 @@ function xlsToRows(buf){
     host.innerHTML=H.roNote('ministry')+
       '<div class="hq-toolbar"><select class="txtin" id="moeCity" aria-label="עיר">'+cs.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===MOE.cityId?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('')+'</select><span class="hq-count">'+(d.checkedAt?'בדיקה אחרונה: '+esc(H.fmtDT(d.checkedAt))+' · '+esc(d.file||''):'טרם הועלתה מצבה')+'</span></div>'+
       '<div class="proc"><div class="card proc-steps"><div class="hm-title">שלבי הבקרה</div><div class="steps">'+steps.map(function(st){ return '<button type="button" class="s '+st.state+'" data-step="'+st.n+'"><span>'+st.t+'<small>'+st.s+'</small></span></button>'; }).join('')+'</div>'+
-        '<div class="proc-foot"><label class="btn-ghost" style="width:100%;cursor:pointer">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'<input type="file" id="moeFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"'+(canE?'':' disabled')+'></label><div class="hq-count" style="margin-top:8px">אקסל עם עמודת ת״ז, ואם יש — סמל מוסד. ההצלבה מסמנת מתוקצבים, לא נקלטו, וסמל שונה.</div></div></div>'+
+        '<div class="proc-foot"><label class="btn-ghost" style="width:100%;cursor:pointer">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'<input type="file" id="moeFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"'+(canE?'':' disabled')+'></label><div class="hq-count" style="margin-top:8px">שתי התבניות של משרד החינוך — <b>מצבת גני ילדים</b> ו<b>שגויים בגני ילדים</b> — מזוהות לבד לפי הכותרות. ההצלבה לפי ת״ז: מתוקצבים, לא נקלטו, שגויים (עם תיאור השגיאה), סמל שונה ותאריך שונה מהתיק.</div>'+(d.errorsAt?'<div class="hq-count" style="margin-top:4px">שגויים אחרון: '+esc(d.errorsFile||'')+' · '+esc(H.fmtD(d.errorsAt))+'</div>':'')+'</div></div>'+
       '<div class="proc-main">'+
         (MOE.step===1?'<div class="kpis" style="margin-bottom:12px">'+[['תיקים בעיר',rows.length,''],['במצבת המשרד',d.fileRows||0,d.file||'—'],['במצבה ואינם אצלנו',(d.extra||[]).length,'ת״ז במשרד בלי תיק בעיר'],['לא נבדקו',nNone,'תיקים בלי ת״ז או לפני הצלבה']].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+he(k[1])+'</div>'+(k[2]?'<div class="ks">'+esc(String(k[2]))+'</div>':'')+'</div>'; }).join('')+'</div>'+
           '<div class="card pad"><div class="sec-title">מקורות הנתונים</div><div class="sec-note" style="margin:4px 0 8px">ההצלבה משווה את תיקי העיר מול מצבת משרד החינוך לפי ת״ז</div><div class="kv">'+[['תיקי '+c.name,he(rows.length)+' תיקים פעילים · '+(c.year||'')],['מצבת משרד החינוך',d.checkedAt?esc(d.file||'קובץ')+' · '+he(d.fileRows||0)+' שורות · '+esc(H.fmtDT(d.checkedAt)):'טרם הועלתה'],['סימונים ידניים',he(rows.filter(function(x){ return x.r&&!x.r.auto; }).length)+' תיקים']].map(function(r){ return '<div class="r"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>'; }).join('')+'</div>'+
@@ -5824,7 +5828,7 @@ function xlsToRows(buf){
         :MOE.step===3?'<div class="kpis" style="margin-bottom:12px">'+[['מתוקצבים',cnt('ok'),H.pct(cnt('ok'),rows.length)+'%'],['לא נקלטו',cnt('missing'),''],['שגויים',cnt('error'),''],['בבדיקה',cnt('pending'),'']].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+he(k[1])+'</div>'+(k[2]?'<div class="ks">'+k[2]+'</div>':'')+'</div>'; }).join('')+'</div>'+
           H.tableHTML('moeOkT', COLS.slice(1,6).concat([COLS[7]]), okList, { widths:['116px','196px','108px','178px','92px','1fr'], foot:'<div>'+he(okList.length)+' מתוקצבים · '+esc(c.name)+'</div><div class="acts"><button type="button" class="btn-mini" id="moeExpOk">ייצוא לאקסל</button></div>', empty:'עדיין אין תיקים מתוקצבים בעיר הזאת.' })
         :'<div class="chips" style="margin-bottom:12px">'+chips.map(function(o){ return '<button type="button" class="chipbtn" data-only="'+o[0]+'" aria-pressed="'+(MOE.only===o[0]?'true':'false')+'"><i class="lamp '+o[3]+'" style="width:8px;height:8px"></i>'+o[1]+' <span class="hq-count">'+he(o[2])+'</span></button>'; }).join('')+'</div>'+
-          H.tableHTML('moeT', COLS, list, { clickable:true, rowAttr:function(x){ return 'data-id="'+esc(x.s.id)+'"'; }, widths:['38px','116px','190px','104px','172px','92px','1fr','92px','30px'], foot:'<div>'+he(list.length)+' מוצגים · '+he(nOpen)+' אי־התאמות פתוחות</div><div class="acts"><button type="button" class="btn-mini" id="moeExp">ייצוא לאקסל</button></div>', fab:selN>0, empty:'אין תיקים בסינון הזה.' }))+
+          H.tableHTML('moeT', COLS, list, { clickable:true, rowAttr:function(x){ return 'data-id="'+esc(x.s.id)+'"'; }, widths:['38px','116px','180px','104px','160px','86px','1fr','170px','86px','30px'], foot:'<div>'+he(list.length)+' מוצגים · '+he(nOpen)+' אי־התאמות פתוחות</div><div class="acts">'+(canE?'<button type="button" class="btn-mini" id="moeMailMiss">📧 דיווח לא נקלטו</button><button type="button" class="btn-mini" id="moeMailErr">📧 דיווח שגויים</button>':'')+'<button type="button" class="btn-mini" id="moeExpErr">דוח שגויים לאקסל</button><button type="button" class="btn-mini" id="moeExp">ייצוא לאקסל</button></div>', fab:selN>0, empty:'אין תיקים בסינון הזה.' }))+
       '</div></div>'+
       (selN?'<div class="fab" id="moeFab"><span>'+he(selN)+' תיקים נבחרו</span>'+(canE?'<button type="button" class="btn main" id="moeBulkOk">סימון כמתוקצבים</button><button type="button" class="btn" id="moeBulkPend">סימון בבדיקה</button>':'')+'<button type="button" class="btn x" id="moeSelNone" aria-label="ביטול הבחירה">✕</button></div>':'');
     $('#moeCity').addEventListener('change',function(){ MOE.cityId=this.value; MOE.sel={}; renderMinistry(); });
@@ -5837,26 +5841,114 @@ function xlsToRows(buf){
     if((b=$('#moeExp'))) b.addEventListener('click',function(){ expRows(list); });
     if((b=$('#moeExpOk'))) b.addEventListener('click',function(){ expRows(okList); });
     if((b=$('#moeSelNone'))) b.addEventListener('click',function(){ MOE.sel={}; renderMinistry(); });
+    $$('#hqMinistry [data-moe-date]').forEach(function(bt){ bt.addEventListener('click',function(e){ e.stopPropagation(); var s=H.findStudent(c.id, bt.dataset.sid); if(s && canE) moeDateFix(s, bt.dataset.moeDate==='1'); }); });
+    if((b=$('#moeMailMiss'))) b.addEventListener('click',function(){ moeMail(c, rows.filter(function(x){ return x.st==='missing'; }), 'תלמידים שאינם קלוטים במשרד החינוך'); });
+    if((b=$('#moeMailErr'))) b.addEventListener('click',function(){ moeMail(c, rows.filter(function(x){ return x.st==='error'; }), 'רשומות שגויות במשרד החינוך'); });
+    if((b=$('#moeExpErr'))) b.addEventListener('click',function(){ var l=rows.filter(function(x){ return x.st==='error'; }); H.exportXLS('שגויים משרד החינוך '+c.name+' '+H.todayISO(),['תלמיד/ה','ת"ז','גן','סמל אצלנו','סמל במשרד','קודי שגיאה','תיאור השגיאות','תאריך קליטת תנועה','שובץ מ-','משובץ בגן','קיים במרשם'],l.map(function(x){ var r=x.r||{}; return [H.stuName(x.s),x.s.tz,x.s.gan,x.s.ganSym,r.errPlSym||r.rosterSym||'',(r.errors||[]).map(function(e){ return e.code; }).join(', '),r.note||'',H.fmtDate(r.entryDate||''),H.fmtDate(r.placedFrom||''),r.errInGan||'',r.errInReg||'']; }),'שגויים'); });
     var bulk=function(status){ var l=rows.filter(function(x){ return MOE.sel[x.key]; }); if(!l.length) return; var st=Object.assign({}, d.students||{}); l.forEach(function(x){ var k=H.tzKey(x.s.tz)||('id:'+x.s.id); st[k]=Object.assign({}, st[k]||{}, { name:H.stuName(x.s), sid:x.s.id, status:status, at:Date.now(), by:H.me() }); }); H.save('ministry', c.id, { cityName:c.name, students:st }, '✓ עודכנו '+l.length+' תיקים').then(function(){ MOE.sel={}; syncMinistryFlag(l.map(function(x){ return { s:x.s, status:status }; })); }); };
     if((b=$('#moeBulkOk'))) b.addEventListener('click',function(){ bulk('ok'); });
     if((b=$('#moeBulkPend'))) b.addEventListener('click',function(){ bulk('pending'); });
     var f=$('#moeFile'); if(f) f.addEventListener('change',function(){ var file=this.files&&this.files[0]; if(!file) return; window.__hqImport.readRows(file,function(rows){ crossCheck(c, rows, file.name); }); });
     var acts=$('#ministryActions'); if(acts){ acts.innerHTML='<button type="button" class="btn-ghost" id="moeExpHead">ייצוא לאקסל</button>'+(canE?'<button type="button" class="btn-primary" id="moeUpHead">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'</button>':''); $('#moeExpHead').addEventListener('click',function(){ expRows(rows); }); var u=$('#moeUpHead'); if(u) u.addEventListener('click',function(){ var fi=$('#moeFile'); if(fi) fi.click(); }); }
   }
+  /* ===== ייבוא ממשרד החינוך — שתי התבניות הקבועות, הצלבה לפי ת"ז =====
+     1. "מצבת גני ילדים" — מי קלוט/ה במשרד: סמל מוסד, תאריכי שיבוץ (מתי הרשות שיבצה).
+     2. "שגויים בגני ילדים" — הרשומות השגויות: עד 5 קודי שגיאה עם תיאור, תאריך קליטת
+        התנועה (מה רשום אצלם כתאריך הרישום), סמל המוסד מהשיבוץ, משובץ בגן, קיים במרשם.
+     כל קובץ מעדכן את החלק שלו בכל תיק, והמצב נגזר משניהם: יש שגיאות → שגוי · במצבה
+     ובסמל שלנו → מתוקצב · במצבה בסמל אחר → שגוי (סמל) · לא במצבה → לא נקלט/ה.
+     תאריך הכניסה לפי משרד החינוך הוא המדד לרישום בפועל: כשהוא שונה מתאריך הרישום
+     בתיק — מוצגת התראה עם "עדכון בתיק" או "ביטול ההתראה" (לתלמידה הזו). */
+  var MOE_KIND_L={ roster:'מצבת גני ילדים', errors:'שגויים בגני ילדים', generic:'מצבה' };
+  function moeDetect(hdr){
+    var has=function(h){ return hdr.indexOf(h)>=0; };
+    if(has('קודשגיאה1')||has('תיאורשגיאה1')) return 'errors';
+    if(has('שםתלמיד') && hdr.some(function(h){ return /^תאריךשיבוץמ/.test(h); })) return 'roster';
+    return 'generic';
+  }
+  function moeStatus(rec){
+    if(rec.manual) return rec.status;
+    if(rec.errors && rec.errors.length) return 'error';
+    if(rec.inRoster===true) return rec.symMismatch?'error':'ok';
+    if(rec.inRoster===false) return 'missing';
+    return rec.status||'pending';
+  }
+  function moeNote(rec){
+    if(rec.errors && rec.errors.length) return rec.errors.map(function(e){ return (e.code?e.code+' · ':'')+e.desc; }).join(' | ');
+    if(rec.inRoster===true && rec.symMismatch) return 'סמל מוסד שונה במשרד החינוך ('+rec.rosterSym+') מול הגן אצלנו ('+rec.ourSym+')';
+    if(rec.inRoster===false) return 'לא מופיע/ה במצבת משרד החינוך — לבדוק מול העירייה (קלוט/ה שם?) ודיווח מול הרכז/ת';
+    return rec.note||'';
+  }
+  function moeOurDate(s){ return String(s.regDate||'').slice(0,10); }
   function crossCheck(c, rows, fileName){
     if(!rows.length){ toast('הקובץ ריק'); return; }
-    var hdr=rows[0].map(window.__hqImport.normHeader); var tzCol=-1, symCol=-1, stCol=-1;
-    hdr.forEach(function(h,i){ if(tzCol<0&&/^(תז|תעודתזהות|מספרזהות|זהות|מסזהות|תזתלמיד)$/.test(h)) tzCol=i; if(symCol<0&&/סמל/.test(h)) symCol=i; if(stCol<0&&/(סטטוס|מצב|תקצוב|קליטה)/.test(h)) stCol=i; });
+    var NH=function(h){ return window.__hqImport.normHeader(h).replace(/-/g,''); };
+    var hdr=rows[0].map(NH), kind=moeDetect(hdr);
+    var col=function(){ for(var a=0;a<arguments.length;a++){ var i=hdr.indexOf(arguments[a]); if(i>=0) return i; } return -1; };
+    var colRe=function(re, skip){ for(var i=0;i<hdr.length;i++){ if(re.test(hdr[i]) && i!==skip) return i; } return -1; };
+    var tzCol=col('מספרזהות','תז','תעודתזהות','זהות','מסזהות','תזתלמיד');
     if(tzCol<0){ var best=-1, bestN=0; rows[0].forEach(function(_,i){ var n=0; rows.slice(1,50).forEach(function(r){ var d=H.digits(r[i]); if(d.length>=8&&d.length<=9) n++; }); if(n>bestN){ bestN=n; best=i; } }); if(bestN>=3) tzCol=best; }
-    if(tzCol<0){ toast('לא נמצאה עמודת ת"ז בקובץ'); return; }
-    var inFile={}; rows.slice(1).forEach(function(r){ var k=H.tzKey(r[tzCol]); if(k) inFile[k]={ sym:symCol>=0?String(r[symCol]||'').trim():'', st:stCol>=0?String(r[stCol]||'').trim():'' }; });
-    var d=moeDoc(c.id); var st=Object.assign({}, d.students||{}); var ok=0, miss=0, sym=0; var mine={};
-    (c.stuFull||[]).forEach(function(s){ if(s.finished) return; var k=H.tzKey(s.tz); if(!k){ return; } mine[k]=1; var prev=st[k]||{}; var f=inFile[k];
-      if(f){ var badSym=f.sym && s.ganSym && H.digits(f.sym)!==H.digits(s.ganSym); if(badSym){ st[k]=Object.assign({},prev,{ name:H.stuName(s), sid:s.id, status:'error', note:'סמל מוסד שונה במשרד החינוך ('+f.sym+') מול הגן אצלנו ('+s.ganSym+')', at:Date.now(), by:H.me(), auto:true }); sym++; } else { st[k]=Object.assign({},prev,{ name:H.stuName(s), sid:s.id, status:'ok', note:(prev.status==='ok'?prev.note:'')||'', at:Date.now(), by:H.me(), auto:true }); ok++; } }
-      else { if(prev.status!=='missing'||!prev.note) st[k]=Object.assign({},prev,{ name:H.stuName(s), sid:s.id, status:'missing', note:prev.note||'לא מופיע/ה במצבת משרד החינוך — לבדוק דיווח מול הרכז/ת', at:Date.now(), by:H.me(), auto:true }); miss++; } });
-    var extra=Object.keys(inFile).filter(function(k){ return !mine[k]; });
-    H.save('ministry', c.id, { cityName:c.name, students:st, extra:extra, checkedAt:Date.now(), file:fileName, fileRows:rows.length-1 }, '✓ הצלבה: '+ok+' מתוקצבים · '+miss+' לא נקלטו · '+sym+' סמל שונה · '+extra.length+' במצבה בלבד').then(function(){ LIVE.hqAudit('ministry', c.name+' · '+fileName+' · '+ok+'/'+miss+'/'+sym); syncMinistryFlag((c.stuFull||[]).filter(function(s){ return !s.finished && st[H.tzKey(s.tz)]; }).map(function(s){ return { s:s, status:st[H.tzKey(s.tz)].status }; })); });
+    var passCol=col('מספרדרכון');
+    if(tzCol<0 && passCol<0){ toast('לא נמצאה עמודת ת"ז בקובץ'); return; }
+    var cell=function(r,i){ return i>=0 ? String(r[i]==null?'':r[i]).trim() : ''; };
+    var nd=window.__hqImport.normDateVal;
+    var symCol= kind==='errors' ? col('סמלמוסד') : colRe(/^סמלמוסד$/) >= 0 ? colRe(/^סמלמוסד$/) : colRe(/סמל/);
+    var plSymCol=col('סמלמוסדמשיבוץ'), fromCol=colRe(/^תאריךשיבוץמ/), toCol=colRe(/^תאריךשיבוץעד|^עדתאריךשיבוץ/), entryCol=col('תאריךקליטתתנועה'), plDateCol=col('תאריךשיבוץ');
+    var inGanCol=col('משובץבגן'), regCol=col('קייםבמרשם'), stCol=kind==='generic'?colRe(/(סטטוס|מצב|תקצוב|קליטה)/):-1;
+    var errCols=[]; for(var n=1;n<=5;n++){ errCols.push([col('קודשגיאה'+n), col('תיאורשגיאה'+n)]); }
+    var inFile={};
+    rows.slice(1).forEach(function(r){
+      var k=H.tzKey(cell(r,tzCol)) || H.tzKey(cell(r,passCol)); if(!k) return;
+      var f={ sym:cell(r,symCol), from:nd(cell(r,fromCol)), to:nd(cell(r,toCol)), st:cell(r,stCol) };
+      if(kind==='errors'){ f.errors=errCols.map(function(p){ return { code:cell(r,p[0]), desc:cell(r,p[1]) }; }).filter(function(e){ return e.code||e.desc; });
+        f.entry=nd(cell(r,entryCol)); f.plDate=nd(cell(r,plDateCol)); f.plSym=cell(r,plSymCol); f.inGan=cell(r,inGanCol); f.inReg=cell(r,regCol); }
+      inFile[k]=f; });
+    var d=moeDoc(c.id); var st=Object.assign({}, d.students||{}); var cnt={ ok:0, missing:0, error:0, date:0 }; var mine={};
+    (c.stuFull||[]).forEach(function(s){ if(s.finished) return; var k=H.tzKey(s.tz); if(!k) return; mine[k]=1;
+      var prev=Object.assign({}, st[k]||{}), f=inFile[k];
+      var rec=Object.assign(prev, { name:H.stuName(s), sid:s.id, at:Date.now(), by:H.me(), auto:true, ourSym:s.ganSym||'' });
+      delete rec.manual;
+      if(kind==='roster' || kind==='generic'){
+        rec.inRoster=!!f; rec.rosterAt=Date.now();
+        if(f){ rec.rosterSym=f.sym; rec.symMismatch=!!(f.sym && s.ganSym && H.digits(f.sym)!==H.digits(s.ganSym)); if(f.from) rec.placedFrom=f.from; if(f.to) rec.placedTo=f.to; }
+        else { rec.symMismatch=false; }
+      }
+      if(kind==='errors'){
+        rec.errorsAt=Date.now();
+        if(f){ rec.errors=f.errors; rec.entryDate=f.entry||rec.entryDate||''; rec.errPlSym=f.plSym; rec.errInGan=f.inGan; rec.errInReg=f.inReg; if(f.from) rec.placedFrom=f.from; if(f.to) rec.placedTo=f.to; }
+        else rec.errors=[];
+      }
+      /* תאריך הכניסה במשרד (קליטת התנועה, ואם אין — תחילת השיבוץ) מול תאריך הרישום בתיק */
+      var moeDate=rec.entryDate||rec.placedFrom||'';
+      rec.dateAlert=!!(moeDate && moeOurDate(s) && moeDate!==moeOurDate(s) && rec.dateDismissed!==moeDate);
+      if(rec.dateAlert) cnt.date++;
+      rec.status=moeStatus(rec); rec.note=moeNote(rec);
+      cnt[rec.status]=(cnt[rec.status]||0)+1;
+      st[k]=rec; });
+    var patch={ cityName:c.name, students:st };
+    if(kind==='errors'){ patch.errorsAt=Date.now(); patch.errorsFile=fileName; patch.errorsRows=rows.length-1; }
+    else { patch.extra=Object.keys(inFile).filter(function(k){ return !mine[k]; }); patch.checkedAt=Date.now(); patch.file=fileName; patch.fileRows=rows.length-1; }
+    H.save('ministry', c.id, patch, '✓ '+MOE_KIND_L[kind]+': '+cnt.ok+' מתוקצבים · '+cnt.missing+' לא נקלטו · '+cnt.error+' שגויים'+(cnt.date?' · '+cnt.date+' תאריך שונה':'')+(patch.extra?' · '+patch.extra.length+' במצבה בלבד':''))
+      .then(function(){ LIVE.hqAudit('ministry', c.name+' · '+MOE_KIND_L[kind]+' · '+fileName+' · '+cnt.ok+'/'+cnt.missing+'/'+cnt.error);
+        syncMinistryFlag((c.stuFull||[]).filter(function(s){ return !s.finished && st[H.tzKey(s.tz)]; }).map(function(s){ return { s:s, status:st[H.tzKey(s.tz)].status }; })); });
     H.hoist('ministry', ['moeExp']);
+  }
+  /* התראת תאריך: עדכון תאריך הרישום בתיק לתאריך שבמשרד החינוך, או ביטול ההתראה לתלמידה הזו */
+  function moeDateFix(s, apply){
+    var d=moeDoc(s.cityId), k=H.tzKey(s.tz), st=Object.assign({}, d.students||{}), rec=Object.assign({}, st[k]||{}); var md=rec.entryDate||rec.placedFrom||''; if(!md) return;
+    var done=function(){ rec.dateAlert=false; if(!apply) rec.dateDismissed=md; st[k]=rec; return H.save('ministry', s.cityId, { students:st }, apply?'✓ תאריך הרישום עודכן בתיק':'✓ ההתראה בוטלה לתלמידה זו'); };
+    if(apply) LIVE.updateStudent(s.cityId, s.year, s.id, function(x){ x.regDate=md; x.journal=Array.isArray(x.journal)?x.journal.slice():[]; x.journal.push({ id:H.uid(), at:new Date().toISOString(), by:H.me(), type:'system', subject:'תאריך רישום', text:'עודכן לפי משרד החינוך: '+H.fmtDate(md) }); }).then(done).catch(function(e){ toast('העדכון נכשל: '+H.hqErr(e)); });
+    else done();
+  }
+  /* דיווח במייל על הלא-קלוטים / השגויים — לאיש הקשר שמקבל את הנתונים */
+  function moeMail(c, list, what){
+    if(!list.length){ toast('אין תיקים לדיווח'); return; }
+    var rc=(c.settings&&c.settings.reportContacts)||{};
+    var body='שלום רב,\n\nמצורפת רשימת '+what+' ('+list.length+') — '+c.name+':\n\n'+list.map(function(x,i){ return (i+1)+'. '+H.stuName(x.s)+' · ת"ז '+(x.s.tz||'—')+' · '+(x.s.gan||'ללא גן')+(x.s.ganSym?' (סמל '+x.s.ganSym+')':'')+(x.r&&x.r.note?' — '+x.r.note:''); }).join('\n')+'\n\nנשמח לבדיקתכם ולעדכון.\n\nבברכה,\nמחלקת הרישום';
+    H.promptForm('דיווח במייל · '+what, [{k:'to',l:'אל (מייל)',v:rc.moe||rc.muni||'',dir:'ltr',req:true},{k:'subject',l:'נושא',v:what+' · '+c.name},{k:'body',l:'תוכן',t:'textarea',rows:12,v:body}], function(o){
+      var to=String(o.to||'').split(/[,;\s]+/).filter(H.isEmail); if(!to.length){ toast('יש להזין מייל תקין'); return false; }
+      LIVE.bridge('sendMailBulk', { items:to.map(function(t){ return { to:t, subject:o.subject, body:o.body }; }), opts:{ fromName:'מחלקת הרישום' } }).then(function(){ toast('✓ הדיווח נשלח'); LIVE.hqAudit('ministry', c.name+' · דיווח '+what+' ל-'+to.join(', ')); }).catch(function(e){ toast('השליחה נכשלה: '+H.hqErr(e)); });
+    }, 'שליחה');
   }
   H.reg('ministry', renderMinistry);
   window.__hqMoe={ setStatus:setStatus };
