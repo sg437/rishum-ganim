@@ -19,7 +19,10 @@ const PORT=8751;
 const server=require('http').createServer((req,res)=>{
   const f=decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/,'');
   if(f==='register.html'){ res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); return res.end(html); }
-  try{ const body=fs.readFileSync(path.join(ROOT,f)); res.writeHead(200,{'Content-Type':f.endsWith('.js')?'text/javascript':f.endsWith('.css')?'text/css':'application/octet-stream'}); res.end(body); }
+  /* רק קבצים מרשימה סגורה שבשורש הפרויקט — שום נתיב מהבקשה אינו נבנה ישירות */
+  const STATIC={ 'ui-lab.js':'text/javascript', 'ui-lab.css':'text/css', 'sw.js':'text/javascript' };
+  if(!Object.prototype.hasOwnProperty.call(STATIC, f)){ res.writeHead(404); return res.end('nf'); }
+  try{ const body=fs.readFileSync(path.join(ROOT, Object.keys(STATIC).find(k=>k===f))); res.writeHead(200,{'Content-Type':STATIC[f]}); res.end(body); }
   catch(e){ res.writeHead(404); res.end('nf'); }
 });
 let pass=0, fail=0;
