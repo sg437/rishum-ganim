@@ -268,6 +268,35 @@ const DATA={
     await pg.selectOption('#impKind','stu');
     return (r.kind==='gan' && r.opts===3 && r.regHidden && /ייבוא 1 גנים/.test(pv.go) && /גן הזית/.test(pv.t) && !/גן הדקל/.test(pv.t.split('ייבוא')[0].replace(/כבר קיימים[^]*?מדולגים/,''))) || JSON.stringify({r,pv});
   });
+  await step('פנייה על תלמיד/ה: משתקפת לתוכנת העיר (hq_requests) ונרשמת ביומן התיק; שינוי סטטוס נרשם גם הוא', async()=>{
+    const r=await pg.evaluate(async()=>{
+      const L=window.__centralLive;
+      const id=await L.hqSet('requests', null, { cityId:'modiin-illit', cityName:'מודיעין עילית', studentId:'s1', year:'תשפ"ז', who:'בדיקה', type:'ערעור על שיבוץ', text:'מבקשים גן אחר', wantGan:'גן התמר', status:'open', log:[] });
+      await new Promise(r=>setTimeout(r,150));
+      const mir=(window.__docs['app/hq_requests']||{}).items||{};
+      await L.hqSet('requests', id, { status:'closed', decision:'אושר מעבר' });
+      await new Promise(r=>setTimeout(r,150));
+      const mir2=(window.__docs['app/hq_requests']||{}).items||{};
+      const yearDoc=Object.keys(window.__docs).filter(k=>/^app\/students_/.test(k)).map(k=>window.__docs[k]).find(d=>(d.students||[]).some(x=>x.id==='s1'));
+      const s1=yearDoc && yearDoc.students.find(x=>x.id==='s1');
+      const jr=(s1&&s1.journal)||[];
+      return { mirrored:!!mir[id] && mir[id].wantGan==='גן התמר', closed:mir2[id] && mir2[id].status==='closed' && mir2[id].decision==='אושר מעבר', jr:jr.filter(e=>e.type==='appeal').length, hasDecision:jr.some(e=>/אושר מעבר/.test(e.text||'')) };
+    });
+    return (r.mirrored && r.closed && r.jr>=2 && r.hasDecision) || JSON.stringify(r);
+  });
+  await step('דורש טיפול: מקובץ לפי נושא, עם כפתור "טיפול" ששומר מצב, אחראי/ת והערה', async()=>{
+    await go('followups'); await pg.waitForTimeout(150);
+    const r=await pg.evaluate(async()=>{
+      const host=document.getElementById('hqFollowups'); const chips=host.querySelectorAll('[data-fu-topic]').length;
+      const h=host.querySelector('[data-fu-h]'); if(!h) return { chips, noItems:true };
+      h.click(); await new Promise(r=>setTimeout(r,50));
+      document.getElementById('pf-status').value='progress'; document.getElementById('pf-note').value='דיברנו עם הרכזת';
+      document.getElementById('pf-ok').click(); await new Promise(r=>setTimeout(r,200));
+      const fu=Object.keys(window.__docs).filter(k=>k.startsWith('org/hq/tracking/fu_')).map(k=>window.__docs[k]);
+      return { chips, saved:fu.length>0 && fu[0].status==='progress' && /דיברנו/.test(fu[0].note||'') };
+    });
+    return (r.chips>=2 && r.saved) || JSON.stringify(r);
+  });
   await step('סינון תלמידים במרכזי: מגדר "מעורב", ערוץ רישום ותאריך רישום', async()=>{
     await go('students'); const t=await pg.evaluate(()=>document.getElementById('hqStudents').innerHTML);
     return (/value="מעורב"/.test(t) && /data-f="regVia"/.test(t) && /data-f="regFrom"/.test(t) && /data-f="regTo"/.test(t)) || 'missing filters';

@@ -28,7 +28,7 @@ Object.defineProperty(window,'ORG',{get:()=>ORG,set:v=>{ORG=v},configurable:true
 Object.defineProperty(window,'_pending',{get:()=>_pending,configurable:true});
 Object.defineProperty(window,'currentUser',{get:()=>currentUser,set:v=>{currentUser=v},configurable:true});
 window.__resetCity=()=>{ _cityResolved=false; };
-Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
+Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, journalAdd, cityRequests, waitlistReady, viewRequests, openListReport, openStaff, makeStaff, setCloudDoc:(id,d)=>{ cloudDocs.set(id,d); }, stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -370,6 +370,54 @@ const server=require('http').createServer((req,res)=>{
       const few=assistantBEligibility(mk('3','2099-01-01'), ASSISTANT_B_MIN-1).eligible;
       const noExp=assistantBEligibility(mk('3',''), ASSISTANT_B_MIN);
       return ok && !expired.eligible && /אינו בתוקף/.test(expired.reasons.join()) && !five && !few && noExp.eligible && noExp.noExpiry;
+    });
+  });
+
+  /* ---- שלב 3א: תיעוד בתיק · דיווח על רשימה · פניות וערעורים בעיר ---- */
+  await step('תיעוד בתיק: הערה ושיחה נוספות מתוך התיק, נשמרות ונשארות גם אחרי שמירת הטופס', async()=>{
+    return await pg.evaluate(async()=>{
+      DB.gans=[]; DB.students=[]; const g=makeGan(); g.ganName='גן הגפן'; g.ganSymbol='7788'; DB.gans.push(g);
+      const s=Object.assign(makeStudent(),{firstName:'שירה',lastName:'לוי',tz:'123456782',year:DB.activeYear,ganId:g.id}); DB.students.push(s);
+      openStudent(JSON.parse(JSON.stringify(s)));
+      document.querySelector('[data-jr="call"]').click();
+      document.getElementById('jr-subject').value='אמא'; document.getElementById('jr-text').value='ביקשה לעבור גן';
+      document.getElementById('jr-add').click(); await new Promise(r=>setTimeout(r,30));
+      document.querySelector('[data-jr="note"]').click(); document.getElementById('jr-text').value='לבדוק מול הרכזת'; document.getElementById('jr-add').click();
+      const listed=/ביקשה לעבור גן/.test(document.getElementById('jr-list').textContent);
+      document.querySelector('[data-jr="emailOut"]').click();
+      const prefilled=/123456782/.test(document.getElementById('jr-text').value) && /גן הגפן/.test(document.getElementById('jr-text').value) && /7788/.test(document.getElementById('jr-text').value);
+      document.getElementById('saveStu').click(); await new Promise(r=>setTimeout(r,50)); closeModal();
+      const rec=DB.students.find(x=>x.id===s.id); const j=rec.journal||[];
+      return listed && prefilled && j.length===2 && j[0].type==='call' && j[0].subject==='אמא' && j[1].type==='note';
+    });
+  });
+  await step('תיעוד בתיק גן ובתיק איש/אשת צוות', async()=>{
+    return await pg.evaluate(async()=>{
+      const g=DB.gans[0]; openGan(JSON.parse(JSON.stringify(g)));
+      document.querySelector('[data-jr="note"]').click(); document.getElementById('jr-text').value='הגננת ביקשה סייעת'; document.getElementById('jr-add').click();
+      document.getElementById('saveGan').click(); await new Promise(r=>setTimeout(r,30)); closeModal();
+      const m=makeStaff(); m.firstName='דינה'; m.lastName='כהן'; DB.staff.push(m); openStaff(JSON.parse(JSON.stringify(m)));
+      document.querySelector('[data-jr="call"]').click(); document.getElementById('jr-text').value='אישרה שעות'; document.getElementById('jr-add').click(); closeModal();
+      return (DB.gans[0].journal||[]).length===1 && (DB.staff.find(x=>x.id===m.id).journal||[]).length===1;
+    });
+  });
+  await step('דיווח על רשימה: מייל אחד עם כל התלמידות שבסינון (ת"ז וגן), לנמען שבאנשי הקשר', async()=>{
+    return await pg.evaluate(()=>{
+      DB.settings.reportContacts={ muni:'muni@city.gov.il', moe:'' };
+      openListReport(DB.students.slice(), 'לא קלוט בעירייה');
+      const to=document.getElementById('lrp-to').value, body=document.getElementById('lrp-body').value, subj=document.getElementById('lrp-subject').value;
+      closeModal(); delete DB.settings.reportContacts;
+      return to==='muni@city.gov.il' && /123456782/.test(body) && /גן הגפן/.test(body) && /לא קלוט בעירייה/.test(subj);
+    });
+  });
+  await step('פניות וערעורים בעיר: מוצגות מהמרכזי, ופנייה עם גן מבוקש שהתפנה מוקפצת כ"התפנה מקום"', async()=>{
+    return await pg.evaluate(()=>{
+      const g=DB.gans[0]; g.assignCap='5';
+      setCloudDoc('hq_requests', { items:{ r1:{ who:'שירה לוי', studentId:DB.students[0].id, type:'ערעור על שיבוץ', status:'open', wantGan:'גן הגפן', text:'x', createdAt:Date.now() }, r2:{ who:'אחרת', type:'בירור', status:'closed', createdAt:Date.now()-1000 } } });
+      const n=cityRequests().length, wl=waitlistReady();
+      const root=document.createElement('div'); document.body.appendChild(root); viewRequests(root);
+      const t=root.textContent; root.remove(); setCloudDoc('hq_requests', { items:{} });
+      return n===2 && wl.length===1 && wl[0].g.id===g.id && /התפנה מקום/.test(t) && /שירה לוי/.test(t) && !/אחרת/.test(t);
     });
   });
 

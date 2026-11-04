@@ -2736,6 +2736,7 @@ function packStudent(s){
       if(any) out[k]=sub;
       continue;
     }
+    if(Array.isArray(dv) && Array.isArray(v) && !v.length && !dv.length) continue;   // רשימה ריקה (למשל תיעוד) — לא נשמרת
     if(v!==dv && v!==undefined) out[k]=v;
   }
   return out;
@@ -3068,6 +3069,142 @@ function retentionGateMsg(student){
 function retentionPolicy(){ return (DB.settings&&DB.settings.retentionPolicy)==='obligated' ? 'obligated' : 'space'; }
 /* אנשי הקשר לדיווח (עירייה / משרד החינוך) — מההגדרות */
 function reportContacts(){ const c=(DB.settings&&DB.settings.reportContacts)||{}; return { muni:String(c.muni||""), moe:String(c.moe||"") }; }
+/* ============================================================
+   תיעוד והתכתבות בתיק — תלמיד/ה · איש/אשת צוות · גן
+   ------------------------------------------------------------
+   לכל תיק יומן (journal): סיכומי שיחות, הערות, מיילים שנשלחו מהתיק,
+   מיילים שהתקבלו (הדבקה) ופניות/ערעורים. המטרה: שכל דבר יהיה מתועד להמשך.
+   הרשומה נשמרת על התיק עצמו — גם בעותק שבטופס הפתוח וגם ברשומה שב-DB,
+   כדי ששמירת הטופס אחר כך לא תדרוס את מה שנוסף.
+   ============================================================ */
+const JOURNAL_TYPES = { call:"📞 שיחה", note:"📝 הערה", emailOut:"📧 מייל יוצא", emailIn:"📨 מייל נכנס", appeal:"⚖️ פנייה / ערעור", system:"⚙️ מערכת" };
+const JOURNAL_MAX = 300;
+function journalList(kind){ return kind==="staff" ? DB.staff : kind==="gan" ? DB.gans : DB.students; }
+function journalAdd(kind, copy, entry, noSave){
+  const e=Object.assign({ id:uid(), at:new Date().toISOString(), by:myEmail() }, entry||{});
+  e.text=String(e.text||"").slice(0,6000); if(e.subject) e.subject=String(e.subject).slice(0,300);
+  const rec=(journalList(kind)||[]).find(x=>x.id===copy.id);
+  const push=o=>{ o.journal=Array.isArray(o.journal)?o.journal.slice():[]; o.journal.push(e); if(o.journal.length>JOURNAL_MAX) o.journal=o.journal.slice(-JOURNAL_MAX); };
+  push(copy); if(rec && rec!==copy) push(rec);
+  if(rec && !noSave) save();
+  return e;
+}
+/* פרטי התיק שנכנסים אוטומטית לתחילת מייל שנשלח ממנו */
+function journalContext(kind, r){
+  if(kind==="gan"){
+    const reg=studentsOfYear().filter(x=>!x.finished && x.ganId===r.id).length;
+    return ["גן: "+ganName(r.id), r.ganSymbol?"סמל הגן: "+r.ganSymbol:"", r.internalSymbol?"סמל פנימי: "+r.internalSymbol:"", r.citySymbol?"סמל עירוני: "+r.citySymbol:"",
+      "כתובת: "+([r.address||r.street,r.building,r.city].filter(Boolean).join(" ")||"—"), r.teacherName?"גננת: "+r.teacherName:"", "גיל: "+(r.age||"—"), "רשומות בגן: "+reg].filter(Boolean);
+  }
+  if(kind==="staff"){
+    const asg=DB.gans.filter(g=>{ const a=ganAsg(g.id)||{}; return Object.values(a).some(x=>x&&x.staffId===r.id); }).map(g=>ganName(g.id));
+    return ["שם: "+staffName(r), r.tz?'ת"ז: '+r.tz:"", "תפקיד: "+(r.role||"—"), asg.length?"גן: "+asg.join(", "):"", r.mobile?"נייד: "+r.mobile:""].filter(Boolean);
+  }
+  const g=r.ganId?ganById(r.ganId):null;
+  return ["שם התלמיד/ה: "+[r.lastName,r.firstName].filter(Boolean).join(" "), 'ת"ז: '+(r.tz||"—"),
+    "גן: "+(g?ganName(g.id)+(g.ganSymbol?" (סמל "+g.ganSymbol+")":""):"לא משובץ/ת"), "שנה: "+(r.year||DB.activeYear||"")];
+}
+function journalRecipients(kind, r){
+  const c=reportContacts(), out=[];
+  if(kind==="student"){ if(r.email) out.push(["הורים",r.email]); }
+  if(kind==="staff" && r.email) out.push([staffName(r),r.email]);
+  if(c.muni) out.push(["עירייה",c.muni]); if(c.moe) out.push(["משרד החינוך",c.moe]);
+  return out;
+}
+function journalSectionHtml(kind){
+  return `<fieldset><legend>תיעוד והתכתבות</legend>
+    <div class="hint" style="margin-bottom:8px">כל שיחה, מייל ופנייה — מתועדים כאן להמשך. מייל שנשלח מכאן נכנס ליומן אוטומטית.</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap">
+      <button type="button" class="btn ghost sm" data-jr="call">📞 סיכום שיחה</button>
+      <button type="button" class="btn ghost sm" data-jr="note">📝 הערה</button>
+      <button type="button" class="btn ghost sm" data-jr="emailOut">📧 שליחת מייל</button>
+      <button type="button" class="btn ghost sm" data-jr="emailIn">📨 מייל שהתקבל</button>
+    </div>
+    <div id="jr-form" style="margin-top:8px"></div>
+    <div id="jr-list" style="margin-top:8px"></div>
+  </fieldset>`;
+}
+function journalListHtml(r){
+  const list=(Array.isArray(r.journal)?r.journal:[]).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  if(!list.length) return `<div class="hint">אין עדיין תיעוד בתיק.</div>`;
+  return `<div class="jr-tl" style="display:flex;flex-direction:column;gap:6px">${list.map(e=>`<div style="border:1px solid var(--border);border-radius:8px;padding:6px 10px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)"><b style="color:var(--ink,inherit)">${esc(JOURNAL_TYPES[e.type]||e.type||"")}</b><span>${esc(new Date(e.at).toLocaleString("he-IL"))}</span>${e.by?`<span>${esc(e.by)}</span>`:""}${e.to?`<span dir="ltr">→ ${esc(e.to)}</span>`:""}${e.from?`<span dir="ltr">← ${esc(e.from)}</span>`:""}${e.status?`<span class="pill neutral">${esc(e.status)}</span>`:""}</div>
+    ${e.subject?`<div style="font-weight:700;margin-top:2px">${esc(e.subject)}</div>`:""}
+    <div style="white-space:pre-wrap;margin-top:2px">${esc(e.text||"")}</div></div>`).join("")}</div>`;
+}
+function wireJournal(kind, copy){
+  const listBox=$("#jr-list"), form=$("#jr-form"); if(!listBox||!form) return;
+  const refresh=()=>{ listBox.innerHTML=journalListHtml(copy); };
+  refresh();
+  document.querySelectorAll("[data-jr]").forEach(b=>b.onclick=()=>{
+    const t=b.dataset.jr;
+    if(t==="emailOut"){
+      const ctx=journalContext(kind, copy), rc=journalRecipients(kind, copy);
+      form.innerHTML=`<div class="note" style="display:flex;flex-direction:column;gap:6px">
+        <div><label>אל</label><input id="jr-to" dir="ltr" style="text-align:right" placeholder="mail@example.com">
+          ${rc.length?`<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px">${rc.map(x=>`<button type="button" class="btn ghost sm" data-jr-to="${esc(x[1])}">${esc(x[0])}</button>`).join("")}</div>`:""}</div>
+        <div><label>נושא</label><input id="jr-subject" value="${esc(ctx[0]||"")}"></div>
+        <div><label>תוכן</label><textarea id="jr-text" rows="8">${esc("שלום רב,\n\n\n\nפרטים:\n"+ctx.join("\n")+"\n\nבברכה,\n"+appTitle())}</textarea></div>
+        <div class="row" style="gap:6px"><button type="button" class="btn sm" id="jr-send">📧 שליחה ותיעוד</button><button type="button" class="btn ghost sm" id="jr-cancel">ביטול</button></div></div>`;
+      form.querySelectorAll("[data-jr-to]").forEach(x=>x.onclick=()=>{ const i=$("#jr-to"); const cur=i.value.split(/[,;\s]+/).filter(Boolean); if(!cur.includes(x.dataset.jrTo)) cur.push(x.dataset.jrTo); i.value=cur.join(", "); });
+      $("#jr-cancel").onclick=()=>{ form.innerHTML=""; };
+      $("#jr-send").onclick=async()=>{
+        const to=String($("#jr-to").value||"").split(/[,;\s]+/).map(x=>x.trim()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+        if(!to.length){ toast("יש להזין כתובת מייל תקינה"); return; }
+        if(!DRIVE_READY){ toast("שליחת מייל דורשת את חיבור הגשר (דרייב) — לא מוגדר"); return; }
+        const btn=$("#jr-send"); btn.disabled=true; btn.textContent="שולח…";
+        const subject=$("#jr-subject").value, text=$("#jr-text").value;
+        try{ await driveCall("sendMail",{ to:to.join(","), subject, body:text });
+          journalAdd(kind, copy, { type:"emailOut", to:to.join(", "), subject, text }); form.innerHTML=""; refresh(); toast("המייל נשלח ותועד בתיק ✓"); }
+        catch(e){ btn.disabled=false; btn.textContent="📧 שליחה ותיעוד"; toast("השליחה נכשלה: "+driveErrHe(e)); }
+      };
+      return;
+    }
+    const isIn=t==="emailIn";
+    form.innerHTML=`<div class="note" style="display:flex;flex-direction:column;gap:6px">
+      ${isIn?`<div><label>מאת</label><input id="jr-from" dir="ltr" style="text-align:right" placeholder="מי שלח/ה"></div><div><label>נושא</label><input id="jr-subject"></div>`:""}
+      ${t==="call"?`<div><label>עם מי דיברנו</label><input id="jr-subject" placeholder="למשל: אמא · העירייה · הגננת"></div>`:""}
+      <div><label>${isIn?"תוכן המייל (הדבקה)":t==="call"?"סיכום השיחה":"הערה"}</label><textarea id="jr-text" rows="${isIn?8:4}"></textarea></div>
+      <div class="row" style="gap:6px"><button type="button" class="btn sm" id="jr-add">💾 הוספה לתיק</button><button type="button" class="btn ghost sm" id="jr-cancel">ביטול</button></div></div>`;
+    $("#jr-cancel").onclick=()=>{ form.innerHTML=""; };
+    $("#jr-add").onclick=()=>{
+      const text=String($("#jr-text").value||"").trim(); if(!text){ toast("אין מה לתעד"); return; }
+      const subj=$("#jr-subject")?String($("#jr-subject").value||"").trim():"";
+      journalAdd(kind, copy, { type:t, text, subject:subj, from:isIn?String(($("#jr-from")||{}).value||"").trim():undefined });
+      form.innerHTML=""; refresh(); toast("נוסף לתיעוד ✓");
+    };
+  });
+}
+/* דיווח על רשימה — מייל אחד לגורם (למשל העירייה) עם התלמידות שבסינון או שנבחרו.
+   נרשם ביומן של כל תלמידה ברשימה, כדי שבתיק יהיה ברור שהיא נכללה בדיווח. */
+function openListReport(list, what){
+  list=(list||[]).filter(Boolean);
+  if(!list.length){ toast("אין תלמידות ברשימה"); return; }
+  if(list.length>500){ toast("הרשימה ארוכה מדי לדיווח אחד (מעל 500) — צמצמו בסינון"); return; }
+  const c=reportContacts();
+  const rows=list.map((x,i)=>{ const g=x.ganId?ganById(x.ganId):null; return (i+1)+". "+[x.lastName,x.firstName].filter(Boolean).join(" ")+' · ת"ז '+(x.tz||"—")+" · "+(g?ganName(g.id)+(g.ganSymbol?" (סמל "+g.ganSymbol+")":""):"ללא גן"); });
+  const body=["שלום רב,","","מצורפת רשימת תלמידות ("+list.length+") — "+what+":","",...rows,"","נשמח לבדיקתכם ולעדכון.","","בברכה,",appTitle()].join("\n");
+  modal(`<h3>📧 דיווח על הרשימה</h3>
+    <div class="sub">${list.length} תלמידות · ${esc(what)}. הדיווח נרשם גם בתיק של כל אחת.</div>
+    <div style="margin-top:10px"><label>אל</label><input id="lrp-to" dir="ltr" style="text-align:right" value="${esc(c.muni||"")}">
+      <div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px">${[["עירייה",c.muni],["משרד החינוך",c.moe]].filter(x=>x[1]).map(x=>`<button type="button" class="btn ghost sm" data-lrp="${esc(x[1])}">${esc(x[0])}</button>`).join("")}</div></div>
+    <div style="margin-top:8px"><label>נושא</label><input id="lrp-subject" value="${esc("רשימת תלמידות · "+what+" · "+(mainCityName()||""))}"></div>
+    <div style="margin-top:8px"><label>תוכן</label><textarea id="lrp-body" rows="14">${esc(body)}</textarea></div>
+    <div class="foot"><button class="btn ghost" id="lrp-cancel">ביטול</button><button class="btn" id="lrp-send" style="margin-inline-start:auto">📧 שליחה</button></div>`);
+  document.querySelectorAll("[data-lrp]").forEach(x=>x.onclick=()=>{ const i=$("#lrp-to"); const cur=i.value.split(/[,;\s]+/).filter(Boolean); if(!cur.includes(x.dataset.lrp)) cur.push(x.dataset.lrp); i.value=cur.join(", "); });
+  $("#lrp-cancel").onclick=closeModal;
+  $("#lrp-send").onclick=async()=>{
+    const to=String($("#lrp-to").value||"").split(/[,;\s]+/).map(x=>x.trim()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    if(!to.length){ toast("יש להזין כתובת מייל תקינה"); return; }
+    if(!DRIVE_READY){ toast("שליחת מייל דורשת את חיבור הגשר (דרייב) — לא מוגדר"); return; }
+    const btn=$("#lrp-send"); btn.disabled=true; btn.textContent="שולח…";
+    const subject=$("#lrp-subject").value;
+    try{ await driveCall("sendMail",{ to:to.join(","), subject, body:$("#lrp-body").value });
+      list.forEach(x=>{ const rec=DB.students.find(y=>y.id===x.id); if(rec) journalAdd("student", rec, { type:"emailOut", to:to.join(", "), subject, text:"נכלל/ה בדיווח רשימה ("+list.length+" תלמידות) — "+what }, true); }); save();
+      closeModal(); toast("הדיווח נשלח ונרשם ב-"+list.length+" תיקים ✓");
+    }catch(e){ btn.disabled=false; btn.textContent="📧 שליחה"; toast("השליחה נכשלה: "+driveErrHe(e)); }
+  };
+}
 /* עדכון עזיבה באמצע שנה — מייל לגורם המטפל בעירייה ובמשרד החינוך, ישירות מהתיק.
    הנמענים והנוסח נפתחים לעריכה לפני השליחה; אחרי שליחה נרשם בתיק מתי ולמי. */
 function leaveReportText(s){
@@ -3105,7 +3242,8 @@ function openLeaveReport(s){
     try{
       await driveCall("sendMail",{ to:list.join(","), subject:$("#lr-subject").value, body:$("#lr-body").value });
       const rec=DB.students.find(x=>x.id===s.id);
-      if(rec){ rec.leftReported=new Date().toLocaleString("he-IL")+" · "+list.join(", "); save(); }
+      if(rec){ rec.leftReported=new Date().toLocaleString("he-IL")+" · "+list.join(", ");
+        journalAdd("student", rec, { type:"emailOut", to:list.join(", "), subject:$("#lr-subject").value, text:$("#lr-body").value }); save(); }
       closeModal(); toast("עדכון העזיבה נשלח ✓");
     }catch(e){ btn.disabled=false; btn.textContent="📧 שליחה"; toast("השליחה נכשלה: "+driveErrHe(e)); }
   };
@@ -3562,6 +3700,7 @@ function makeStudent(){ return {
             retention:false, retentionDoc:false,
             other:false, otherText:"" }, // סעיף 3 — "אחר" עם טקסט חופשי
   support:{ shiluv:false, salIshi:false, medical:false, behavior:false, prepA:false }, // סעיף 15 — סיוע/העשרה
+  journal:[],      // תיעוד והתכתבות: [{id,at,by,type,subject,text,to,from}] — שיחות, מיילים, פניות
   leftDate:"",     // עזיבה באמצע שנה — תאריך (YYYY-MM-DD); ריק = לא עזבה
   leftReason:"",   // עזיבה — סיבה / לאן עברה
   leftReported:"", // מתי נשלח עדכון העזיבה במייל (ISO), ולמי
@@ -3583,6 +3722,7 @@ function makeStaff(){ return {
   absences:[],                       // העדרויות: {date, reason} (סעיף 10)
   lateness:[],                       // איחורים: {date, reason} (סעיף 10)
   docFiles:{},                       // מסמכים מצורפים (תעודה וכו') — {key:{id,name,link}}
+  journal:[],                        // תיעוד והתכתבות (שיחות, מיילים)
   driveFolder:"", driveFolderId:"",  // תיקיית דרייב לאיש הצוות (סעיף 17)
   createdAt:new Date().toISOString()
 };}
@@ -3598,6 +3738,7 @@ function makeGan(){ return {
   licenseExpiry:"",                // תוקף הרישיון (YYYY-MM-DD) — תנאי לזכאות לסייעת ב'
   licenseAges:"", licenseCap:"",   // רישיון משרד החינוך: גילאים מורשים ומכסת ילדים (בקרת תפוסה מול הרישיון)
   capacity:"", assignCap:"",
+  journal:[],         // תיעוד והתכתבות של הגן (שיחות, מיילים)
   assignCapNote:"",   // אישור חריגה/הרחבה מעל הרף הרגיל — אסמכתא, תאריך ומי אישר (עירייה / משרד החינוך)
   active:true, docsNote:"", createdAt:new Date().toISOString()
 };}
@@ -3654,7 +3795,8 @@ let stuNavOpen=false;          // האם רשימת המסכים שמתחת לת
 /* המסכים שיושבים מתחת ל"תיקי התלמידות" — נפתחים בחץ שלצד הלשונית.
    אלה מסכים מלאים ולא מקטעים בתוך המסך, ולכן data-tab ולא data-setjump. */
 const STUDENT_SUBTABS = [
-  { id:"tzaharon", label:"צהרון", count:()=>tzRegisteredCount() }
+  { id:"tzaharon", label:"צהרון", count:()=>tzRegisteredCount() },
+  { id:"requests", label:"פניות וערעורים", count:()=>cityRequests().filter(r=>r.status!=="closed").length }
 ];
 /* מספר הנרשמות לצהרון בשנה הפעילה, בכיבוד בורר החינוך */
 function tzRegisteredCount(){
@@ -5509,7 +5651,7 @@ function route(){
   renderTabs(); renderCityPick(); renderYearSelect(); renderEduPick(); updateBackBtn();
   const so=$("#signOutBtn"); if(so) so.style.display=currentUser?"flex":"none";
   const v = $("#view");
-  ({home:viewHome, students:viewStudents, tzaharon:viewTzaharon, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
+  ({home:viewHome, students:viewStudents, tzaharon:viewTzaharon, requests:viewRequests, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
     municipality:viewMunicipality, export:viewExport, management:viewManagement, messages:viewMessages, tools:viewTools, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
   renderFab();
 }
@@ -6543,6 +6685,7 @@ function viewStudents(root){
     <div id="stuSummary" class="sticky"></div>
     <div class="row" style="gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
       <button class="btn ghost" id="stuMsg" title="שליחת מיילים / וואטסאפ / SMS להורים לפי הסינון">📣 שליחת הודעות</button>
+      <button class="btn ghost" id="stuReport" title="מייל אחד לעירייה / למשרד החינוך / לכל גורם — עם רשימת התלמידות שבסינון">📧 דיווח על הרשימה</button>
       <span style="flex:1;min-width:8px"></span>
       <span class="hint" style="align-self:center">ייבוא / יצוא:</span>
       <button class="btn ghost sm" id="exportStu">📤 יצוא</button>
@@ -6604,6 +6747,7 @@ function viewStudents(root){
       parentFilter:{ gans:(stuFilter.gans||[]).filter(x=>x&&x!=="__none__"), edu:stuFilter.edu||"", campus:stuFilter.campus||"",
                      period:stuFilter.period||"", ages:(stuFilter.age||[]).map(String),
                      placed: stuFilter.placed==='no' ? 'no' : 'yes' } }); }
+  { const b=$("#stuReport"); if(b) b.onclick=()=>{ const chips=stuFilterChips().map(c=>c.label); openListReport(filteredStudents(), chips.length?chips.join(" · "):"כל התלמידות"); }; }
   /* ➕ הוספת תלמידה · ✏️ עדכון לפי מ.ז. · ✔️ עדכון קבוצתי — בכפתור המרחף */
   $("#exportStu").onclick = ()=> openExportModal();
   $("#importStu").onclick = ()=> openImport();
@@ -6952,12 +7096,14 @@ function renderSelBar(list){
     <button class="btn sm" id="sel-moe" type="button">סמן כקלוט במשה"ח</button>
     <button class="btn sm light" id="sel-gan" type="button">שיבוץ לגן…</button>
     <button class="btn sm" id="sel-msg" type="button">📣 שליחת הודעה</button>
+    <button class="btn sm" id="sel-report" type="button">📧 דיווח לגורם</button>
     <button class="btn sm" id="sel-clear" type="button">ניקוי</button>
   </div>`;
   $("#sel-muni").onclick=()=>applyBulk("absorbedMunicipality", true);
   $("#sel-moe").onclick=()=>applyBulk("absorbedMinistry", true);
   $("#sel-clear").onclick=()=>{ bulkSel.clear(); renderStuTable(); };
   $("#sel-gan").onclick=openBulkAssignGan;
+  $("#sel-report").onclick=()=>{ const l=[...bulkSel].map(id=>DB.students.find(x=>x.id===id)).filter(Boolean); openListReport(l, "תלמידות שנבחרו"); };
   $("#sel-msg").onclick=()=>{
     const ids=new Set(bulkSel);
     const gans=[...new Set(list.filter(s=>ids.has(s.id)).map(s=>s.ganId).filter(Boolean))];
@@ -7242,6 +7388,7 @@ function openStudent(s){
     </div>
     <div id="s-drive-actions" style="margin-top:10px"></div>
   </fieldset>
+  ${journalSectionHtml("student")}
   <fieldset><legend>הערות וסיום</legend>
     <div><label>הערות</label><textarea id="s-notes" rows="2">${esc(s.notes)}</textarea></div>
     <label class="check" style="margin-top:10px;background:var(--warn-soft);border-color:var(--warn)"><input type="checkbox" id="s-finished" ${s.finished?'checked':''}> ✔️ סיימה עם הגן (בסימון זה יוצאת מהרשימה)</label>
@@ -7597,6 +7744,7 @@ function openStudent(s){
       ${list.some(o=>o.campus)?`<div class="hint">אפשר לשבץ באותו קמפוס — לחצ/י על שדה "קמפוס גנים" ובחר/י מהרשימה.</div>`:''}`;
     out.querySelectorAll(".sib-open").forEach(b=> b.onclick=()=>openStudentById(b.dataset.sid));
   };
+  wireJournal("student", s);
   { const lm=$("#s-leftMail"); if(lm) lm.onclick=()=>{ const cur=DB.students.find(x=>x.id===s.id)||s; closeModal(); openLeaveReport(cur); }; }
   if(!isNew) $("#delStu").onclick=()=>{ if(confirm("למחוק את תיק הילדה לצמיתות?")){ DB.students=DB.students.filter(x=>x.id!==s.id); save(); closeModal(); route(); toast("התיק נמחק"); } };
   /* הרשאת עריכה לפי חינוך (הסתרה בממשק): רשומה קיימת בחינוך שאינו מורשה → קריאה בלבד;
@@ -9946,6 +10094,74 @@ let tzFiltersOpen=false;
    מתהפכים על המסך (כלל ה-bidi שב-HANDOFF.md). */
 function tzRatio(c, m){ return m ? `${c}/${m}` : String(c); }
 
+/* ============================================================
+   פניות וערעורים — העתק מהמרכזי (מסמך hq_requests באוסף העיר)
+   ------------------------------------------------------------
+   הטיפול עצמו (סטטוס, החלטה) נעשה במרכזי — "פניות וערעורים". כאן העיר רואה
+   את כל הפניות שלה ואת מצבן, ופנייה על תלמידה מופיעה גם ביומן התיק.
+   "ממתינים לגן" — פנייה פתוחה עם גן מבוקש, כשבגן הזה יש עכשיו מקום פנוי.
+   ============================================================ */
+const REQ_STATUS_HE = { open:"פתוחה", progress:"בטיפול", closed:"נסגרה" };
+let reqFilter = { status:"open", q:"" };
+function cityRequests(){
+  const d=(typeof cloudDocs!=="undefined" && cloudDocs.get && cloudDocs.get("hq_requests")) || {};
+  const items=d.items||{};
+  return Object.keys(items).map(id=>Object.assign({ id }, items[id])).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+}
+/* גן מבוקש (טקסט חופשי) → גן בעיר: לפי שם / כינוי / סמל */
+function reqWantedGan(r){
+  const t=String(r.wantGan||"").trim().toLowerCase(); if(!t) return null;
+  return DB.gans.find(g=>[ganName(g.id),g.ganName,g.nickname,g.ganSymbol,g.internalSymbol,g.citySymbol].filter(Boolean).some(v=>String(v).trim().toLowerCase()===t))
+      || DB.gans.find(g=>{ const n=String(ganName(g.id)||"").toLowerCase(); return n && (n.includes(t)||t.includes(n)); }) || null;
+}
+/* פניות פתוחות שהגן המבוקש בהן התפנה (יש מקום לפי רף השיבוץ, או לפי הקיבולת כשאין רף) */
+function waitlistReady(){
+  return cityRequests().filter(r=>r.status!=="closed" && r.wantGan).map(r=>{
+    const g=reqWantedGan(r); if(!g || g.active===false) return null;
+    const cap=ganAssignCap(g) || (+String(g.capacity||"").replace(/[^\d]/g,"")||0); if(!cap) return null;
+    const room=cap-ganAssignedCount(g.id); return room>0 ? { r, g, room } : null;
+  }).filter(Boolean);
+}
+function viewRequests(root){
+  const all=cityRequests(), q=reqFilter.q.trim().toLowerCase();
+  const list=all.filter(r=>(!reqFilter.status || (reqFilter.status==="open" ? r.status!=="closed" : r.status===reqFilter.status))
+    && (!q || [r.who,r.text,r.type,r.gan,r.wantGan,r.by].join(" ").toLowerCase().includes(q)));
+  const wl=waitlistReady();
+  root.innerHTML=`<div class="panel">
+    <div class="section-title" style="margin-bottom:6px"><h2>פניות וערעורים</h2></div>
+    <div class="sub">הפניות של העיר מהמרכזי, עם המצב שלהן. הטיפול (סטטוס, החלטה) נעשה במרכזי; פנייה על תלמידה מופיעה גם בתיק שלה, ב"תיעוד והתכתבות".</div>
+    ${wl.length?`<div class="note" style="margin:10px 0;background:var(--good-soft);border-color:var(--good)"><b>🔔 התפנה מקום בגן מבוקש (${wl.length})</b>
+      <ul style="margin:6px 0 0;padding-inline-start:18px">${wl.map(x=>`<li><b>${esc(x.r.who||"")}</b> ממתין/ה ל<b>${esc(ganName(x.g.id))}</b> — יש עכשיו ${x.room} ${x.room===1?"מקום פנוי":"מקומות פנויים"}</li>`).join("")}</ul></div>`:""}
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin:10px 0">
+      <div class="field"><label>סטטוס</label><select id="rq-f-st"><option value="open" ${reqFilter.status==="open"?"selected":""}>פתוחות ובטיפול</option><option value="closed" ${reqFilter.status==="closed"?"selected":""}>נסגרו</option><option value="" ${!reqFilter.status?"selected":""}>הכל</option></select></div>
+      <div class="field grow"><label>חיפוש</label><input id="rq-f-q" value="${esc(reqFilter.q)}" placeholder="שם, תוכן, גן…"></div>
+    </div>
+    ${!list.length?`<div class="empty">אין פניות ${reqFilter.status==="open"?"פתוחות":""}.</div>`:`<div class="table-wrap"><table><thead><tr><th>סטטוס</th><th>תלמיד/ה</th><th>סוג</th><th>גן</th><th>גן מבוקש</th><th>נפתחה</th><th>יעד</th><th>החלטה</th></tr></thead><tbody>
+    ${list.map(r=>`<tr class="clickable" data-rq="${esc(r.id)}"><td><span class="pill ${r.status==="closed"?"neutral":r.status==="progress"?"warn":"ok"}">${esc(REQ_STATUS_HE[r.status]||r.status||"")}</span></td>
+      <td><b>${esc(r.who||"")}</b></td><td>${esc(r.type||"")}</td><td>${esc(r.gan||"")}</td><td>${esc(r.wantGan||"")}</td>
+      <td>${r.createdAt?esc(new Date(r.createdAt).toLocaleDateString("he-IL")):""}</td><td>${r.due?esc(fmtDate(r.due)):""}</td><td>${esc(r.decision||"")}</td></tr>`).join("")}
+    </tbody></table></div>`}
+  </div>`;
+  $("#rq-f-st").onchange=e=>{ reqFilter.status=e.target.value; viewRequests(root); };
+  $("#rq-f-q").oninput=e=>{ reqFilter.q=e.target.value; const pos=e.target.selectionStart; viewRequests(root); const i=$("#rq-f-q"); if(i){ i.focus(); try{ i.setSelectionRange(pos,pos); }catch(_){} } };
+  root.querySelectorAll("[data-rq]").forEach(tr=>tr.onclick=()=>openCityRequest(all.find(x=>x.id===tr.dataset.rq)));
+}
+function openCityRequest(r){
+  if(!r) return;
+  const st=r.studentId ? DB.students.find(x=>x.id===r.studentId) : null;
+  modal(`<h3>${esc(r.type||"פנייה")} · ${esc(r.who||"")}</h3>
+    <div class="sub">סטטוס: <b>${esc(REQ_STATUS_HE[r.status]||r.status||"")}</b>${r.owner?` · אחראי/ת: ${esc(r.owner)}`:""}${r.due?` · יעד: ${esc(fmtDate(r.due))}`:""}</div>
+    <div class="grid g2" style="margin-top:10px">
+      <div><label>מי פנה/תה</label><div>${esc(r.by||"—")}${r.phone?` · <span dir="ltr">${esc(r.phone)}</span>`:""}</div></div>
+      <div><label>גן · גן מבוקש</label><div>${esc(r.gan||"—")} · ${esc(r.wantGan||"—")}</div></div>
+    </div>
+    <div style="margin-top:10px"><label>תוכן הפנייה</label><div style="white-space:pre-wrap">${esc(r.text||"")}</div></div>
+    ${r.decision?`<div class="note" style="margin-top:10px;background:var(--good-soft);border-color:var(--good)"><b>החלטה:</b> ${esc(r.decision)}</div>`:""}
+    <div style="margin-top:10px"><label>מעקב</label>${(r.log||[]).slice().reverse().map(l=>`<div class="hint" style="margin:2px 0"><b>${esc(new Date(l.at).toLocaleString("he-IL"))}</b> · ${esc(l.text||"")}${l.by?` · ${esc(l.by)}`:""}</div>`).join("")||'<div class="hint">—</div>'}</div>
+    <div class="foot">${st?`<button class="btn" id="rq-open-stu">פתיחת התיק</button>`:""}<button class="btn ghost" id="rq-close" style="margin-inline-start:auto">סגירה</button></div>`);
+  $("#rq-close").onclick=closeModal;
+  const b=$("#rq-open-stu"); if(b) b.onclick=()=>{ closeModal(); openStudentById(st.id); };
+}
 function viewTzaharon(root){
   const P=tzPlan();
   const lim=Object.fromEntries(EDU_TYPES.map(e=>[e,tzLimits(e)]));
@@ -10491,6 +10707,7 @@ function openGan(g){
     <div class="note" style="margin-top:6px">פרטי הצוות (גננת, סייעת, ניידים) והשיבוץ נקבעים בלשונית "שיבוץ" לכל שנה בנפרד.</div>
   </fieldset>
   ${isNew?'':ganStaffSectionHtml(g.id)}
+  ${isNew?"":journalSectionHtml("gan")}
   <fieldset><legend>מסמכים והפעלה</legend>
     <div class="grid g3" style="margin-bottom:8px">
       <div><label>רישיון — גילאים מורשים</label><input id="g-licenseAges" value="${esc(g.licenseAges||"")}" placeholder="למשל: 3-4"><div class="hint">גיל הרישיון של הגן ממשרד החינוך — לבקרת קליטה.</div></div>
@@ -10507,6 +10724,7 @@ function openGan(g){
     <button class="btn ghost" id="cancelGan">ביטול</button>
   </div>`);
   if(!isNew){ const gs=$("#ganStudents"); if(gs) gs.onclick=()=>viewGanStudents(g.id); }
+  if(!isNew) wireJournal("gan", g);
   if(!isNew){ const ga=$("#ganStaffAssign"); if(ga) ga.onclick=()=>{ closeModal(); openGanAssign(g.id); }; }
   $("#saveGan").onclick=()=>{
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
@@ -12839,6 +13057,7 @@ function openStaff(m){
     <fieldset><legend>תיק מלא — גנים, תפקידים וילדות</legend>
       <div id="st-full"></div>
     </fieldset>
+    ${journalSectionHtml("staff")}
     ${DRIVE_READY?`<fieldset><legend>תיקיית דרייב</legend>
       <div class="hint" style="margin-bottom:8px">תיקייה אישית בדרייב, מחולקת לפי חינוך רגיל/מיוחד.</div>
       <div id="st-drive"></div>
@@ -12846,6 +13065,7 @@ function openStaff(m){
     <div class="foot">${!isNew?'<button class="btn danger" id="delSt">מחיקה</button>':''}<button class="btn" id="saveSt" style="margin-inline-start:auto">💾 שמירה</button><button class="btn ghost" id="cancelSt">ביטול</button></div>`);
 
   const val=id=>$("#"+id)?.value.trim()??"";
+  wireJournal("staff", m);
   { const es=$("#st-email-send"); if(es) es.onclick=()=>{ const e=val("st-email"); if(e) location.href="mailto:"+encodeURIComponent(e); else toast("אין כתובת מייל רשומה"); }; }
   /* הצגת שדה "שעות שבועיות" רק לתפקידים הרלוונטיים — מתעדכן עם שינוי התפקיד */
   { const rs=$("#st-role"); if(rs) rs.addEventListener("change",()=>{ const w=$("#st-hours-wrap"); if(w) w.style.display=HOURS_ROLES.includes(rs.value)?"":"none"; }); }
