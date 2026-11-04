@@ -3069,6 +3069,10 @@ function retentionGateMsg(student){
 function retentionPolicy(){ return (DB.settings&&DB.settings.retentionPolicy)==='obligated' ? 'obligated' : 'space'; }
 /* אנשי הקשר לדיווח (עירייה / משרד החינוך) — מההגדרות */
 function reportContacts(){ const c=(DB.settings&&DB.settings.reportContacts)||{}; return { muni:String(c.muni||""), moe:String(c.moe||"") }; }
+/* בדיקת כתובת מייל — בלי ביטוי רגולרי עם חזרות מקוננות (ReDoS): חיתוך ובדיקות פשוטות */
+function isEmail(x){ x=String(x==null?"":x).trim(); if(!x || x.length>254 || /\s/.test(x)) return false;
+  const at=x.indexOf("@"); if(at<1 || at!==x.lastIndexOf("@")) return false;
+  const dom=x.slice(at+1), dot=dom.lastIndexOf("."); return dot>0 && dot<dom.length-1; }
 /* ============================================================
    תיעוד והתכתבות בתיק — תלמיד/ה · איש/אשת צוות · גן
    ------------------------------------------------------------
@@ -3151,7 +3155,7 @@ function wireJournal(kind, copy){
       form.querySelectorAll("[data-jr-to]").forEach(x=>x.onclick=()=>{ const i=$("#jr-to"); const cur=i.value.split(/[,;\s]+/).filter(Boolean); if(!cur.includes(x.dataset.jrTo)) cur.push(x.dataset.jrTo); i.value=cur.join(", "); });
       $("#jr-cancel").onclick=()=>{ form.innerHTML=""; };
       $("#jr-send").onclick=async()=>{
-        const to=String($("#jr-to").value||"").split(/[,;\s]+/).map(x=>x.trim()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+        const to=String($("#jr-to").value||"").split(/[,;\s]+/).map(x=>x.trim()).filter(isEmail);
         if(!to.length){ toast("יש להזין כתובת מייל תקינה"); return; }
         if(!DRIVE_READY){ toast("שליחת מייל דורשת את חיבור הגשר (דרייב) — לא מוגדר"); return; }
         const btn=$("#jr-send"); btn.disabled=true; btn.textContent="שולח…";
@@ -3196,7 +3200,7 @@ function openListReport(list, what){
   document.querySelectorAll("[data-lrp]").forEach(x=>x.onclick=()=>{ const i=$("#lrp-to"); const cur=i.value.split(/[,;\s]+/).filter(Boolean); if(!cur.includes(x.dataset.lrp)) cur.push(x.dataset.lrp); i.value=cur.join(", "); });
   $("#lrp-cancel").onclick=closeModal;
   $("#lrp-send").onclick=async()=>{
-    const to=String($("#lrp-to").value||"").split(/[,;\s]+/).map(x=>x.trim()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    const to=String($("#lrp-to").value||"").split(/[,;\s]+/).map(x=>x.trim()).filter(isEmail);
     if(!to.length){ toast("יש להזין כתובת מייל תקינה"); return; }
     if(!DRIVE_READY){ toast("שליחת מייל דורשת את חיבור הגשר (דרייב) — לא מוגדר"); return; }
     const btn=$("#lrp-send"); btn.disabled=true; btn.textContent="שולח…";
@@ -3237,7 +3241,7 @@ function openLeaveReport(s){
     <div class="foot"><button class="btn ghost" id="lr-cancel">ביטול</button><button class="btn" id="lr-send" style="margin-inline-start:auto">📧 שליחה</button></div>`);
   $("#lr-cancel").onclick=closeModal;
   $("#lr-send").onclick=async()=>{
-    const list=String($("#lr-to").value||"").split(/[,;\s]+/).map(x=>x.trim()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    const list=String($("#lr-to").value||"").split(/[,;\s]+/).map(x=>x.trim()).filter(isEmail);
     if(!list.length){ toast("יש להזין לפחות כתובת מייל אחת תקינה"); return; }
     if(!DRIVE_READY){ toast("שליחת מייל דורשת את חיבור הגשר (דרייב) — לא מוגדר"); return; }
     const btn=$("#lr-send"); btn.disabled=true; btn.textContent="שולח…";
@@ -10165,7 +10169,7 @@ async function maybeSendReminders(){
   _remindBusy=true; _remindAt=Date.now(); let n=0;
   try{
     const today=todayISO();
-    const due=alertItems().filter(x=>x.st && x.st.status==="progress" && x.st.due && x.st.due<=today && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.st.owner||"") && x.st.remindedFor!==x.st.due);
+    const due=alertItems().filter(x=>x.st && x.st.status==="progress" && x.st.due && x.st.due<=today && isEmail(x.st.owner||"") && x.st.remindedFor!==x.st.due);
     for(const x of due){
       const cur=alertState(x.key)||{}; if(cur.remindedFor===cur.due) continue;   // מישהו אחר כבר שלח
       try{
@@ -10203,7 +10207,7 @@ function alertHandle(x, mode){
     if(mode==="done"){ await alertSave(x.key, { status:"done", title:x.t, topic:x.topic, note:note||st.note||"" }, "טופל"+(note?" · "+note:"")); }
     if(mode==="follow"){ if(!due){ toast("יש לבחור תאריך"); return; } await alertSave(x.key, { status:"progress", title:x.t, topic:x.topic, due, note:note||st.note||"", owner:st.owner||myEmail() }, "המשך טיפול עד "+fmtDate(due)+(note?" · "+note:"")); }
     if(mode==="transfer"){
-      const owner=String($("#al-owner").value||"").trim().toLowerCase(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(owner)){ toast("יש להזין מייל תקין של הגורם"); return; }
+      const owner=String($("#al-owner").value||"").trim().toLowerCase(); if(!isEmail(owner)){ toast("יש להזין מייל תקין של הגורם"); return; }
       await alertSave(x.key, { status:"progress", title:x.t, topic:x.topic, owner, due:due||st.due||"", note:note||st.note||"" }, "הועבר לטיפול "+owner+(due?" · עד "+fmtDate(due):"")+(note?" · "+note:""));
       if($("#al-mail").checked && DRIVE_READY){
         try{ await driveCall("sendMail",{ to:owner, subject:"הועבר אליך לטיפול: "+x.t, body:["שלום,","","הועבר אליך לטיפול:",x.t,x.s||"",due?"יעד: "+fmtDate(due):"",note?"הערה: "+note:"","","הפריט מופיע בתוכנה במסך \"לטיפול\".","",appTitle()].filter(v=>v!==undefined).join("\n") }); toast("הועבר ונשלח מייל ✓"); }

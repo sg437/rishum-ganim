@@ -3778,6 +3778,8 @@ try{
   function fmtDT(ts){ if(!ts) return "—"; var d=new Date(ts); if(isNaN(d)) return String(ts); return d.toLocaleDateString('he-IL')+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
   function fmtD(ts){ if(!ts) return "—"; var d=new Date(ts); if(isNaN(d)) return String(ts); return d.toLocaleDateString('he-IL'); }
   function fmtDate(v){ var t=String(v||"").trim(); var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(t); return m?(m[3]+'/'+m[2]+'/'+m[1]):t; }
+  /* בדיקת כתובת מייל — בלי ביטוי רגולרי עם חזרות מקוננות (ReDoS) */
+  function isEmail(x){ x=String(x==null?'':x).trim(); if(!x || x.length>254 || /\s/.test(x)) return false; var at=x.indexOf('@'); if(at<1 || at!==x.lastIndexOf('@')) return false; var dom=x.slice(at+1), dot=dom.lastIndexOf('.'); return dot>0 && dot<dom.length-1; }
   function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   function digits(s){ return String(s||"").replace(/\D/g,""); }
   function tzKey(s){ var d=digits(s); return d?d.padStart(9,'0'):""; }
@@ -4169,7 +4171,7 @@ try{
     save:save, remove:remove, saveSettings:saveSettings, hqErr:hqErr, selCities:selCities, citySelHTML:citySelHTML, wireCitySel:wireCitySel, SEL:function(){ return SEL_CITIES; },
     exportCSV:exportCSV, exportXLS:exportXLS, printTable:printTable, exportDialog:exportDialog, withSeq:withSeq, tableHTML:tableHTML, sortRows:sortRows, wireSort:wireSort, reg:reg, rerender:rerenderCurrent,
     lamp:lamp, initials:initials, nameCell:nameCell, cell2:cell2, tabsHTML:tabsHTML, emptyHTML:emptyHTML, hoist:hoist,
-    cities:cities, cityById:cityById, me:me, isOwner:isOwner, fmtDT:fmtDT, fmtD:fmtD, fmtDate:fmtDate, todayISO:todayISO, digits:digits, tzKey:tzKey, fixPhone:fixPhone, stuName:stuName, eduL:eduL, yes:yes, yn:yn, uid:uid, sortHe:sortHe, debounce:debounce,
+    cities:cities, cityById:cityById, me:me, isOwner:isOwner, fmtDT:fmtDT, fmtD:fmtD, fmtDate:fmtDate, todayISO:todayISO, isEmail:isEmail, digits:digits, tzKey:tzKey, fixPhone:fixPhone, stuName:stuName, eduL:eduL, yes:yes, yn:yn, uid:uid, sortHe:sortHe, debounce:debounce,
     STU_FIELDS:STU_FIELDS, STU_DEFAULT:STU_DEFAULT, STAFF_FIELDS:STAFF_FIELDS, STAFF_DEFAULT:STAFF_DEFAULT, GAN_FIELDS:GAN_FIELDS, ctxLabel:ctxLabel, asgText:asgText, MODULES:MODULES,
     allStudents:allStudents, allStaff:allStaff, allGans:allGans, findStudent:findStudent, thresholds:thresholds, licenseState:licenseState, assistantBState:assistantBState, flagId:flagId, flagFor:flagFor,
     openRequestsFor:openRequestsFor, bouncedFor:bouncedFor, ministryRec:ministryRec, ministryLabel:ministryLabel, $:$, $$:$$, he:he, esc:esc, toast:toast, kpiHTML:kpiHTML, pct:pct, C:C, LIVE:LIVE };
@@ -5511,7 +5513,7 @@ function xlsToRows(buf){
   }
   /* אישור קבלה אוטומטי להורים — "הפנייה התקבלה ותטופל", ותיעוד במעקב הפנייה */
   function sendAck(id, rec){
-    var to=String(rec.email||'').trim(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){ toast('לא נשלח אישור קבלה — אין מייל תקין'); return; }
+    var to=String(rec.email||'').trim(); if(!H.isEmail(to)){ toast('לא נשלח אישור קבלה — אין מייל תקין'); return; }
     var subject='הפנייה שלכם התקבלה'+(rec.who?' · '+rec.who:'');
     var body='שלום'+(rec.by?' '+rec.by:'')+',\n\nפנייתכם ('+(rec.type||'פנייה')+')'+(rec.who?' בעניין '+rec.who:'')+' התקבלה במחלקת הרישום ותטופל בהקדם.'+(rec.due?'\nמועד משוער לתשובה: '+H.fmtDate(rec.due):'')+'\n\nבברכה,\nמחלקת הרישום';
     LIVE.bridge('sendMailBulk', { items:[{ to:to, subject:subject, body:body }], opts:{ fromName:'מחלקת הרישום' } }).then(function(r){
@@ -5581,7 +5583,7 @@ function xlsToRows(buf){
     var code=(String(m.subject||'').match(/RG[0-9A-Z]{4,8}/)||[])[0]; if(code && ix.byCode[code]) return ix.byCode[code];
     var tzs=(txt.match(/\b\d{8,9}\b/g)||[]).map(H.tzKey).filter(function(k){ return ix.byTz[k] && ix.byTz[k]!=='multi'; });
     var uniq=tzs.filter(function(v,i){ return tzs.indexOf(v)===i; }); if(uniq.length===1) return ix.byTz[uniq[0]];
-    var from=(String(m.from||'').match(/[^<\s]+@[^>\s]+/)||[])[0]; if(from){ var e=ix.byEmail[from.toLowerCase()]; if(e && e!=='multi') return e; }
+    var fr=String(m.from||'').slice(0,320), lt=fr.lastIndexOf('<'), gt=fr.lastIndexOf('>'); var from=(lt>=0&&gt>lt)?fr.slice(lt+1,gt).trim():fr.trim(); if(!H.isEmail(from)) from=''; if(from){ var e=ix.byEmail[from.toLowerCase()]; if(e && e!=='multi') return e; }
     return null;
   }
   function mailSeen(){ var t=(H.HQ().tracking||[]).filter(function(x){ return x.id==='mailsync'; })[0]; var out={}; var src=(t&&t.seen)||{}; Object.keys(src).forEach(function(k){ if(/^m_[A-Za-z0-9_-]{1,64}$/.test(k)) out[k]=src[k]; }); return out; }
@@ -5977,7 +5979,7 @@ function xlsToRows(buf){
       var owner=String(o.owner||'').trim().toLowerCase(), moved=owner && owner!==String(st.owner||'').toLowerCase() && owner!==String(H.me()).toLowerCase();
       var log=(st.log||[]).slice(); log.push({ at:Date.now(), by:H.me(), text:FU_ST[o.status]+(o.status==='progress'&&o.due?' עד '+H.fmtDate(o.due):'')+(moved?' · הועבר ל-'+owner:'')+(o.note?' · '+o.note:'') });
       H.save('tracking', fuId(x), { kind:'followup', key:fuKey(x), title:x.t, topic:FU_TOPIC[x.go]||'', status:o.status, owner:owner, due:o.status==='done'?'':(o.due||''), note:o.note||st.note||'', log:log.slice(-30) }, '✓ עודכן מצב הטיפול').then(function(){
-        if(moved && o.mail && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(owner)) LIVE.bridge('sendMailBulk', { items:[{ to:owner, subject:'הועבר אליך לטיפול: '+x.t, body:'שלום,\n\nהועבר אליך לטיפול:\n'+x.t+'\n'+(x.s||'')+(o.due?'\nיעד: '+H.fmtDate(o.due):'')+(o.note?'\nהערה: '+o.note:'')+'\n\nהפריט מופיע במרכזי במסך "דורש טיפול".\n\nמחלקת הרישום' }], opts:{ fromName:'מחלקת הרישום' } }).then(function(){ toast('✓ נשלח מייל ל-'+owner); }).catch(function(e){ toast('המייל לא נשלח: '+H.hqErr(e)); });
+        if(moved && o.mail && H.isEmail(owner)) LIVE.bridge('sendMailBulk', { items:[{ to:owner, subject:'הועבר אליך לטיפול: '+x.t, body:'שלום,\n\nהועבר אליך לטיפול:\n'+x.t+'\n'+(x.s||'')+(o.due?'\nיעד: '+H.fmtDate(o.due):'')+(o.note?'\nהערה: '+o.note:'')+'\n\nהפריט מופיע במרכזי במסך "דורש טיפול".\n\nמחלקת הרישום' }], opts:{ fromName:'מחלקת הרישום' } }).then(function(){ toast('✓ נשלח מייל ל-'+owner); }).catch(function(e){ toast('המייל לא נשלח: '+H.hqErr(e)); });
         renderFollow(); });
     }, 'שמירה');
   }
@@ -5988,7 +5990,7 @@ function xlsToRows(buf){
     if(!C.live || _remBusy || Date.now()-_remAt<30*60*1000) return;
     _remBusy=true; _remAt=Date.now();
     var today=H.todayISO(), byId={}; items().forEach(function(x){ byId[fuId(x)]=x; });
-    var due=(H.HQ().tracking||[]).filter(function(t){ return t.kind==='followup' && t.status==='progress' && t.due && t.due<=today && t.remindedFor!==t.due && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t.owner||''); });
+    var due=(H.HQ().tracking||[]).filter(function(t){ return t.kind==='followup' && t.status==='progress' && t.due && t.due<=today && t.remindedFor!==t.due && H.isEmail(t.owner||''); });
     var chain=Promise.resolve();
     due.forEach(function(t){ var x=byId[t.id]; chain=chain.then(function(){
       return LIVE.bridge('sendMailBulk', { items:[{ to:t.owner, subject:'⏰ תזכורת לטיפול: '+(t.title||(x&&x.t)||''), body:'שלום,\n\nתזכורת — הגיע מועד ההמשך לטיפול:\n'+(t.title||'')+'\n'+((x&&x.s)||'')+(t.note?'\nהערה אחרונה: '+t.note:'')+'\nתאריך היעד: '+H.fmtDate(t.due)+'\n\nהפריט מופיע במרכזי במסך "דורש טיפול".\n\nמחלקת הרישום' }], opts:{ fromName:'מחלקת הרישום' } })
