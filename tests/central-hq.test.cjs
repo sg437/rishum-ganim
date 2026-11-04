@@ -248,6 +248,26 @@ const DATA={
     });
     return (r.cap==='37' && r.ac==='36' && r.lc==='40' && r.name==='גן הדקל' && r.g2cap==='' && r.n===3) || JSON.stringify(r);
   });
+  await step('ייבוא גנים ואנשי צוות מהמרכזי: נוספים לעיר, ושום רשומה קיימת לא נדרסת', async()=>{
+    const r=await pg.evaluate(async()=>{
+      const before=window.__docs['app/gans'].gans.length;
+      const g=await window.__centralLive.addRecords('modiin-illit','gan',[{ ganName:'גן חדש מהמרכזי', ganSymbol:'999', age:'3/4/5', gender:'מעורב' }]);
+      const st=await window.__centralLive.addRecords('modiin-illit','staff',[{ firstName:'דינה', lastName:'כהן', tz:'111111118', role:'סייעת' }]);
+      const gans=window.__docs['app/gans'].gans, staff=(window.__docs['app/staff']||{}).staff||[];
+      const ng=gans.find(x=>x.ganSymbol==='999'), ns=staff.find(x=>x.tz==='111111118');
+      return { g, st, grew:gans.length===before+1, kept:!!gans.find(x=>x.id==='g1'&&x.ganName==='גן הדקל'), ng:!!ng && ng.active===true && ng.age==='3/4/5' && 'licenseExpiry' in ng && !!ng.id, ns:!!ns && ns.active===true && Array.isArray(ns.movements) && !!ns.id };
+    });
+    return (r.g===1 && r.st===1 && r.grew && r.kept && r.ng && r.ns) || JSON.stringify(r);
+  });
+  await step('מסך הייבוא במרכזי: בורר "מה מייבאים" — תלמידים / גנים / אנשי צוות, עם שדות מתאימים', async()=>{
+    await go('import'); await pg.selectOption('#impKind','gan'); await pg.waitForTimeout(100);
+    const r=await pg.evaluate(()=>{ const t=document.getElementById('hqImport').innerHTML; return { kind:document.getElementById('impKind').value, opts:document.getElementById('impKind').options.length, regHidden:(document.getElementById('impReg').closest('label')||document.getElementById('impReg')).style.display==='none' }; });
+    /* תצוגה מקדימה: גן שכבר קיים בעיר (לפי סמל) מדולג, גן חדש נספר */
+    await pg.fill('#impPaste','שם הגן\tסמל הגן\tגיל\nגן הדקל\t111\t3\nגן הזית\t555\t4/5'); await pg.click('#impPasteBtn'); await pg.waitForTimeout(150);
+    const pv=await pg.evaluate(()=>{ const t=(document.getElementById('impPreview')||{}).textContent||''; return { t:t.slice(0,300), go:(document.getElementById('impGo')||{}).textContent||'' }; });
+    await pg.selectOption('#impKind','stu');
+    return (r.kind==='gan' && r.opts===3 && r.regHidden && /ייבוא 1 גנים/.test(pv.go) && /גן הזית/.test(pv.t) && !/גן הדקל/.test(pv.t.split('ייבוא')[0].replace(/כבר קיימים[^]*?מדולגים/,''))) || JSON.stringify({r,pv});
+  });
   await step('סינון תלמידים במרכזי: מגדר "מעורב", ערוץ רישום ותאריך רישום', async()=>{
     await go('students'); const t=await pg.evaluate(()=>document.getElementById('hqStudents').innerHTML);
     return (/value="מעורב"/.test(t) && /data-f="regVia"/.test(t) && /data-f="regFrom"/.test(t) && /data-f="regTo"/.test(t)) || 'missing filters';

@@ -3063,6 +3063,53 @@ function retentionGateMsg(student){
   return '⚠️ אין אפשרות לשבץ'+(nm?(" את "+nm):"")+' — ילדת השארות בלי מסמך השארות. '
        +'כשהאישור מגיע: תיק התלמידה → "שונות" → "ילדת השארות" → לסמן "מסמך השארות" (ואפשר לצרף את הקובץ).';
 }
+/* מדיניות ילדת השארות בעיר: "space" — רק על בסיס מקום פנוי (רף השיבוץ חל עליה);
+   "obligated" — העיר מחויבת לקבל אותה, ולכן היא עוברת את רף השיבוץ (עם אזהרה). */
+function retentionPolicy(){ return (DB.settings&&DB.settings.retentionPolicy)==='obligated' ? 'obligated' : 'space'; }
+/* אנשי הקשר לדיווח (עירייה / משרד החינוך) — מההגדרות */
+function reportContacts(){ const c=(DB.settings&&DB.settings.reportContacts)||{}; return { muni:String(c.muni||""), moe:String(c.moe||"") }; }
+/* עדכון עזיבה באמצע שנה — מייל לגורם המטפל בעירייה ובמשרד החינוך, ישירות מהתיק.
+   הנמענים והנוסח נפתחים לעריכה לפני השליחה; אחרי שליחה נרשם בתיק מתי ולמי. */
+function leaveReportText(s){
+  const g=ganById(s.ganId);
+  const name=[s.lastName,s.firstName].filter(Boolean).join(" ");
+  const lines=[
+    "שלום רב,", "",
+    "הרינו לעדכן על עזיבת תלמיד/ה באמצע שנת הלימודים:", "",
+    "שם: "+name,
+    'ת"ז: '+(s.tz||"—"),
+    "גן: "+(g?ganName(g.id):"—")+(g&&g.ganSymbol?" (סמל "+g.ganSymbol+")":""),
+    "עיר: "+(mainCityName()||"—"),
+    "שנת לימודים: "+(s.year||DB.activeYear||""),
+    "תאריך עזיבה: "+(s.leftDate?fmtDate(s.leftDate):"—"),
+    "סיבה / לאן עבר/ה: "+(s.leftReason||"—"),
+    "", "בברכה,", appTitle()
+  ];
+  return { subject:"עדכון עזיבה · "+name+(s.tz?" · "+s.tz:""), body:lines.join("\n") };
+}
+function openLeaveReport(s){
+  const c=reportContacts(), t=leaveReportText(s);
+  const to=[c.muni,c.moe].filter(Boolean).join(", ");
+  modal(`<h3>📧 עדכון עזיבה במייל</h3>
+    <div class="sub">נשלח ישירות מהמערכת. אפשר לשנות נמענים ונוסח לפני השליחה.${(!c.muni||!c.moe)?' <b>טיפ:</b> את אנשי הקשר הקבועים מגדירים בהגדרות → "כללי העיר ואנשי קשר".':''}</div>
+    <div style="margin-top:10px"><label>נמענים (מופרדים בפסיק)</label><input id="lr-to" dir="ltr" style="text-align:right" value="${esc(to)}"></div>
+    <div style="margin-top:8px"><label>נושא</label><input id="lr-subject" value="${esc(t.subject)}"></div>
+    <div style="margin-top:8px"><label>תוכן</label><textarea id="lr-body" rows="12">${esc(t.body)}</textarea></div>
+    <div class="foot"><button class="btn ghost" id="lr-cancel">ביטול</button><button class="btn" id="lr-send" style="margin-inline-start:auto">📧 שליחה</button></div>`);
+  $("#lr-cancel").onclick=closeModal;
+  $("#lr-send").onclick=async()=>{
+    const list=String($("#lr-to").value||"").split(/[,;\s]+/).map(x=>x.trim()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    if(!list.length){ toast("יש להזין לפחות כתובת מייל אחת תקינה"); return; }
+    if(!DRIVE_READY){ toast("שליחת מייל דורשת את חיבור הגשר (דרייב) — לא מוגדר"); return; }
+    const btn=$("#lr-send"); btn.disabled=true; btn.textContent="שולח…";
+    try{
+      await driveCall("sendMail",{ to:list.join(","), subject:$("#lr-subject").value, body:$("#lr-body").value });
+      const rec=DB.students.find(x=>x.id===s.id);
+      if(rec){ rec.leftReported=new Date().toLocaleString("he-IL")+" · "+list.join(", "); save(); }
+      closeModal(); toast("עדכון העזיבה נשלח ✓");
+    }catch(e){ btn.disabled=false; btn.textContent="📧 שליחה"; toast("השליחה נכשלה: "+driveErrHe(e)); }
+  };
+}
 /* האם מותר לשבץ תלמידה לגן. מחזיר {ok, cap, count, msg} */
 function canAssignStudent(g, student){
   const cap=ganAssignCap(g);
@@ -3071,6 +3118,8 @@ function canAssignStudent(g, student){
   /* מסמך ההשארות קודם לרף השיבוץ: גם בגן ריק לגמרי אין שיבוץ בלעדיו */
   if(retentionNeedsDoc(student)) return { ok:false, cap, count, retention:true, msg:retentionGateMsg(student) };
   if(!cap) return { ok:true, cap:0, count, msg:"" };
+  if(count>=cap && student && student.special && student.special.retention && retentionPolicy()==='obligated')
+    return { ok:true, cap, count, over:true, msg:'שימו לב: '+ganName(g.id)+' מלא ('+count+'/'+cap+') — ילדת השארות משובצת בכל זאת, כי העיר מחויבת לקבל ילדות השארות.' };
   if(count>=cap) return { ok:false, cap, count,
     msg:'אין אפשרות לשבץ ל'+ganName(g.id)+' — הגן מלא ('+count+'/'+cap+'). '
        +'אפשר להעלות את הרף בכרטיס הגן (לשונית גנים → "רף שיבוץ").' };
@@ -3082,6 +3131,7 @@ function assignGate(ganId, student, silent){
   const r=canAssignStudent(g, student);
   /* הודעת ההשארות ארוכה (היא אומרת גם איפה מסמנים) — צריך זמן לקרוא אותה */
   if(!r.ok && !silent) toast(r.msg, r.retention ? 7000 : undefined);
+  else if(r.over && !silent) toast(r.msg, 6000);
   return r.ok;
 }
 /* תגית "משובצות / רף" עם צבע (ירוק=פנוי · כתום=מלא · אדום=חריגה) */
@@ -3498,7 +3548,7 @@ function makeStudent(){ return {
   motherName:"", fatherName:"", phone:"", mobile:"", dadMobile:"", momMobile:"", email:"", street:"", building:"", city:"",
   campus:"", // קמפוס גנים (סעיף 1)
   ganId:"", age:"", period:"א", education:"רגיל",
-  registeredByUs:true, absorbedMunicipality:false, finished:false,
+  registeredByUs:true, absorbedMunicipality:false, absorbedMinistry:false, finished:false,
   placed:true, // שיבוץ סופי בגן (משובצת). ילדה רשומה לגן דרך ganId; placed=false = ממתינה לשיבוץ עד סיום הבירור
   retentionNext:false, // השארות לשנה הבאה — סימון קדימה שמעביר אוטומטית לשנה הבאה (נפרד מ-special.retention של השנה הנוכחית)
   docs:{ nispach:false, idCopy:false, takanon:false },
@@ -3512,6 +3562,9 @@ function makeStudent(){ return {
             retention:false, retentionDoc:false,
             other:false, otherText:"" }, // סעיף 3 — "אחר" עם טקסט חופשי
   support:{ shiluv:false, salIshi:false, medical:false, behavior:false, prepA:false }, // סעיף 15 — סיוע/העשרה
+  leftDate:"",     // עזיבה באמצע שנה — תאריך (YYYY-MM-DD); ריק = לא עזבה
+  leftReason:"",   // עזיבה — סיבה / לאן עברה
+  leftReported:"", // מתי נשלח עדכון העזיבה במייל (ISO), ולמי
   regDate:"",      // תאריך הרישום (YYYY-MM-DD) — מהטופס הדיגיטלי, או מהעירייה כשהרישום נעשה שם
   regChannel:"",   // ערוץ הרישום: "link" = טופס הרישום הדיגיטלי (הקישור שלנו); ריק = אחר / לא ידוע
   driveFolder:"", driveFolderId:"", notes:"", createdAt:new Date().toISOString()
@@ -3542,8 +3595,11 @@ function makeGan(){ return {
   gender:"",   // "בנות" / "בנים" / "מעורב" — ריק = לא צוין (גנים ותיקים)
   nickname:"",     // כינוי הגן — שם נוסף שבו מכירים את הגן (מוצג ליד השם, נכלל בחיפוש)
   citySymbol:"",   // סמל עירוני — סמל נוסף שחלק מהערים עובדות לפיו (בנוסף לסמל פנימי ולסמל הגן)
+  licenseExpiry:"",                // תוקף הרישיון (YYYY-MM-DD) — תנאי לזכאות לסייעת ב'
   licenseAges:"", licenseCap:"",   // רישיון משרד החינוך: גילאים מורשים ומכסת ילדים (בקרת תפוסה מול הרישיון)
-  capacity:"", assignCap:"", active:true, docsNote:"", createdAt:new Date().toISOString()
+  capacity:"", assignCap:"",
+  assignCapNote:"",   // אישור חריגה/הרחבה מעל הרף הרגיל — אסמכתא, תאריך ומי אישר (עירייה / משרד החינוך)
+  active:true, docsNote:"", createdAt:new Date().toISOString()
 };}
 function ganGender(ganId){ const g=ganById(ganId); return g ? String(g.gender||"") : ""; }
 function genderBadge(g){ const v=String((g&&g.gender)||""); if(!v) return '<span class="pill neutral" style="opacity:.6">—</span>'; if(v==="מעורב") return '<span class="pill warn">מעורב</span>'; return v==="בנים" ? '<span class="pill" style="background:var(--accent-soft);color:var(--accent-strong)">בנים</span>' : '<span class="pill ok">בנות</span>'; }
@@ -3581,6 +3637,7 @@ const SETTINGS_SECTIONS = [
   { k:"roles",         label:"תפקידי צוות" },
   { k:"campus",        label:"קמפוסים" },
   { k:"caps",          label:"רף שיבוץ" },
+  { k:"rules",         label:"כללי העיר ואנשי קשר" },
   { k:"tzmin",         label:"צהרון — מינימום ומקסימום" },
   { g:"מערכת ומשתמשים" },
   { k:"presence",      label:"מי מחובר ויומן פעילות" },
@@ -6101,8 +6158,8 @@ function driveErrHe(e){
 const SHEET_TITLE = "רשת הגנים מודיעין עילית — נתונים (שיקוף)";
 function buildSheetPayload(){
   const yn=v=>v?"כן":"לא";
-  const stuHeaders=["שנה","שם משפחה","שם פרטי",'ת"ז',"גן","קמפוס","גיל","מועד","חינוך","משובצת","קלוט בעירייה","נרשמה על ידינו","ביטוח שולם","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","בניין","עיר","סטטוס","הערות"];
-  const stuRows=DB.students.map(s=>[s.year,s.lastName,s.firstName,s.tz,ganName(s.ganId),ganCampus(s.ganId)||s.campus||"",s.age,s.period,eduLabel(s),yn(s.placed!==false),yn(s.absorbedMunicipality),yn(s.registeredByUs),yn(s.insurancePaid),s.phone,s.dadMobile||"",s.momMobile||s.mobile||"",s.email||"",s.street,s.building,s.city,(s.finished?"סיימה":"פעילה"),s.notes]);
+  const stuHeaders=["שנה","שם משפחה","שם פרטי",'ת"ז',"גן","קמפוס","גיל","מועד","חינוך","משובצת","קלוט בעירייה","קלוט במשרד החינוך","נרשמה על ידינו","ביטוח שולם","טלפון בית","נייד אב","נייד אם",'דוא"ל',"רחוב","בניין","עיר","סטטוס","הערות"];
+  const stuRows=DB.students.map(s=>[s.year,s.lastName,s.firstName,s.tz,ganName(s.ganId),ganCampus(s.ganId)||s.campus||"",s.age,s.period,eduLabel(s),yn(s.placed!==false),yn(s.absorbedMunicipality),yn(s.absorbedMinistry),yn(s.registeredByUs),yn(s.insurancePaid),s.phone,s.dadMobile||"",s.momMobile||s.mobile||"",s.email||"",s.street,s.building,s.city,(s.finished?"סיימה":"פעילה"),s.notes]);
   const ganHeaders=["שם הגן","סמל פנימי","סמל גן","גיל","חינוך","גננת","קמפוס","כתובת","בניין","עיר","אזור","טל' גן","נייד גננת","קיבולת","רף שיבוץ","משובצות (שנה פעילה)","רשומות (שנה פעילה)","פעיל"];
   const ganRows=DB.gans.map(g=>[g.ganName,g.internalSymbol,g.ganSymbol,g.age,eduLabel(g),g.teacherName,g.campus,g.address,g.building,g.city,g.zone,g.phoneGan,g.teacherMobile,g.capacity,(ganAssignCap(g)||""),ganAssignedCount(g.id),studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length,yn(g.active)]);
   const staffHeaders=["שם משפחה","שם פרטי",'ת"ז',"תפקיד","חינוך","טלפון","נייד","מייל","עיר","הערות"];
@@ -6269,12 +6326,12 @@ function renderInstallBox(){
 /* ============================================================
    טאב תלמידות
    ============================================================ */
-let stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"", regVia:"", regFrom:"", regTo:"" }; // gans = ריבוי גנים (אפשר לבחור כמה); age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
+let stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"", regVia:"", regFrom:"", regTo:"", moe:"" }; // gans = ריבוי גנים (אפשר לבחור כמה); age = ריבוי גלאים (סעיף 6); flag = מאפיין (השארות/צהרון/קייטנות)
 let stuFiltersOpen=false; // האם פאנל הסינון המתקדם פתוח
 function stuActiveFilterCount(){ const f=stuFilter; let n=0;
-  if(f.gans&&f.gans.length)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.gender)n++; if(f.regVia)n++; if(f.regFrom||f.regTo)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
+  if(f.gans&&f.gans.length)n++; if(f.age&&f.age.length)n++; if(f.city)n++; if(f.gender)n++; if(f.regVia)n++; if(f.regFrom||f.regTo)n++; if(f.moe)n++; if(f.street)n++; if(f.campus)n++; if(f.period)n++; if(f.edu)n++; if(f.muni)n++; if(f.placed)n++; if(f.flag)n++; if(f.status&&f.status!=='active')n++; return n; }
 /* איפוס כל סינוני התלמידות לברירת המחדל (כפתור "ניקוי") */
-function clearStuFilter(){ stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"", regVia:"", regFrom:"", regTo:"" }; }
+function clearStuFilter(){ stuFilter = { q:"", gans:[], age:[], city:"", street:"", campus:"", period:"", edu:"", muni:"", flag:"", placed:"", status:"active", gender:"", regVia:"", regFrom:"", regTo:"", moe:"" }; }
 /* תווית התקציר לרשימת הגנים הנפתחת (בחירה מרובה) */
 function ganFilterLabel(){ const sel=stuFilter.gans||[];
   if(!sel.length) return "כל הגנים";
@@ -6313,6 +6370,7 @@ const BULK_FIELDS = [
   { key:"insurancePaid",      label:"תשלום ביטוח תלמידים",           set:(s,v)=>{ s.insurancePaid=v; } },
   { key:"placed",             label:"משובצת (שיבוץ סופי)",            set:(s,v)=>{ s.placed=v; } },
   { key:"absorbedMunicipality",label:"קלוט בעירייה",                 set:(s,v)=>{ s.absorbedMunicipality=v; } },
+  { key:"absorbedMinistry",   label:"קלוט במשרד החינוך",              set:(s,v)=>{ s.absorbedMinistry=v; } },
   { key:"prog.tzaharon",      label:"רישום צהרון",                    set:(s,v)=>{ s.programs=s.programs||{}; s.programs.tzaharon=v; } },
   { key:"prog.campHanukkah",  label:"רישום קייטנת חנוכה",             set:(s,v)=>{ s.programs=s.programs||{}; s.programs.campHanukkah=v; } },
   { key:"prog.campNisan",     label:"רישום קייטנת ניסן",              set:(s,v)=>{ s.programs=s.programs||{}; s.programs.campNisan=v; } },
@@ -6523,6 +6581,7 @@ function viewStudents(root){
         <div class="field"><label>תאריך רישום — מ־</label><input type="date" id="f-regFrom" value="${esc(stuFilter.regFrom||"")}"></div>
         <div class="field"><label>תאריך רישום — עד</label><input type="date" id="f-regTo" value="${esc(stuFilter.regTo||"")}"></div>
         <div class="field"><label>קלוט בעירייה</label><select id="f-muni"><option value="">הכל</option><option value="yes" ${stuFilter.muni==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.muni==='no'?'selected':''}>לא קלוט</option></select></div>
+        <div class="field"><label>קלוט במשרד החינוך</label><select id="f-moe"><option value="">הכל</option><option value="yes" ${stuFilter.moe==='yes'?'selected':''}>קלוט</option><option value="no" ${stuFilter.moe==='no'?'selected':''}>לא קלוט</option></select></div>
         <div class="field"><label>שיבוץ</label><select id="f-placed"><option value="">הכל</option><option value="yes" ${stuFilter.placed==='yes'?'selected':''}>משובצת</option><option value="no" ${stuFilter.placed==='no'?'selected':''}>לא משובצת</option></select></div>
         <div class="field"><label>מאפיין</label><select id="f-flag"><option value="">הכל</option>${Object.entries(STU_FLAGS).map(([k,d])=>`<option value="${k}" ${stuFilter.flag===k?'selected':''}>${esc(d.label)}</option>`).join("")}</select></div>
         <div class="field"><label>סטטוס</label><select id="f-status">
@@ -6550,7 +6609,7 @@ function viewStudents(root){
   $("#importStu").onclick = ()=> openImport();
   $("#stuFilterToggle").onclick = ()=>{ stuFiltersOpen = $("#stuFilterPanel").hasAttribute("hidden"); viewStudents(root); };
   const bind=(id,key)=>{ const e=$(id); if(!e) return; e.oninput=e.onchange=()=>{ stuFilter[key]= e.value; renderStuTable(); }; };
-  bind("#f-q","q");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-gender","gender");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");bind("#f-regVia","regVia");bind("#f-regFrom","regFrom");bind("#f-regTo","regTo");
+  bind("#f-q","q");bind("#f-city","city");bind("#f-street","street");bind("#f-campus","campus");bind("#f-period","period");bind("#f-edu","edu");bind("#f-muni","muni");bind("#f-gender","gender");bind("#f-flag","flag");bind("#f-placed","placed");bind("#f-status","status");bind("#f-regVia","regVia");bind("#f-moe","moe");bind("#f-regFrom","regFrom");bind("#f-regTo","regTo");
   const clr=$("#f-clear"); if(clr) clr.onclick=()=>{ clearStuFilter(); stuFiltersOpen=true; viewStudents(root); };
   // סינון גן בריבוי בחירה — רשימה נפתחת עם תיבות סימון (אפשר לבחור כמה גנים יחד)
   const ganBox=$("#f-gan");
@@ -6611,6 +6670,8 @@ function filteredStudents(){
   let list=studentsScopeBase();
   if(f.muni==='yes') list=list.filter(s=>s.absorbedMunicipality);
   if(f.muni==='no')  list=list.filter(s=>!s.absorbedMunicipality);
+  if(f.moe==='yes') list=list.filter(s=>s.absorbedMinistry);
+  if(f.moe==='no')  list=list.filter(s=>!s.absorbedMinistry);
   if(f.flag && STU_FLAGS[f.flag]) list=list.filter(STU_FLAGS[f.flag].test);
   if(f.placed==='yes') list=list.filter(s=>s.placed!==false);
   if(f.placed==='no')  list=list.filter(s=>s.placed===false);
@@ -6809,6 +6870,7 @@ function renderStuQuick(){
       ${s.ganId?`<button type="button" class="pill ${placed?'ok':'warn'}" id="q-place" style="cursor:pointer;border:none" title="לחיצה משנה בין 'משובצת' ל'ממתינה'">${placed?'✔ שיבוץ סופי':'⏳ ממתינה לשיבוץ'}</button>`
                :'<span class="pill neutral">ללא גן</span>'}
       <span class="pill ${s.absorbedMunicipality?'ok':'no'}">${s.absorbedMunicipality?'קלוט בעירייה':'לא קלוט'}</span>
+      <span class="pill ${s.absorbedMinistry?'ok':'no'}">${s.absorbedMinistry?'קלוט במשרד החינוך':'לא קלוט במשה"ח'}</span>
       ${eduBadge(s)}
       <button type="button" class="btn ghost sm" id="q-prox" title="בדיקת קרבה לגנים">🧭 קרבה</button>
     </div>
@@ -6859,6 +6921,7 @@ function stuFilterChips(){
   if(f.period) add("period","מועד "+f.period, ()=>{ f.period=""; });
   if(f.edu) add("edu",f.edu, ()=>{ f.edu=""; });
   if(f.muni) add("muni", f.muni==='yes'?"קלוט בעירייה":"לא קלוט בעירייה", ()=>{ f.muni=""; });
+  if(f.moe) add("moe", f.moe==='yes'?"קלוט במשרד החינוך":"לא קלוט במשרד החינוך", ()=>{ f.moe=""; });
   if(f.regVia) add("regVia", f.regVia==='link'?"נרשמו דרך הקישור":"לא דרך הקישור", ()=>{ f.regVia=""; });
   if(f.regFrom||f.regTo) add("regDate", "תאריך רישום "+(f.regFrom?fmtDate(f.regFrom):"…")+" – "+(f.regTo?fmtDate(f.regTo):"…"), ()=>{ f.regFrom=""; f.regTo=""; });
   if(f.placed) add("placed", f.placed==='yes'?"משובצות":"ממתינות לשיבוץ", ()=>{ f.placed=""; });
@@ -6886,11 +6949,13 @@ function renderSelBar(list){
   bar.innerHTML=`<div class="selbar">
     <b>${n===1?"נבחרה תלמידה אחת":"נבחרו "+n+" תלמידות"}</b>
     <button class="btn sm" id="sel-muni" type="button">סמן כקלוט</button>
+    <button class="btn sm" id="sel-moe" type="button">סמן כקלוט במשה"ח</button>
     <button class="btn sm light" id="sel-gan" type="button">שיבוץ לגן…</button>
     <button class="btn sm" id="sel-msg" type="button">📣 שליחת הודעה</button>
     <button class="btn sm" id="sel-clear" type="button">ניקוי</button>
   </div>`;
   $("#sel-muni").onclick=()=>applyBulk("absorbedMunicipality", true);
+  $("#sel-moe").onclick=()=>applyBulk("absorbedMinistry", true);
   $("#sel-clear").onclick=()=>{ bulkSel.clear(); renderStuTable(); };
   $("#sel-gan").onclick=openBulkAssignGan;
   $("#sel-msg").onclick=()=>{
@@ -7148,6 +7213,7 @@ function openStudent(s){
       <label class="check"><input type="checkbox" id="s-placed" ${s.placed!==false?'checked':''}> משובצת בגן (שיבוץ סופי)</label>
       <label class="check"><input type="checkbox" id="s-registeredByUs" ${s.registeredByUs?'checked':''}> נרשמה על ידינו</label>
       <label class="check"><input type="checkbox" id="s-absorbedMunicipality" ${s.absorbedMunicipality?'checked':''}> קלוט בעירייה</label>
+      <label class="check"><input type="checkbox" id="s-absorbedMinistry" ${s.absorbedMinistry?'checked':''}> קלוט במשרד החינוך</label>
       <label class="check"><input type="checkbox" id="s-insurancePaid" ${s.insurancePaid?'checked':''}> תשלום ביטוח תלמידים שולם</label>
       <label class="check" title="סימון זה יעביר את הילדה אוטומטית לשנה הבאה (באותו גן, לא משובצת), עם שמירת השנה הנוכחית"><input type="checkbox" id="s-retentionNext" ${s.retentionNext?'checked':''}> השארות לשנה הבאה (מעביר אוטומטית)</label>
     </div>
@@ -7179,6 +7245,15 @@ function openStudent(s){
   <fieldset><legend>הערות וסיום</legend>
     <div><label>הערות</label><textarea id="s-notes" rows="2">${esc(s.notes)}</textarea></div>
     <label class="check" style="margin-top:10px;background:var(--warn-soft);border-color:var(--warn)"><input type="checkbox" id="s-finished" ${s.finished?'checked':''}> ✔️ סיימה עם הגן (בסימון זה יוצאת מהרשימה)</label>
+    <details style="margin-top:10px" ${s.leftDate?'open':''}><summary style="cursor:pointer;font-weight:700">🚪 עזיבה באמצע שנה</summary>
+      <div class="grid g2" style="margin-top:8px">
+        <div><label>תאריך עזיבה</label><input type="date" id="s-leftDate" value="${esc(s.leftDate||"")}"></div>
+        <div><label>סיבה / לאן עברה</label><input id="s-leftReason" value="${esc(s.leftReason||"")}" placeholder="למשל: עברה לעיר אחרת"></div>
+      </div>
+      <div class="hint">מילוי תאריך עזיבה מסמן את התיק כ"סיימה/יצאה" (נשאר נגיש בסינון הסטטוס). אחרי השמירה אפשר לשלוח עדכון במייל לגורם המטפל בעירייה ובמשרד החינוך (אנשי הקשר — בהגדרות → כללי העיר).</div>
+      ${s.leftReported?`<div class="hint" style="color:var(--good)">✓ עדכון עזיבה נשלח: ${esc(s.leftReported)}</div>`:''}
+      ${s.leftDate&&!isNew?`<button type="button" class="btn ghost sm" id="s-leftMail" style="margin-top:6px">📧 שליחת עדכון עזיבה במייל</button>`:''}
+    </details>
   </fieldset>
   <div class="foot">
     ${!isNew?'<button class="btn danger" id="delStu">מחיקת תיק</button>':''}
@@ -7464,8 +7539,9 @@ function openStudent(s){
       campus: (ganCampus(val("s-ganId")) || val("s-campus")),   // קמפוס נגזר מהגן
       ganId:val("s-ganId"), age:val("s-age"), period:val("s-period"), education:val("s-education"),
       placed:chk("s-placed"), insurancePaid:chk("s-insurancePaid"), retentionNext:chk("s-retentionNext"),
-      registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"),
-      finished:chk("s-finished"), driveFolder:val("s-driveFolder"), notes:val("s-notes"),
+      registeredByUs:chk("s-registeredByUs"), absorbedMunicipality:chk("s-absorbedMunicipality"), absorbedMinistry:chk("s-absorbedMinistry"),
+      finished:chk("s-finished")||!!val("s-leftDate"), leftDate:val("s-leftDate"), leftReason:val("s-leftReason"),
+      driveFolder:val("s-driveFolder"), notes:val("s-notes"),
       docs, docFiles:s.docFiles||{}, programs, programsPaid,
       support,
       special: JSON.parse(JSON.stringify(s.special))
@@ -7521,6 +7597,7 @@ function openStudent(s){
       ${list.some(o=>o.campus)?`<div class="hint">אפשר לשבץ באותו קמפוס — לחצ/י על שדה "קמפוס גנים" ובחר/י מהרשימה.</div>`:''}`;
     out.querySelectorAll(".sib-open").forEach(b=> b.onclick=()=>openStudentById(b.dataset.sid));
   };
+  { const lm=$("#s-leftMail"); if(lm) lm.onclick=()=>{ const cur=DB.students.find(x=>x.id===s.id)||s; closeModal(); openLeaveReport(cur); }; }
   if(!isNew) $("#delStu").onclick=()=>{ if(confirm("למחוק את תיק הילדה לצמיתות?")){ DB.students=DB.students.filter(x=>x.id!==s.id); save(); closeModal(); route(); toast("התיק נמחק"); } };
   /* הרשאת עריכה לפי חינוך (הסתרה בממשק): רשומה קיימת בחינוך שאינו מורשה → קריאה בלבד;
      רשומה חדשה למשתמש מוגבל → נעילת שדה החינוך לחינוך המורשה */
@@ -10392,6 +10469,7 @@ function openGan(g){
         <div class="hint">${(()=>{ const cap=ganAssignCap(g), cnt=isNew?0:ganAssignedCount(g.id), src=ganAssignCapSource(g);
           return cap ? `מלא = ${cnt} מתוך ${cap}${src?" ("+esc(src)+")":""} — מעבר לזה המערכת חוסמת שיבוץ. ריק = לפי ברירת המחדל בהגדרות.`
                      : `ריק = ללא הגבלה. אפשר לקבוע ברירת מחדל לכל הגנים ב<b>הגדרות → רף שיבוץ</b>.`; })()}</div></div>
+      <div><label>אישור הרחבת רף (אסמכתא)</label><input id="g-assignCapNote" value="${esc(g.assignCapNote||"")}" placeholder="למשל: אישור עירייה 12/10 · 37 ילדות"><div class="hint">כשהגן קיבל אישור מיוחד לחרוג מהרף הרגיל — מעדכנים את הרף ורושמים כאן את האישור.</div></div>
       <div><label>קמפוס</label><select id="g-campus"><option value="">— ללא —</option>${(g.campus && !CAMPUSES.includes(g.campus))?`<option selected>${esc(g.campus)}</option>`:''}${CAMPUSES.slice().sort((a,b)=>a.localeCompare(b,"he")).map(c=>`<option ${g.campus===c?'selected':''}>${esc(c)}</option>`).join("")}</select>
         <div class="hint">${CAMPUSES.length?'הקמפוס נקבע כאן — ואצל התלמידות בגן יתעדכן אוטומטית.':'להוספת קמפוסים: הגדרות → קמפוסים.'}</div></div>
     </div>
@@ -10416,6 +10494,7 @@ function openGan(g){
   <fieldset><legend>מסמכים והפעלה</legend>
     <div class="grid g3" style="margin-bottom:8px">
       <div><label>רישיון — גילאים מורשים</label><input id="g-licenseAges" value="${esc(g.licenseAges||"")}" placeholder="למשל: 3-4"><div class="hint">גיל הרישיון של הגן ממשרד החינוך — לבקרת קליטה.</div></div>
+      <div><label>רישיון — בתוקף עד</label><input type="date" id="g-licenseExpiry" value="${esc(g.licenseExpiry||"")}"><div class="hint">תנאי לזכאות לסייעת ב'. רישיון שפג — מוקפצת התראה בשיבוץ הצוות.</div></div>
       <div><label>רישיון — מכסת ילדים</label><input id="g-licenseCap" inputmode="numeric" value="${esc(g.licenseCap||"")}" placeholder="למשל 35"><div class="hint">${(()=>{ const cap=+String(g.licenseCap||"").replace(/[^\d]/g,"")||0; if(!cap) return "ריק = לא הוגדר. גן שחורג מהמכסה מסומן לטיפול (הרחבת רישיון)."; const n=isNew?0:studentsOfYear().filter(s=>s.ganId===g.id&&!s.finished).length; return n>cap?`<b style="color:var(--bad)">חריגה: ${n} רשומים מול מכסה ${cap} — נדרשת הרחבת רישיון.</b>`:`${n} רשומים מתוך ${cap} במכסה.`; })()}</div></div>
     </div>
     <div><label>מסמכים הקשורים לגן (הערה/קישורים)</label><textarea id="g-docsNote" rows="2">${esc(g.docsNote)}</textarea></div>
@@ -10435,10 +10514,10 @@ function openGan(g){
       ganName:val("g-ganName"),internalSymbol:val("g-internalSymbol"),ganSymbol:val("g-ganSymbol"),age:val("g-age"),education:val("g-education"),
       nickname:val("g-nickname"),citySymbol:val("g-citySymbol"),
       teacherName:val("g-teacherName"),capacity:val("g-capacity"),
-      assignCap:String(val("g-assignCap")||"").replace(/[^\d]/g,""),campus:val("g-campus"),
+      assignCap:String(val("g-assignCap")||"").replace(/[^\d]/g,""),assignCapNote:val("g-assignCapNote"),campus:val("g-campus"),
       address:val("g-address"),building:val("g-building"),street:val("g-street"),zone:val("g-zone"),
       city:val("g-city"), gender:val("g-gender"),
-      licenseAges:val("g-licenseAges"), licenseCap:String(val("g-licenseCap")||"").replace(/[^\d]/g,""),
+      licenseExpiry:val("g-licenseExpiry"), licenseAges:val("g-licenseAges"), licenseCap:String(val("g-licenseCap")||"").replace(/[^\d]/g,""),
       phoneGan:val("g-phoneGan"),docsNote:val("g-docsNote"),active:chk("g-active")
     });
     if(!data.ganName && !data.teacherName && !data.ganSymbol && !data.internalSymbol && !data.citySymbol){ toast("יש להזין שם הגן, גננת או סמל"); return; }
@@ -13390,6 +13469,10 @@ function viewAssign(root){
         <select id="asgCtxSel">${ASSIGN_CONTEXTS.map(c=>`<option value="${c.id}" ${c.id===asgContext?'selected':''}>${esc(c.label)}</option>`).join("")}</select></div>
       <button class="btn ghost" id="exportAsg">📤 ייצוא / הדפסה</button>
     </div>
+    ${(()=>{ const cf=asgContext==="activity"?assistantBConflicts():[]; return cf.length?`<div class="note" style="background:var(--bad-soft);color:var(--bad);border-color:var(--bad);margin-bottom:10px">
+      <b>⚠️ סייעת ב' משובצת בגן ללא זכאות (${cf.length})</b>
+      <ul style="margin:6px 0 0;padding-inline-start:18px">${cf.map(x=>`<li><b>${esc(ganName(x.g.id))}</b>${x.name?" · "+esc(x.name):""} — ${x.reasons.map(esc).join(" · ")}</li>`).join("")}</ul>
+      <div class="hint" style="color:inherit;margin-top:4px">זכאות לסייעת ב': רישיון בתוקף · גן גיל 3 או 4 · לפחות ${ASSISTANT_B_MIN} ילדות.</div></div>`:""; })()}
     <div id="asgSummary" style="margin-bottom:10px"></div>
     ${!gans.length?`<div class="empty">אין גנים ${activeEdu?'בסינון זה':''}. הוסף/י גנים בטאב "גנים".</div>`:`
       <details class="asg-picker" open style="margin-bottom:14px">
@@ -13529,6 +13612,26 @@ function viewAssign(root){
 /* מודל שיבוץ צוות לגן בודד — סעיפים 5, 7 */
 /* גן חובה — גיל 5 (בגני חובה אין "סייעת ב'") — סעיף 14 */
 function isMandatoryGan(g){ return String(g&&g.age||"").trim()==="5"; }
+/* זכאות לסייעת ב' — שלושה תנאים: (1) רישיון בתוקף, (2) גן גיל 3 או 4 (בגן חובה — גיל 5 — אין זכאות),
+   (3) מספר הילדות בגן הגיע לסף (ASSISTANT_B_MIN). מחזיר { eligible, reasons[] }.
+   תוקף רישיון שלא הוזן אינו חוסם (גנים ותיקים) — אבל מוצג כהערה. */
+function licenseExpired(g){ const d=String(g&&g.licenseExpiry||"").slice(0,10); return !!d && d < new Date().toLocaleDateString("en-CA"); }
+function assistantBEligibility(g, reg){
+  const reasons=[]; if(!g) return { eligible:false, reasons:["אין גן"] };
+  if(reg==null) reg=studentsOfYear().filter(s=>!s.finished && s.ganId===g.id).length;
+  if(isMandatoryGan(g)) reasons.push("גן חובה (גיל 5) — אין זכאות לסייעת ב'");
+  if(licenseExpired(g)) reasons.push("הרישיון אינו בתוקף (פג ב-"+fmtDate(g.licenseExpiry)+")");
+  if(reg<ASSISTANT_B_MIN) reasons.push("בגן "+reg+" ילדות — הזכאות מ-"+ASSISTANT_B_MIN);
+  return { eligible:!reasons.length, reasons, noExpiry:!g.licenseExpiry };
+}
+/* גנים שמשובצת בהם סייעת ב' בלי זכאות — להתראה במסך שיבוץ הצוות */
+function assistantBConflicts(){
+  return DB.gans.filter(g=>g.active!==false).map(g=>{
+    const a=ganAsg(g.id), b=a&&a[ASSISTANT_B_ROLE];
+    if(!(b && (b.staffId||b.name))) return null;
+    const e=assistantBEligibility(g); return e.eligible ? null : { g, reasons:e.reasons, name:b.name||"" };
+  }).filter(Boolean);
+}
 function openGanAssign(ganId){
   /* היחידה היא גן, ובצהרונים — קבוצה שעשויה לאגד כמה גנים */
   const u=asgUnit(ganId); if(!u) return;
@@ -13543,7 +13646,8 @@ function openGanAssign(ganId){
   /* "סייעת ב'" וגן חובה הם כללים של פעילות הגן — בקבוצת צהרון אין להם משמעות */
   const mandatory = g ? isMandatoryGan(g) : false;
   const bAssigned = !!(a[ASSISTANT_B_ROLE] && (a[ASSISTANT_B_ROLE].staffId||a[ASSISTANT_B_ROLE].name));
-  const bEligible = !!g && reg>=ASSISTANT_B_MIN && !mandatory;
+  const bElig = g ? assistantBEligibility(g, reg) : { eligible:false, reasons:[] };
+  const bEligible = !!g && bElig.eligible;
   const roles = assignRoles()   // לפי הסדר שנקבע בהגדרות
     .filter(m=> m.role!==ASSISTANT_B_ROLE || ((bEligible || bAssigned) && !mandatory))
     .filter(m=> roleFitsEdu(m.role, ganEdu)); // רק תפקידים המשויכים לחינוך הגן
@@ -13589,8 +13693,11 @@ function openGanAssign(ganId){
        ["כתובת",[g.address,g.building].filter(Boolean).join(" ")],["אזור",g.zone],["טל' גן",g.phoneGan],["קיבולת",g.capacity],["רשומות",reg]];
   const bHint = mandatory
     ? `<div class="hint" style="margin-bottom:10px;color:var(--muted)">💡 גן חובה (גיל 5) — אין שיבוץ "${esc(ASSISTANT_B_ROLE)}".</div>`
-    : ((!bEligible && !bAssigned)
-      ? `<div class="hint" style="margin-bottom:10px;color:var(--muted)">💡 שיבוץ "${esc(ASSISTANT_B_ROLE)}" ייפתח כשהגן יגיע ל-${ASSISTANT_B_MIN} בנות (כרגע ${reg}).</div>` : "");
+    : (bAssigned && !bEligible)
+      ? `<div class="note" style="margin-bottom:10px;background:var(--bad-soft);color:var(--bad);border-color:var(--bad)">⚠️ <b>אין זכאות לסייעת ב'</b> בגן הזה, ובכל זאת משובצת סייעת ב': ${bElig.reasons.map(esc).join(" · ")}.</div>`
+    : (!bEligible
+      ? `<div class="hint" style="margin-bottom:10px;color:var(--muted)">💡 "${esc(ASSISTANT_B_ROLE)}" ייפתח כשהגן יהיה זכאי: ${bElig.reasons.map(esc).join(" · ")}.</div>`
+      : (bElig.noExpiry ? `<div class="hint" style="margin-bottom:10px;color:var(--muted)">💡 לא הוזן תוקף רישיון בכרטיס הגן — הזכאות לסייעת ב' מותנית ברישיון בתוקף.</div>` : ""));
   modal(`
     <style>
       .asg-drop{position:absolute;z-index:60;inset-inline:0;top:100%;margin-top:2px;max-height:240px;overflow:auto;background:var(--card,#fff);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
@@ -13761,7 +13868,7 @@ function openStaffAssign(staffId){
     const mand = isMandatoryGan(g), reg = ganReg(ganId);
     return assignRoles()
       .filter(x=> roleFitsEdu(x.role, edu))
-      .filter(x=> x.role!==ASSISTANT_B_ROLE || (!mand && reg>=ASSISTANT_B_MIN));
+      .filter(x=> x.role!==ASSISTANT_B_ROLE || assistantBEligibility(g, reg).eligible);
   }
 
   /* ימים שהעובד/ת כבר תפוס/ה בהם בגן אחר, באותו הקשר → { יום: שם הגן } */
@@ -14071,6 +14178,9 @@ const EXPORT_FIELDS = [
   ["takanon","תקנון",s=>s.docs.takanon?"✓":""],
   ["registeredByUs","נרשמה על ידינו",s=>s.registeredByUs?"כן":"לא"],
   ["absorbedMunicipality","קלוט בעירייה",s=>s.absorbedMunicipality?"כן":"לא"],
+  ["absorbedMinistry","קלוט במשרד החינוך",s=>s.absorbedMinistry?"כן":"לא"],
+  ["leftDate","תאריך עזיבה",s=>s.leftDate?fmtDate(s.leftDate):""],
+  ["leftReason","סיבת עזיבה",s=>s.leftReason||""],
   ["divorced","גרושים",s=>s.special.divorced?"✓":""],
   ["outOfCity","ילדת חוץ",s=>s.special.outOfCity?"✓":""],
   ["retention","השארות",s=>s.special.retention?"✓":""],
@@ -15187,11 +15297,11 @@ const AI_TOOLS = {
       if(!spec.rows.length) return { שגיאה:"אין נתונים התואמים לבקשה" };
       return aiDocDeliver(spec);
     } },
-  bulk_update_students: { read:false, desc:'עדכון קבוצתי של תלמידות. פרמטרים: filter (כמו ב-find_students), field — אחד מ: '+'placed, absorbedMunicipality, registeredByUs, insurancePaid'+', value (true/false).',
+  bulk_update_students: { read:false, desc:'עדכון קבוצתי של תלמידות. פרמטרים: filter (כמו ב-find_students), field — אחד מ: '+'placed, absorbedMunicipality, absorbedMinistry, registeredByUs, insurancePaid'+', value (true/false).',
     preview(a){ const f=a.filter||{}; const res=AI_TOOLS.find_students.run(Object.assign({limit:1000}, f));
       if(res['שגיאה']) return { error:res['שגיאה'] };
       const ids=(res['תלמידות']||[]).map(x=>x.id);
-      const allowed={ placed:'משובצת (שיבוץ סופי)', absorbedMunicipality:'קלוט בעירייה', registeredByUs:'נרשמה על ידינו', insurancePaid:'תשלום ביטוח' };
+      const allowed={ placed:'משובצת (שיבוץ סופי)', absorbedMunicipality:'קלוט בעירייה', absorbedMinistry:'קלוט במשרד החינוך', registeredByUs:'נרשמה על ידינו', insurancePaid:'תשלום ביטוח' };
       if(!allowed[a.field]) return { error:'שדה לא נתמך לעדכון קבוצתי: '+(a.field||"") };
       if(!ids.length) return { error:"אף תלמידה לא תואמת את הסינון" };
       const v=!!a.value && a.value!=="false";
@@ -15209,7 +15319,7 @@ const AI_TOOLS = {
 const AI_STUDENT_FIELDS = { firstName:"שם פרטי", lastName:"שם משפחה", tz:'ת"ז', dob:"תאריך לידה",
   motherName:"שם האם", fatherName:"שם האב", phone:"טלפון בית", momMobile:"נייד אם", dadMobile:"נייד אב",
   email:'דוא"ל', street:"רחוב", building:"מספר בניין", city:"עיר", age:"גיל", period:"מועד רישום",
-  education:"חינוך", notes:"הערות", placed:"משובצת (שיבוץ סופי)", absorbedMunicipality:"קלוט בעירייה",
+  education:"חינוך", notes:"הערות", placed:"משובצת (שיבוץ סופי)", absorbedMunicipality:"קלוט בעירייה", absorbedMinistry:"קלוט במשרד החינוך",
   registeredByUs:"נרשמה על ידינו", insurancePaid:"תשלום ביטוח", finished:"סיימה גן" };
 const AI_GAN_FIELDS = { ganName:"שם הגן", ganSymbol:"סמל הגן", internalSymbol:"סמל פנימי",
   teacherName:"שם הגננת", age:"גיל", education:"חינוך", address:"כתובת", building:"מספר", street:"רחוב",
@@ -16827,6 +16937,23 @@ function viewSettings(root){
     </div>
   </div>
 
+  <div class="panel" data-set="rules">
+    <h2>כללי העיר ואנשי קשר לדיווח</h2>
+    <div class="sub">הגדרות שמשתנות מעיר לעיר. אנשי הקשר משמשים לשליחת עדכונים ישירות מהתיק — למשל עזיבה באמצע שנה.</div>
+    <div class="grid g2" style="margin-top:10px">
+      <div><label>ילדת השארות — קבלה לגן</label>
+        <select id="rl-retention" ${dis}>
+          <option value="space" ${retentionPolicy()==='space'?'selected':''}>רק על בסיס מקום פנוי (ברירת מחדל)</option>
+          <option value="obligated" ${retentionPolicy()==='obligated'?'selected':''}>העיר מחויבת לקבל — גם מעל רף השיבוץ</option>
+        </select>
+        <div class="hint">"רק על בסיס מקום פנוי" — ילדת השארות כפופה לרף השיבוץ כמו כל תלמידה. "מחויבת" — מותר לשבץ אותה גם בגן מלא (מוצגת אזהרה). בשני המצבים נדרש מסמך השארות.</div></div>
+      <div></div>
+      <div><label>מייל הגורם המטפל בעירייה</label><input id="rl-muniEmail" type="email" dir="ltr" style="text-align:right" value="${esc(reportContacts().muni)}" placeholder="name@city.gov.il" ${dis}></div>
+      <div><label>מייל הגורם המטפל במשרד החינוך</label><input id="rl-moeEmail" type="email" dir="ltr" style="text-align:right" value="${esc(reportContacts().moe)}" placeholder="name@education.gov.il" ${dis}></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="saveRules" ${dis}>💾 שמירה</button></div>
+  </div>
+
   <div class="panel" data-set="tzmin">
     <h2>צהרון — מינימום ומקסימום</h2>
     <div class="sub">גודל קבוצת הצהרון, <b>בנפרד לכל סוג חינוך</b> — המספרים שונים ברגיל ובחינוך מיוחד.
@@ -17084,6 +17211,13 @@ function viewSettings(root){
   }
 
   // רף שיבוץ — ברירות מחדל (סעיף 2)
+  { const b=$("#saveRules");
+    if(b && admin) b.onclick=()=>{
+      const v=id=>String(($("#"+id)||{}).value||"").trim();
+      DB.settings.retentionPolicy = v("rl-retention")==='obligated' ? 'obligated' : 'space';
+      DB.settings.reportContacts = { muni:v("rl-muniEmail"), moe:v("rl-moeEmail") };
+      save(); toast("כללי העיר ואנשי הקשר נשמרו");
+    }; }
   { const b=$("#saveAC");
     if(b && admin) b.onclick=()=>{
       const num=id=>String(($("#"+id)||{}).value||"").replace(/[^\d]/g,"");
