@@ -28,7 +28,7 @@ Object.defineProperty(window,'ORG',{get:()=>ORG,set:v=>{ORG=v},configurable:true
 Object.defineProperty(window,'_pending',{get:()=>_pending,configurable:true});
 Object.defineProperty(window,'currentUser',{get:()=>currentUser,set:v=>{currentUser=v},configurable:true});
 window.__resetCity=()=>{ _cityResolved=false; };
-Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, journalAdd, cityRequests, waitlistReady, viewRequests, openListReport, openStaff, makeStaff, setCloudDoc:(id,d)=>{ cloudDocs.set(id,d); }, stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
+Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, journalAdd, cityRequests, waitlistReady, viewRequests, alertItems, viewAlerts, alertSave, rgCode, returningMap, openListReport, openStaff, makeStaff, setCloudDoc:(id,d)=>{ cloudDocs.set(id,d); }, getCloudDoc:(id)=>cloudDocs.get(id), stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -418,6 +418,47 @@ const server=require('http').createServer((req,res)=>{
       const root=document.createElement('div'); document.body.appendChild(root); viewRequests(root);
       const t=root.textContent; root.remove(); setCloudDoc('hq_requests', { items:{} });
       return n===2 && wl.length===1 && wl[0].g.id===g.id && /התפנה מקום/.test(t) && /שירה לוי/.test(t) && !/אחרת/.test(t);
+    });
+  });
+
+  /* ---- שלב 3ב: מרכז ההתראות בעיר ---- */
+  await step('🔔 לטיפול: עזיבה שלא דווחה ופנייה פתוחה מופיעות, עם טופל / המשך טיפול / העברה / יומן', async()=>{
+    return await pg.evaluate(async()=>{
+      DB.students=[]; DB.gans=[]; const g=makeGan(); g.ganName='גן הרימון'; DB.gans.push(g);
+      const s=Object.assign(makeStudent(),{firstName:'מיכל',lastName:'לוי',year:DB.activeYear,ganId:g.id,leftDate:'2026-10-01',finished:true}); DB.students.push(s);
+      setCloudDoc('hq_requests',{ items:{ r9:{ who:'מיכל לוי', type:'בירור', status:'open', createdAt:Date.now() } } });
+      setCloudDoc('followups',{ items:{} });
+      const items=alertItems(); const keys=items.map(x=>x.key);
+      const root=document.createElement('div'); document.body.appendChild(root); viewAlerts(root);
+      const t=root.textContent, btns=root.querySelectorAll('[data-al-act]').length, logs=root.querySelectorAll('[data-al-log]').length;
+      root.remove();
+      return keys.includes('left|'+s.id) && keys.includes('req|r9') && /עזיבה שלא דווחה/.test(t) && btns>=6 && logs>=2;
+    });
+  });
+  await step('המשך טיפול עם תאריך שהגיע — הפריט עולה כ"תזכורת"; "טופל" מוריד אותו מהרשימה', async()=>{
+    return await pg.evaluate(async()=>{
+      const key='req|r9';
+      await alertSave(key, { status:'progress', due:'2020-01-01', owner:'a@b.co' }, 'המשך טיפול');
+      const it=alertItems().find(x=>x.key===key); const remind=!!it && it.remind===true && it.sev==='high';
+      const firstIsRemind=alertItems()[0].key===key;
+      await alertSave(key, { status:'done' }, 'טופל');
+      const root=document.createElement('div'); document.body.appendChild(root); viewAlerts(root); const gone=!/מיכל לוי · בירור|בירור · מיכל לוי/.test(root.textContent); root.remove();
+      const st=(getCloudDoc('followups').items||{})[key];
+      setCloudDoc('hq_requests',{ items:{} }); setCloudDoc('followups',{ items:{} });
+      return remind && firstIsRemind && gone && st.status==='done' && st.log.length===2;
+    });
+  });
+  await step('מספר תיק במייל (RG…) זהה בין תוכנת העיר למרכזי, ושונה בין תיקים', async()=>{
+    return await pg.evaluate(()=>{ const a=rgCode('student','s1'), b=rgCode('student','s2'), c=rgCode('gan','s1'); return /^RG[0-9A-Z]{4,8}$/.test(a) && a!==b && a!==c; });
+  });
+  await step('מפת התלמידות הממשיכות לטופס: רק גיבוב ת"ז → גן היעד, בלי פרטים אישיים', async()=>{
+    return await pg.evaluate(async()=>{
+      DB.gans=[]; DB.students=[]; const g3=makeGan(); g3.ganName='גן קטנים'; g3.age='3'; g3.campus='א'; const g4=makeGan(); g4.ganName='גן גדולים'; g4.age='4'; g4.campus='א'; g4.ganSymbol='444'; DB.gans.push(g3,g4);
+      DB.students.push(Object.assign(makeStudent(),{firstName:'ענבל',lastName:'כהן',tz:'123456782',age:'3',year:DB.activeYear,ganId:g3.id,campus:'א'}));
+      DB.students.push(Object.assign(makeStudent(),{firstName:'חובה',tz:'111111118',age:'5',year:DB.activeYear}));
+      const m=await returningMap(); const vals=Object.values(m), keys=Object.keys(m);
+      const flat=JSON.stringify(m);
+      return keys.length===1 && /^[0-9a-f]{64}$/.test(keys[0]) && vals[0].s==='444' && vals[0].n==='גן גדולים' && !/ענבל|123456782|כהן/.test(flat);
     });
   });
 

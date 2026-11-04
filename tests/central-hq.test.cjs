@@ -297,6 +297,19 @@ const DATA={
     });
     return (r.chips>=2 && r.saved) || JSON.stringify(r);
   });
+  await step('מייל נכנס: משויך לתיק לפי מספר התיק בנושא, לפי ת"ז בגוף או לפי השולח — ולא משויך כשאין התאמה', async()=>{
+    const r=await pg.evaluate(()=>{
+      const M=window.__hqMail; const code=M.code('modiin-illit','stu','s1');
+      const s1=window.__hq.findStudent('modiin-illit','s1');
+      const byCode=M.match({ subject:'Re: פנייה · תיק '+code, body:'תודה', from:'x@y.com' });
+      /* ת"ז 18 של s1 — כפי שהיא כתובה במייל, 9 ספרות עם אפסים מובילים */
+      const full=s1; const byTz=M.match({ subject:'שאלה', body:'מספר זהות 000000018 בבקשה', from:'zz@q.com' });
+      const byFrom=M.match({ subject:'שאלה', body:'שלום', from:'אמא <'+s1.email+'>' });
+      const none=M.match({ subject:'פרסומת', body:'מבצע', from:'ads@shop.com' });
+      return { code:byCode&&byCode.id, tz:byTz&&byTz.id, want:full&&full.id, from:byFrom&&byFrom.id, none };
+    });
+    return (r.code==='s1' && r.want && r.tz===r.want && r.from==='s1' && r.none===null) || JSON.stringify(r);
+  });
   await step('סינון תלמידים במרכזי: מגדר "מעורב", ערוץ רישום ותאריך רישום', async()=>{
     await go('students'); const t=await pg.evaluate(()=>document.getElementById('hqStudents').innerHTML);
     return (/value="מעורב"/.test(t) && /data-f="regVia"/.test(t) && /data-f="regFrom"/.test(t) && /data-f="regTo"/.test(t)) || 'missing filters';

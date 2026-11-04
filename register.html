@@ -131,6 +131,31 @@
 </head>
 <body>
 <div class="wrap">
+  <div class="doc" id="cityCard" style="display:none">
+    <h1>רישום לגני ילדים</h1>
+    <div class="sub-title">בחירת עיר</div>
+    <div class="grid g1"><div><label>באיזו עיר נמצא הגן?</label><select id="citySel"><option value="">— בחירת עיר —</option></select></div></div>
+    <div class="center" style="margin-top:14px"><button class="btn" id="cityGo">המשך לטופס</button></div>
+  </div>
+
+  <div class="doc" id="appealCard" style="display:none">
+    <h1>ערעור / פנייה למחלקת הרישום</h1>
+    <div class="sub-title" id="appealCity"></div>
+    <div class="grid">
+      <div><label>סוג הפנייה</label><select id="apType"><option>ערעור על שיבוץ</option><option>בקשה לשינוי שיבוץ</option><option>בירור</option><option>אחר</option></select></div>
+      <div><label>שם התלמיד/ה</label><input id="apChild" autocomplete="off"></div>
+      <div><label>מספר זהות של התלמיד/ה</label><input id="apTz" inputmode="numeric" autocomplete="off"></div>
+      <div><label>שם ההורה</label><input id="apParent" autocomplete="off"></div>
+      <div><label>טלפון לחזרה</label><input id="apPhone" inputmode="tel"></div>
+      <div><label>דוא"ל (לאישור קבלה)</label><input id="apEmail" type="email" dir="ltr" style="text-align:right"></div>
+      <div><label>הגן הנוכחי</label><input id="apCur" autocomplete="off"></div>
+      <div><label>הגן המבוקש</label><input id="apWant" autocomplete="off"></div>
+      <div style="grid-column:1 / -1"><label>תוכן הפנייה</label><textarea id="apText" rows="6"></textarea></div>
+    </div>
+    <div class="center" style="margin-top:14px"><button class="btn" id="apSend">📤 שליחת הפנייה</button></div>
+    <div id="apMsg"></div>
+  </div>
+
   <div class="doc" id="formCard" style="display:none">
     <div class="hd">
       <div class="lg" id="logo">🎒</div>
@@ -146,7 +171,9 @@
       <div class="grid" style="margin-top:12px">
         <div><label>שם פרטי</label><input id="childFirst" autocomplete="off"></div>
         <div><label>שם משפחה</label><input id="childLast" autocomplete="off"></div>
-        <div><label>מספר תעודת זהות</label><input id="childTz" inputmode="numeric" autocomplete="off"></div>
+        <div style="grid-column:1 / -1"><label class="chk" style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="isPassport" style="width:auto"> בעלי דרכון (אין תעודת זהות ישראלית)</label></div>
+        <div><label id="childTzLbl">מספר תעודת זהות</label><input id="childTz" inputmode="numeric" autocomplete="off">
+          <div class="hint" id="returnNote"></div></div>
         <div><label>תאריך הלידה</label><input id="dob" type="date"></div>
         <div><label>רחוב</label><input id="street" list="streetList" autocomplete="off"><datalist id="streetList"></datalist></div>
         <div><label>מספר בניין</label><input id="building" autocomplete="off"></div>
@@ -158,6 +185,8 @@
       </div>
 
       <div class="grid" style="margin-top:6px">
+        <div><label>גיל התלמיד/ה בשנה"ל</label><select id="ageSel"><option value="">— כל הגילאים —</option></select><div class="hint">בבחירת גיל מוצגים רק הגנים המתאימים.</div></div>
+        <div></div>
         <div><label>שם הגן המבוקש</label><input id="ganName" list="ganList" autocomplete="off" placeholder="הקלד/י לחיפוש גן…"><datalist id="ganList"></datalist></div>
         <div><label>סמל הגן</label><input id="ganSymbol" readonly placeholder="יתמלא אוטומטית"></div>
         <div class="g1" style="grid-column:1 / -1"><label>כתובת הגן</label><input id="ganAddress" readonly></div>
@@ -201,7 +230,32 @@
         <label class="file-lbl">📎 ספח<input id="fileSefach" type="file" accept="image/*,.pdf" multiple hidden></label>
         <div class="hint" id="fileSefachList"></div>
       </div>
+      <div class="up-row" id="passportDocs" style="display:none;margin-top:10px">
+        <div class="hint"><b>בעלי דרכון</b> — יש לצרף נספח ב׳, דרכונים של שני ההורים ודרכון של התלמיד/ה.</div>
+        <label class="file-lbl">📎 נספח ב׳<input id="fileNispachB" type="file" accept="image/*,.pdf" multiple hidden></label><div class="hint" id="fileNispachBList"></div>
+        <label class="file-lbl">📎 דרכון האב<input id="filePassDad" type="file" accept="image/*,.pdf" multiple hidden></label><div class="hint" id="filePassDadList"></div>
+        <label class="file-lbl">📎 דרכון האם<input id="filePassMom" type="file" accept="image/*,.pdf" multiple hidden></label><div class="hint" id="filePassMomList"></div>
+        <label class="file-lbl">📎 דרכון התלמיד/ה<input id="filePassChild" type="file" accept="image/*,.pdf" multiple hidden></label><div class="hint" id="filePassChildList"></div>
+      </div>
     </fieldset>
+
+    <fieldset id="tzBox" style="display:none">
+      <legend>צהרון</legend>
+      <label class="chk" style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="tzaharon" style="width:auto"> מבקשים לרשום גם לצהרון</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>ביטוח תלמידים</legend>
+      <div id="insPay" style="display:none">
+        <div class="hint" style="margin-bottom:8px">תשלום ביטוח תלמידים הוא תנאי לרישום. לוחצים על הכפתור, משלמים, ומזינים כאן את מספר האישור שמתקבל בסוף התשלום.</div>
+        <a class="btn" id="insPayBtn" href="#" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none">💳 לתשלום ביטוח תלמידים</a>
+        <div style="margin-top:10px"><label>מספר אישור התשלום</label><input id="insRef" autocomplete="off" dir="ltr" style="text-align:right"></div>
+      </div>
+      <label class="chk" id="insPledgeBox" style="display:none;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="insPledge" style="width:auto"> אני מתחייב/ת לשלם את ביטוח התלמידים — תנאי לרישום</label>
+    </fieldset>
+
+    <div class="note" style="margin-bottom:14px"><b>שימו לב:</b> הרישום אינו מחייב את קבלת התלמיד/ה. השיבוץ ייקבע בהמשך, ויישלח אליכם אישור שיבוץ.
+      <span id="appealLinkBox"> · לערעור או פנייה למחלקת הרישום: <a href="#" id="appealLink">טופס פנייה</a></span></div>
 
     <div class="center">
       <button class="btn" id="submitBtn">📤 שליחת הרישום</button>
@@ -216,8 +270,9 @@
 <script>
 const BRIDGE = "https://script.google.com/macros/s/AKfycbxC0ywjZFGGb1IOCRhscp5dO9FSv4rEX3_bWV2wEgY05dIq3_OHTqFwU7UveV27KXm1/exec";
 const $ = s => document.querySelector(s);
+let CUR_CITY = { id:"", name:"" };
 async function bridge(action, payload){
-  const json = JSON.stringify(Object.assign({action}, payload||{}));
+  const json = JSON.stringify(Object.assign({action}, CUR_CITY.id?{ cityId:CUR_CITY.id, cityName:CUR_CITY.name }:{}, payload||{}));
   let url = BRIDGE, opts;
   if(json.length < 6000){ url = BRIDGE + "?data=" + encodeURIComponent(json); opts = { method:"POST" }; }
   else { opts = { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:json }; }
@@ -251,8 +306,30 @@ let sigHasDrawn=false;
 function signatureDataUrl(){ return sigHasDrawn ? $("#sign").toDataURL("image/png") : ""; }
 
 /* ---- gan search → symbol / address autofill ---- */
+function ganAgesOf(g){ return String((g&&g.age)||"").split("/").map(x=>x.trim()).filter(Boolean); }
+function fillGanList(){
+  const age=$("#ageSel").value;
+  const list=GANS.filter(g=>!age || !ganAgesOf(g).length || ganAgesOf(g).includes(age));
+  $("#ganList").innerHTML = list.map(g=>`<option value="${esc(g.name)}">`).join("");
+}
+let RETURNING=null;   // { symbol, name, age } — תלמידה ממשיכה שזוהתה לפי ת"ז
+async function lookupReturning(){
+  const tz=String($("#childTz").value||"").replace(/\D/g,""); const note=$("#returnNote");
+  if($("#isPassport").checked || tz.length<5){ note.textContent=""; RETURNING=null; return; }
+  try{ const r=await bridge("regLookup",{ tz });
+    if(r && r.found && r.gan){ RETURNING=r.gan;
+      if(r.gan.age) $("#ageSel").value=r.gan.age; fillGanList();
+      $("#ganName").value=r.gan.name||""; $("#ganName").dispatchEvent(new Event("change"));
+      note.textContent="✓ תלמידה ממשיכה — נבחר הגן שאליו היא עולה ("+(r.gan.name||"")+"). אפשר לשנות. את שאר הפרטים יש למלא."; }
+    else { RETURNING=null; note.textContent=""; }
+  }catch(e){ RETURNING=null; }
+}
 function wireGan(){
-  const dl=$("#ganList"); dl.innerHTML = GANS.map(g=>`<option value="${esc(g.name)}">`).join("");
+  const ages=(Array.isArray(CONFIG.ages)&&CONFIG.ages.length)?CONFIG.ages:[...new Set(GANS.flatMap(ganAgesOf))].sort();
+  $("#ageSel").innerHTML='<option value="">— כל הגילאים —</option>'+ages.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join("");
+  $("#ageSel").onchange=fillGanList; fillGanList();
+  $("#childTz").addEventListener("change", lookupReturning); $("#childTz").addEventListener("blur", lookupReturning);
+  $("#isPassport").onchange=()=>{ const on=$("#isPassport").checked; $("#passportDocs").style.display=on?"":"none"; $("#childTzLbl").textContent=on?"מספר דרכון של התלמיד/ה":"מספר תעודת זהות"; if(on){ RETURNING=null; $("#returnNote").textContent=""; } };
   const apply=()=>{ const v=$("#ganName").value.trim(); const g=GANS.find(x=>x.name===v)||GANS.find(x=>x.name.replace(/\s/g,"")===v.replace(/\s/g,""));
     $("#ganSymbol").value = g? str(g.symbol) : "";
     $("#ganAddress").value = g? str(g.address) : "";
@@ -264,6 +341,7 @@ function wireGan(){
 function wireFiles(){
   const show=(inp,box)=>{ inp.addEventListener("change",()=>{ box.textContent=[...inp.files].map(f=>f.name).join(" · ")||""; }); };
   show($("#fileId"), $("#fileIdList")); show($("#fileSefach"), $("#fileSefachList"));
+  [["fileNispachB","fileNispachBList"],["filePassDad","filePassDadList"],["filePassMom","filePassMomList"],["filePassChild","filePassChildList"]].forEach(([a,b])=>show($("#"+a),$("#"+b)));
 }
 
 /* ---- render config into the form ---- */
@@ -287,13 +365,33 @@ function render(){
   $("#declDate").value = todayStr();
   GANS = Array.isArray(CONFIG.gans)? CONFIG.gans : [];
   wireGan(); wireFiles();
+  if(CONFIG.cityName) $("#mainTitle").textContent = "רישום לגני ילדים " + (CONFIG.year || "") + " · " + CONFIG.cityName;
+  $("#tzBox").style.display = CONFIG.tzaharonOffer ? "" : "none";
+  if(/^https:\/\//i.test(CONFIG.insurancePayUrl||"")){ $("#insPay").style.display=""; $("#insPayBtn").href=CONFIG.insurancePayUrl; }
+  else { $("#insPledgeBox").style.display="flex"; }
+  $("#appealLinkBox").style.display = CONFIG.appealsOn===false ? "none" : "";
+  $("#appealLink").href = "?appeal=1" + (CUR_CITY.id ? "&city="+encodeURIComponent(CUR_CITY.id) : "");
   $("#loading").style.display="none";
   $("#formCard").style.display="";
 }
 
+const QS = new URLSearchParams(location.search);
 async function load(){
   try{
+    const want = (QS.get("city")||"").trim().toLowerCase();
+    if(want) CUR_CITY = { id:want, name:"" };
     const res = await bridge("regConfigGet", {});
+    const cities = (res && Array.isArray(res.cities)) ? res.cities : [];
+    if(want){ const c=cities.find(x=>x.id===want); if(c) CUR_CITY.name=c.name; }
+    /* כמה ערים ולא נבחרה עיר — בורר עיר לפני הטופס */
+    if(!want && cities.length>1){
+      $("#loading").style.display="none"; $("#cityCard").style.display="";
+      $("#citySel").innerHTML='<option value="">— בחירת עיר —</option>'+cities.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
+      $("#cityGo").onclick=()=>{ const id=$("#citySel").value; if(!id){ $("#citySel").focus(); return; } const q=new URLSearchParams(location.search); q.set("city", id); location.search=q.toString(); };
+      return;
+    }
+    if(!want && cities.length===1) CUR_CITY = { id:cities[0].id, name:cities[0].name };
+    if(QS.get("appeal")){ showAppeal(); return; }
     CONFIG = (res && res.config) || {};
     if(!CONFIG || !Array.isArray(CONFIG.gans) || !CONFIG.gans.length){
       throw new Error("empty-config");
@@ -308,6 +406,21 @@ async function load(){
   }
 }
 
+/* ---- ערעור / פנייה — נשלח לגשר, ונקלט ב"פניות וערעורים" במרכזי ובעיר ---- */
+function showAppeal(){
+  $("#loading").style.display="none"; $("#appealCard").style.display="";
+  $("#appealCity").textContent = CUR_CITY.name || "";
+  const am=(t,cls)=>{ $("#apMsg").innerHTML = t?`<div class="note ${cls||''}">${esc(t)}</div>`:""; };
+  $("#apSend").onclick=async()=>{
+    const v=id=>String($("#"+id).value||"").trim();
+    const data={ type:v("apType"), childName:v("apChild"), childTz:v("apTz"), parentName:v("apParent"), phone:v("apPhone"), email:v("apEmail"), currentGan:v("apCur"), wantGan:v("apWant"), text:v("apText") };
+    if(!data.childName || !data.text){ am("יש למלא את שם התלמיד/ה ואת תוכן הפנייה","bad"); return; }
+    if(!data.phone && !data.email){ am("יש להשאיר טלפון או דוא\"ל לחזרה","bad"); return; }
+    const b=$("#apSend"); b.disabled=true; am("שולח…");
+    try{ await bridge("appealSubmit",{ data }); $("#appealCard").innerHTML=`<div class="center" style="padding:30px"><div style="font-size:52px">✅</div><h1>הפנייה התקבלה</h1><div class="note">הפנייה הועברה למחלקת הרישום ותטופל בהקדם.${data.email?" אישור קבלה נשלח לדוא\"ל.":""}</div></div>`; }
+    catch(e){ b.disabled=false; am("השליחה נכשלה: "+e.message,"bad"); }
+  };
+}
 /* ---- טעינת ספריות PDF (רק בעת שליחה) ---- */
 /* SRI — טביעת האצבע של כל קובץ CDN. קובץ שהוחלף בצד ה-CDN לא ירוץ.
    המפתח הוא סוף הכתובת בלבד; כתובת מקומית (stub בבדיקות) נטענת ללא בדיקה. */
@@ -430,10 +543,15 @@ $("#submitBtn").onclick = async ()=>{
   if(!ganName || !$("#ganSymbol").value){ return fail("יש לבחור גן מהרשימה (כדי שהסמל יתמלא)"); }
   if(!parentName){ return fail("יש להזין שם ההורה בהצהרה"); }
   if(!signatureDataUrl()){ return fail("יש לחתום בחלון החתימה"); }
+  const passport=$("#isPassport").checked;
+  if(passport && (!$("#fileNispachB").files.length || !$("#filePassChild").files.length || (!$("#filePassDad").files.length && !$("#filePassMom").files.length))){ return fail("בעלי דרכון: יש לצרף נספח ב׳, דרכון של התלמיד/ה ודרכונים של ההורים"); }
+  const payOn=/^https:\/\//i.test(CONFIG.insurancePayUrl||""), insRef=String(($("#insRef")||{}).value||"").trim();
+  if(payOn && !insRef){ return fail("יש לשלם את ביטוח התלמידים ולהזין את מספר האישור"); }
+  if(!payOn && !$("#insPledge").checked){ return fail("יש לסמן התחייבות לתשלום ביטוח התלמידים"); }
   const btn=$("#submitBtn"); btn.disabled=true; msg("שולח…","");
   try{
     const files=[];
-    for(const [inp,kind] of [[$("#fileId"),"תעודת זהות"],[$("#fileSefach"),"ספח"]]){
+    for(const [inp,kind] of [[$("#fileId"),"תעודת זהות"],[$("#fileSefach"),"ספח"],[$("#fileNispachB"),"נספח ב׳"],[$("#filePassDad"),"דרכון האב"],[$("#filePassMom"),"דרכון האם"],[$("#filePassChild"),"דרכון התלמיד/ה"]]){
       for(const f of inp.files){ files.push({ kind, name:f.name, mimeType:f.type||"application/octet-stream", dataB64: await fileToB64(f) }); }
     }
     const data={
@@ -444,7 +562,10 @@ $("#submitBtn").onclick = async ()=>{
       address:[$("#street").value.trim(),$("#building").value.trim(),$("#city").value.trim()].filter(Boolean).join(" "),
       email:$("#email").value.trim(), ganAddress:$("#ganAddress").value,
       parentName, parentTz:$("#parentTz").value.trim(), declDate:$("#declDate").value,
-      signature: signatureDataUrl(), submittedAt:new Date().toISOString()
+      signature: signatureDataUrl(), submittedAt:new Date().toISOString(),
+      age:$("#ageSel").value||"", passport, tzaharon:!!(($("#tzaharon")||{}).checked),
+      insurancePayRef: payOn?insRef:"", insurancePledge: !payOn && !!$("#insPledge").checked,
+      returning: !!(RETURNING && RETURNING.name===ganName)
     };
     // מסמך רישום ממותג (PDF) — נכשל בשקט אם ה-CDN חסום, ההגשה נמשכת בכל מקרה
     try{
@@ -454,7 +575,7 @@ $("#submitBtn").onclick = async ()=>{
     }catch(e){}
     msg("שולח…","");
     await bridge("regSubmit", { data, files });
-    $("#formCard").innerHTML = `<div class="center" style="padding:30px"><div style="font-size:52px">✅</div><h1>הרישום התקבל!</h1><div class="note">הבקשה נשלחה בהצלחה וממתינה לאישור. תודה רבה 🙏</div></div>`;
+    $("#formCard").innerHTML = `<div class="center" style="padding:30px"><div style="font-size:52px">✅</div><h1>הרישום התקבל!</h1><div class="note">הבקשה נשלחה בהצלחה וממתינה לאישור. הרישום אינו מחייב קבלה — אישור שיבוץ יישלח בהמשך. תודה רבה 🙏</div></div>`;
     window.scrollTo(0,0);
   }catch(e){ btn.disabled=false; fail("שליחה נכשלה: "+esc(e.message)); }
 };

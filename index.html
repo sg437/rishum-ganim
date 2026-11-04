@@ -3089,6 +3089,8 @@ function journalAdd(kind, copy, entry, noSave){
   if(rec && !noSave) save();
   return e;
 }
+/* מספר תיק במייל — "תיק RG…" בנושא, כדי שתשובה שתחזור תשויך לתיק לבד (זהה ל-rgCode במרכזי) */
+function rgCode(kind, id){ const cityId=(typeof CITY!=="undefined" && CITY && CITY.id) || HOME_CITY.id; const k=cityId+"|"+(kind==="student"?"stu":kind)+"|"+id; let h=2166136261; for(let i=0;i<k.length;i++){ h^=k.charCodeAt(i); h=Math.imul(h,16777619); } return "RG"+(h>>>0).toString(36).toUpperCase(); }
 /* פרטי התיק שנכנסים אוטומטית לתחילת מייל שנשלח ממנו */
 function journalContext(kind, r){
   if(kind==="gan"){
@@ -3143,7 +3145,7 @@ function wireJournal(kind, copy){
       form.innerHTML=`<div class="note" style="display:flex;flex-direction:column;gap:6px">
         <div><label>אל</label><input id="jr-to" dir="ltr" style="text-align:right" placeholder="mail@example.com">
           ${rc.length?`<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px">${rc.map(x=>`<button type="button" class="btn ghost sm" data-jr-to="${esc(x[1])}">${esc(x[0])}</button>`).join("")}</div>`:""}</div>
-        <div><label>נושא</label><input id="jr-subject" value="${esc(ctx[0]||"")}"></div>
+        <div><label>נושא</label><input id="jr-subject" value="${esc((ctx[0]||"")+" · תיק "+rgCode(kind, copy.id))}"><div class="hint">"תיק RG…" בנושא — כדי שהתשובה תיכנס לתיק הזה לבד.</div></div>
         <div><label>תוכן</label><textarea id="jr-text" rows="8">${esc("שלום רב,\n\n\n\nפרטים:\n"+ctx.join("\n")+"\n\nבברכה,\n"+appTitle())}</textarea></div>
         <div class="row" style="gap:6px"><button type="button" class="btn sm" id="jr-send">📧 שליחה ותיעוד</button><button type="button" class="btn ghost sm" id="jr-cancel">ביטול</button></div></div>`;
       form.querySelectorAll("[data-jr-to]").forEach(x=>x.onclick=()=>{ const i=$("#jr-to"); const cur=i.value.split(/[,;\s]+/).filter(Boolean); if(!cur.includes(x.dataset.jrTo)) cur.push(x.dataset.jrTo); i.value=cur.join(", "); });
@@ -3750,6 +3752,7 @@ function genderBadge(g){ const v=String((g&&g.gender)||""); if(!v) return '<span
    ============================================================ */
 const TABS = [
   {id:"home",      label:"עמוד הבית", icon:"🏠"},
+  {id:"alerts",    label:"לטיפול", icon:"🔔"},
   {id:"students",  label:"תיקי התלמידות", icon:"🎒"},
   {id:"gans",      label:"גנים", icon:"🏫"},
   {id:"map",       label:"מפת שיבוץ", icon:"🗺️"},
@@ -3842,6 +3845,7 @@ function gotoSettingsSection(key){
 function renderTabs(){
   // המונים מכבדים את בורר החינוך (הכל / רגיל / מיוחד)
   const counts = { students: eduScope(studentsOfYear().filter(s=>!s.finished)).length, gans: eduScope(DB.gans.filter(g=>g.active)).length };
+  { const n=alertsOpenCount(); if(n) counts.alerts=n; }
   const nav=$("#tabs"); if(!nav) return;
   const parent = parentTabOf(active);   // לשונית משנה פעילה מסמנת את זו שמעליה
   nav.innerHTML = TABS.map(t=>{
@@ -5651,7 +5655,7 @@ function route(){
   renderTabs(); renderCityPick(); renderYearSelect(); renderEduPick(); updateBackBtn();
   const so=$("#signOutBtn"); if(so) so.style.display=currentUser?"flex":"none";
   const v = $("#view");
-  ({home:viewHome, students:viewStudents, tzaharon:viewTzaharon, requests:viewRequests, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
+  ({home:viewHome, students:viewStudents, alerts:viewAlerts, tzaharon:viewTzaharon, requests:viewRequests, gans:viewGans, map:viewMap, staff:viewStaff, assign:viewAssign, templates:viewTemplates, reports:viewReports,
     municipality:viewMunicipality, export:viewExport, management:viewManagement, messages:viewMessages, tools:viewTools, settings:viewSettings, guide:viewGuide}[active]||viewHome)(v);
   renderFab();
 }
@@ -10094,6 +10098,152 @@ let tzFiltersOpen=false;
    מתהפכים על המסך (כלל ה-bidi שב-HANDOFF.md). */
 function tzRatio(c, m){ return m ? `${c}/${m}` : String(c); }
 
+/* ============================================================
+   🔔 לטיפול — מרכז ההתראות של העיר
+   ------------------------------------------------------------
+   כל מה שדורש טיפול, במקום אחד, ועם הטיפול עצמו במקום:
+     ✔️ טופל · ⏳ המשך טיפול (תאריך + תזכורת) · ↪ העברה לגורם (עם מייל) · 📜 יומן.
+   הפריטים מחושבים מהנתונים (פניות, רשימת המתנה, סייעת ב', עזיבה שלא דווחה…),
+   ומצב הטיפול בכל פריט נשמר במסמך "followups" של העיר — משותף לכל המשתמשים.
+   פריט "בטיפול" שתאריך ההמשך שלו הגיע עולה לראש הרשימה כתזכורת, עד שנסגר.
+   ============================================================ */
+const AL_ST = { open:"פתוח", progress:"בטיפול", done:"טופל" };
+/* ערעורים מהטופס הציבורי שעדיין ממתינים בגשר (לפני שהמרכזי קלט אותם) — נמשכים כל כמה דקות */
+let _pendingAp=[], _pendingApAt=0, _pendingApBusy=false;
+function pendingAppeals(){
+  if(DRIVE_READY && currentUser && !_pendingApBusy && Date.now()-_pendingApAt>3*60*1000){
+    _pendingApBusy=true; _pendingApAt=Date.now();
+    driveCall("appealList",{}).then(r=>{ _pendingAp=(r&&r.items)||[]; if(active==="alerts"){ const v=$("#view"); if(v) viewAlerts(v); } renderTabs(); })
+      .catch(()=>{}).finally(()=>{ _pendingApBusy=false; });
+  }
+  return _pendingAp;
+}
+function openPendingAppeal(a){
+  const d=a.data||{};
+  modal(`<h3>ערעור חדש מהטופס · ${esc(d.childName||"")}</h3>
+    <div class="sub">התקבל ${esc(new Date(a.at).toLocaleString("he-IL"))} · ממתין לקליטה במרכזי — אחרי הקליטה יופיע ב"פניות וערעורים" ובתיק התלמידה.</div>
+    <div class="grid g2" style="margin-top:10px">
+      <div><label>סוג</label><div>${esc(d.type||"")}</div></div><div><label>ת"ז</label><div dir="ltr" style="text-align:right">${esc(d.childTz||"—")}</div></div>
+      <div><label>הורה</label><div>${esc(d.parentName||"—")}${d.phone?` · <span dir="ltr">${esc(d.phone)}</span>`:""}</div></div><div><label>דוא"ל</label><div dir="ltr" style="text-align:right">${esc(d.email||"—")}</div></div>
+      <div><label>גן נוכחי</label><div>${esc(d.currentGan||"—")}</div></div><div><label>גן מבוקש</label><div>${esc(d.wantGan||"—")}</div></div>
+    </div>
+    <div style="margin-top:10px"><label>תוכן</label><div style="white-space:pre-wrap">${esc(d.text||"")}</div></div>
+    <div class="foot"><button class="btn ghost" id="pap-close" style="margin-inline-start:auto">סגירה</button></div>`);
+  $("#pap-close").onclick=closeModal;
+}
+let alFilter = { topic:"", mine:false, showDone:false };
+function alertsDoc(){ return (typeof cloudDocs!=="undefined" && cloudDocs.get && cloudDocs.get("followups")) || {}; }
+function alertState(key){ return (alertsDoc().items||{})[key] || null; }
+function todayISO(){ return new Date().toLocaleDateString("en-CA"); }
+function alertItems(){
+  const out=[], yr=studentsOfYear();
+  const add=x=>{ x.st=alertState(x.key); out.push(x); };
+  cityRequests().filter(r=>r.status!=="closed").forEach(r=>add({ key:"req|"+r.id, topic:"פניות וערעורים", sev:(r.due && r.due<todayISO())?"high":"mid",
+    t:(r.type||"פנייה")+" · "+(r.who||""), s:(REQ_STATUS_HE[r.status]||"")+(r.due?" · יעד "+fmtDate(r.due):"")+(r.text?" · "+String(r.text).slice(0,80):""), open:()=>openCityRequest(r) }));
+  waitlistReady().forEach(x=>add({ key:"wait|"+x.r.id, topic:"פניות וערעורים", sev:"high",
+    t:"התפנה מקום בגן מבוקש · "+ganName(x.g.id), s:(x.r.who||"")+" ממתין/ה · "+x.room+" פנויים", open:()=>openCityRequest(x.r) }));
+  (typeof pendingAppeals==="function"?pendingAppeals():[]).forEach(a=>add({ key:"pap|"+a.id, topic:"פניות וערעורים", sev:"high",
+    t:"ערעור חדש מהטופס · "+(a.childName||""), s:(a.type||"ערעור")+(a.wantGan?" · מבקשים: "+a.wantGan:"")+" · ממתין לקליטה במרכזי", open:()=>openPendingAppeal(a) }));
+  assistantBConflicts().forEach(x=>add({ key:"abx|"+x.g.id, topic:"צוות וסייעת ב'", sev:"mid", t:"סייעת ב' משובצת ללא זכאות · "+ganName(x.g.id), s:x.reasons.join(" · "), open:()=>{ active="assign"; route(); } }));
+  DB.gans.filter(g=>g.active!==false && licenseExpired(g)).forEach(g=>add({ key:"lic|"+g.id, topic:"רישוי", sev:"mid", t:"רישיון לא בתוקף · "+ganName(g.id), s:"פג ב-"+fmtDate(g.licenseExpiry), open:()=>openGan(JSON.parse(JSON.stringify(g))) }));
+  yr.filter(x=>x.leftDate && !x.leftReported).forEach(x=>add({ key:"left|"+x.id, topic:"תלמידות", sev:"mid", t:"עזיבה שלא דווחה · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:"עזבה ב-"+fmtDate(x.leftDate)+" — לשלוח עדכון לעירייה ולמשרד החינוך", open:()=>openLeaveReport(x) }));
+  yr.filter(x=>!x.finished && retentionNeedsDoc(x)).forEach(x=>add({ key:"ret|"+x.id, topic:"תלמידות", sev:"low", t:"השארות בלי מסמך · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:"אי אפשר לשבץ סופית עד שהמסמך מסומן", open:()=>openStudentById(x.id) }));
+  /* משימות ותזכורות ידניות */
+  Object.entries(alertsDoc().items||{}).filter(([k,v])=>k.startsWith("task|") && v).forEach(([k,v])=>out.push({ key:k, topic:"משימות", sev:"low", t:v.title||"משימה", s:v.note||"", st:v, manual:true }));
+  /* תזכורת שהגיעה — עולה לדחוף */
+  out.forEach(x=>{ if(x.st && x.st.status==="progress" && x.st.due && x.st.due<=todayISO()){ x.sev="high"; x.remind=true; } });
+  const order={high:0,mid:1,low:2};
+  return out.sort((a,b)=>(order[a.sev]-order[b.sev]) || (b.remind?1:0)-(a.remind?1:0));
+}
+function alertsOpenCount(){ try{ return alertItems().filter(x=>!(x.st && x.st.status==="done")).length; }catch(e){ return 0; } }
+async function alertSave(key, patch, logText){
+  const cur=alertState(key)||{};
+  const log=(cur.log||[]).slice(); if(logText) log.push({ at:new Date().toISOString(), by:myEmail(), text:logText });
+  const val=Object.assign({}, cur, patch, { log:log.slice(-40), updatedAt:new Date().toISOString(), updatedBy:myEmail() });
+  const d=alertsDoc(); const items=Object.assign({}, d.items||{}, { [key]:val });
+  cloudDocs.set("followups", Object.assign({}, d, { items }));      // מיד על המסך
+  try{ await setDoc(cityDoc("followups"), { items:{ [key]:val } }, { merge:true }); }
+  catch(e){ toast("השמירה נכשלה: "+(e&&(e.code||e.message)||"")); }
+}
+function alertHandle(x, mode){
+  const st=x.st||{}, users=(typeof knownEmails==="function"?knownEmails():[]).filter(Boolean);
+  const title={ done:"✔️ סימון כטופל", follow:"⏳ המשך טיפול ומעקב", transfer:"↪ העברה לטיפול גורם אחר" }[mode];
+  modal(`<h3>${title}</h3><div class="sub">${esc(x.t)}</div>
+    ${mode==="follow"?`<div style="margin-top:10px"><label>תאריך להמשך טיפול / תזכורת</label><input type="date" id="al-due" value="${esc(st.due||new Date(Date.now()+3*86400000).toLocaleDateString("en-CA"))}"></div>`:""}
+    ${mode==="transfer"?`<div style="margin-top:10px"><label>לטיפול של</label><input id="al-owner" list="al-users" dir="ltr" style="text-align:right" value="${esc(st.owner||"")}" placeholder="מייל של הגורם המטפל"><datalist id="al-users">${users.map(u=>`<option value="${esc(u)}">`).join("")}</datalist></div>
+      <div style="margin-top:8px"><label>תאריך יעד</label><input type="date" id="al-due" value="${esc(st.due||"")}"></div>
+      <label class="check" style="margin-top:8px"><input type="checkbox" id="al-mail" checked> לשלוח לגורם מייל עם פרטי הטיפול</label>`:""}
+    <div style="margin-top:8px"><label>${mode==="done"?"מה נעשה (לא חובה)":"הערה"}</label><textarea id="al-note" rows="3"></textarea></div>
+    <div class="foot"><button class="btn ghost" id="al-cancel">ביטול</button><button class="btn" id="al-ok" style="margin-inline-start:auto">שמירה</button></div>`);
+  $("#al-cancel").onclick=closeModal;
+  $("#al-ok").onclick=async()=>{
+    const note=String($("#al-note").value||"").trim(), due=$("#al-due")?$("#al-due").value:"";
+    if(mode==="done"){ await alertSave(x.key, { status:"done", title:x.t, topic:x.topic, note:note||st.note||"" }, "טופל"+(note?" · "+note:"")); }
+    if(mode==="follow"){ if(!due){ toast("יש לבחור תאריך"); return; } await alertSave(x.key, { status:"progress", title:x.t, topic:x.topic, due, note:note||st.note||"", owner:st.owner||myEmail() }, "המשך טיפול עד "+fmtDate(due)+(note?" · "+note:"")); }
+    if(mode==="transfer"){
+      const owner=String($("#al-owner").value||"").trim().toLowerCase(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(owner)){ toast("יש להזין מייל תקין של הגורם"); return; }
+      await alertSave(x.key, { status:"progress", title:x.t, topic:x.topic, owner, due:due||st.due||"", note:note||st.note||"" }, "הועבר לטיפול "+owner+(due?" · עד "+fmtDate(due):"")+(note?" · "+note:""));
+      if($("#al-mail").checked && DRIVE_READY){
+        try{ await driveCall("sendMail",{ to:owner, subject:"הועבר אליך לטיפול: "+x.t, body:["שלום,","","הועבר אליך לטיפול:",x.t,x.s||"",due?"יעד: "+fmtDate(due):"",note?"הערה: "+note:"","","הפריט מופיע בתוכנה במסך \"לטיפול\".","",appTitle()].filter(v=>v!==undefined).join("\n") }); toast("הועבר ונשלח מייל ✓"); }
+        catch(e){ toast("הועבר, אבל המייל לא נשלח: "+driveErrHe(e)); }
+      }
+    }
+    closeModal(); route();
+  };
+}
+function alertLog(x){
+  const st=x.st||{};
+  modal(`<h3>📜 יומן טיפול</h3><div class="sub">${esc(x.t)}</div>
+    <div style="margin-top:10px">${(st.log||[]).slice().reverse().map(l=>`<div class="hint" style="margin:3px 0"><b>${esc(new Date(l.at).toLocaleString("he-IL"))}</b> · ${esc(l.text||"")}${l.by?` · ${esc(l.by)}`:""}</div>`).join("")||'<div class="hint">אין עדיין פעולות טיפול.</div>'}</div>
+    <div class="foot"><button class="btn ghost" id="al-close" style="margin-inline-start:auto">סגירה</button></div>`);
+  $("#al-close").onclick=closeModal;
+}
+function newAlertTask(){
+  modal(`<h3>➕ משימה / תזכורת</h3>
+    <div style="margin-top:10px"><label>מה צריך לעשות</label><input id="at-title"></div>
+    <div class="grid g2" style="margin-top:8px"><div><label>תאריך לתזכורת</label><input type="date" id="at-due"></div><div><label>אחראי/ת</label><input id="at-owner" dir="ltr" style="text-align:right" value="${esc(myEmail())}"></div></div>
+    <div style="margin-top:8px"><label>פרטים</label><textarea id="at-note" rows="3"></textarea></div>
+    <div class="foot"><button class="btn ghost" id="at-cancel">ביטול</button><button class="btn" id="at-ok" style="margin-inline-start:auto">הוספה</button></div>`);
+  $("#at-cancel").onclick=closeModal;
+  $("#at-ok").onclick=async()=>{ const title=String($("#at-title").value||"").trim(); if(!title){ toast("יש לכתוב מה צריך לעשות"); return; }
+    await alertSave("task|"+uid(), { title, topic:"משימות", status:"progress", due:$("#at-due").value, owner:String($("#at-owner").value||"").trim().toLowerCase(), note:$("#at-note").value }, "נפתחה משימה");
+    closeModal(); route(); };
+}
+function viewAlerts(root){
+  const all=alertItems(), me=myEmail();
+  const openList=all.filter(x=>!(x.st && x.st.status==="done"));
+  const list=(alFilter.showDone?all:openList).filter(x=>(!alFilter.topic || x.topic===alFilter.topic) && (!alFilter.mine || (x.st && x.st.owner===me)));
+  const topics={}; openList.forEach(x=>{ topics[x.topic]=(topics[x.topic]||0)+1; });
+  const sevPill=x=>x.remind?'<span class="pill no">⏰ תזכורת</span>':x.sev==="high"?'<span class="pill no">דחוף</span>':x.sev==="mid"?'<span class="pill warn">לטיפול</span>':'<span class="pill neutral">למעקב</span>';
+  const stPill=x=>x.st?`<span class="pill ${x.st.status==="done"?"ok":"neutral"}">${esc(AL_ST[x.st.status]||"")}${x.st.owner?" · "+esc(x.st.owner):""}${x.st.due&&x.st.status!=="done"?" · עד "+esc(fmtDate(x.st.due)):""}</span>`:"";
+  root.innerHTML=`<div class="panel">
+    <div class="section-title" style="margin-bottom:6px"><h2>🔔 לטיפול</h2><button class="btn ghost" id="al-new">➕ משימה / תזכורת</button></div>
+    <div class="sub">כל מה שדורש טיפול — ובכל פריט הטיפול עצמו: טופל · המשך טיפול עם תאריך ותזכורת · העברה לגורם אחר · יומן. פריט בטיפול חוזר לראש הרשימה כשמגיע תאריך התזכורת, עד שנסגר.</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin:10px 0">
+      <button type="button" class="btn sm ${alFilter.topic?"ghost":""}" data-al-topic="">הכל · ${openList.length}</button>
+      ${Object.keys(topics).map(t=>`<button type="button" class="btn sm ${alFilter.topic===t?"":"ghost"}" data-al-topic="${esc(t)}">${esc(t)} · ${topics[t]}</button>`).join("")}
+      <label class="check" style="margin-inline-start:auto"><input type="checkbox" id="al-mine" ${alFilter.mine?"checked":""}> רק שלי</label>
+      <label class="check"><input type="checkbox" id="al-done" ${alFilter.showDone?"checked":""}> כולל שטופלו</label>
+    </div>
+    ${!list.length?`<div class="empty">אין פריטים פתוחים — הכל מטופל ✓</div>`:list.map(x=>{ const n=all.indexOf(x); return `<div class="note" style="margin:6px 0;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><b>${esc(x.t)}</b>${sevPill(x)}${stPill(x)}<span class="hint" style="margin:0">${esc(x.topic)}</span></div>
+        <div class="hint" style="margin:2px 0 0">${esc(x.s||"")}${x.st&&x.st.note?" · "+esc(x.st.note):""}</div></div>
+      <div class="row" style="gap:4px;flex-wrap:wrap">
+        ${x.open?`<button type="button" class="btn sm ghost" data-al-open="${n}">פתיחה</button>`:""}
+        <button type="button" class="btn sm" data-al-act="done" data-al-i="${n}">✔️ טופל</button>
+        <button type="button" class="btn sm ghost" data-al-act="follow" data-al-i="${n}">⏳ המשך טיפול</button>
+        <button type="button" class="btn sm ghost" data-al-act="transfer" data-al-i="${n}">↪ העברה</button>
+        <button type="button" class="btn sm ghost" data-al-log="${n}">📜</button>
+      </div></div>`; }).join("")}
+  </div>`;
+  $("#al-new").onclick=newAlertTask;
+  root.querySelectorAll("[data-al-topic]").forEach(b=>b.onclick=()=>{ alFilter.topic=b.dataset.alTopic; viewAlerts(root); });
+  $("#al-mine").onchange=e=>{ alFilter.mine=e.target.checked; viewAlerts(root); };
+  $("#al-done").onchange=e=>{ alFilter.showDone=e.target.checked; viewAlerts(root); };
+  root.querySelectorAll("[data-al-open]").forEach(b=>b.onclick=()=>{ const x=all[+b.dataset.alOpen]; if(x&&x.open) x.open(); });
+  root.querySelectorAll("[data-al-act]").forEach(b=>b.onclick=()=>alertHandle(all[+b.dataset.alI], b.dataset.alAct));
+  root.querySelectorAll("[data-al-log]").forEach(b=>b.onclick=()=>alertLog(all[+b.dataset.alLog]));
+}
 /* ============================================================
    פניות וערעורים — העתק מהמרכזי (מסמך hq_requests באוסף העיר)
    ------------------------------------------------------------
@@ -15237,11 +15387,28 @@ const REG_MAIL_DEFAULT={
 /* שדות המיזוג הזמינים במייל האישור */
 const REG_MAIL_VARS=["שם הילדה","תז","גן","סמל גן","שם ההורה","כתובת","שנה","שם המוסד","תאריך"];
 function regFormCfg(){ return (DB.settings&&DB.settings.regForm)||{}; }
+function publicAppealUrl(){ const id=(typeof CITY!=="undefined" && CITY && CITY.id)||""; return publicFormUrl()+"?appeal=1"+(id?"&city="+encodeURIComponent(id):""); }
 function publicFormUrl(){ try{ return location.origin + location.pathname.replace(/[^/]*$/, "") + "register.html"; }catch(e){ return "register.html"; } }
+/* מפת התלמידות הממשיכות לטופס הציבורי: SHA-256(עיר|ת"ז) → { s:סמל, n:שם הגן, a:גיל }.
+   הגן נקבע כמו במעבר שנה: הגן המתקדם באותו קמפוס (nextGanInCampus); בגן רב-גילאי —
+   אותו גן. מי שבגן חובה (5) או שסיימה — לא נכללת. */
+async function sha256Hex(str){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+async function returningMap(){
+  const cityId=(typeof CITY!=="undefined" && CITY && CITY.id) || HOME_CITY.id, out={};
+  for(const st of studentsOfYear().filter(x=>!x.finished && digits(x.tz))){
+    const age=+String(st.age||"").replace(/\D/g,""); if(!age || age>=5) continue;
+    const cur=ganById(st.ganId); let g=null;
+    if(cur && ganMatchesAge(cur, age+1)) g=cur; else g=nextGanInCampus(st, String(age+1));
+    if(!g) continue;
+    const key=await sha256Hex(cityId+"|"+digits(st.tz).replace(/^0+/,""));
+    out[key]={ s:g.ganSymbol||g.internalSymbol||"", n:ganName(g.id), a:String(age+1) };
+  }
+  return out;
+}
 async function regFormPublish(){
   const rf=regFormCfg();
   const gans=eduScope(DB.gans.filter(g=>g.active)).slice().sort((a,b)=>ganName(a.id).localeCompare(ganName(b.id),"he"))
-    .map(g=>({ name:ganName(g.id), symbol:g.ganSymbol||g.internalSymbol||"", address:[g.address,g.building].filter(Boolean).join(" ") }));
+    .map(g=>({ name:ganName(g.id), symbol:g.ganSymbol||g.internalSymbol||"", address:[g.address,g.building].filter(Boolean).join(" "), age:String(g.age||""), nickname:g.nickname||"" }));
   const logo=appLogo(); const isImg=/^(https?:|data:)/i.test(logo);
   const cities=[...new Set(DB.students.map(s=>s.city).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"he"));
   const config={
@@ -15260,9 +15427,19 @@ async function regFormPublish(){
       recognizedFrom:rf.recognizedFrom||"", signName:rf.signName||"", institutionName:rf.institutionName||rf.ownName||"",
       stampImage:rf.stampImage||"" },
     cities,
-    gans
+    gans,
+    /* טופס אחד לכל הערים — הגשר שומר קונפיג לכל עיר, והטופס מציג בורר עיר */
+    cityId: (typeof CITY!=="undefined" && CITY && CITY.id) || "",
+    cityName: mainCityName() || "",
+    ages: [...new Set(gans.map(g=>g.age).join("/").split("/").map(x=>x.trim()).filter(Boolean))].sort(),
+    insurancePayUrl: /^https:\/\//i.test(rf.insurancePayUrl||"") ? rf.insurancePayUrl : "",
+    tzaharonOffer: rf.tzaharonOffer!==false,
+    appealsOn: true
   };
-  return driveCall("regConfigSet", { config });
+  await driveCall("regConfigSet", { config });
+  /* תלמידות ממשיכות: גיבוב ת"ז → הגן שאליו הן אמורות לעלות (רק הגן — בלי שום פרט אישי) */
+  try{ await driveCall("regReturningSet", { map: await returningMap() }); }catch(e){ console.error("returning map", e); }
+  return { ok:true };
 }
 async function approveReg(rec, after){
   if(!rec) return; const d=rec.data||{};
@@ -15282,6 +15459,9 @@ async function approveReg(rec, after){
   }
   s.placed=false; s.registeredByUs=true;
   s.regChannel="link";
+  if(d.tzaharon) s.programs.tzaharon=true;
+  if(d.insurancePayRef){ s.insurancePaid=true; }
+  if(d.passport){ s.notes=(s.notes?s.notes+"\n":"")+"בעלי דרכון — מסמכים: נספח ב׳, דרכוני ההורים ודרכון התלמיד/ה"; }
   { const t=d.submittedAt||rec.at; const dt=t?new Date(t):null; if(dt && !isNaN(dt)) s.regDate=dt.toLocaleDateString("en-CA"); }
   // סימון המסמכים שצורפו בטופס (ת"ז / ספח) + קישור לקבצים
   (rec.files||[]).forEach(f=>{ const k=String(f.kind||"");
@@ -15289,7 +15469,9 @@ async function approveReg(rec, after){
     else if(k.indexOf("ספח")>=0){ s.docs.nispach=true; s.docFiles.nispach={id:f.id,name:f.name,link:f.link}; }
   });
   s.driveFolderId=rec.folderId||""; s.driveFolder=rec.folderLink||"";
-  s.notes="נרשמה דרך טופס דיגיטלי · הורה: "+(d.parentName||"")+(d.parentTz?(" ("+d.parentTz+")"):"");
+  s.notes="נרשמה דרך טופס דיגיטלי · הורה: "+(d.parentName||"")+(d.parentTz?(" ("+d.parentTz+")"):"")
+    +(d.insurancePayRef?" · ביטוח שולם, אישור "+d.insurancePayRef:(d.insurancePledge?" · התחייבות לתשלום ביטוח":""))
+    +(d.returning?" · תלמידה ממשיכה":"")+(s.notes?"\n"+s.notes:"");
   // העברת תיקיית הרישום אל המבנה הרגיל: חינוך → שנה → גן → ילדה
   if(g && rec.folderId){
     try{ const mv=await driveCall("childMove",{ folderId:rec.folderId, year:String(year), edu:eduLabel(g), gan:ganName(g.id) });
@@ -16798,6 +16980,9 @@ function viewTools(root){
       <div><label>מוכר משנת</label><input id="rf-recognizedFrom" value="${esc(rf.recognizedFrom||"")}" placeholder="למשל תש&quot;פ"></div>
       <div><label>שם מורשה חתימת הבעלות</label><input id="rf-signName" value="${esc(rf.signName||"")}" placeholder="שם החותם מטעם הבעלות"></div>
       <div><label>שם המוסד (הצהרת הורה)</label><input id="rf-institutionName" value="${esc(rf.institutionName||"")}" placeholder="ברירת מחדל: שם הבעלות"></div>
+      <div><label>קישור לתשלום ביטוח תלמידים</label><input id="rf-payUrl" dir="ltr" style="text-align:right" value="${esc(rf.insurancePayUrl||"")}" placeholder="https://… (נדרים פלוס או אחר)">
+        <div class="hint">כשיש קישור — ההורה משלם ומזין את מספר האישור, ובלי זה אי אפשר לשלוח את הרישום. בלי קישור — ההורה מסמן התחייבות לתשלום.</div></div>
+      <div><label class="check" style="margin-top:22px"><input type="checkbox" id="rf-tzOffer" ${rf.tzaharonOffer!==false?'checked':''}> להציע בטופס רישום לצהרון</label></div>
     </div>
     <div style="margin-top:12px">
       <label>חתימה וחותמת הבעלות (תמונה)</label>
@@ -16834,6 +17019,10 @@ function viewTools(root){
     <div class="note" style="margin-top:10px;background:var(--accent-soft);color:var(--accent-strong);border-color:transparent">
       <b>קישור הטופס להורים</b> (להעביר בוואטסאפ / להדביק באתר):
       <div class="row" style="margin-top:6px;gap:6px"><input id="rf-link" dir="ltr" style="text-align:right;flex:1" readonly value="${esc(publicFormUrl())}"><button class="btn ghost sm" id="rf-copy">📋 העתקה</button></div>
+      <div class="hint" style="margin-top:6px">זה הקישור <b>הכללי</b> — אחד לכל הערים: ההורה בוחר עיר בתחילת הטופס. קישור שנפתח ישר על העיר הזו:</div>
+      <div class="row" style="margin-top:4px;gap:6px"><input dir="ltr" style="text-align:right;flex:1" readonly value="${esc(publicFormUrl()+"?city="+encodeURIComponent((typeof CITY!=="undefined"&&CITY&&CITY.id)||""))}"></div>
+      <div class="hint" style="margin-top:6px"><b>קישור לטופס ערעור / פנייה</b> (מופיע גם בתחתית טופס הרישום):</div>
+      <div class="row" style="margin-top:4px;gap:6px"><input dir="ltr" style="text-align:right;flex:1" readonly value="${esc(publicAppealUrl())}"></div>
       <div class="hint" style="margin-top:6px">לאחר עדכון פרטים / הוספת גנים — לחצו שוב "שמירה ופרסום" כדי שהטופס יתעדכן. הטופס מציג את הגנים הפעילים שבתחום ההרשאה שלכם.</div>
     </div>
   </div>`; })():""}
@@ -16920,6 +17109,7 @@ function viewTools(root){
         applicantMailAttach: !!($("#rf-am-attach")||{}).checked,
         ownName:($("#rf-ownName").value||"").trim(), ownSymbol:($("#rf-ownSymbol").value||"").trim(), ownAddress:($("#rf-ownAddress").value||"").trim(),
         recognizedFrom:($("#rf-recognizedFrom").value||"").trim(), signName:($("#rf-signName").value||"").trim(), institutionName:($("#rf-institutionName").value||"").trim(),
+        insurancePayUrl:(($("#rf-payUrl")||{}).value||"").trim(), tzaharonOffer:!!(($("#rf-tzOffer")||{}).checked),
         stampImage:stampVal });
       pub.onclick=async ()=>{
         DB.settings.regForm=Object.assign({},DB.settings.regForm,collect()); save();

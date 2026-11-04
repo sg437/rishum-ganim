@@ -51,7 +51,7 @@ var RG_BUILD = 'rg-b05ea2eb';
 // גרסת הגשר — מוחזרת ב"בדיקת חיבור" בתוכנה, כדי לדעת בוודאות איזו גרסה *נפרסה בפועל*
 // (שמירת הקוד בעורך אינה מספיקה — חייבים לפרוס גרסה חדשה). יש להעלות את התאריך
 // בכל שינוי שמוסיף/משנה פעולה בגשר.
-var BRIDGE_VERSION = '2026-09-16';
+var BRIDGE_VERSION = '2026-11-04';
 
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
@@ -72,7 +72,7 @@ function doPost(e){
     // לעיתים משמיט את גוף ה-POST החוצה-מקור, והנתונים בשאילתה שורדים הפניות.
     var req = JSON.parse((e && e.parameter && e.parameter.data) || (e && e.postData && e.postData.contents) || '{}');
     // פעולות ציבוריות (טופס הרישום להורים) — ללא צורך בהתחברות
-    var PUBLIC_ACTIONS = { regConfigGet:true, regSubmit:true };
+    var PUBLIC_ACTIONS = { regConfigGet:true, regSubmit:true, regLookup:true, appealSubmit:true };
     // אכיפת הרשאה בכל פעולה לא-ציבורית: לא די בטוקן Firebase תקף — המייל חייב
     // להופיע ברשימת המורשים של המערכת (או להיות בעל מערכת). פעולות ניהול משתמשים
     // דורשות הרשאת מנהל (adminGate_ הוא תת-קבוצה של allowedGate_).
@@ -100,11 +100,18 @@ function doPost(e){
       case 'mailQuota':      return json_(out, mailQuota_());
       case 'msgGateway':     return json_(out, msgGateway_(req.channel, req.items, req.voice));
       case 'msgGatewayStatus': return json_(out, msgGatewayStatus_());
-      case 'regConfigGet':   return json_(out, regConfigGet_());
-      case 'regConfigSet':   return json_(out, regConfigSet_(req.config));
-      case 'regSubmit':      return json_(out, regSubmit_(req.data, req.files));
-      case 'regList':        return json_(out, regList_());
+      case 'regConfigGet':   return json_(out, regConfigGet_(req.cityId ? city : null));
+      case 'regConfigSet':   return json_(out, regConfigSet_(req.config, city));
+      case 'regSubmit':      return json_(out, regSubmit_(req.data, req.files, city));
+      case 'regList':        return json_(out, regList_(city));
       case 'regRemove':      return json_(out, regRemove_(req.id));
+      case 'regReturningSet':return json_(out, regReturningSet_(req.map, city));
+      case 'regLookup':      return json_(out, regLookup_(req.tz, city));
+      case 'appealSubmit':   return json_(out, appealSubmit_(req.data, city));
+      case 'appealList':     return json_(out, appealList_(city));
+      case 'appealRemove':   return json_(out, appealRemove_(req.id));
+      case 'mailInbox':      { var hg = hqGate_(req.idToken); if(!hg.ok) return json_(out, { ok:false, error:hg.error||'not-hq' });
+                               return json_(out, mailInbox_(req.query, req.max)); }
       case 'staffFolder':    return json_(out, staffFolder_(req.edu, req.name, city));
       case 'list':           return json_(out, list_(req.folderId));
       case 'upload':         return json_(out, upload_(req.folderId, req.name, req.mimeType, req.dataB64));
@@ -241,19 +248,90 @@ function getTextFile_(folder, name){
   var it = folder.getFilesByName(name);
   return it.hasNext() ? it.next().getBlob().getDataAsString() : '';
 }
-/* קונפיג הטופס — נשמר ע"י התוכנה (גנים+סמלים, שנה, פרטי בעלות, מייל התראה) */
-function regConfigSet_(config){ putTextFile_(regFolder_(), 'reg-config.json', JSON.stringify(config || {})); return { ok:true }; }
-function regConfigGet_(){ var t=getTextFile_(regFolder_(), 'reg-config.json'); var c={}; try{ c=JSON.parse(t||'{}'); }catch(e){} return { ok:true, config:c }; }
-/* רשימת הרישומים הממתינים (לתוכנה, לאחר התחברות) */
-function regList_(){ var t=getTextFile_(regFolder_(), 'registrations.json'); var a=[]; try{ a=JSON.parse(t||'[]'); }catch(e){} return { ok:true, items:a }; }
+/* קונפיג הטופס — נשמר ע"י התוכנה (גנים+סמלים, שנה, פרטי בעלות, מייל התראה).
+   טופס אחד לכל הערים: לכל עיר קובץ קונפיג משלה (עיר הבית — reg-config.json הוותיק),
+   ורשימת הערים שפרסמו טופס נשמרת ב-reg-cities.json — הטופס הציבורי מציג בורר עיר. */
+function regCfgName_(city){ return (!city || city.legacy) ? 'reg-config.json' : ('reg-config-' + city.id + '.json'); }
+function regCitiesIndex_(){ var a={}; try{ a=JSON.parse(getTextFile_(regFolder_(), 'reg-cities.json')||'{}'); }catch(e){} return a; }
+function regConfigSet_(config, city){
+  city = city || { id: HOME_CITY_ID, legacy:true };
+  config = config || {}; config.cityId = city.id; if(!config.cityName) config.cityName = city.name || '';
+  putTextFile_(regFolder_(), regCfgName_(city), JSON.stringify(config));
+  var idx = regCitiesIndex_(); idx[city.id] = { name: config.cityName || city.name || city.id, at: new Date().toISOString() };
+  putTextFile_(regFolder_(), 'reg-cities.json', JSON.stringify(idx));
+  return { ok:true };
+}
+function regConfigOf_(city){ var c={}; try{ c=JSON.parse(getTextFile_(regFolder_(), regCfgName_(city))||'{}'); }catch(e){} return c; }
+function regConfigGet_(city){
+  var idx = regCitiesIndex_();
+  var cities = Object.keys(idx).map(function(id){ return { id:id, name:idx[id].name || id }; });
+  if(!cities.length){ var home = regConfigOf_(null); if(home && home.gans) cities = [{ id:HOME_CITY_ID, name:home.cityName || '' }]; }
+  var cfg = regConfigOf_(city || (cities.length===1 ? cityFromReq_({ cityId:cities[0].id, cityName:cities[0].name }) : null));
+  return { ok:true, config:cfg, cities:cities };
+}
+/* רשימת הרישומים הממתינים (לתוכנה, לאחר התחברות) — רק של העיר המבקשת (רישום ותיק בלי עיר = עיר הבית) */
+function regList_(city){ var t=getTextFile_(regFolder_(), 'registrations.json'); var a=[]; try{ a=JSON.parse(t||'[]'); }catch(e){}
+  var id = (city && city.id) || HOME_CITY_ID;
+  return { ok:true, items:a.filter(function(r){ return ((r.data && r.data.cityId) || HOME_CITY_ID) === id; }) }; }
+/* תלמידה ממשיכה: העיר מפרסמת מפה של גיבוב ת"ז → הגן שאליו היא אמורה לעלות.
+   הטופס הציבורי מקבל רק את הגן — שום פרט אישי אינו יוצא, והת"ז עצמה אינה נשמרת. */
+function sha256Hex_(s){ return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(s), Utilities.Charset.UTF_8).map(function(b){ var v=(b<0?b+256:b).toString(16); return v.length<2?'0'+v:v; }).join(''); }
+function tzNorm_(tz){ return String(tz||'').replace(/\D/g,'').replace(/^0+/,''); }
+function regReturningSet_(map, city){ city = city || { id: HOME_CITY_ID, legacy:true };
+  putTextFile_(regFolder_(), 'reg-returning-' + city.id + '.json', JSON.stringify(map || {})); return { ok:true, n:Object.keys(map||{}).length }; }
+function regLookup_(tz, city){
+  city = city || { id: HOME_CITY_ID, legacy:true };
+  var k = tzNorm_(tz); if(k.length < 5) return { ok:true, found:false };
+  var m = {}; try{ m = JSON.parse(getTextFile_(regFolder_(), 'reg-returning-' + city.id + '.json')||'{}'); }catch(e){}
+  var hit = m[sha256Hex_(city.id + '|' + k)];
+  return hit ? { ok:true, found:true, gan:{ symbol:hit.s||'', name:hit.n||'', age:hit.a||'' } } : { ok:true, found:false };
+}
+/* ערעורים / פניות מהטופס הציבורי — נשמרים כממתינים, והמרכזי קולט אותם ל"פניות וערעורים" */
+function appealSubmit_(data, city){
+  data = data || {}; city = city || { id: HOME_CITY_ID, legacy:true };
+  var clean = {}; ['type','childName','childTz','parentName','phone','email','currentGan','wantGan','text'].forEach(function(k){ clean[k] = String(data[k]||'').slice(0, k==='text'?4000:200); });
+  if(!clean.childName || !clean.text) return { ok:false, error:'missing-fields' };
+  /* הגנה מפני שימוש לרעה בטופס הציבורי: עד 5 פניות לשעה לאותה כתובת/טלפון, ועד 300 ביום בסך הכול */
+  var cache = CacheService.getScriptCache(), who = 'ap:' + (clean.email || clean.phone || clean.childTz || '').toLowerCase(), day = 'ap-day:' + Utilities.formatDate(new Date(), 'UTC', 'yyyyMMdd');
+  var nWho = +(cache.get(who)||0), nDay = +(cache.get(day)||0);
+  if(nWho >= 5 || nDay >= 300) return { ok:false, error:'rate-limited' };
+  cache.put(who, String(nWho+1), 3600); cache.put(day, String(nDay+1), 86400);
+  var f = regFolder_(); var a=[]; try{ a=JSON.parse(getTextFile_(f,'appeals.json')||'[]'); }catch(e){}
+  var rec = { id:Utilities.getUuid(), at:new Date().toISOString(), cityId:city.id, cityName:city.name||'', data:clean };
+  a.unshift(rec); putTextFile_(f, 'appeals.json', JSON.stringify(a.slice(0, 2000)));
+  try{ var cfg = regConfigOf_(city);
+    if(cfg.notifyEmail) MailApp.sendEmail(String(cfg.notifyEmail), 'ערעור / פנייה חדשה מהטופס · ' + clean.childName,
+      'התקבלה פנייה חדשה מהטופס הציבורי:\n\nסוג: '+clean.type+'\nתלמיד/ה: '+clean.childName+' · ת"ז '+clean.childTz+'\nהורה: '+clean.parentName+' · '+clean.phone+'\nגן נוכחי: '+clean.currentGan+'\nגן מבוקש: '+clean.wantGan+'\n\n'+clean.text+'\n\nהפנייה תיקלט אוטומטית ב"פניות וערעורים" במרכזי.', { name:'פניות וערעורים' });
+    if(clean.email) MailApp.sendEmail(clean.email, 'הפנייה שלכם התקבלה · ' + clean.childName,
+      'שלום '+(clean.parentName||'')+',\n\nפנייתכם ('+(clean.type||'פנייה')+') בעניין '+clean.childName+' התקבלה ותטופל בהקדם. נעדכן אתכם בהמשך.\n\nבברכה,\nמחלקת הרישום', { name:'מחלקת הרישום' });
+  }catch(e){}
+  return { ok:true };
+}
+function appealList_(city){ var a=[]; try{ a=JSON.parse(getTextFile_(regFolder_(),'appeals.json')||'[]'); }catch(e){}
+  var id=(city&&city.id)||HOME_CITY_ID; return { ok:true, items:a.filter(function(x){ return (x.cityId||HOME_CITY_ID)===id; }) }; }
+function appealRemove_(id){ var f=regFolder_(); var a=[]; try{ a=JSON.parse(getTextFile_(f,'appeals.json')||'[]'); }catch(e){}
+  putTextFile_(f, 'appeals.json', JSON.stringify(a.filter(function(x){ return x.id!==id; }))); return { ok:true }; }
+/* מיילים נכנסים — קריאה מתיבת המייל של החשבון שמריץ את הגשר (המייל המוסדי).
+   מוחזר תקציר טקסט בלבד (ללא קבצים מצורפים), לשיוך לתיק בתוכנה. */
+function mailInbox_(query, max){
+  var q = String(query || 'in:inbox newer_than:14d'); var n = Math.min(Math.max(+max||50, 1), 100);
+  var out = [];
+  GmailApp.search(q, 0, n).forEach(function(th){
+    th.getMessages().forEach(function(m){
+      out.push({ id:m.getId(), threadId:th.getId(), from:m.getFrom(), to:m.getTo(), subject:m.getSubject(), date:m.getDate().toISOString(),
+                 body:String(m.getPlainBody()||'').slice(0, 6000) });
+    });
+  });
+  return { ok:true, items:out.slice(-300) };
+}
 function regRemove_(id){
   var f=regFolder_(); var t=getTextFile_(f,'registrations.json'); var a=[]; try{ a=JSON.parse(t||'[]'); }catch(e){}
   a = a.filter(function(x){ return x.id !== id; });
   putTextFile_(f, 'registrations.json', JSON.stringify(a)); return { ok:true };
 }
 /* קליטת רישום מהטופס הציבורי — קבצים לדרייב, שמירה כ"ממתין", התראה במייל */
-function regSubmit_(data, files){
-  data = data || {};
+function regSubmit_(data, files, city){
+  data = data || {}; city = city || { id: HOME_CITY_ID, legacy:true }; data.cityId = city.id;
   var f = regFolder_();
   var yearF = sub_(f, String(data.year || 'ללא שנה'));
   var nm = (data.childName || 'ללא שם') + (data.childTz ? (' · ' + data.childTz) : '');
@@ -285,7 +363,7 @@ function regSubmit_(data, files){
   recs.unshift(rec);
   putTextFile_(f, 'registrations.json', JSON.stringify(recs));
   try{
-    var cfg = {}; try{ cfg = JSON.parse(getTextFile_(f,'reg-config.json')||'{}'); }catch(e){}
+    var cfg = regConfigOf_(city);
     if(cfg.notifyEmail){
       var body = 'התקבל רישום דיגיטלי חדש:\n\n'
         + 'תלמיד/ה: ' + (data.childName||'') + ' · ת"ז: ' + (data.childTz||'') + '\n'
@@ -303,7 +381,7 @@ function regSubmit_(data, files){
   /* אישור אוטומטי לנרשם (סעיף 7) — נשלח לכתובת שההורה הזין, לפי התבנית
      שנקבעה בתוכנה (כלים ושירותים → רישום דיגיטלי → מייל אישור לנרשם). */
   try{
-    var cfg2 = {}; try{ cfg2 = JSON.parse(getTextFile_(f,'reg-config.json')||'{}'); }catch(e){}
+    var cfg2 = regConfigOf_(city);
     var am = cfg2.applicantMail || {};
     if(am.enabled && data.email){
       var own = cfg2.ownership || {};
@@ -973,6 +1051,15 @@ function adminGateCompute_(idToken, city){
    ברשימת המורשים ב-app/meta (admins ∪ allowedEmails ∪ מפתחות userActivity) —
    מקביל ל-emailAllowed()/knownEmails() באפליקציה. חוסם כל חשבון Google אקראי
    שקיבל טוקן תקף אך אינו מורשה במערכת. */
+/* קריאת תיבת המייל המוסדית — רק בעלי המערכת ומשתמשי המרכז (rec.hq). משתמש/ת של עיר
+   אינו/ה רואה את המיילים של שאר הערים. */
+function hqGate_(idToken){
+  var email = tokenEmail_(idToken);
+  if(!email) return { ok:false, error:'unauthorized' };
+  if(isOwnerEmail_(email)) return { ok:true, email:email };
+  var rec = orgUserRec_(idToken, email);
+  return (rec && rec.hq) ? { ok:true, email:email } : { ok:false, error:'not-hq' };
+}
 function allowedGate_(idToken, city){
   var key = gateKey_('gate', idToken, city);
   var hit = cacheGet_(key);
