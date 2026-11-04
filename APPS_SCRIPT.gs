@@ -51,7 +51,15 @@ var RG_BUILD = 'rg-b05ea2eb';
 // גרסת הגשר — מוחזרת ב"בדיקת חיבור" בתוכנה, כדי לדעת בוודאות איזו גרסה *נפרסה בפועל*
 // (שמירת הקוד בעורך אינה מספיקה — חייבים לפרוס גרסה חדשה). יש להעלות את התאריך
 // בכל שינוי שמוסיף/משנה פעולה בגשר.
-var BRIDGE_VERSION = '2026-11-04';
+var BRIDGE_VERSION = '2026-11-04b';
+
+// המייל המוסדי (מחוץ ל-Google, למשל ‎…@xxx.co.il). כשמוגדר:
+//  • כל מייל יוצא נשלח "מאת" הכתובת המוסדית — בתנאי שהוגדרה ב-Gmail של חשבון הגשר
+//    תחת הגדרות → חשבונות → "שליחת דואר בתור" (Send mail as). אחרת — נשלח מהחשבון, עם
+//    "השב אל" לכתובת המוסדית, כך שהתשובות מגיעות לתיבה המוסדית.
+//  • המיילים הנכנסים נקראים מתוך מה שהתיבה המוסדית מעבירה (forward) לחשבון הגשר.
+// ריק = כמו היום: שליחה וקריאה מהחשבון שמריץ את הגשר.
+var INSTITUTION_EMAIL = '';
 
 // שם תיקיית האב שתיווצר ב-Drive (אפשר לשנות לפי הצורך).
 var ROOT_FOLDER_NAME = 'מסמכי רישום תלמידות (מהמערכת)';
@@ -300,9 +308,9 @@ function appealSubmit_(data, city){
   var rec = { id:Utilities.getUuid(), at:new Date().toISOString(), cityId:city.id, cityName:city.name||'', data:clean };
   a.unshift(rec); putTextFile_(f, 'appeals.json', JSON.stringify(a.slice(0, 2000)));
   try{ var cfg = regConfigOf_(city);
-    if(cfg.notifyEmail) MailApp.sendEmail(String(cfg.notifyEmail), 'ערעור / פנייה חדשה מהטופס · ' + clean.childName,
+    if(cfg.notifyEmail) mailSend_(String(cfg.notifyEmail), 'ערעור / פנייה חדשה מהטופס · ' + clean.childName,
       'התקבלה פנייה חדשה מהטופס הציבורי:\n\nסוג: '+clean.type+'\nתלמיד/ה: '+clean.childName+' · ת"ז '+clean.childTz+'\nהורה: '+clean.parentName+' · '+clean.phone+'\nגן נוכחי: '+clean.currentGan+'\nגן מבוקש: '+clean.wantGan+'\n\n'+clean.text+'\n\nהפנייה תיקלט אוטומטית ב"פניות וערעורים" במרכזי.', { name:'פניות וערעורים' });
-    if(clean.email) MailApp.sendEmail(clean.email, 'הפנייה שלכם התקבלה · ' + clean.childName,
+    if(clean.email) mailSend_(clean.email, 'הפנייה שלכם התקבלה · ' + clean.childName,
       'שלום '+(clean.parentName||'')+',\n\nפנייתכם ('+(clean.type||'פנייה')+') בעניין '+clean.childName+' התקבלה ותטופל בהקדם. נעדכן אתכם בהמשך.\n\nבברכה,\nמחלקת הרישום', { name:'מחלקת הרישום' });
   }catch(e){}
   return { ok:true };
@@ -314,7 +322,9 @@ function appealRemove_(id){ var f=regFolder_(); var a=[]; try{ a=JSON.parse(getT
 /* מיילים נכנסים — קריאה מתיבת המייל של החשבון שמריץ את הגשר (המייל המוסדי).
    מוחזר תקציר טקסט בלבד (ללא קבצים מצורפים), לשיוך לתיק בתוכנה. */
 function mailInbox_(query, max){
-  var q = String(query || 'in:inbox newer_than:14d'); var n = Math.min(Math.max(+max||50, 1), 100);
+  var q = String(query || 'in:inbox newer_than:14d');
+  /* תיבה מוסדית מחוץ ל-Google — רק מה שהועבר ממנה (forward) */
+  if(INSTITUTION_EMAIL && (!query || query === 'in:inbox newer_than:14d')) q = '(deliveredto:' + INSTITUTION_EMAIL + ' OR to:' + INSTITUTION_EMAIL + ') newer_than:14d'; var n = Math.min(Math.max(+max||50, 1), 100);
   var out = [];
   GmailApp.search(q, 0, n).forEach(function(th){
     th.getMessages().forEach(function(m){
@@ -375,7 +385,7 @@ function regSubmit_(data, files, city){
         + 'הרישום ממתין לאישור בתוכנה (רישומים דיגיטליים).';
       var mailOpts = { name: (cfg.ownership && cfg.ownership.name) || 'רישום דיגיטלי' };
       if(formPdfBlob){ mailOpts.attachments = [formPdfBlob]; }
-      MailApp.sendEmail(String(cfg.notifyEmail), 'רישום דיגיטלי חדש · ' + (data.childName||''), body, mailOpts);
+      mailSend_(String(cfg.notifyEmail), 'רישום דיגיטלי חדש · ' + (data.childName||''), body, mailOpts);
     }
   }catch(e){}
   /* אישור אוטומטי לנרשם (סעיף 7) — נשלח לכתובת שההורה הזין, לפי התבנית
@@ -401,7 +411,7 @@ function regSubmit_(data, files, city){
       var optsA = { name: own.name || 'רישום דיגיטלי' };
       if(am.replyTo) optsA.replyTo = String(am.replyTo);
       if(am.attachForm && formPdfBlob) optsA.attachments = [formPdfBlob];
-      MailApp.sendEmail(String(data.email), subj, bodyA, optsA);
+      mailSend_(String(data.email), subj, bodyA, optsA);
     }
   }catch(e){}
   return { ok:true };
@@ -416,9 +426,26 @@ function msgMerge_(tpl, vars){
 }
 
 /* שליחת מייל מהשרת (מחשבון הגשר) — לפניות/הצעות שמגיעות מהמערכת */
+/* שליחה אחידה — מאת המייל המוסדי כשאפשר (ראו INSTITUTION_EMAIL) */
+function instAliasOk_(){
+  if(!INSTITUTION_EMAIL) return false;
+  var hit = cacheGet_('inst-alias'); if(hit) return hit.ok === true;
+  var ok = false; try{ ok = GmailApp.getAliases().map(function(a){ return String(a).toLowerCase(); }).indexOf(INSTITUTION_EMAIL.toLowerCase()) >= 0; }catch(e){}
+  cachePut_('inst-alias', { ok:ok }, 21600); return ok;
+}
+function mailSend_(to, subject, body, opts){
+  opts = opts || {};
+  if(INSTITUTION_EMAIL){
+    var o = {}; for(var k in opts) o[k] = opts[k];
+    if(!o.replyTo) o.replyTo = INSTITUTION_EMAIL;
+    if(instAliasOk_()){ o.from = INSTITUTION_EMAIL; return GmailApp.sendEmail(String(to), String(subject||''), String(body||''), o); }
+    return MailApp.sendEmail(String(to), String(subject||''), String(body||''), o);
+  }
+  return MailApp.sendEmail(String(to), String(subject||''), String(body||''), opts);
+}
 function sendMail_(to, subject, body){
   if(!to) return { ok:false, error:'no-recipient' };
-  MailApp.sendEmail(String(to), String(subject || '(ללא נושא)'), String(body || ''));
+  mailSend_(String(to), String(subject || '(ללא נושא)'), String(body || ''));
   return { ok:true };
 }
 
@@ -432,7 +459,7 @@ function mailDoc_(to, subject, body, fileName, mimeType, dataB64){
     opts.attachments = [ Utilities.newBlob(Utilities.base64Decode(String(dataB64)),
                           String(mimeType || 'application/pdf'), String(fileName || 'document.pdf')) ];
   }
-  MailApp.sendEmail(list.join(','), String(subject || '(ללא נושא)'), String(body || ''), opts);
+  mailSend_(list.join(','), String(subject || '(ללא נושא)'), String(body || ''), opts);
   return { ok:true, sent:list.length };
 }
 
@@ -460,7 +487,7 @@ function sendMailBulk_(items, opts){
       if(!o.name) delete o.name;
       if(opts.replyTo) o.replyTo = String(opts.replyTo);
       if(opts.html) o.htmlBody = String(it.body || '');
-      MailApp.sendEmail(String(it.to), String(it.subject || '(ללא נושא)'), String(it.body || ''), o);
+      mailSend_(String(it.to), String(it.subject || '(ללא נושא)'), String(it.body || ''), o);
       sent++; quota--;
     }catch(e){ failed++; errors.push({ to:String(it.to), error:String(e && e.message || e) }); }
   }
