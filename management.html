@@ -5981,8 +5981,26 @@ function xlsToRows(buf){
         renderFollow(); });
     }, 'שמירה');
   }
+  /* מייל תזכורת ביום היעד — לגורם המטפל בכל פריט "בטיפול" שהגיע תאריך ההמשך שלו.
+     נשלח פעם אחת לכל תאריך (remindedFor). נבדק כשנכנסים למרכזי ואחר כך כל חצי שעה. */
+  var _remAt=0, _remBusy=false;
+  function sendDueReminders(){
+    if(!C.live || _remBusy || Date.now()-_remAt<30*60*1000) return;
+    _remBusy=true; _remAt=Date.now();
+    var today=H.todayISO(), byId={}; items().forEach(function(x){ byId[fuId(x)]=x; });
+    var due=(H.HQ().tracking||[]).filter(function(t){ return t.kind==='followup' && t.status==='progress' && t.due && t.due<=today && t.remindedFor!==t.due && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t.owner||''); });
+    var chain=Promise.resolve();
+    due.forEach(function(t){ var x=byId[t.id]; chain=chain.then(function(){
+      return LIVE.bridge('sendMailBulk', { items:[{ to:t.owner, subject:'⏰ תזכורת לטיפול: '+(t.title||(x&&x.t)||''), body:'שלום,\n\nתזכורת — הגיע מועד ההמשך לטיפול:\n'+(t.title||'')+'\n'+((x&&x.s)||'')+(t.note?'\nהערה אחרונה: '+t.note:'')+'\nתאריך היעד: '+H.fmtDate(t.due)+'\n\nהפריט מופיע במרכזי במסך "דורש טיפול".\n\nמחלקת הרישום' }], opts:{ fromName:'מחלקת הרישום' } })
+        .then(function(){ var log=(t.log||[]).slice(); log.push({ at:Date.now(), by:H.me(), text:'נשלחה תזכורת במייל ל-'+t.owner }); return LIVE.hqSet('tracking', t.id, { remindedFor:t.due, log:log.slice(-30) }); })
+        .catch(function(e){ console.warn('reminder', String(e&&e.message||e)); }); }); });
+    chain.then(function(){ _remBusy=false; });
+  }
+  setInterval(sendDueReminders, 30*60*1000+5000);
+  document.addEventListener('central:hq', function(){ if(!_remAt) setTimeout(sendDueReminders, 20000); });
   function renderFollow(){
     var host=$('#hqFollowups'); if(!host||offline(host,'license')) return;
+    sendDueReminders();
     importFormAppeals(false); syncMail(false);
     var today=H.todayISO();
     var all=items().map(function(x){ x.topic=FU_TOPIC[x.go]||'אחר'; x.st=fuState(x); if(x.st&&x.st.status==='progress'&&x.st.due&&x.st.due<=today){ x.sev='high'; x.remind=true; } return x; });

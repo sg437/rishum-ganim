@@ -5910,6 +5910,7 @@ function startDataSync(){
     maybeMigrateBranding();
     maybeCleanupNewModel();
     maybeCleanupRecsOrphans();
+    if(!md.fromCache) setTimeout(()=>{ maybeSendReminders().catch(()=>{}); }, 15000); // תזכורות במייל ביום היעד
     if(!md.fromCache) maybeDailyBackup(); // גיבוי אוטומטי יומי (רק לאחר אישור מהשרת)
     if(!md.fromCache && !enforceAccess()) return; // חסימת התחברות Google לא-מורשית (רק לאחר אישור מהשרת)
     // איתחול meta רק כשהשרת אישר שהוא באמת ריק (לא ממטמון אופליין) —
@@ -10154,6 +10155,27 @@ function alertItems(){
   out.forEach(x=>{ if(x.st && x.st.status==="progress" && x.st.due && x.st.due<=todayISO()){ x.sev="high"; x.remind=true; } });
   const order={high:0,mid:1,low:2};
   return out.sort((a,b)=>(order[a.sev]-order[b.sev]) || (b.remind?1:0)-(a.remind?1:0));
+}
+/* מייל תזכורת ביום היעד — לגורם המטפל בכל פריט "בטיפול" שתאריך ההמשך שלו הגיע.
+   נשלח פעם אחת לכל תאריך (remindedFor), מהדפדפן של מי שפתח/ה את התוכנה באותו יום,
+   ונבדק שוב כל חצי שעה. אין צורך בשרת נוסף — מספיק שמישהו בעיר נכנס/ה לתוכנה. */
+let _remindAt=0, _remindBusy=false;
+async function maybeSendReminders(){
+  if(_remindBusy || !DRIVE_READY || !currentUser || !serverConfirmed || Date.now()-_remindAt<30*60*1000) return 0;
+  _remindBusy=true; _remindAt=Date.now(); let n=0;
+  try{
+    const today=todayISO();
+    const due=alertItems().filter(x=>x.st && x.st.status==="progress" && x.st.due && x.st.due<=today && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.st.owner||"") && x.st.remindedFor!==x.st.due);
+    for(const x of due){
+      const cur=alertState(x.key)||{}; if(cur.remindedFor===cur.due) continue;   // מישהו אחר כבר שלח
+      try{
+        await driveCall("sendMail",{ to:x.st.owner, subject:"⏰ תזכורת לטיפול: "+x.t,
+          body:["שלום,","","תזכורת — הגיע מועד ההמשך לטיפול:",x.t,x.s||"",x.st.note?"הערה אחרונה: "+x.st.note:"","תאריך היעד: "+fmtDate(x.st.due),"","הפריט מופיע בתוכנה במסך \"לטיפול\".","",appTitle()].join("\n") });
+        await alertSave(x.key, { remindedFor:x.st.due }, "נשלחה תזכורת במייל ל-"+x.st.owner); n++;
+      }catch(e){ console.warn("reminder", e&&e.message); }
+    }
+  } finally { _remindBusy=false; }
+  return n;
 }
 function alertsOpenCount(){ try{ return alertItems().filter(x=>!(x.st && x.st.status==="done")).length; }catch(e){ return 0; } }
 async function alertSave(key, patch, logText){
