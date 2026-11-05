@@ -807,6 +807,42 @@
     .topnav{width:264px}
     .wrap,footer{margin-inline-start:264px}
   }
+
+  /* ---- משבצות נתונים: מסגרת, עומק עדין וצבע חלקי חם ---- */
+  .kpis,.hm-metrics{gap:10px; background:none; border:0; border-radius:0; overflow:visible}
+  .kpi,.hm-metric,.stat-row .st{
+    --acc:var(--grn);
+    position:relative; overflow:hidden; border-radius:12px;
+    background:linear-gradient(165deg, var(--card) 0%, var(--card) 45%, color-mix(in srgb,var(--acc) 9%,var(--card)) 100%);
+    border:1px solid color-mix(in srgb,var(--acc) 22%,var(--bd2));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 1px 2px rgba(70,50,20,.07), 0 6px 14px -8px rgba(70,50,20,.22);
+  }
+  .kpi::before,.hm-metric::before,.stat-row .st::before{
+    content:""; position:absolute; inset-block-start:0; inset-inline:0; height:3px;
+    background:linear-gradient(90deg, var(--acc), color-mix(in srgb,var(--acc) 25%,transparent));
+  }
+  .kpis>.kpi:nth-child(4n+2),.hm-metrics>.hm-metric:nth-child(4n+2){--acc:var(--warn)}
+  .kpis>.kpi:nth-child(4n+3),.hm-metrics>.hm-metric:nth-child(4n+3){--acc:var(--ok)}
+  .kpis>.kpi:nth-child(4n+4),.hm-metrics>.hm-metric:nth-child(4n+4){--acc:var(--bad)}
+  .stat-row{gap:10px; margin-top:6px}
+  .stat-row .st{padding:11px 14px 10px; min-width:96px; text-align:start; font:inherit; color:inherit; display:flex; flex-direction:column; gap:5px}
+  .stat-row .st b{color:var(--ink)}
+  .stat-row .st.ok{--acc:var(--ok)} .stat-row .st.warn{--acc:var(--warn)} .stat-row .st.bad{--acc:var(--bad)}
+  .stat-row .st.warn b{color:var(--warn)} .stat-row .st.bad b{color:var(--bad)}
+  .stat-row .st .st-arr{font-style:normal; color:var(--grnink); opacity:.55; transition:transform .15s, opacity .15s}
+  .stat-row .st.go,.hm-metric[data-hm-go],button.kpi{cursor:pointer; transition:transform .15s ease, box-shadow .15s ease, border-color .15s}
+  .stat-row .st.go:hover,.hm-metric[data-hm-go]:hover,button.kpi:hover{
+    transform:translateY(-2px); border-color:color-mix(in srgb,var(--acc) 45%,var(--bd2));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 2px 4px rgba(70,50,20,.08), 0 12px 22px -10px rgba(70,50,20,.32);
+  }
+  .stat-row .st.go:hover .st-arr{opacity:1; transform:translateX(-3px)}
+  .stat-row .st.go:focus-visible,.hm-metric[data-hm-go]:focus-visible{outline:2px solid var(--grn); outline-offset:2px}
+  .stat-row .st.go:active,.hm-metric[data-hm-go]:active{transform:translateY(0)}
+  .hm-card{box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 1px 2px rgba(70,50,20,.06), 0 8px 18px -12px rgba(70,50,20,.22)}
+  body[data-night] .kpi,body[data-night] .hm-metric,body[data-night] .stat-row .st,body[data-night] .hm-card{
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 1px 2px rgba(0,0,0,.25), 0 6px 14px -8px rgba(0,0,0,.5);
+  }
+  @media (prefers-reduced-motion:reduce){ .stat-row .st.go,.hm-metric[data-hm-go],button.kpi{transition:none} .stat-row .st.go:hover,.hm-metric[data-hm-go]:hover,button.kpi:hover{transform:none} }
 </style>
 
 <!-- שער הכניסה — המרכזי פתוח למשתמשי המרכז בלבד (בעלי המערכת ומי שסומן "מרכז" במרשם) -->
@@ -2493,6 +2529,25 @@ try{
     $('#rCity').value='all'; $('#sCity').value='all'; $('#aCity').value='all';
   }
   function openCity(i){ curCity=i; curGan=null; $('#citySel').value=i; renderCityDetail(); }
+  /* משבצת נתון: עם מסגרת, ולחיצה עליה מובילה למה שכתוב בה */
+  function stAttr(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+  function stTile(v, label, go, ganId, f, tone){
+    var cls='st'+(tone?' '+tone:'');
+    var live=LIVEMODE && window.__hqStudents && window.__hq;
+    if(!go || (go!=='gans' && !live)) return '<div class="'+cls+'"><b>'+v+'</b><span>'+label+'</span></div>';
+    return '<button type="button" class="'+cls+' go" data-st-go="'+go+'" data-st-gan="'+stAttr(ganId)+'" data-st-f="'+stAttr(JSON.stringify(f||{}))+'" title="מעבר אל: '+stAttr(label)+'"><b>'+v+'</b><span>'+label+' <i class="st-arr" aria-hidden="true">←</i></span></button>';
+  }
+  function wireTiles(sel, c){
+    $$(sel+' [data-st-go]').forEach(function(b){ b.addEventListener('click',function(){
+      var go=b.dataset.stGo, gan=b.dataset.stGan, f={}; try{ f=JSON.parse(b.dataset.stF||'{}'); }catch(e){}
+      if(go==='gans'){ var t=$('#cityDetail .tbl-wrap'); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); return; }
+      var sl=window.__hq.SEL(); Object.keys(sl).forEach(function(k){ delete sl[k]; }); sl[c.id]=true;
+      if(go==='students') window.__hqStudents.filterTo(Object.assign({ gan:gan?c.id+'|'+gan:'', flag:'' }, f));
+      if(go==='staff' && window.__hqStaff && window.__hqStaff.filterTo) window.__hqStaff.filterTo({ gan:gan?c.id+'|'+gan:'' });
+      if(window.renderTopNav) window.renderTopNav();
+      window.__central.switchTab(go);
+    }); });
+  }
   function renderCityDetail(){
     var c=CITIES[curCity];
     if(!c){ $('#cityDetail').innerHTML='<div class="card pad live-note">ממתינים לנתונים מהערים…</div>'; $('#ganDetail').innerHTML=''; return; }
@@ -2509,13 +2564,13 @@ try{
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">'+
         '<div><div class="sec-title" style="font-size:1.15rem">'+c.name+'</div><div class="sec-note">'+note+'</div></div>'+
         '<div class="stat-row">'+
-          '<div class="st"><b>'+c.gan+'</b><span>גנים</span></div>'+
-          '<div class="st"><b>'+he(c.students)+'</b><span>'+(LIVEMODE?'רשומים':'תלמידות')+'</span></div>'+
-          (LIVEMODE?'<div class="st"><b>'+he(c.placed||0)+'</b><span>משובצים</span></div><div class="st"><b style="'+((c.unplaced||0)?'color:var(--warn)':'')+'">'+he(c.unplaced||0)+'</b><span>ממתינים</span></div>':'')+
-          '<div class="st"><b>'+reg+' / '+spc+'</b><span>גני רגיל / מיוחד</span></div>'+
-          (LIVEMODE&&(c.byGender&&(c.byGender['בנות']||c.byGender['בנים']))?'<div class="st"><b>'+(c.byGender['בנות']||0)+' / '+(c.byGender['בנים']||0)+'</b><span>גני בנות / בנים</span></div>':'')+
-          '<div class="st"><b>'+c.staff+'</b><span>'+(LIVEMODE?'צוות':'עובדות')+'</span></div>'+
-          (LIVEMODE&&c.licenseIssues?'<div class="st"><b style="color:var(--alert)">'+c.licenseIssues+'</b><span>חריגות רישיון</span></div>':'')+
+          stTile(c.gan,'גנים','gans','',{},'')+
+          stTile(he(c.students),(LIVEMODE?'רשומים':'תלמידות'),'students','',{place:''},'')+
+          (LIVEMODE?stTile(he(c.placed||0),'משובצים','students','',{place:'placed'},'ok')+stTile(he(c.unplaced||0),'ממתינים','students','',{place:'waiting'},(c.unplaced||0)?'warn':''):'')+
+          stTile(reg+' / '+spc,'גני רגיל / מיוחד','gans','',{},'')+
+          (LIVEMODE&&(c.byGender&&(c.byGender['בנות']||c.byGender['בנים']))?stTile((c.byGender['בנות']||0)+' / '+(c.byGender['בנים']||0),'גני בנות / בנים','gans','',{},''):'')+
+          stTile(c.staff,(LIVEMODE?'צוות':'עובדות'),'staff','',{},'')+
+          (LIVEMODE&&c.licenseIssues?stTile(c.licenseIssues,'חריגות רישיון','license','',{},'bad'):'')+
         '</div>'+
       '</div>'+
       '<div class="tbl-wrap" style="margin-top:16px"><table><thead><tr><th>גן</th><th>גיל</th><th>חינוך</th>'+genderHead+'<th>'+(LIVEMODE?'רשומים':'תלמידות')+'</th>'+(LIVEMODE?'<th>משובצים</th>':'')+'<th>קיבולת</th><th>מלאות</th><th>גננת</th><th>סטטוס</th></tr></thead><tbody>'+
@@ -2537,6 +2592,7 @@ try{
       }).join('')+
       '</tbody></table></div></div>';
     $('#cityDetail').innerHTML=html;
+    wireTiles('#cityDetail .stat-row', c);
     $$('#cityDetail tbody tr').forEach(function(tr){ tr.addEventListener('click',function(){ openGan(+tr.dataset.gi); }); });
     if(curGan!=null) renderGanDetail(); else $('#ganDetail').innerHTML='';
   }
@@ -2559,11 +2615,11 @@ try{
         '<div><div class="sec-title" style="font-size:1.2rem">'+g.name+' <span class="pill '+(g.edu==='reg'?'reg':'spc')+'">'+(g.edu==='reg'?'חינוך רגיל':'חינוך מיוחד')+'</span>'+(LIVEMODE&&g.gender?' <span class="pill '+(g.gender==='בנים'?'reg':'ok')+'">'+g.gender+'</span>':'')+'</div>'+
         '<div class="sec-note">'+c.name+(g.region?' · אזור '+g.region:'')+(g.sym?' · סמל '+g.sym:'')+(LIVEMODE&&g.licenseAges?' · רישיון לגילאי '+g.licenseAges:'')+(LIVEMODE&&g.licenseCap?' · מכסת רישיון '+g.licenseCap:'')+'</div></div>'+
         '<div class="stat-row">'+
-          '<div class="st"><b>'+g.enrolled+'</b><span>'+(LIVEMODE?'רשומים':'תלמידות')+'</span></div>'+
-          (LIVEMODE?'<div class="st"><b>'+(g.placed||0)+'</b><span>משובצים</span></div>':'')+
-          '<div class="st"><b>'+(g.cap||'—')+'</b><span>קיבולת'+(window.__hq&&window.__hq.canEditGan()?' <button type="button" class="btn-mini" id="ganCapEdit" title="עריכת קיבולת, רף שיבוץ ומכסת רישיון">עריכה</button>':'')+'</span></div>'+
-          '<div class="st"><b>'+pct(g.enrolled,capOf(g))+'%</b><span>מלאות</span></div>'+
-          '<div class="st"><b>גיל '+g.age+'</b><span>שכבה</span></div>'+
+          stTile(g.enrolled,(LIVEMODE?'רשומים':'תלמידות'),'students',g.id,{place:''},'')+
+          (LIVEMODE?stTile(g.placed||0,'משובצים','students',g.id,{place:'placed'},'ok'):'')+
+          (window.__hq&&window.__hq.canEditGan()?'<button type="button" class="st go" id="ganCapEdit" title="עריכת קיבולת, רף שיבוץ ומכסת רישיון"><b>'+(g.cap||'—')+'</b><span>קיבולת · ✎ עריכה</span></button>':stTile(g.cap||'—','קיבולת','','',{},''))+
+          stTile(pct(g.enrolled,capOf(g))+'%','מלאות','','',{},pct(g.enrolled,capOf(g))>=100?'bad':(pct(g.enrolled,capOf(g))>=92?'warn':''))+
+          stTile('גיל '+g.age,'שכבה','','',{},'')+
         '</div>'+
       '</div>'+
       '<div class="grid-2" style="margin-top:16px">'+
@@ -2595,6 +2651,7 @@ try{
         }).join('')+
       '</div></div>';
     $('#ganDetail').innerHTML=html;
+    wireTiles('#ganDetail .stat-row', c);
     var gce=$('#ganCapEdit'); if(gce) gce.addEventListener('click',function(){ window.__hq.editGanCapacity(c.id, g); });
     $('#ganBack').addEventListener('click',function(){ curGan=null; renderGanDetail(); updBack(); $('#cityDetail').scrollIntoView({behavior:reduce?'auto':'smooth'}); });
   }
@@ -4769,7 +4826,7 @@ try{
     H.openDrawer(m.name, body, '<span class="hq-count">עריכת פרטי הצוות והשיבוץ נעשית בתוכנת העיר ('+esc(c.name)+'); המרכזי מציג ומייצא.</span>', { label:'תיק עובדת', meta:esc((m.role||'')+' · '+c.name) });
   }
   H.reg('staff', render);
-  window.__hqStaff={ open:openStaff, filtered:filtered };
+  window.__hqStaff={ open:openStaff, filtered:filtered, filterTo:function(f){ F=Object.assign(F,f); } };
 })();
 </script>
 
