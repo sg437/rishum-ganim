@@ -109,7 +109,7 @@ const DATA={
   });
   await step('ניווט עליון: לחיצה על קבוצה פותחת תפריט גלוי ולחיץ, ופריט בו מחליף מסך', async()=>{
     await pg.click('#topnav .tn-btn:has-text("בקרה ודוחות")'); await pg.waitForTimeout(120);
-    const r=await pg.evaluate(()=>{ const m=document.querySelector('#topnav .tn-group.open .tn-menu'); if(!m) return { open:false }; const b=m.getBoundingClientRect(); const el=document.elementFromPoint(b.left+b.width/2, b.top+20); return { open:true, h:b.height, hit:!!(el&&m.contains(el)) }; });
+    const r=await pg.evaluate(()=>{ const m=document.querySelector('#topnav .tn-group.open .tn-menu'); if(!m) return { open:false }; m.scrollIntoView({block:'center'}); const b=m.getBoundingClientRect(); const el=document.elementFromPoint(b.left+b.width/2, b.top+20); return { open:true, h:b.height, hit:!!(el&&m.contains(el)) }; });
     await pg.click('#topnav .tn-item[data-go="followups"]'); await pg.waitForTimeout(120);
     const v=await pg.evaluate(()=>window.__central.view);
     return (r.open && r.h>100 && r.hit && v==='followups') || JSON.stringify({r,v});
@@ -268,6 +268,42 @@ const DATA={
   await step('סייעת ב׳ במרכזי: תפקיד "סייעת שנייה" נחשב משובצת', async()=>{
     const r=await pg.evaluate(()=>{ const H=window.__hq; const g={ on:true, gender:'בנות', enrolled:40, age:'4', roster:[{ r:'סייעת שנייה', n:'רחל' }] }; const b=H.assistantBState(g); const g2=Object.assign({}, g, { roster:[{ r:'סייעת', n:'לאה' }] }); return { has:b.has, has2:H.assistantBState(g2).has }; });
     return (r.has===true && r.has2===false) || JSON.stringify(r);
+  });
+  await step('📨 פנייה לעיר: הפרטים נכנסים לבד, נרשם ב"מהארצי" של העיר כממתין לתשובה, ומופיע ב"דורש טיפול"', async()=>{
+    const r=await pg.evaluate(async()=>{
+      const s1=window.__hq.findStudent('modiin-illit','s1');
+      window.__hqAsk.ask([s1], 'בירור שיבוץ');
+      document.getElementById('pf-text').value='מה המצב עם השיבוץ?'; document.getElementById('pf-mail').checked=false;
+      document.getElementById('pf-ok').click(); await new Promise(r=>setTimeout(r,400));
+      const ib=(window.__docs['app/hq_inbox']||{}).items||{}; const qs=Object.values(ib).filter(x=>x.kind==='question'); const it=qs[0]||{};
+      return { n:qs.length, kind:it.kind, status:it.status, stu:(it.students||[])[0], text:it.text };
+    });
+    return (r.n===1 && r.kind==='question' && r.status==='open' && r.stu && r.stu.id==='s1' && r.text==='מה המצב עם השיבוץ?') || JSON.stringify(r);
+  });
+  await step('שינוי מהארצי בנתוני עיר נרשם לעיר כ"שינוי" (מה עודכן), כדי שהעיר תראה ותוכל להגיש השגה', async()=>{
+    const r=await pg.evaluate(async()=>{
+      await window.__centralLive.updateStudent('modiin-illit','תשפ"ז','s1', x=>{ x.period='ב'; });
+      window.__centralLive.flushChanges(); await new Promise(r=>setTimeout(r,300));
+      const ib=(window.__docs['app/hq_inbox']||{}).items||{}; const ch=Object.values(ib).filter(x=>x.kind==='change');
+      const lines=[].concat.apply([], ch.map(x=>x.lines||[]));
+      return { n:ch.length, hit:lines.filter(l=>/מועד/.test(l))[0]||'', lines:lines.slice(-3) };
+    });
+    return (r.n>=1 && /ילדה/.test(r.hit) && /מועד/.test(r.hit)) || JSON.stringify(r);
+  });
+  await step('אחראיות: לשונית בהגדרות — שם, ערים באחריות ונושאים — נשמרת, ובורר "הערים שלי" בתפריט הצד', async()=>{
+    await go('perms'); await pg.click('#hqSettings .tab[data-tab="staff"]'); await pg.waitForTimeout(100);
+    const r=await pg.evaluate(async()=>{
+      const n=document.querySelector('.stf-name'); if(!n) return { noRow:true };
+      n.value='מיכל'; const c=document.querySelector('.stf-city[value="beitar"]'); if(c) c.checked=true; const t=document.querySelector('.stf-topic[value="requests"]'); if(t) t.checked=true;
+      document.getElementById('stfSave').click(); await new Promise(r=>setTimeout(r,250));
+      const st=(window.__docs['org/hq']||{}).staff||{}; const em=n.dataset.em;
+      return { saved:st[em], scope:!!document.querySelector('#topnav .tn-scope') || !!document.getElementById('scopeSel') };
+    });
+    return (r.saved && r.saved.name==='מיכל' && r.saved.cities.indexOf('beitar')>=0 && r.saved.topics.indexOf('requests')>=0) || JSON.stringify(r);
+  });
+  await step('דף הבית: כרטיס "סטטוס עבודה מאתמול" — מחכה לי היום, תשובות מהערים, ממתינות לתשובה, ומה נעשה אתמול', async()=>{
+    await go('home'); await pg.waitForTimeout(150); const t=await txt('#view-home');
+    return (/סטטוס עבודה מאתמול/.test(t) && /מחכה לך היום/.test(t) && /ממתינות לתשובה/.test(t) && /מה נעשה אתמול/.test(t)) || t.slice(0,200);
   });
   await step('ייבוא גנים ואנשי צוות מהמרכזי: נוספים לעיר, ושום רשומה קיימת לא נדרסת', async()=>{
     const r=await pg.evaluate(async()=>{

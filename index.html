@@ -3071,6 +3071,16 @@ function retentionGateMsg(student){
   return '⚠️ אין אפשרות לשבץ'+(nm?(" את "+nm):"")+' — ילדת השארות בלי מסמך השארות. '
        +'כשהאישור מגיע: תיק התלמידה → "שונות" → "ילדת השארות" → לסמן "מסמך השארות" (ואפשר לצרף את הקובץ).';
 }
+/* טווח תאריכי לידה לכל גיל (הגדרות → כללי העיר): { "3":{from,to}, ... }.
+   ילדה שתאריך הלידה שלה מחוץ לטווח של הגיל שנרשם לה — מוצגת אזהרה בתיק וב"לטיפול". */
+function ageDobRanges(){ return (DB.settings&&DB.settings.ageDobRanges)||{}; }
+function dobAgeMismatch(s){
+  const r=ageDobRanges()[String(s&&s.age||"").trim()]; if(!r || !(r.from||r.to)) return "";
+  const d=normDateVal(s.dob||""); if(!isISODate(d)) return "";
+  if(r.from && d<r.from) return "תאריך הלידה ("+fmtDate(d)+") מוקדם מהטווח של גיל "+s.age+" ("+fmtDate(r.from)+"–"+(r.to?fmtDate(r.to):"…")+")";
+  if(r.to && d>r.to)     return "תאריך הלידה ("+fmtDate(d)+") מאוחר מהטווח של גיל "+s.age+" ("+(r.from?fmtDate(r.from):"…")+"–"+fmtDate(r.to)+")";
+  return "";
+}
 /* מדיניות ילדת השארות בעיר: "space" — רק על בסיס מקום פנוי (רף השיבוץ חל עליה);
    "obligated" — העיר מחויבת לקבל אותה, ולכן היא עוברת את רף השיבוץ (עם אזהרה). */
 function retentionPolicy(){ return (DB.settings&&DB.settings.retentionPolicy)==='obligated' ? 'obligated' : 'space'; }
@@ -6619,7 +6629,7 @@ function viewHome(root){
     </div>`;
   }).join("") : `<div class="empty">אין גנים ${isAll?'':'בחינוך זה'} בשנה זו.</div>`;
 
-  root.innerHTML = `
+  root.innerHTML = hqInboxCardHtml() + `
     <div class="home-head">
       <h2>סיכום שנת ${esc(DB.activeYear)}</h2>
       <span class="hh-edu" style="${eduTagBg}">${esc(eduName)}</span>
@@ -6646,6 +6656,7 @@ function viewHome(root){
     ${perGan.length?ageLegendHtml():""}
   `;
   root.querySelectorAll("[data-gan]").forEach(c=> c.onclick=()=>{ const g=DB.gans.find(x=>x.id===c.dataset.gan); if(g) openGan(g); });
+  wireHqInboxCard(root);
   startHomeClock();
 }
 /* המרת מספר (1..999) לגימטריה עברית עם גרש/גרשיים, כולל ט״ו/ט״ז */
@@ -7333,7 +7344,7 @@ function openStudent(s){
       <div><label>שם פרטי</label><input id="s-firstName" value="${esc(s.firstName)}"></div>
       <div><label>שם משפחה</label><input id="s-lastName" value="${esc(s.lastName)}"></div>
       <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"><div id="s-tz-warn" class="hint" style="color:var(--bad);font-weight:600"></div></div>
-      <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
+      <div><label>תאריך לידה</label><div class="hint" id="s-dob-warn" style="color:var(--bad);font-weight:700;margin:0 0 2px"></div><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
       <div><label>טלפון בית</label><div class="fieldwrap tel"><input id="s-phone" value="${esc(s.phone)}" inputmode="tel">${phoneFieldBtns("s-phone")}</div></div>
@@ -7761,6 +7772,8 @@ function openStudent(s){
     out.querySelectorAll(".sib-open").forEach(b=> b.onclick=()=>openStudentById(b.dataset.sid));
   };
   wireJournal("student", s);
+  { const w=$("#s-dob-warn"); const chk=()=>{ if(!w) return; w.textContent=dobAgeMismatch({ dob:($("#s-dob")||{}).value||"", age:($("#s-age")||{}).value||"" }) ? "⚠️ "+dobAgeMismatch({ dob:$("#s-dob").value, age:$("#s-age").value }) : ""; };
+    ["#s-dob","#s-age"].forEach(id=>{ const e=$(id); if(e){ e.addEventListener("change", chk); e.addEventListener("input", chk); } }); chk(); }
   { const lm=$("#s-leftMail"); if(lm) lm.onclick=()=>{ const cur=DB.students.find(x=>x.id===s.id)||s; closeModal(); openLeaveReport(cur); }; }
   if(!isNew) $("#delStu").onclick=()=>{ if(confirm("למחוק את תיק הילדה לצמיתות?")){ DB.students=DB.students.filter(x=>x.id!==s.id); save(); closeModal(); route(); toast("התיק נמחק"); } };
   /* הרשאת עריכה לפי חינוך (הסתרה בממשק): רשומה קיימת בחינוך שאינו מורשה → קריאה בלבד;
@@ -10111,6 +10124,61 @@ let tzFiltersOpen=false;
 function tzRatio(c, m){ return m ? `${c}/${m}` : String(c); }
 
 /* ============================================================
+   📨 מהארצי — פניות ושינויים מהתוכנה הארצית (מסמך hq_inbox של העיר)
+   ------------------------------------------------------------
+   פנייה (question): הארצי שואל על תלמידה/רשימה → משיבים כאן, והתשובה מגיעה לארצי
+   במייל וב"דורש טיפול". שינוי (change): הארצי שינה נתון של העיר → "ראיתי", או השגה
+   ("למה נעשה?") שמגיעה לארצי במייל עד שמאשרים שם וסוגרים.
+   ============================================================ */
+function hqInboxItems(){ const d=(typeof cloudDocs!=="undefined" && cloudDocs.get && cloudDocs.get("hq_inbox"))||{}; const it=d.items||{};
+  return Object.keys(it).map(id=>Object.assign({ id }, it[id])).sort((a,b)=>(b.updatedAt||b.at||0)-(a.updatedAt||a.at||0)); }
+function hqInboxOpen(){ return hqInboxItems().filter(x=>(x.kind==="question" && x.status==="open") || (x.kind==="change" && x.status==="open")); }
+async function hqInboxWrite(id, mutate){
+  const ref=cityDoc("hq_inbox"); let out=null;
+  await runTransaction(db, async tx=>{ const snap=await tx.get(ref); const cur=snap.exists()?snap.data():{}; const items=Object.assign({}, cur.items||{});
+    const x=Object.assign({}, items[id]||{}); mutate(x); items[id]=x; out=x; tx.set(ref, { items, updatedAt:Date.now() }); });
+  const d=cloudDocs.get("hq_inbox")||{}; cloudDocs.set("hq_inbox", Object.assign({}, d, { items:Object.assign({}, d.items||{}, { [id]:out }) }));
+  return out;
+}
+function hqInboxCardHtml(){
+  const list=hqInboxOpen(); if(!list.length) return "";
+  return `<div class="panel" data-hq-inbox="1" style="border:2px solid var(--accent);margin-bottom:14px">
+    <div class="section-title" style="margin-bottom:6px"><h2>📨 מהארצי <span class="pill warn">${list.length}</span></h2></div>
+    <div class="sub">פניות ששואלות אתכם משהו, ושינויים שהארצי עשה בנתוני העיר. אפשר להשיב, לסמן "ראיתי", או להגיש השגה על שינוי.</div>
+    ${list.slice(0,8).map(x=>`<div class="note" style="margin:6px 0;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px"><b>${x.kind==="question"?"❓ פנייה":"✏️ שינוי"} · ${esc(x.subject||"")}</b>
+        <div class="hint" style="margin:2px 0 0">${esc(new Date(x.at).toLocaleString("he-IL"))}${x.byName||x.by?" · "+esc(x.byName||x.by):""}${(x.students||[]).length?" · "+x.students.length+" תלמידות":""}${(x.lines||[]).length>1?" · "+x.lines.length+" שינויים":""}</div></div>
+      <button type="button" class="btn sm" data-ib="${esc(x.id)}">${x.kind==="question"?"מענה":"צפייה"}</button></div>`).join("")}
+    ${list.length>8?`<div class="hint">ועוד ${list.length-8} — במסך "🔔 לטיפול".</div>`:""}
+  </div>`;
+}
+function wireHqInboxCard(root){ (root||document).querySelectorAll("[data-ib]").forEach(b=>b.onclick=()=>openHqInbox(b.dataset.ib)); }
+function openHqInbox(id){
+  const x=hqInboxItems().find(i=>i.id===id); if(!x) return;
+  const isQ=x.kind==="question";
+  modal(`<h3>${isQ?"❓ פנייה מהארצי":"✏️ שינוי מהארצי"}</h3>
+    <div class="sub">${esc(new Date(x.at).toLocaleString("he-IL"))}${x.byName||x.by?" · "+esc(x.byName||x.by):""}</div>
+    <div class="note" style="margin-top:8px;white-space:pre-wrap"><b>${esc(x.subject||"")}</b>${x.text?"\n"+esc(x.text):""}${(x.lines||[]).length?"\n"+esc(x.lines.join("\n"))+(x.more?"\n…ועוד "+x.more:""):""}</div>
+    ${(x.students||[]).length?`<div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>תלמידה</th><th>ת"ז</th><th>גן</th><th></th></tr></thead><tbody>${x.students.slice(0,60).map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.tz||"—")}</td><td>${esc(r.gan||"—")}</td><td>${DB.students.some(y=>y.id===r.id)?`<button type="button" class="btn ghost sm" data-ibs="${esc(r.id)}">תיק</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:""}
+    ${(x.replies||[]).length?`<div style="margin-top:8px"><label>התכתבות</label>${x.replies.map(r=>`<div class="hint" style="margin:3px 0;white-space:pre-wrap"><b>${esc(r.from==="city"?"העיר":"הארצי")} · ${esc(r.byName||r.by||"")} · ${esc(new Date(r.at).toLocaleString("he-IL"))}</b>\n${esc(r.text||"")}</div>`).join("")}</div>`:""}
+    <div style="margin-top:8px"><label>${isQ?"התשובה לארצי":"השגה / שאלה לארצי על השינוי (לא חובה)"}</label><textarea id="ib-reply" rows="4"></textarea></div>
+    <div class="foot"><button class="btn ghost" id="ib-cancel">סגירה</button>
+      ${isQ?`<button class="btn" id="ib-answer" style="margin-inline-start:auto">📤 שליחת תשובה</button>`
+           :`<button class="btn ghost" id="ib-seen" style="margin-inline-start:auto">✔️ ראיתי — תקין</button><button class="btn" id="ib-object">✉️ השגה לארצי</button>`}</div>`);
+  $("#ib-cancel").onclick=closeModal;
+  document.querySelectorAll("[data-ibs]").forEach(b=>b.onclick=()=>{ closeModal(); openStudentById(b.dataset.ibs); });
+  const send=async(status, need)=>{
+    const t=String($("#ib-reply").value||"").trim(); if(need && !t){ toast("יש לכתוב תשובה"); return; }
+    try{
+      await hqInboxWrite(x.id, y=>{ y.replies=(y.replies||[]).slice(); if(t) y.replies.push({ at:Date.now(), by:myEmail(), from:"city", text:t.slice(0,4000) }); y.status=status; y.updatedAt=Date.now(); });
+      if(t && x.by && DRIVE_READY) driveCall("sendMail",{ to:x.by, subject:(isQ?"תשובה מ":"השגה מ")+(mainCityName()||"העיר")+": "+(x.subject||""), body:t+"\n\n— "+myEmail()+" · "+(mainCityName()||"")+"\nההתכתבות המלאה בארצי: \"דורש טיפול\" ← \"מול הערים\"." }).catch(()=>{});
+      closeModal(); toast(status==="seen"?"סומן ✓":"נשלח לארצי ✓"); route();
+    }catch(e){ toast("השליחה נכשלה: "+(e&&(e.code||e.message)||"")); }
+  };
+  if(isQ) $("#ib-answer").onclick=()=>send("answered", true);
+  else { $("#ib-seen").onclick=()=>send("seen", false); $("#ib-object").onclick=()=>send("objection", true); }
+}
+/* ============================================================
    🔔 לטיפול — מרכז ההתראות של העיר
    ------------------------------------------------------------
    כל מה שדורש טיפול, במקום אחד, ועם הטיפול עצמו במקום:
@@ -10159,7 +10227,10 @@ function alertItems(){
   assistantBConflicts().forEach(x=>add({ key:"abx|"+x.g.id, topic:"צוות וסייעת ב'", sev:"mid", t:"סייעת ב' משובצת ללא זכאות · "+ganName(x.g.id), s:x.reasons.join(" · "), open:()=>{ active="assign"; route(); } }));
   DB.gans.filter(g=>g.active!==false && licenseExpired(g)).forEach(g=>add({ key:"lic|"+g.id, topic:"רישוי", sev:"mid", t:"רישיון לא בתוקף · "+ganName(g.id), s:"פג ב-"+fmtDate(g.licenseExpiry), open:()=>openGan(JSON.parse(JSON.stringify(g))) }));
   yr.filter(x=>x.leftDate && !x.leftReported).forEach(x=>add({ key:"left|"+x.id, topic:"תלמידות", sev:"mid", t:"עזיבה שלא דווחה · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:"עזבה ב-"+fmtDate(x.leftDate)+" — לשלוח עדכון לעירייה ולמשרד החינוך", open:()=>openLeaveReport(x) }));
+  yr.filter(x=>!x.finished && dobAgeMismatch(x)).forEach(x=>add({ key:"dob|"+x.id, topic:"תלמידות", sev:"low", t:"תאריך לידה לא תואם לגיל · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:dobAgeMismatch(x), open:()=>openStudentById(x.id) }));
   yr.filter(x=>!x.finished && retentionNeedsDoc(x)).forEach(x=>add({ key:"ret|"+x.id, topic:"תלמידות", sev:"low", t:"השארות בלי מסמך · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:"אי אפשר לשבץ סופית עד שהמסמך מסומן", open:()=>openStudentById(x.id) }));
+  hqInboxOpen().forEach(x=>add({ key:"hq|"+x.id, topic:"מהארצי", sev:x.kind==="question"?"high":"mid",
+    t:(x.kind==="question"?"פנייה מהארצי · ":"שינוי מהארצי · ")+(x.subject||""), s:(x.byName||x.by||"")+((x.students||[]).length?" · "+x.students.length+" תלמידות":""), open:()=>openHqInbox(x.id) }));
   /* משימות ותזכורות ידניות */
   Object.entries(alertsDoc().items||{}).filter(([k,v])=>k.startsWith("task|") && v).forEach(([k,v])=>out.push({ key:k, topic:"משימות", sev:"low", t:v.title||"משימה", s:v.note||"", st:v, manual:true }));
   /* תזכורת שהגיעה — עולה לדחוף */
@@ -12118,6 +12189,7 @@ function renderProjection(host){
    לבד — כותרת שכתובה בדיוק כשם השדה תזוהה אוטומטית. */
 const MUNI_FIELD_OPTIONS = [
   { key:"tz",         label:"מספר זהות" },
+  { key:"regDate",    label:"תאריך רישום (בעירייה)" },
   { key:"firstName",  label:"שם פרטי" },
   { key:"dob",        label:"תאריך לידה" },
   { key:"motherName", label:"שם האם" },
@@ -12151,7 +12223,8 @@ const MUNI_HEADER_MAP = {
   "מספרבניין":"building","בניין":"building","מספרבית":"building","מסבית":"building","בית":"building","מסבניין":"building",
   "עיר":"city","יישוב":"city","ישוב":"city",
   "סמלמוסד":"symbol","סמל":"symbol","סמלגן":"symbol","סמלהגן":"symbol","סמלמוסדחינוכי":"symbol","סמלמשרד":"symbol",
-  "חינוך":"education","סוגחינוך":"education"
+  "חינוך":"education","סוגחינוך":"education",
+  "תאריךרישום":"regDate","תאריךהרשמה":"regDate","תאריךביצועהרישום":"regDate","מועדהרשמה":"regDate"
 };
 /* השדות שרשימת העירייה משלימה בתיק, לפי הסדר שבו הם מוצגים בסיכום.
    phone:true — שדה טלפון, שעובר בדיקת כפילות מול כל שדות הטלפון של אותו
@@ -12167,7 +12240,8 @@ const MUNI_FILL_FIELDS = [
   { key:"email",      label:'דוא"ל' },
   { key:"street",     label:"רחוב" },
   { key:"building",   label:"מספר בניין" },
-  { key:"city",       label:"עיר" }
+  { key:"city",       label:"עיר" },
+  { key:"regDate",    label:"תאריך רישום", norm:v=>normDateVal(v) }   /* ברשויות שהרישום נעשה בהן — תאריך ביצוע הרישום בעירייה */
 ];
 /* מפתח השוואה לת"ז. מספר זהות ישראלי הוא בן 9 ספרות, ואקסל מוריד אפסים
    מובילים מכל תא שנשמר כמספר — ולכן "012345678" שבתוכנה מגיע מהקובץ כ-
@@ -12229,6 +12303,7 @@ function muniNewStudent(rec, edu){
   applyMuniRec(st, rec);                            // שם המשפחה ושאר הפרטים משם
   st.absorbedMunicipality=true;
   st.registeredByUs=false;
+  if(st.regDate) st.regChannel="muni";   // נרשמה בעירייה — תאריך ביצוע הרישום מהקובץ
   st.placed=false;
   /* סמל המוסד שבקובץ אינו נכנס לתיק ואינו משבץ לגן — הוא משמש להשוואה
      ולדיווח בלבד. השיבוץ נקבע אצלנו, לא ברשימת העירייה. */
@@ -15465,6 +15540,7 @@ async function regFormPublish(){
     cityId: (typeof CITY!=="undefined" && CITY && CITY.id) || "",
     cityName: mainCityName() || "",
     ages: [...new Set(gans.map(g=>g.age).join("/").split("/").map(x=>x.trim()).filter(Boolean))].sort(),
+    ageDobRanges: ageDobRanges(),
     insurancePayUrl: /^https:\/\//i.test(rf.insurancePayUrl||"") ? rf.insurancePayUrl : "",
     tzaharonOffer: rf.tzaharonOffer!==false,
     appealsOn: true
@@ -17392,6 +17468,9 @@ function viewSettings(root){
         <div class="hint">"רק על בסיס מקום פנוי" — ילדת השארות כפופה לרף השיבוץ כמו כל תלמידה. "מחויבת" — מותר לשבץ אותה גם בגן מלא (מוצגת אזהרה). בשני המצבים נדרש מסמך השארות.</div></div>
       <div></div>
       <div><label>מייל הגורם המטפל בעירייה</label><input id="rl-muniEmail" type="email" dir="ltr" style="text-align:right" value="${esc(reportContacts().muni)}" placeholder="name@city.gov.il" ${dis}></div>
+      <div style="grid-column:1 / -1"><label>טווח תאריכי לידה לכל גיל</label>
+        <div class="hint" style="margin-bottom:6px">ילדה שנרשמת לגיל מסוים ותאריך הלידה שלה מחוץ לטווח — מוקפצת אזהרה בתיק, ב"לטיפול" ובטופס הרישום. ריק = בלי בדיקה.</div>
+        <div class="grid g3">${CHILD_AGES.map(a=>{ const r=ageDobRanges()[a]||{}; return `<div><label style="font-weight:600">גיל ${esc(a)} · מ־ / עד</label><div class="row" style="gap:4px"><input type="date" class="rl-dob" data-age="${esc(a)}" data-k="from" value="${esc(r.from||"")}" ${dis}><input type="date" class="rl-dob" data-age="${esc(a)}" data-k="to" value="${esc(r.to||"")}" ${dis}></div></div>`; }).join("")}</div></div>
       <div><label>מייל הגורם המטפל במשרד החינוך</label><input id="rl-moeEmail" type="email" dir="ltr" style="text-align:right" value="${esc(reportContacts().moe)}" placeholder="name@education.gov.il" ${dis}></div>
     </div>
     <div class="row" style="margin-top:10px"><button class="btn" id="saveRules" ${dis}>💾 שמירה</button></div>
@@ -17659,6 +17738,7 @@ function viewSettings(root){
       const v=id=>String(($("#"+id)||{}).value||"").trim();
       DB.settings.retentionPolicy = v("rl-retention")==='obligated' ? 'obligated' : 'space';
       DB.settings.reportContacts = { muni:v("rl-muniEmail"), moe:v("rl-moeEmail") };
+      { const rg={}; document.querySelectorAll(".rl-dob").forEach(i=>{ const a=i.dataset.age; if(!i.value) return; rg[a]=rg[a]||{}; rg[a][i.dataset.k]=i.value; }); DB.settings.ageDobRanges=rg; }
       save(); toast("כללי העיר ואנשי הקשר נשמרו");
     }; }
   { const b=$("#saveAC");

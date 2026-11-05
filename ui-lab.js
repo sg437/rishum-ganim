@@ -582,8 +582,11 @@ function renderHome(){
     root.appendChild(gp);
   }
 
+  /* כרטיס "מהארצי" (פניות ושינויים מהתוכנה הארצית) שבנה viewHome — עובר כמו שהוא, עם הכפתורים שלו, לראש המסך */
+  var keep = view.querySelector("[data-hq-inbox]");
   homeBusy = true;
   view.innerHTML = "";
+  if(keep) view.appendChild(keep);
   view.appendChild(root);
   homeBusy = false;
 }
