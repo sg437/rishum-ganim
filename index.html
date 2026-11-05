@@ -3117,7 +3117,7 @@ function isEmail(x){ x=String(x==null?"":x).trim(); if(!x || x.length>254 || /\s
    הרשומה נשמרת על התיק עצמו — גם בעותק שבטופס הפתוח וגם ברשומה שב-DB,
    כדי ששמירת הטופס אחר כך לא תדרוס את מה שנוסף.
    ============================================================ */
-const JOURNAL_TYPES = { call:"📞 שיחה", note:"📝 הערה", emailOut:"📧 מייל יוצא", emailIn:"📨 מייל נכנס", appeal:"⚖️ פנייה / ערעור", system:"⚙️ מערכת" };
+const JOURNAL_TYPES = { call:"📞 שיחה", note:"📝 הערה", emailOut:"📧 מייל יוצא", emailIn:"📨 מייל נכנס", appeal:"⚖️ פנייה / ערעור", toHq:"📤 פנייה לארצי", system:"⚙️ מערכת" };
 const JOURNAL_MAX = 300;
 function journalList(kind){ return kind==="staff" ? DB.staff : kind==="gan" ? DB.gans : DB.students; }
 function journalAdd(kind, copy, entry, noSave){
@@ -3161,6 +3161,7 @@ function journalSectionHtml(kind){
       <button type="button" class="btn ghost sm" data-jr="note">📝 הערה</button>
       <button type="button" class="btn ghost sm" data-jr="emailOut">📧 שליחת מייל</button>
       <button type="button" class="btn ghost sm" data-jr="emailIn">📨 מייל שהתקבל</button>
+      <button type="button" class="btn ghost sm" data-jr="toHq">📤 פנייה לארצי</button>
     </div>
     <div id="jr-form" style="margin-top:8px"></div>
     <div id="jr-list" style="margin-top:8px"></div>
@@ -3180,6 +3181,16 @@ function wireJournal(kind, copy){
   refresh();
   document.querySelectorAll("[data-jr]").forEach(b=>b.onclick=()=>{
     const t=b.dataset.jr;
+    if(t==="toHq"){
+      const ctx=journalContext(kind, copy);
+      form.innerHTML=askHqFormHtml(ctx[0]||"", ctx);
+      $("#ah-cancel").onclick=()=>{ form.innerHTML=""; };
+      $("#ah-send").onclick=async()=>{
+        const r=await askHqSend({ kind, id:copy.id, label:ctx[0]||"" }, ctx); if(!r) return;
+        journalAdd(kind, copy, { type:"toHq", subject:r.subject, text:r.text }); form.innerHTML=""; refresh();
+      };
+      return;
+    }
     if(t==="emailOut"){
       const ctx=journalContext(kind, copy), rc=journalRecipients(kind, copy);
       form.innerHTML=`<div class="note" style="display:flex;flex-direction:column;gap:6px">
@@ -10151,7 +10162,36 @@ function tzRatio(c, m){ return m ? `${c}/${m}` : String(c); }
    ============================================================ */
 function hqInboxItems(){ const d=(typeof cloudDocs!=="undefined" && cloudDocs.get && cloudDocs.get("hq_inbox"))||{}; const it=d.items||{};
   return Object.keys(it).map(id=>Object.assign({ id }, it[id])).sort((a,b)=>(b.updatedAt||b.at||0)-(a.updatedAt||a.at||0)); }
-function hqInboxOpen(){ return hqInboxItems().filter(x=>(x.kind==="question" && x.status==="open") || (x.kind==="change" && x.status==="open")); }
+function hqInboxOpen(){ return hqInboxItems().filter(x=>(x.kind==="question" && x.status==="open") || (x.kind==="change" && x.status==="open") || (x.kind==="cityask" && x.status==="replied")); }
+/* 📤 פנייה לארצי — מתוך תיק (תלמידה / גן / איש צוות) או כללית: נכנסת ל"דורש טיפול" בארצי, נשלחת במייל
+   לאחראית בארצי (הכתובת מגיעה מהארצי במסמך hq_rules), ונרשמת ביומן התיק. התשובה חוזרת לכאן ("מהארצי"). */
+function hqMailTo(){ const d=(typeof cloudDocs!=="undefined" && cloudDocs.get && cloudDocs.get("hq_rules"))||{}; return (Array.isArray(d.hqMail)?d.hqMail:[]).filter(isEmail); }
+function askHqFormHtml(subject, ctx){
+  return `<div class="note" style="display:flex;flex-direction:column;gap:6px">
+    <div><label>נושא</label><input id="ah-subject" value="${esc(subject?"בירור · "+subject:"")}" placeholder="במה מדובר"></div>
+    <div><label>השאלה / הבקשה לארצי</label><textarea id="ah-text" rows="5"></textarea></div>
+    ${(ctx||[]).length?`<div class="hint" style="white-space:pre-wrap;margin:0">מצורף לבד:\n${esc(ctx.join("\n"))}</div>`:""}
+    <div class="hint" style="margin:0">${hqMailTo().length?"תגיע לארצי במסך \"דורש טיפול\" ובמייל.":"תגיע לארצי במסך \"דורש טיפול\"."} התשובה תופיע כאן במסך הבית, בכרטיס "מהארצי".</div>
+    <div class="row" style="gap:6px"><button type="button" class="btn sm" id="ah-send">📤 שליחה לארצי</button><button type="button" class="btn ghost sm" id="ah-cancel">ביטול</button></div></div>`;
+}
+async function askHqSend(about, ctx){
+  const subject=String(($("#ah-subject")||{}).value||"").trim()||"פנייה מהעיר", text=String(($("#ah-text")||{}).value||"").trim();
+  if(!text){ toast("יש לכתוב את השאלה"); return null; }
+  const btn=$("#ah-send"); if(btn){ btn.disabled=true; btn.textContent="שולח…"; }
+  const id="c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  try{
+    await hqInboxWrite(id, x=>Object.assign(x, { kind:"cityask", at:Date.now(), updatedAt:Date.now(), by:myEmail(), subject:subject.slice(0,300), text:text.slice(0,4000),
+      about:{ kind:about.kind||"city", id:about.id||"", label:String(about.label||"").slice(0,200) }, lines:(ctx||[]).slice(0,20), status:"open", replies:[] }));
+    const to=hqMailTo();
+    if(to.length && DRIVE_READY) driveCall("sendMail",{ to:to.join(","), subject:"פנייה מ"+(mainCityName()||"העיר")+": "+subject, body:text+((ctx||[]).length?"\n\n"+ctx.join("\n"):"")+"\n\n— "+myEmail()+" · "+(mainCityName()||"")+"\nלמענה: בארצי ← דורש טיפול ← \"פנייה מ"+(mainCityName()||"העיר")+"\"." }).catch(()=>{});
+    toast("נשלח לארצי ✓"); return { subject, text };
+  }catch(e){ if(btn){ btn.disabled=false; btn.textContent="📤 שליחה לארצי"; } toast("השליחה נכשלה: "+(e&&(e.code||e.message)||"")); return null; }
+}
+function openAskHq(){
+  modal(`<h3>📤 פנייה לארצי</h3><div class="sub">שאלה או בקשה כללית למחלקת הרישום בארצי. לפנייה על תלמידה, גן או איש צוות — פותחים את התיק ← "תיעוד והתכתבות" ← "📤 פנייה לארצי".</div>${askHqFormHtml("", [])}`);
+  $("#ah-cancel").onclick=closeModal;
+  $("#ah-send").onclick=async()=>{ const r=await askHqSend({ kind:"city", id:"", label:mainCityName()||"" }, []); if(r) closeModal(); };
+}
 async function hqInboxWrite(id, mutate){
   const ref=cityDoc("hq_inbox"); let out=null;
   await runTransaction(db, async tx=>{ const snap=await tx.get(ref); const cur=snap.exists()?snap.data():{}; const items=Object.assign({}, cur.items||{});
@@ -10165,26 +10205,27 @@ function hqInboxCardHtml(){
     <div class="section-title" style="margin-bottom:6px"><h2>📨 מהארצי <span class="pill warn">${list.length}</span></h2></div>
     <div class="sub">פניות ששואלות אתכם משהו, ושינויים שהארצי עשה בנתוני העיר. אפשר להשיב, לסמן "ראיתי", או להגיש השגה על שינוי.</div>
     ${list.slice(0,8).map(x=>`<div class="note" style="margin:6px 0;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
-      <div style="flex:1;min-width:220px"><b>${x.kind==="question"?"❓ פנייה":"✏️ שינוי"} · ${esc(x.subject||"")}</b>
+      <div style="flex:1;min-width:220px"><b>${x.kind==="question"?"❓ פנייה":x.kind==="cityask"?"↩️ תשובה לפנייה שלכם":"✏️ שינוי"} · ${esc(x.subject||"")}</b>
         <div class="hint" style="margin:2px 0 0">${esc(new Date(x.at).toLocaleString("he-IL"))}${x.byName||x.by?" · "+esc(x.byName||x.by):""}${(x.students||[]).length?" · "+x.students.length+" תלמידות":""}${(x.lines||[]).length>1?" · "+x.lines.length+" שינויים":""}</div></div>
-      <button type="button" class="btn sm" data-ib="${esc(x.id)}">${x.kind==="question"?"מענה":"צפייה"}</button></div>`).join("")}
+      <button type="button" class="btn sm" data-ib="${esc(x.id)}">${x.kind==="question"?"מענה":x.kind==="cityask"?"קריאה":"צפייה"}</button></div>`).join("")}
     ${list.length>8?`<div class="hint">ועוד ${list.length-8} — במסך "🔔 לטיפול".</div>`:""}
   </div>`;
 }
 function wireHqInboxCard(root){ (root||document).querySelectorAll("[data-ib]").forEach(b=>b.onclick=()=>openHqInbox(b.dataset.ib)); }
 function openHqInbox(id){
   const x=hqInboxItems().find(i=>i.id===id); if(!x) return;
-  const isQ=x.kind==="question";
-  modal(`<h3>${isQ?"❓ פנייה מהארצי":"✏️ שינוי מהארצי"}</h3>
+  const isC=x.kind==="cityask", isQ=x.kind==="question"||isC;
+  modal(`<h3>${isC?"📤 הפנייה שלכם לארצי":isQ?"❓ פנייה מהארצי":"✏️ שינוי מהארצי"}</h3>
     <div class="sub">${esc(new Date(x.at).toLocaleString("he-IL"))}${x.byName||x.by?" · "+esc(x.byName||x.by):""}</div>
     <div class="note" style="margin-top:8px;white-space:pre-wrap"><b>${esc(x.subject||"")}</b>${x.text?"\n"+esc(x.text):""}${(x.lines||[]).length?"\n"+esc(x.lines.join("\n"))+(x.more?"\n…ועוד "+x.more:""):""}</div>
     ${(x.students||[]).length?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${x.students.slice(0,60).map(r=>`<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px 10px">
         <div style="flex:1;min-width:0"><b>${esc(r.name||"—")}</b><div class="hint" style="margin:2px 0 0">ת"ז ${esc(r.tz||"—")} · ${esc(r.gan||"ללא גן")}</div></div>
         ${DB.students.some(y=>y.id===r.id)?`<button type="button" class="btn ghost sm" data-ibs="${esc(r.id)}">פתיחת התיק</button>`:""}</div>`).join("")}</div>`:""}
     ${(x.replies||[]).length?`<div style="margin-top:8px"><label>התכתבות</label>${x.replies.map(r=>`<div class="hint" style="margin:3px 0;white-space:pre-wrap"><b>${esc(r.from==="city"?"העיר":"הארצי")} · ${esc(r.byName||r.by||"")} · ${esc(new Date(r.at).toLocaleString("he-IL"))}</b>\n${esc(r.text||"")}</div>`).join("")}</div>`:""}
-    <div style="margin-top:8px"><label>${isQ?"התשובה לארצי":"השגה / שאלה לארצי על השינוי (לא חובה)"}</label><textarea id="ib-reply" rows="4"></textarea></div>
+    <div style="margin-top:8px"><label>${isC?"תגובה נוספת לארצי (לא חובה לסגירה)":isQ?"התשובה לארצי":"השגה / שאלה לארצי על השינוי (לא חובה)"}</label><textarea id="ib-reply" rows="4"></textarea></div>
     <div class="foot"><button class="btn ghost" id="ib-cancel">סגירה</button>
-      ${isQ?`<button class="btn" id="ib-answer" style="margin-inline-start:auto">📤 שליחת תשובה</button>`
+      ${isC?`<button class="btn ghost" id="ib-done" style="margin-inline-start:auto">✔️ קיבלנו — סגירה</button><button class="btn" id="ib-answer">📤 תגובה לארצי</button>`
+      :isQ?`<button class="btn" id="ib-answer" style="margin-inline-start:auto">📤 שליחת תשובה</button>`
            :`<button class="btn ghost" id="ib-seen" style="margin-inline-start:auto">✔️ ראיתי — תקין</button><button class="btn" id="ib-object">✉️ השגה לארצי</button>`}</div>`);
   $("#ib-cancel").onclick=closeModal;
   document.querySelectorAll("[data-ibs]").forEach(b=>b.onclick=()=>openStudentById(b.dataset.ibs));   /* מחליף את תוכן החלון — בלי closeModal (ראו למטה) */
@@ -10192,11 +10233,13 @@ function openHqInbox(id){
     const t=String($("#ib-reply").value||"").trim(); if(need && !t){ toast("יש לכתוב תשובה"); return; }
     try{
       await hqInboxWrite(x.id, y=>{ y.replies=(y.replies||[]).slice(); if(t) y.replies.push({ at:Date.now(), by:myEmail(), from:"city", text:t.slice(0,4000) }); y.status=status; y.updatedAt=Date.now(); });
-      if(t && x.by && DRIVE_READY) driveCall("sendMail",{ to:x.by, subject:(isQ?"תשובה מ":"השגה מ")+(mainCityName()||"העיר")+": "+(x.subject||""), body:t+"\n\n— "+myEmail()+" · "+(mainCityName()||"")+"\nההתכתבות המלאה בארצי: \"דורש טיפול\" ← \"מול הערים\"." }).catch(()=>{});
+      const mailTo=isC?hqMailTo().join(","):x.by;
+      if(t && mailTo && DRIVE_READY) driveCall("sendMail",{ to:mailTo, subject:(isQ?"תשובה מ":"השגה מ")+(mainCityName()||"העיר")+": "+(x.subject||""), body:t+"\n\n— "+myEmail()+" · "+(mainCityName()||"")+"\nההתכתבות המלאה בארצי: \"דורש טיפול\" ← \"מול הערים\"." }).catch(()=>{});
       closeModal(); toast(status==="seen"?"סומן ✓":"נשלח לארצי ✓"); route();
     }catch(e){ toast("השליחה נכשלה: "+(e&&(e.code||e.message)||"")); }
   };
-  if(isQ) $("#ib-answer").onclick=()=>send("answered", true);
+  if(isC){ $("#ib-answer").onclick=()=>send("open", true); $("#ib-done").onclick=()=>send("closed", false); }
+  else if(isQ) $("#ib-answer").onclick=()=>send("answered", true);
   else { $("#ib-seen").onclick=()=>send("seen", false); $("#ib-object").onclick=()=>send("objection", true); }
 }
 /* ============================================================
@@ -10251,7 +10294,7 @@ function alertItems(){
   yr.filter(x=>!x.finished && dobAgeMismatch(x)).forEach(x=>add({ key:"dob|"+x.id, topic:"תלמידות", sev:"low", t:"תאריך לידה לא תואם לגיל · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:dobAgeMismatch(x), open:()=>openStudentById(x.id) }));
   yr.filter(x=>!x.finished && retentionNeedsDoc(x)).forEach(x=>add({ key:"ret|"+x.id, topic:"תלמידות", sev:"low", t:"השארות בלי מסמך · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:"אי אפשר לשבץ סופית עד שהמסמך מסומן", open:()=>openStudentById(x.id) }));
   hqInboxOpen().forEach(x=>add({ key:"hq|"+x.id, topic:"מהארצי", sev:x.kind==="question"?"high":"mid",
-    t:(x.kind==="question"?"פנייה מהארצי · ":"שינוי מהארצי · ")+(x.subject||""), s:(x.byName||x.by||"")+((x.students||[]).length?" · "+x.students.length+" תלמידות":""), open:()=>openHqInbox(x.id) }));
+    t:(x.kind==="question"?"פנייה מהארצי · ":x.kind==="cityask"?"תשובה מהארצי לפנייה שלכם · ":"שינוי מהארצי · ")+(x.subject||""), s:(x.byName||x.by||"")+((x.students||[]).length?" · "+x.students.length+" תלמידות":""), open:()=>openHqInbox(x.id) }));
   /* משימות ותזכורות ידניות */
   Object.entries(alertsDoc().items||{}).filter(([k,v])=>k.startsWith("task|") && v).forEach(([k,v])=>out.push({ key:k, topic:"משימות", sev:"low", t:v.title||"משימה", s:v.note||"", st:v, manual:true }));
   /* תזכורת שהגיעה — עולה לדחוף */
@@ -10342,7 +10385,7 @@ function viewAlerts(root){
   const sevPill=x=>x.remind?'<span class="pill no">⏰ תזכורת</span>':x.sev==="high"?'<span class="pill no">דחוף</span>':x.sev==="mid"?'<span class="pill warn">לטיפול</span>':'<span class="pill neutral">למעקב</span>';
   const stPill=x=>x.st?`<span class="pill ${x.st.status==="done"?"ok":"neutral"}">${esc(AL_ST[x.st.status]||"")}${x.st.owner?" · "+esc(x.st.owner):""}${x.st.due&&x.st.status!=="done"?" · עד "+esc(fmtDate(x.st.due)):""}</span>`:"";
   root.innerHTML=`<div class="panel">
-    <div class="section-title" style="margin-bottom:6px"><h2>🔔 לטיפול</h2><button class="btn ghost" id="al-new">➕ משימה / תזכורת</button></div>
+    <div class="section-title" style="margin-bottom:6px"><h2>🔔 לטיפול</h2><div class="row" style="gap:6px"><button class="btn ghost" id="al-askhq">📤 פנייה לארצי</button><button class="btn ghost" id="al-new">➕ משימה / תזכורת</button></div></div>
     <div class="sub">כל מה שדורש טיפול — ובכל פריט הטיפול עצמו: טופל · המשך טיפול עם תאריך ותזכורת · העברה לגורם אחר · יומן. פריט בטיפול חוזר לראש הרשימה כשמגיע תאריך התזכורת, עד שנסגר.</div>
     <div class="row" style="gap:6px;flex-wrap:wrap;margin:10px 0">
       <button type="button" class="btn sm ${alFilter.topic?"ghost":""}" data-al-topic="">הכל · ${openList.length}</button>
@@ -10362,6 +10405,7 @@ function viewAlerts(root){
       </div></div>`; }).join("")}
   </div>`;
   $("#al-new").onclick=newAlertTask;
+  { const ah=$("#al-askhq"); if(ah) ah.onclick=openAskHq; }
   root.querySelectorAll("[data-al-topic]").forEach(b=>b.onclick=()=>{ alFilter.topic=b.dataset.alTopic; viewAlerts(root); });
   $("#al-mine").onchange=e=>{ alFilter.mine=e.target.checked; viewAlerts(root); };
   $("#al-done").onchange=e=>{ alFilter.showDone=e.target.checked; viewAlerts(root); };

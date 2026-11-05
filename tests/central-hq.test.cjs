@@ -290,6 +290,47 @@ const DATA={
     });
     return (r.n>=1 && /ילדה/.test(r.hit) && /מועד/.test(r.hit)) || JSON.stringify(r);
   });
+  await step('ערים וגנים: לחיצה על גן פותחת אותו בצד, "התיק המלא" נפתח באותו מקום, וחזרה לתקציר', async()=>{
+    await go('cities'); await pg.waitForTimeout(150);
+    const r=await pg.evaluate(async()=>{
+      const row=document.querySelector('#cityDetail tbody tr[data-gi]'); if(!row) return { noRow:true };
+      row.click(); await new Promise(r=>setTimeout(r,80));
+      const dr=document.getElementById('hqDrawer'); const open=dr.classList.contains('open'), label=document.getElementById('hqDrawerLabel').textContent, title=document.getElementById('hqDrawerTitle').textContent;
+      const page=document.getElementById('ganDetail').innerHTML.length;
+      const hasAsk=!!document.getElementById('gdAsk');
+      document.getElementById('gdFull').click(); await new Promise(r=>setTimeout(r,80));
+      const wide=dr.classList.contains('wide'), full=/פעילויות ותוכניות/.test(document.getElementById('hqDrawerBody').textContent);
+      document.getElementById('ganBack').click(); await new Promise(r=>setTimeout(r,80));
+      const back=!dr.classList.contains('wide') && !!document.getElementById('gdFull');
+      window.__hq.closeDrawer();
+      return { open, label, title, page, hasAsk, wide, full, back };
+    });
+    return (r.open && r.label==='תיק גן' && r.title && r.page===0 && r.hasAsk && r.wide && r.full && r.back) || JSON.stringify(r);
+  });
+  await step('📨 פנייה לעיר על גן: נרשמת ב"מהארצי" של העיר עם פרטי הגן, ונכנסת ליומן של הגן', async()=>{
+    const r=await pg.evaluate(async()=>{
+      window.__hqAsk.about('modiin-illit', { kind:'gan', id:'g1', label:'גן בדיקה', lines:['גן: גן בדיקה · סמל 1'] });
+      document.getElementById('pf-text').value='למה הקיבולת ירדה?'; document.getElementById('pf-mail').checked=false;
+      document.getElementById('pf-ok').click(); await new Promise(r=>setTimeout(r,400));
+      const ib=(window.__docs['app/hq_inbox']||{}).items||{}; const it=Object.values(ib).filter(x=>x.about&&x.about.kind==='gan')[0]||{};
+      const g1=(window.__docs['app/gans'].gans||[]).find(x=>x.id==='g1')||{};
+      return { kind:it.kind, status:it.status, about:it.about, lines:it.lines, j:(g1.journal||[]).slice(-1)[0] };
+    });
+    return (r.kind==='question' && r.status==='open' && r.about.id==='g1' && /סמל/.test((r.lines||[]).join()) && r.j && /למה הקיבולת/.test(r.j.text)) || JSON.stringify(r);
+  });
+  await step('📤 פנייה מהעיר לארצי: מופיעה ב"דורש טיפול", נפתחת עם "פתיחת התיק", ותגובה מסמנת "נענתה"', async()=>{
+    const r=await pg.evaluate(async()=>{
+      await window.__centralLive.inboxWrite('modiin-illit','cTest', it=>Object.assign(it,{ kind:'cityask', status:'open', at:Date.now(), updatedAt:Date.now(), by:'city@example.com', subject:'שאלה מהעיר', text:'אפשר להגדיל קיבולת?', about:{ kind:'gan', id:'g1', label:'גן בדיקה' }, replies:[] }));
+      await new Promise(r=>setTimeout(r,300));
+      const fu=window.__hqFollow.items().filter(x=>/פנייה מ/.test(x.t)&&/שאלה מהעיר/.test(x.t));
+      window.__hqInbox.open('modiin-illit','cTest'); await new Promise(r=>setTimeout(r,50));
+      const about=!!document.getElementById('ib-about');
+      document.getElementById('ib-text').value='כן, בבקשה לשלוח רישיון'; document.getElementById('ib-send').click(); await new Promise(r=>setTimeout(r,300));
+      const it=((window.__docs['app/hq_inbox']||{}).items||{}).cTest||{};
+      return { fu:fu.length, about, status:it.status, rep:(it.replies||[]).slice(-1)[0] };
+    });
+    return (r.fu===1 && r.about && r.status==='replied' && r.rep && r.rep.from==='hq') || JSON.stringify(r);
+  });
   await step('אחראיות: לשונית בהגדרות — שם, ערים באחריות ונושאים — נשמרת, ובורר "הערים שלי" בתפריט הצד', async()=>{
     await go('perms'); await pg.click('#hqSettings .tab[data-tab="staff"]'); await pg.waitForTimeout(100);
     const r=await pg.evaluate(async()=>{
