@@ -28,7 +28,7 @@ Object.defineProperty(window,'ORG',{get:()=>ORG,set:v=>{ORG=v},configurable:true
 Object.defineProperty(window,'_pending',{get:()=>_pending,configurable:true});
 Object.defineProperty(window,'currentUser',{get:()=>currentUser,set:v=>{currentUser=v},configurable:true});
 window.__resetCity=()=>{ _cityResolved=false; };
-Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, journalAdd, cityRequests, waitlistReady, viewRequests, alertItems, viewAlerts, alertSave, rgCode, returningMap, isAssistantBRole, asgAssistantB, openListReport, openStaff, makeStaff, setCloudDoc:(id,d)=>{ cloudDocs.set(id,d); }, getCloudDoc:(id)=>cloudDocs.get(id), stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
+Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, journalAdd, cityRequests, waitlistReady, viewRequests, alertItems, viewAlerts, alertSave, rgCode, returningMap, isAssistantBRole, asgAssistantB, hqInboxCardHtml, hqInboxOpen, openListReport, openStaff, makeStaff, setCloudDoc:(id,d)=>{ cloudDocs.set(id,d); }, getCloudDoc:(id)=>cloudDocs.get(id), stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -467,6 +467,15 @@ const server=require('http').createServer((req,res)=>{
       const forms=["סייעת ב'","סייעת ב׳",'סייעת ב','סייעת שנייה','סייעת שניה','סייעת 2'].every(isAssistantBRole) && !isAssistantBRole('סייעת') && !isAssistantBRole('סייעת רפואית');
       const found=!!asgAssistantB({ 'סייעת שנייה':{ name:'רחל' } }) && !asgAssistantB({ 'סייעת':{ name:'לאה' } });
       return forms && found;
+    });
+  });
+
+  await step('📨 מהארצי בעיר: פנייה ושינוי מוצגים במסך הבית וב"לטיפול", עם כפתור מענה/צפייה', async()=>{
+    return await pg.evaluate(()=>{
+      setCloudDoc('hq_inbox',{ items:{ q1:{ kind:'question', status:'open', subject:'בירור שיבוץ', at:Date.now(), by:'hq@example.com', students:[{id:'x',name:'נועה',tz:'1',gan:'גן'}] }, c1:{ kind:'change', status:'open', subject:'תיק נועה — עודכן: גן', at:Date.now(), lines:['תיק נועה — עודכן: גן'] }, z:{ kind:'question', status:'closed', subject:'ישן' } } });
+      const html=hqInboxCardHtml(); const keys=alertItems().map(x=>x.key);
+      const ok=hqInboxOpen().length===2 && /בירור שיבוץ/.test(html) && /עודכן: גן/.test(html) && !/ישן/.test(html) && keys.includes('hq|q1') && keys.includes('hq|c1');
+      setCloudDoc('hq_inbox',{ items:{} }); return ok;
     });
   });
 
