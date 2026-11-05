@@ -51,7 +51,7 @@ var RG_BUILD = 'rg-b05ea2eb';
 // גרסת הגשר — מוחזרת ב"בדיקת חיבור" בתוכנה, כדי לדעת בוודאות איזו גרסה *נפרסה בפועל*
 // (שמירת הקוד בעורך אינה מספיקה — חייבים לפרוס גרסה חדשה). יש להעלות את התאריך
 // בכל שינוי שמוסיף/משנה פעולה בגשר.
-var BRIDGE_VERSION = '2026-11-04b';
+var BRIDGE_VERSION = '2026-11-05a';
 
 // המייל המוסדי (מחוץ ל-Google, למשל ‎…@xxx.co.il). כשמוגדר:
 //  • כל מייל יוצא נשלח "מאת" הכתובת המוסדית — בתנאי שהוגדרה ב-Gmail של חשבון הגשר
@@ -100,6 +100,7 @@ function doPost(e){
       case 'childFolder':    return json_(out, childFolder_(req.year, req.name, req.edu, req.gan, city));
       case 'childMove':      return json_(out, childMove_(req.folderId, req.year, req.edu, req.gan, city));
       case 'chat':           return json_(out, chat_(req.messages, req.system, req.model));
+      case 'adDesign':       return json_(out, adDesign_(req.system, req.prompt, req.images, req.model));
       case 'geocode':        return json_(out, geocode_(req.q, req.city, req.bias));
       case 'walk':           return json_(out, walk_(req.origin, req.dests));
       case 'sendMail':       return json_(out, sendMail_(req.to, req.subject, req.body));
@@ -611,6 +612,46 @@ function aiErr_(code, data){
   var msg = (data && data.error && data.error.message) || ('http-' + code);
   var busy = (code === 429 || code === 500 || code === 502 || code === 503 || code === 529);
   return busy ? ('overloaded: http-' + code + ': ' + msg) : msg;
+}
+
+/* ============================================================
+   🎨 עיצוב מודעת רישום (הארצי) — מחזיר מסמך HTML. אפשר לצרף עד 4 תמונות
+   (דוגמאות עיצוב משנה קודמת) כ-{ mime, data(base64) }. עדיפות ל-Claude כשיש מפתח
+   (איכות עיצוב), אחרת Gemini. מודל אחר: Script Property בשם AD_MODEL.
+   ============================================================ */
+function adDesign_(system, prompt, images, model){
+  var props = PropertiesService.getScriptProperties();
+  var geminiKey = props.getProperty('GEMINI_API_KEY'), anthropicKey = props.getProperty('ANTHROPIC_API_KEY');
+  var override = props.getProperty('AD_MODEL') || '';
+  model = String(override || model || '');
+  var imgs = (images || []).slice(0, 4).filter(function(i){ return i && /^image\/(png|jpeg|gif|webp)$/.test(String(i.mime)) && i.data && String(i.data).length < 3000000; });
+  prompt = String(prompt || '').slice(0, 30000); system = String(system || '').slice(0, 8000);
+  var useClaude = anthropicKey && !(/^gemini/i.test(model) && geminiKey);
+  if(!useClaude && !geminiKey) return { ok:false, error:'no-ai-key' };
+  var res, code, data;
+  if(useClaude){
+    var content = imgs.map(function(i){ return { type:'image', source:{ type:'base64', media_type:String(i.mime), data:String(i.data) } }; });
+    content.push({ type:'text', text:prompt });
+    res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+      method:'post', contentType:'application/json',
+      headers:{ 'x-api-key':anthropicKey, 'anthropic-version':'2023-06-01' },
+      payload: JSON.stringify({ model: /^claude/i.test(model) ? model : 'claude-sonnet-4-5', max_tokens: 12000, system: system, messages:[{ role:'user', content:content }] }),
+      muteHttpExceptions:true });
+    code = res.getResponseCode(); try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
+    if(code >= 400) return { ok:false, error: aiErr_(code, data) };
+    return { ok:true, text:(data.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('\n') };
+  }
+  var gm = /^gemini/i.test(model) ? model : 'gemini-3.6-flash';
+  var parts = imgs.map(function(i){ return { inline_data:{ mime_type:String(i.mime), data:String(i.data) } }; });
+  parts.push({ text:prompt });
+  res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(gm) + ':generateContent?key=' + encodeURIComponent(geminiKey), {
+    method:'post', contentType:'application/json',
+    payload: JSON.stringify({ contents:[{ role:'user', parts:parts }], system_instruction:{ parts:[{ text:system }] }, generationConfig:{ maxOutputTokens:12000 } }),
+    muteHttpExceptions:true });
+  code = res.getResponseCode(); try{ data = JSON.parse(res.getContentText() || '{}'); }catch(e){ data = {}; }
+  if(code >= 400) return { ok:false, error: aiErr_(code, data) };
+  var cand = (data.candidates && data.candidates[0]) || {};
+  return { ok:true, text: ((cand.content && cand.content.parts) || []).map(function(p){ return p.text || ''; }).join('\n') };
 }
 
 /* Anthropic Claude — Messages API */

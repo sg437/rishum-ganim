@@ -1336,6 +1336,20 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     else bad('פנייה לארצי מהעיר', [JSON.stringify(r)]);
   }
 
+  /* --- 🎨 מודעת רישום מהארצי: נפתחת בחלון מבודד בלי סקריפטים, עם הדפסה ו"התקבל" --- */
+  {
+    const r = await p.evaluate(async () => {
+      const d = window.cloudDocs.get('hq_inbox') || {};
+      window.cloudDocs.set('hq_inbox', Object.assign({}, d, { items: Object.assign({}, d.items || {}, { adT: { kind:'ad', status:'open', at:Date.now(), subject:'מודעת בדיקה', adType:'poster', css:'.ad-page{color:#123}', body:'<div class="ad-page" onclick="x()"><h1>רישום פתוח</h1><script>window.__pwn=1<\/script><img src="https://evil.example/a.png"></div>', replies:[] } }) }));
+      window.openHqInbox('adT'); await new Promise(r => setTimeout(r, 300));
+      const f = document.getElementById('ib-ad'); const html = f ? f.srcdoc : '';
+      const out = { frame: !!f, sandbox: f && f.getAttribute('sandbox'), hasText: /רישום פתוח/.test(html), dirty: /<script|onclick|evil\.example/.test(html), print: !!document.getElementById('ib-ad-print'), seen: !!document.getElementById('ib-seen'), pwn: !!window.__pwn };
+      window.closeModal(); return out;
+    });
+    if (r.frame && r.sandbox && !/allow-scripts/.test(r.sandbox) && r.hasText && !r.dirty && r.print && r.seen && !r.pwn) ok('🎨 מודעת רישום מהארצי מוצגת בעיר מבודדת ונקייה, עם הדפסה ו"התקבל"');
+    else bad('מודעת רישום בעיר', [JSON.stringify(r)]);
+  }
+
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
   if (real.length) bad(real.length + ' שגיאות JS בזמן הבדיקה', real.slice(0, 4));
   else ok('אף שגיאת JS לא נזרקה');

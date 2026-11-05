@@ -331,6 +331,33 @@ const DATA={
     });
     return (r.fu===1 && r.about && r.status==='replied' && r.rep && r.rep.from==='hq') || JSON.stringify(r);
   });
+  await step('🎨 מודעות רישום: עיצוב ב-AI (מנוקה מסקריפטים ומשאבים חיצוניים), אישור, ושליחה לעיר + סימון במעקב ההפצה', async()=>{
+    await go('distribution'); await pg.waitForTimeout(150);
+    const r=await pg.evaluate(async()=>{
+      const L=window.__centralLive, orig=L.bridge; const calls=[];
+      L.bridge=async(a,p)=>{ calls.push(a); if(a==='adDesign') return { ok:true, text:'הנה:\n```html\n<!doctype html><html><head><style>.ad-page{color:#123;background:url(https://evil.example/x.png)}</style><link rel="stylesheet" href="https://evil.example/a.css"></head><body><div class="ad-page" onclick="steal()"><h1>רישום לגנים</h1><script>alert(1)</script><img src="https://evil.example/p.png"><img src="{{LOGO}}" alt="לוגו"></div></body></html>\n```' }; return { ok:true }; };
+      try{
+        const nb=document.getElementById('adNew'); if(!nb) return { noBtn:true };
+        nb.click(); await new Promise(r=>setTimeout(r,80));
+        document.getElementById('ad-city').value='modiin-illit';
+        document.getElementById('ad-title').value='רישום תשפ"ח';
+        document.getElementById('ad-text').value='הרישום לגני הילדים נפתח!';
+        document.getElementById('ad-gen').click(); await new Promise(r=>setTimeout(r,500));
+        const key=Object.keys(window.__docs).find(k=>/^org\/hq\/tracking\/ad_/.test(k)); const ad=window.__docs[key]||{};
+        const clean=!/script|onclick|evil\.example/.test((ad.body||'')+(ad.css||'')) && /רישום לגנים/.test(ad.body||'') && /\{\{LOGO\}\}/.test(ad.body||'');
+        const prev=!!document.querySelector('#ad-prev iframe');
+        document.getElementById('ad-ok').click(); await new Promise(r=>setTimeout(r,300));
+        const st1=(window.__docs[key]||{}).status;
+        document.getElementById('ad-send').click(); await new Promise(r=>setTimeout(r,80));
+        const m=document.getElementById('pf-mail'); if(m) m.checked=false;
+        document.getElementById('pf-ok').click(); await new Promise(r=>setTimeout(r,500));
+        const ib=Object.values((window.__docs['app/hq_inbox']||{}).items||{}).filter(x=>x.kind==='ad')[0]||{};
+        const dist=window.__docs['org/hq/tracking/dist_modiin-illit']||{};
+        return { calls, clean, prev, st1, st2:(window.__docs[key]||{}).status, ibKind:ib.kind, ibBody:/רישום לגנים/.test(ib.body||''), design:!!((dist.steps||{}).design||{}).done, approve:!!((dist.steps||{}).approve||{}).done, cards:document.querySelectorAll('#adStudio [data-ad-open]').length };
+      } finally { L.bridge=orig; }
+    });
+    return (r.calls && r.calls.indexOf('adDesign')>=0 && r.clean && r.prev && r.st1==='approved' && r.st2==='sent' && r.ibKind==='ad' && r.ibBody && r.design && r.approve && r.cards>=1) || JSON.stringify(r);
+  });
   await step('אחראיות: לשונית בהגדרות — שם, ערים באחריות ונושאים — נשמרת, ובורר "הערים שלי" בתפריט הצד', async()=>{
     await go('perms'); await pg.click('#hqSettings .tab[data-tab="staff"]'); await pg.waitForTimeout(100);
     const r=await pg.evaluate(async()=>{
