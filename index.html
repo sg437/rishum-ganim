@@ -10170,7 +10170,8 @@ function hqAdDoc(x){
   doc.querySelectorAll("*").forEach(n=>[...n.attributes].forEach(a=>{ const nm=a.name.toLowerCase(), v=String(a.value||"").trim().toLowerCase();
     if(nm.startsWith("on") || ((nm==="src"||nm==="href"||nm==="xlink:href") && !(v.startsWith("data:image/")||v.startsWith("#")))) n.removeAttribute(a.name); }));
   const css=String(x.css||"").replace(/@import[^;]*;?/gi,"").replace(/<\/style/gi,"");
-  const page={ poster:"@page{size:A4 portrait;margin:0}", newsletter:"@page{size:190mm 135mm;margin:0}" }[x.adType]||"";
+  const pw=Math.round(+x.pw||0), ph=Math.round(+x.ph||0);
+  const page=(pw>0&&ph>0&&pw<=1000&&ph<=1400) ? `@page{size:${pw}mm ${ph}mm;margin:0}` : ({ poster:"@page{size:A4 portrait;margin:0}", newsletter:"@page{size:190mm 135mm;margin:0}" }[x.adType]||"");
   return `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${esc(x.subject||"מודעת רישום")}</title><style>@font-face{font-family:"Heebo";src:url("fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900}@font-face{font-family:"Assistant";src:url("fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800}${page}html,body{margin:0}body{font-family:"Heebo","Assistant",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}${css}img[src=""],img:not([src]){display:none}</style></head><body>${doc.body.innerHTML}</body></html>`;
 }
 /* 📤 פנייה לארצי — מתוך תיק (תלמידה / גן / איש צוות) או כללית: נכנסת ל"דורש טיפול" בארצי, נשלחת במייל
