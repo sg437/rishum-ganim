@@ -6121,7 +6121,8 @@ function xlsToRows(buf){
     host.innerHTML=H.roNote('ministry')+
       '<div class="hq-toolbar"><select class="txtin" id="moeCity" aria-label="עיר">'+cs.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===MOE.cityId?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('')+'</select><span class="hq-count">'+(d.checkedAt?'בדיקה אחרונה: '+esc(H.fmtDT(d.checkedAt))+' · '+esc(d.file||''):'טרם הועלתה מצבה')+'</span></div>'+
       '<div class="proc"><div class="card proc-steps"><div class="hm-title">שלבי הבקרה</div><div class="steps">'+steps.map(function(st){ return '<button type="button" class="s '+st.state+'" data-step="'+st.n+'"><span>'+st.t+'<small>'+st.s+'</small></span></button>'; }).join('')+'</div>'+
-        '<div class="proc-foot"><label class="btn-ghost" style="width:100%;cursor:pointer">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'<input type="file" id="moeFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"'+(canE?'':' disabled')+'></label><div class="hq-count" style="margin-top:8px">שתי התבניות של משרד החינוך — <b>מצבת גני ילדים</b> ו<b>שגויים בגני ילדים</b> — מזוהות לבד לפי הכותרות. ההצלבה לפי ת״ז: מתוקצבים, לא נקלטו, שגויים (עם תיאור השגיאה), סמל שונה ותאריך שונה מהתיק.</div>'+(d.errorsAt?'<div class="hq-count" style="margin-top:4px">שגויים אחרון: '+esc(d.errorsFile||'')+' · '+esc(H.fmtD(d.errorsAt))+'</div>':'')+'</div></div>'+
+        '<div class="proc-foot"><label class="btn-ghost" style="width:100%;cursor:pointer">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'<input type="file" id="moeFile" accept=".xlsx,.xls,.csv,.txt" style="display:none"'+(canE?'':' disabled')+'></label><div class="hq-count" style="margin-top:8px">שתי התבניות של משרד החינוך — <b>מצבת גני ילדים</b> ו<b>שגויים בגני ילדים</b> — מזוהות לבד לפי הכותרות. ההצלבה לפי ת״ז: מתוקצבים, לא נקלטו, שגויים (עם תיאור השגיאה), סמל שונה ותאריך שונה מהתיק.</div>'+
+          (canE&&cs.length>1?'<label class="btn-ghost" style="width:100%;cursor:pointer;margin-top:10px">העלאה לכל הערים (קובץ אחד לכמה ערים)<input type="file" id="moeFileAll" accept=".xlsx,.xls,.csv,.txt" style="display:none"></label><div class="hq-count" style="margin-top:6px">כל שורה משויכת לעיר לפי ת״ז (העיר שבה התיק), ואם אין תיק — לפי סמל הגן; כל עיר מתעדכנת בנפרד.</div>':'')+(d.errorsAt?'<div class="hq-count" style="margin-top:4px">שגויים אחרון: '+esc(d.errorsFile||'')+' · '+esc(H.fmtD(d.errorsAt))+'</div>':'')+'</div></div>'+
       '<div class="proc-main">'+
         (MOE.step===1?'<div class="kpis" style="margin-bottom:12px">'+[['תיקים בעיר',rows.length,''],['במצבת המשרד',d.fileRows||0,d.file||'—'],['במצבה ואינם אצלנו',(d.extra||[]).length,'ת״ז במשרד בלי תיק בעיר'],['לא נבדקו',nNone,'תיקים בלי ת״ז או לפני הצלבה']].map(function(k){ return '<div class="kpi"><div class="kl">'+k[0]+'</div><div class="kv">'+he(k[1])+'</div>'+(k[2]?'<div class="ks">'+esc(String(k[2]))+'</div>':'')+'</div>'; }).join('')+'</div>'+
           '<div class="card pad"><div class="sec-title">מקורות הנתונים</div><div class="sec-note" style="margin:4px 0 8px">ההצלבה משווה את תיקי העיר מול מצבת משרד החינוך לפי ת״ז</div><div class="kv">'+[['תיקי '+c.name,he(rows.length)+' תיקים פעילים · '+(c.year||'')],['מצבת משרד החינוך',d.checkedAt?esc(d.file||'קובץ')+' · '+he(d.fileRows||0)+' שורות · '+esc(H.fmtDT(d.checkedAt)):'טרם הועלתה'],['סימונים ידניים',he(rows.filter(function(x){ return x.r&&!x.r.auto; }).length)+' תיקים']].map(function(r){ return '<div class="r"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>'; }).join('')+'</div>'+
@@ -6149,6 +6150,7 @@ function xlsToRows(buf){
     var bulk=function(status){ var l=rows.filter(function(x){ return MOE.sel[x.key]; }); if(!l.length) return; var st=Object.assign({}, d.students||{}); l.forEach(function(x){ var k=H.tzKey(x.s.tz)||('id:'+x.s.id); st[k]=Object.assign({}, st[k]||{}, { name:H.stuName(x.s), sid:x.s.id, status:status, at:Date.now(), by:H.me() }); }); H.save('ministry', c.id, { cityName:c.name, students:st }, '✓ עודכנו '+l.length+' תיקים').then(function(){ MOE.sel={}; syncMinistryFlag(l.map(function(x){ return { s:x.s, status:status }; })); }); };
     if((b=$('#moeBulkOk'))) b.addEventListener('click',function(){ bulk('ok'); });
     if((b=$('#moeBulkPend'))) b.addEventListener('click',function(){ bulk('pending'); });
+    var fa=$('#moeFileAll'); if(fa) fa.addEventListener('change',function(){ var file=this.files&&this.files[0]; if(!file) return; window.__hqImport.readRows(file,function(rows){ crossCheckAll(rows, file.name); }); });
     var f=$('#moeFile'); if(f) f.addEventListener('change',function(){ var file=this.files&&this.files[0]; if(!file) return; window.__hqImport.readRows(file,function(rows){ crossCheck(c, rows, file.name); }); });
     var acts=$('#ministryActions'); if(acts){ acts.innerHTML='<button type="button" class="btn-ghost" id="moeExpHead">ייצוא לאקסל</button>'+(canE?'<button type="button" class="btn-primary" id="moeUpHead">'+(d.checkedAt?'העלאת מצבה מעודכנת':'העלאת מצבת המשרד')+'</button>':''); $('#moeExpHead').addEventListener('click',function(){ expRows(rows); }); var u=$('#moeUpHead'); if(u) u.addEventListener('click',function(){ var fi=$('#moeFile'); if(fi) fi.click(); }); }
   }
@@ -6181,7 +6183,7 @@ function xlsToRows(buf){
     return rec.note||'';
   }
   function moeOurDate(s){ return String(s.regDate||'').slice(0,10); }
-  function crossCheck(c, rows, fileName){
+  function crossCheck(c, rows, fileName, quiet){
     if(!rows.length){ toast('הקובץ ריק'); return; }
     var NH=function(h){ return window.__hqImport.normHeader(h).replace(/-/g,''); };
     var hdr=rows[0].map(NH), kind=moeDetect(hdr);
@@ -6229,10 +6231,49 @@ function xlsToRows(buf){
     var patch={ cityName:c.name, students:st };
     if(kind==='errors'){ patch.errorsAt=Date.now(); patch.errorsFile=fileName; patch.errorsRows=rows.length-1; }
     else { patch.extra=Object.keys(inFile).filter(function(k){ return !mine[k]; }); patch.checkedAt=Date.now(); patch.file=fileName; patch.fileRows=rows.length-1; }
-    H.save('ministry', c.id, patch, '✓ '+MOE_KIND_L[kind]+': '+cnt.ok+' מתוקצבים · '+cnt.missing+' לא נקלטו · '+cnt.error+' שגויים'+(cnt.date?' · '+cnt.date+' תאריך שונה':'')+(patch.extra?' · '+patch.extra.length+' במצבה בלבד':''))
+    if(quiet) quiet.cnt=cnt, quiet.kind=kind, quiet.extra=(patch.extra||[]).length;
+    return H.save('ministry', c.id, patch, quiet?'✓ '+c.name:'✓ '+MOE_KIND_L[kind]+': '+cnt.ok+' מתוקצבים · '+cnt.missing+' לא נקלטו · '+cnt.error+' שגויים'+(cnt.date?' · '+cnt.date+' תאריך שונה':'')+(patch.extra?' · '+patch.extra.length+' במצבה בלבד':''))
       .then(function(){ LIVE.hqAudit('ministry', c.name+' · '+MOE_KIND_L[kind]+' · '+fileName+' · '+cnt.ok+'/'+cnt.missing+'/'+cnt.error);
         syncMinistryFlag((c.stuFull||[]).filter(function(s){ return !s.finished && st[H.tzKey(s.tz)]; }).map(function(s){ return { s:s, status:st[H.tzKey(s.tz)].status }; })); });
     H.hoist('ministry', ['moeExp']);
+  }
+  /* ===== קובץ אחד של משרד החינוך לכמה ערים — פיצול לפי עיר =====
+     כל שורה משויכת לעיר: קודם לפי ת״ז (העיר שבה נמצא התיק), ואם אין תיק — לפי סמל המוסד
+     (סמל של גן באותה עיר). אחר כך כל עיר עוברת את אותה הצלבה כמו בהעלאה לעיר אחת.
+     מצבה ("מצבת גני ילדים"): מתעדכנות רק ערים שיש להן שורות בקובץ (עיר שלא מופיעה בו לא
+     מסומנת "לא נקלטו" בטעות). קובץ שגויים: כל הערים מתעדכנות — מי שלא בקובץ אינו שגוי. */
+  function crossCheckAll(rows, fileName){
+    if(!rows || rows.length<2){ toast('הקובץ ריק'); return; }
+    var NH=function(h){ return window.__hqImport.normHeader(h).replace(/-/g,''); };
+    var hdr=rows[0].map(NH), kind=moeDetect(hdr);
+    var col=function(){ for(var a=0;a<arguments.length;a++){ var i=hdr.indexOf(arguments[a]); if(i>=0) return i; } return -1; };
+    var tzCol=col('מספרזהות','תז','תעודתזהות','זהות','מסזהות','תזתלמיד'), passCol=col('מספרדרכון');
+    if(tzCol<0){ var best=-1, bestN=0; rows[0].forEach(function(_,i){ var n=0; rows.slice(1,50).forEach(function(r){ var d=H.digits(r[i]); if(d.length>=8&&d.length<=9) n++; }); if(n>bestN){ bestN=n; best=i; } }); if(bestN>=3) tzCol=best; }
+    if(tzCol<0 && passCol<0){ toast('לא נמצאה עמודת ת"ז בקובץ'); return; }
+    var symCol=-1; for(var i=0;i<hdr.length;i++){ if(/^סמלמוסד$/.test(hdr[i])){ symCol=i; break; } } if(symCol<0) for(var j=0;j<hdr.length;j++){ if(/סמל/.test(hdr[j])){ symCol=j; break; } }
+    var cell=function(r,i){ return i>=0 ? String(r[i]==null?'':r[i]).trim() : ''; };
+    var byTz={}, bySym={}, cs=H.cities();
+    cs.forEach(function(c){ (c.stuFull||[]).forEach(function(s){ var k=H.tzKey(s.tz); if(k && !s.finished) byTz[k]=c.id; }); (c.gans||[]).forEach(function(g){ var d=H.digits(g.sym); if(d) bySym[d]=c.id; }); });
+    var groups={}, none=[];
+    rows.slice(1).forEach(function(r){ var k=H.tzKey(cell(r,tzCol))||H.tzKey(cell(r,passCol)); if(!k) return;
+      var cid=byTz[k] || bySym[H.digits(cell(r,symCol))]; if(!cid){ none.push(cell(r,tzCol)||cell(r,passCol)); return; } (groups[cid]=groups[cid]||[]).push(r); });
+    var targets=cs.filter(function(c){ return groups[c.id] || kind==='errors'; });
+    if(!targets.length){ toast('אף שורה בקובץ לא שויכה לעיר — לבדוק שזה קובץ של משרד החינוך'); return; }
+    var res=[], chain=Promise.resolve();
+    targets.forEach(function(c){ chain=chain.then(function(){ var q={}; var p=crossCheck(c, [rows[0]].concat(groups[c.id]||[]), fileName, q); return Promise.resolve(p).then(function(){ res.push({ c:c, n:(groups[c.id]||[]).length, q:q }); }).catch(function(){ res.push({ c:c, n:(groups[c.id]||[]).length, q:q, fail:true }); }); }); });
+    chain.then(function(){
+      var skipped=cs.filter(function(c){ return targets.indexOf(c)<0; });
+      var body='<div class="sec-note">'+esc(fileName)+' · '+esc(MOE_KIND_L[kind]||'')+' · '+he(rows.length-1)+' שורות</div>'+
+        '<table class="hq-table" style="min-width:auto;margin-top:8px"><thead><tr><th>עיר</th><th>שורות בקובץ</th><th>מתוקצבים</th><th>לא נקלטו</th><th>שגויים</th><th>תאריך שונה</th></tr></thead><tbody>'+
+        res.map(function(x){ var k=x.q.cnt||{}; return '<tr><td>'+esc(x.c.name)+(x.fail?' <span class="tag warn">נכשל</span>':'')+'</td><td>'+he(x.n)+'</td><td>'+he(k.ok||0)+'</td><td>'+he(k.missing||0)+'</td><td>'+he(k.error||0)+'</td><td>'+he(k.date||0)+'</td></tr>'; }).join('')+'</tbody></table>'+
+        (skipped.length?'<div class="hq-count" style="margin-top:8px">לא הופיעו בקובץ (לא עודכנו): '+esc(skipped.map(function(c){ return c.name; }).join(', '))+'</div>':'')+
+        (none.length?'<div class="req" style="margin-top:10px"><div class="l">לבדיקה</div><div class="t">'+he(none.length)+' שורות לא שויכו לאף עיר</div><div class="d">אין תיק עם הת״ז ואין גן עם הסמל. <button type="button" class="btn-mini" id="moeNoneExp">ייצוא לאקסל</button></div></div>':'');
+      H.modal('משרד החינוך · עדכון לכל הערים', body, '<button type="button" class="btn-primary" id="moeAllOk">סגירה</button>', true);
+      $('#moeAllOk').addEventListener('click', H.closeModal);
+      var ne=$('#moeNoneExp'); if(ne) ne.addEventListener('click', function(){ H.exportXLS('משרד החינוך — לא שויכו '+H.todayISO(), ['ת"ז / דרכון'], none.map(function(t){ return [t]; }), 'לא שויכו'); });
+      LIVE.hqAudit('ministry', 'כל הערים · '+(MOE_KIND_L[kind]||'')+' · '+fileName+' · '+res.length+' ערים');
+      renderMinistry();
+    });
   }
   /* התראת תאריך: עדכון תאריך הרישום בתיק לתאריך שבמשרד החינוך, או ביטול ההתראה לתלמידה הזו */
   function moeDateFix(s, apply){

@@ -201,6 +201,14 @@ const DATA={
     const t=await txt('#hqMinistry');
     return (a.status==='error' && a.errors.length===2 && a.errors[0].code==='E12' && /גיל לא תואם/.test(a.note) && /כתובת חסרה/.test(a.note) && a.entryDate==='2026-09-15' && a.errInGan==='כן' && r.errorsFile==='errors.csv' && /תאריך שונה/.test(t)) || JSON.stringify(a);
   });
+  await step('משרד החינוך — "העלאה לכל הערים": קובץ אחד מתפצל לערים לפי ת״ז, וסיכום עם השורות שלא שויכו', async()=>{
+    await go('ministry'); await pg.waitForTimeout(100);
+    const r=await pg.evaluate(()=>new Promise(res=>{ const inp=document.getElementById('moeFileAll'); if(!inp){ res({ noBtn:true }); return; }
+      const f=new File(['ת"ז,סמל מוסד\n18,111\n42,222\n555555555,000\n'],'all.csv',{type:'text/csv'}); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change'));
+      setTimeout(()=>{ const m=window.__docs['org/hq/ministry/modiin-illit']||{}, b=window.__docs['org/hq/ministry/beitar']||{}; const t=(document.getElementById('hqModalBody')||{}).textContent||'';
+        res({ m18:(m.students||{})['000000018'], b42:(b.students||{})['000000042'], bFile:b.file, summary:/ביתר/.test(t)&&/מודיעין/.test(t), none:/1 שורות לא שויכו/.test(t) }); window.__hq.closeModal(); }, 1200); }));
+    return (r.m18 && r.m18.inRoster===true && r.m18.rosterSym==='111' && r.b42 && r.b42.status==='ok' && r.bFile==='all.csv' && r.summary && r.none) || JSON.stringify(r);
+  });
   await step('פניות וערעורים: הפנייה הפתוחה באיחור, ופתיחת פנייה חדשה מהמסך', async()=>{
     await go('requests'); const t=await txt('#hqRequests');
     await pg.click('#rqAdd'); await pg.waitForTimeout(80); await pg.fill('#pf-who','משפחת בדיקה'); await pg.fill('#pf-text','בקשה'); await pg.click('#pf-ok'); await pg.waitForTimeout(200);
