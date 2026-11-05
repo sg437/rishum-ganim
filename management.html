@@ -2267,13 +2267,23 @@ async function bridgeSend(action, payload, cityId){
   }
   throw new Error("bridge-error");
 }
+/* כללים שהארצי קובע לכל הערים (כרגע: טווחי תאריכי לידה לפי שנה וגיל) — נכתבים למסמך hq_rules
+   של כל עיר. העיר קוראת אותו בלבד; כך שמירה של העיר לא דורסת את מה שהארצי קבע. */
+async function pushCityRules(rules){
+  requireHQ(); const fails=[];
+  for(const c of orgCities()){
+    try{ await setDoc(docFor(c, "hq_rules"), Object.assign({}, rules, { updatedAt:Date.now(), by:lower(user&&user.email) }), { merge:true }); }
+    catch(e){ fails.push((c.name||c.id)+": "+(e&&e.code||e&&e.message||e)); }
+  }
+  return { ok:!fails.length, fails, n:orgCities().length };
+}
 window.__centralLive = {
   testDb: TEST_DB_MODE, demo: DEMO_MODE, homeCity: HOME_CITY, hqColls: HQ_COLLS,
   async signIn(){ const prov=new GoogleAuthProvider(); prov.setCustomParameters({ prompt:"select_account" }); await signInWithPopup(auth, prov); },
   async signOut(){ stopAll(); await signOut(auth); },
   saveOrg, org:()=>({ cities:orgCities(), users:ORG.users }), isOwner,
   hq:()=>HQ, hqSaveSettings, hqSet, hqDelete, hqAudit,
-  updateStudent, updateGan, updateStaff, addStudents, addRecords, inboxWrite, flushChanges, bridge, normStudent, packStudent, stuTemplate, uid
+  updateStudent, updateGan, updateStaff, addStudents, addRecords, inboxWrite, pushCityRules, flushChanges, bridge, normStudent, packStudent, stuTemplate, uid
 };
 try{
   app=initializeApp(firebaseConfig);
@@ -6389,6 +6399,51 @@ function xlsToRows(buf){
 
   /* ===== הגדרות (נוסף מעל מסך "הרשאות עבודה" הקיים) ===== */
   var SET={ tab:'th' };
+  /* ===== טווחי תאריכי לידה לפי שנה וגיל — נקבעים כאן וחלים על כל הערים =====
+     HQ.settings.dobRanges = { 'תשפ"ח': { '3':{from,to}, '4':{...}, '5':{...} } }
+     בגן דו־גילאי / רב־גילאי הטווח הוא איחוד הגילאים (מהמוקדם שבהם עד המאוחר שבהם). */
+  var DOB_AGES=['3','4','5'];
+  var HEB_V={'א':1,'ב':2,'ג':3,'ד':4,'ה':5,'ו':6,'ז':7,'ח':8,'ט':9,'י':10,'כ':20,'ך':20,'ל':30,'מ':40,'ם':40,'נ':50,'ן':50,'ס':60,'ע':70,'פ':80,'ף':80,'צ':90,'ץ':90,'ק':100,'ר':200,'ש':300,'ת':400};
+  function normYear(y){ return String(y||'').trim().replace(/[״”“]/g,'"').replace(/[׳’]/g,"'").replace(/^ה(?=תש)/,'').replace(/\s+/g,''); }
+  function hebNum(y){ var n=0; String(y||'').split('').forEach(function(ch){ n+=HEB_V[ch]||0; }); return n; }
+  function hebStr(n){ var out='', units=[[400,'ת'],[300,'ש'],[200,'ר'],[100,'ק'],[90,'צ'],[80,'פ'],[70,'ע'],[60,'ס'],[50,'נ'],[40,'מ'],[30,'ל'],[20,'כ'],[10,'י'],[9,'ט'],[8,'ח'],[7,'ז'],[6,'ו'],[5,'ה'],[4,'ד'],[3,'ג'],[2,'ב'],[1,'א']];
+    var r=n; while(r>=400){ out+='ת'; r-=400; } var rest=r%100, hund=r-rest; units.forEach(function(u){ if(u[0]>=100 && u[0]<400 && hund>=u[0]){ out+=u[1]; hund-=u[0]; } });
+    if(rest===15) out+='טו'; else if(rest===16) out+='טז'; else units.forEach(function(u){ if(u[0]<100 && rest>=u[0]){ out+=u[1]; rest-=u[0]; } });
+    return out.length>1 ? out.slice(0,-1)+'"'+out.slice(-1) : out+"'"; }
+  function nextYear(y){ return hebStr(hebNum(normYear(y))+1); }
+  function shiftYear(iso){ if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||'')) return ''; var y=+iso.slice(0,4)+1, md=iso.slice(5); if(md==='02-29') md='02-28'; return y+'-'+md; }
+  function dobYears(st, cs){ var set={}; Object.keys(st.dobRanges||{}).forEach(function(y){ set[normYear(y)]=1; }); (cs||[]).forEach(function(c){ if(c.year) set[normYear(c.year)]=1; });
+    var ys=Object.keys(set).filter(Boolean).sort(function(a,b){ return hebNum(a)-hebNum(b); }); if(SET.dobExtra && ys.indexOf(SET.dobExtra)<0) ys.push(SET.dobExtra); return ys; }
+  function dobPane(st, cs, canP){
+    var R=st.dobRanges||{}, ys=dobYears(st, cs); var dis=canP?'':' disabled';
+    var row=function(y, i){ var r=R[y]||{};
+      return '<tr><td><b style="font-size:15px">'+esc(y)+'</b>'+(i>0&&canP?'<div><button type="button" class="btn-mini" data-dob-copy="'+esc(y)+'" data-dob-from="'+esc(ys[i-1])+'" title="ממלא את השנה הזו מהשנה הקודמת, כשכל תאריך זז בשנה אחת קדימה">↓ מ'+esc(ys[i-1])+' + שנה</button></div>':'')+'</td>'+
+        DOB_AGES.map(function(a){ var v=r[a]||{}; return '<td><div style="display:grid;grid-template-columns:auto 1fr;gap:4px 6px;align-items:center"><span class="hq-count">מ־</span><input type="date" class="txtin dob-in" data-y="'+esc(y)+'" data-a="'+a+'" data-k="from" value="'+esc(v.from||'')+'"'+dis+' aria-label="גיל '+a+' '+esc(y)+' מתאריך"><span class="hq-count">עד</span><input type="date" class="txtin dob-in" data-y="'+esc(y)+'" data-a="'+a+'" data-k="to" value="'+esc(v.to||'')+'"'+dis+' aria-label="גיל '+a+' '+esc(y)+' עד תאריך"></div></td>'; }).join('')+'</tr>'; };
+    var last=ys[ys.length-1]; var nx=last?nextYear(last):'';
+    return '<div class="card pad"><div class="sec-title">טווחי תאריכי לידה לפי שנה <span class="hq-count">חל על כל הערים · בתוכנות הערים מוצג לקריאה בלבד</span></div>'+
+      '<div class="sec-note" style="margin:4px 0 10px">לכל שנת לימודים — מאיזה תאריך לידה ועד איזה תאריך שייכת ילדה לגיל 3, 4 ו־5. תיק נבדק לפי השנה שלו, וטופס הרישום — לפי שנת הרישום. אפשר להגדיר כבר עכשיו את השנה הבאה. בגן דו־גילאי או רב־גילאי הטווח הוא של כל הגילאים יחד. שדה ריק = בלי בדיקה.</div>'+
+      (ys.length?'<div class="hq-scroll"><table class="hq-table" style="min-width:auto"><thead><tr><th>שנה</th>'+DOB_AGES.map(function(a){ return '<th>גיל '+a+'</th>'; }).join('')+'</tr></thead><tbody>'+ys.map(row).join('')+'</tbody></table></div>':'<div class="hq-count">עדיין אין שנים — הוסיפו שנה.</div>')+
+      (canP?'<div class="hq-toolbar" style="margin:12px 0 0"><button type="button" class="btn-primary" id="dobSave">שמירה ושליחה לכל הערים</button>'+(nx?'<button type="button" class="btn-ghost" id="dobNext">+ הוספת שנת '+esc(nx)+'</button>':'')+'<button type="button" class="btn-mini" id="dobAdd">+ שנה אחרת…</button><span class="hq-count" id="dobMsg"></span></div>':'')+'</div>';
+  }
+  function dobCollect(){ var out={}; $$('#hqSettings .dob-in').forEach(function(i){ if(!i.value) return; var y=i.dataset.y, a=i.dataset.a; out[y]=out[y]||{}; out[y][a]=out[y][a]||{}; out[y][a][i.dataset.k]=i.value; }); return out; }
+  function wireDob(st, canP){
+    if(!canP) return; var b;
+    $$('#hqSettings [data-dob-copy]').forEach(function(btn){ btn.addEventListener('click',function(){ var to=btn.dataset.dobCopy, from=btn.dataset.dobFrom;
+      $$('#hqSettings .dob-in').filter(function(i){ return i.dataset.y===to; }).forEach(function(i){ var src=$$('#hqSettings .dob-in').filter(function(j){ return j.dataset.y===from && j.dataset.a===i.dataset.a && j.dataset.k===i.dataset.k; })[0]; if(src && src.value) i.value=shiftYear(src.value); });
+      var m=$('#dobMsg'); if(m) m.textContent='מולא מ'+from+' — לבדוק ולשמור'; }); });
+    if((b=$('#dobNext'))) b.addEventListener('click',function(){ var keep=dobCollect(); var ys=dobYears(st, H.cities()); SET.dobExtra=nextYear(ys[ys.length-1]); SET.dobDraft=keep; renderSettings(); });
+    if((b=$('#dobAdd'))) b.addEventListener('click',function(){ var y=prompt('שם השנה (למשל תשפ"ח):'); y=normYear(y); if(!y) return; SET.dobDraft=dobCollect(); SET.dobExtra=y; renderSettings(); });
+    if(SET.dobDraft){ var d=SET.dobDraft; SET.dobDraft=null; $$('#hqSettings .dob-in').forEach(function(i){ var v=((d[i.dataset.y]||{})[i.dataset.a]||{})[i.dataset.k]; if(v) i.value=v; }); }
+    if((b=$('#dobSave'))) b.addEventListener('click',function(){
+      var R=dobCollect(), bad=[];
+      Object.keys(R).forEach(function(y){ Object.keys(R[y]).forEach(function(a){ var r=R[y][a]; if(r.from&&r.to&&r.from>r.to) bad.push(y+' גיל '+a); }); });
+      if(bad.length){ toast('"מ־" מאוחר מ"עד": '+bad.join(', ')); return; }
+      b.disabled=true;
+      H.saveSettings({ dobRanges:R }, '✓ הטווחים נשמרו').then(function(){ return LIVE.pushCityRules({ ageDobRangesByYear:R }); }).then(function(res){
+        SET.dobExtra=''; toast(res.ok?'✓ נשלח לכל '+res.n+' הערים':'נשלח, אבל נכשל בחלק מהערים: '+res.fails.join(' · '));
+      }).catch(function(){}).then(function(){ b.disabled=false; });
+    });
+  }
   /* כרטיס "התקנה בטלפון" — התיבה עצמה מצוירת על ידי __hqInstall (מתעדכנת חי כשהדפדפן מציע התקנה) */
   function installCard(){ return '<div class="card pad"><div class="sec-title">התקנת המרכזי כאפליקציה <span class="hq-count">טלפון · טאבלט · מחשב</span></div><div class="sec-note" style="margin:4px 0 12px">אייקון "ארצי" במסך הבית או בשולחן העבודה — כניסה ישירה למרכזי בלי לפתוח דפדפן ולהקליד כתובת. ההתקנה אישית לכל מכשיר ואינה משנה דבר בנתונים.</div><div class="hq-install-box"></div></div>'; }
   function renderSettings(){
@@ -6408,7 +6463,7 @@ function xlsToRows(buf){
     var AL={place:'שיבוץ מרכזי',import:'ייבוא מאקסל',ministry:'הצלבת מצבת משרד החינוך'};
     var cityUsers=Object.keys(orgD.users||{}).length;
     var staffM=st.staff||{};
-    var tabs=[['th','ספים ובקרה',null],['staff','אחראיות',Object.keys(staffM).length],['perms','הרשאות',hqUsers.length],['users','משתמשים',cityUsers],['cities','מרשם ערים',(orgD.cities||[]).length],['log','יומן פעולות',month.length],['install','התקנה בטלפון',null]];
+    var tabs=[['th','ספים ובקרה',null],['staff','אחראיות',Object.keys(staffM).length],['dob','טווחי לידה',Object.keys(st.dobRanges||{}).length],['perms','הרשאות',hqUsers.length],['users','משתמשים',cityUsers],['cities','מרשם ערים',(orgD.cities||[]).length],['log','יומן פעולות',month.length],['install','התקנה בטלפון',null]];
     var numField=function(id,label,val,unit,note){ return '<div class="setf"><div class="l">'+label+'</div><div class="row"><input class="txtin num" type="number" id="'+id+'" value="'+val+'"'+(canP?'':' disabled')+'><span class="u">'+unit+'</span></div><div class="n">'+note+'</div></div>'; };
     host.innerHTML='<div class="tabs" role="tablist">'+tabs.map(function(t){ return '<button type="button" class="tab" role="tab" data-tab="'+t[0]+'" aria-selected="'+(SET.tab===t[0]?'true':'false')+'">'+t[1]+(t[2]!=null?' <span class="n">'+he(t[2])+'</span>':'')+'</button>'; }).join('')+'</div>'+
       '<div data-pane="th"'+(SET.tab==='th'?'':' hidden')+'>'+
@@ -6423,6 +6478,7 @@ function xlsToRows(buf){
             '<td>'+H.STAFF_TOPICS.map(function(t){ return '<label class="hq-count" style="display:inline-flex;gap:4px;align-items:center;margin:2px 8px 2px 0"><input type="checkbox" class="stf-topic" data-em="'+esc(em)+'" value="'+t[0]+'"'+((r.topics||[]).indexOf(t[0])>=0?' checked':'')+(canP?'':' disabled')+'> '+esc(t[1])+'</label>'; }).join('')+'</td></tr>'; }).join('')+'</tbody></table></div>'+
           (canP?'<div class="hq-toolbar" style="margin-top:10px;margin-bottom:0"><button type="button" class="btn-primary" id="stfSave">שמירת האחראיות</button><span class="hq-count">משתמשי מרכז נוספים מוסיפים בלשונית "משתמשים".</span></div>':'')
         :'<div class="hq-count" style="margin-top:10px">אין עדיין משתמשי מרכז — מוסיפים בלשונית "משתמשים".</div>')+'</div></div>'+
+      '<div data-pane="dob"'+(SET.tab==='dob'?'':' hidden')+'>'+dobPane(st, cs, canP)+'</div>'+
       '<div data-pane="perms"'+(SET.tab==='perms'?'':' hidden')+'><div class="card pad"><div class="sec-title">מה כל אחד/ת יכול/ה לערוך במרכזי <span class="hq-count">משתמשי מרכז בלבד · בעלי המערכת תמיד הכל</span></div><div class="sec-note" style="margin:4px 0 10px">עריכה = לעבוד במודול · צפייה = לראות בלי לשנות · אין = המסך מוסתר. משתמש/ת בלי שורה — עריכה בכל המודולים. ההרשאות כאן הן בממשק; בשרת כל משתמש/ת מרכז מורשה לכתוב (ראה docs/SECURITY.md).</div>'+
         (hqUsers.length?'<div class="hq-scroll" style="max-height:50vh"><table class="hq-table" style="min-width:auto"><thead><tr><th>משתמש/ת</th>'+H.MODULES.map(function(m){ return '<th>'+esc(m[1])+'</th>'; }).join('')+'</tr></thead><tbody>'+hqUsers.map(function(em){ var own=LIVE.isOwner(em); var row=perms_[em]||{}; return '<tr><td dir="ltr" style="text-align:right"><span class="nm"><span class="avatar">'+esc(H.initials((orgD.users[em]&&orgD.users[em].name)||em))+'</span><span>'+esc(em)+'</span></span>'+(own?' '+H.lamp('done','בעלים'):'')+(em===H.me()?' <span class="hq-count">אני</span>':'')+'</td>'+H.MODULES.map(function(m){ if(own) return '<td>'+H.lamp('done','הכל')+'</td>'; var v=row[m[0]]||'edit'; return '<td><span class="lampt"><i class="lamp '+(v==='edit'?'ok':(v==='view'?'wait':'bad'))+'"></i><select class="txtin perm-sel" data-em="'+esc(em)+'" data-m="'+m[0]+'" style="height:30px;padding:0 26px 0 8px;font-size:13px"'+(canP?'':' disabled')+'><option value="edit"'+(v==='edit'?' selected':'')+'>עריכה</option><option value="view"'+(v==='view'?' selected':'')+'>צפייה</option><option value="none"'+(v==='none'?' selected':'')+'>אין</option></select></span></td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table></div>':'<div class="hq-count">אין עדיין משתמשי מרכז במרשם (מלבד הבעלים). מוסיפים בלשונית "משתמשים" — משתמש/ת בלי עיר = מרכז.</div>')+
         '<div class="tfoot" style="margin:12px -16px -16px;border-radius:0 0 12px 12px"><div>בעלי המערכת רואים ועורכים הכל · משתמש/ת בלי שורה מקבל/ת עריכה בכל המודולים</div><div class="acts"><button type="button" class="btn-mini" data-tab-go="users">הוספת משתמש/ת</button></div></div></div></div>'+
@@ -6444,6 +6500,7 @@ function xlsToRows(buf){
         var tp=$$('.stf-topic').filter(function(i){ return i.dataset.em===em && i.checked; }).map(function(i){ return i.value; });
         if(nm.trim()||ci.length||tp.length) next[em]={ name:nm.trim(), cities:ci, topics:tp }; });
       H.saveSettings({ staff:next }, '✓ האחראיות נשמרו'); });
+    wireDob(st, canP);
     $$('#hqSettings [data-tab-go]').forEach(function(t){ t.addEventListener('click',function(){ SET.tab=t.dataset.tabGo; renderSettings(); }); });
     $$('.perm-sel',host).forEach(function(sel){ sel.addEventListener('change',function(){ var next=JSON.parse(JSON.stringify(perms_)); next[sel.dataset.em]=next[sel.dataset.em]||{}; next[sel.dataset.em][sel.dataset.m]=sel.value; H.saveSettings({ perms:next }, '✓ ההרשאה נשמרה'); }); });
   }
