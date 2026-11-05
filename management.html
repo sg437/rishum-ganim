@@ -5840,7 +5840,7 @@ function xlsToRows(buf){
     var isC=it.kind==='cityask';
     var stL={ open:isC?'פנייה חדשה מהעיר':(it.kind==='question'?'ממתין לתשובה':'חדש'), replied:'נענתה — ממתין לעיר', answered:'התקבלה תשובה', objection:'השגה של העיר', seen:'העיר ראתה', closed:'נסגר' };
     var ab=it.about||{}; var abBtn=(ab.kind==='student'||ab.kind==='staff'||ab.kind==='gan')&&ab.id?'<button type="button" class="btn-mini" id="ib-about" style="margin-top:6px">📂 פתיחת התיק · '+esc(ab.label||'')+'</button>':'';
-    var body='<div class="sec-note">'+esc(c.name)+' · '+(isC?'פנייה מהעיר':(it.kind==='question'?'פנייה מהארצי':'שינוי מהארצי'))+' · '+esc(H.fmtDT(it.at))+(it.byName||it.by?' · '+esc(it.byName||it.by):'')+' · <b>'+esc(stL[it.status]||it.status)+'</b></div>'+
+    var body='<div class="sec-note">'+esc(c.name)+' · '+(isC?'פנייה מהעיר':it.kind==='ad'?'מודעת רישום שנשלחה':(it.kind==='question'?'פנייה מהארצי':'שינוי מהארצי'))+' · '+esc(H.fmtDT(it.at))+(it.byName||it.by?' · '+esc(it.byName||it.by):'')+' · <b>'+esc(stL[it.status]||it.status)+'</b></div>'+
       '<div class="ai-m bot" style="max-width:none;white-space:pre-wrap"><b>'+esc(it.subject||'')+'</b>'+(it.text?'\n'+esc(it.text):'')+((it.lines||[]).length?'\n'+esc(it.lines.join('\n')):'')+'</div>'+
       abBtn+
       ((it.students||[]).length?'<div class="hq-count" style="margin-top:6px">'+it.students.slice(0,30).map(function(r){ return esc(r.name)+' · ת״ז '+esc(r.tz||'—')+' · '+esc(r.gan||'ללא גן'); }).join('<br>')+(it.students.length>30?'<br>…ועוד '+(it.students.length-30):'')+'</div>':'')+
@@ -6278,8 +6278,9 @@ function xlsToRows(buf){
   function renderDistribution(){
     var host=$('#hqDistribution'); if(!host||offline(host,'distribution')) return;
     var tr=H.HQ().tracking||[]; var season=(H.HQ().settings||{}).season||'';
-    host.innerHTML=H.roNote('distribution')+'<div class="hq-toolbar"><label class="hq-count">עונת רישום: <input class="txtin" id="dsSeason" value="'+esc(season)+'" placeholder="למשל: תשפ״ח" style="width:120px"'+H.ro('distribution')+'></label>'+H.citySelHTML('dsCitySel')+'<span class="sp"></span><button class="btn-ghost" id="dsExp"> אקסל</button></div>'+
+    host.innerHTML=H.roNote('distribution')+'<div id="adStudio"></div><div class="hq-toolbar"><label class="hq-count">עונת רישום: <input class="txtin" id="dsSeason" value="'+esc(season)+'" placeholder="למשל: תשפ״ח" style="width:120px"'+H.ro('distribution')+'></label>'+H.citySelHTML('dsCitySel')+'<span class="sp"></span><button class="btn-ghost" id="dsExp"> אקסל</button></div>'+
       '<div class="mini-grid">'+H.selCities().map(function(c){ var t=tr.filter(function(x){ return x.id==='dist_'+c.id; })[0]||{ steps:{} }; var st=t.steps||{}; var done=DSTEPS.filter(function(s){ return st[s[0]]&&st[s[0]].done; }).length; var contact=((H.HQ().settings||{}).contacts||{})[c.id]||{}; return '<div class="city-card"><h4>'+esc(c.name)+' <span class="tag '+(done===DSTEPS.length?'ok':(done?'acc':''))+'">'+done+'/'+DSTEPS.length+'</span></h4><div class="hq-count">רכז/ת: '+esc((contact.coordinator&&contact.coordinator.name)||c.coordinator||'—')+(contact.coordinator&&contact.coordinator.phone?' · '+esc(contact.coordinator.phone):'')+'</div><div class="steps" style="margin:8px 0">'+DSTEPS.map(function(s){ var x=st[s[0]]||{}; return '<button type="button" class="s '+(x.done?'done':'')+'" data-ds="'+esc(c.id+'|'+s[0])+'" style="border:0;cursor:pointer;font:inherit" title="'+esc(x.at?H.fmtD(x.at)+' · '+(x.by||''):'')+'">'+esc(s[1])+'</button>'; }).join('')+'</div>'+(t.materials?'<div class="row"><span>חומרים</span><b>'+esc(t.materials)+'</b></div>':'')+(t.qty?'<div class="row"><span>כמות</span><b>'+esc(t.qty)+'</b></div>':'')+(t.localNeeds?'<div class="row"><span>צרכים מקומיים</span><b>'+esc(t.localNeeds)+'</b></div>':'')+(t.lastContact?'<div class="row"><span>קשר אחרון</span><b>'+esc(H.fmtDate(t.lastContact))+'</b></div>':'')+(t.notes?'<div style="font-size:.82rem;margin-top:4px;white-space:pre-wrap">'+esc(t.notes)+'</div>':'')+'<div class="hq-toolbar" style="margin:8px 0 0"><button class="btn-mini" data-ds-edit="'+esc(c.id)+'"'+H.ro('distribution')+'>פרטים ותיעוד</button><button class="btn-mini" data-ds-msg="'+esc(c.id)+'"> לרכז/ת</button></div></div>'; }).join('')+'</div>';
+    if(window.__hqAds) window.__hqAds.render($('#adStudio'));
     H.wireCitySel('dsCitySel', renderDistribution);
     $('#dsSeason').addEventListener('change',function(){ H.saveSettings({ season:this.value.trim() }); });
     $$('[data-ds]').forEach(function(b){ b.addEventListener('click',function(){ if(!H.canEdit('distribution')) return; var k=b.dataset.ds.split('|'); var c=H.cityById(k[0]); var t=tr.filter(function(x){ return x.id==='dist_'+k[0]; })[0]||{ steps:{} }; var steps=Object.assign({}, t.steps||{}); var cur=steps[k[1]]||{}; steps[k[1]]=cur.done?{ done:false }:{ done:true, at:Date.now(), by:H.me() }; H.save('tracking', 'dist_'+k[0], { cityId:k[0], cityName:c.name, kind:'distribution', steps:steps }, '✓'); }); });
@@ -6356,6 +6357,7 @@ function xlsToRows(buf){
       if(it.kind==='question' && it.status==='open') out.push({ sev:age>3*86400000?'mid':'low', ic:'', t:'ממתין לתשובה מ'+c.name+' · '+(it.subject||''), s:(it.students||[]).length+' תלמידים · נשלח '+H.fmtD(it.at)+(it.byName?' · '+it.byName:''), go:'inbox', cityId:c.id, inbox:{ cityId:c.id, id:id }, key:'ibq|'+c.id+'|'+id });
       if(it.kind==='question' && it.status==='answered') out.push({ sev:'high', ic:'', t:'התקבלה תשובה מ'+c.name+' · '+(it.subject||''), s:last?String(last.text||'').slice(0,120):'', go:'inbox', cityId:c.id, inbox:{ cityId:c.id, id:id }, key:'iba|'+c.id+'|'+id });
       if(it.kind==='cityask' && it.status==='open') out.push({ sev:'high', ic:'', t:'פנייה מ'+c.name+' · '+(it.subject||''), s:(last?String(last.text||''):String(it.text||'')).slice(0,120)+((it.about||{}).label?' · '+it.about.label:''), go:'inbox', cityId:c.id, inbox:{ cityId:c.id, id:id }, key:'ibc|'+c.id+'|'+id });
+      if(it.kind==='ad' && it.status==='objection') out.push({ sev:'high', ic:'', t:'הערה מ'+c.name+' על מודעת רישום · '+(it.subject||''), s:last?String(last.text||'').slice(0,120):'', go:'inbox', cityId:c.id, inbox:{ cityId:c.id, id:id }, key:'ibad|'+c.id+'|'+id });
       if(it.kind==='change' && it.status==='objection') out.push({ sev:'high', ic:'', t:'השגה מ'+c.name+' על שינוי · '+(it.subject||''), s:last?String(last.text||'').slice(0,120):'', go:'inbox', cityId:c.id, inbox:{ cityId:c.id, id:id }, key:'ibo|'+c.id+'|'+id });
     }); });
     MAIL_PENDING.forEach(function(m){ out.push({ sev:'mid', ic:'', t:'מייל נכנס לשיוך · '+(m.subject||'(ללא נושא)'), s:(m.from||'')+' · '+H.fmtDT(Date.parse(m.date)||Date.now()), go:'mail', mail:m, key:'mail|'+m.id }); });
@@ -6445,6 +6447,182 @@ function xlsToRows(buf){
   }
   H.reg('followups', renderFollow);
   window.__hqFollow={ items:items };
+})();
+/* ---------- 🎨 מודעות רישום — סטודיו בארצי ----------
+   לכל עיר אפשר להכין כמה מודעות (לתלייה · לידיעון המקומי · למייל): כותבים את הטקסט שצריך להופיע,
+   מתארים את הגרפיקה והצבעים, ואפשר לצרף דוגמאות עיצוב משנה קודמת ולוגו. ה-AI (דרך הגשר) מעצב
+   מסמך HTML מוכן להדפסה; מתקנים בהערות עד שמרוצים, מאשרים, ושולחים לעיר בלחיצה —
+   במייל (קובץ מצורף) ובתוכנת העיר ("מהארצי"), והשלבים "עיצוב" ו"אישור" מסומנים במעקב ההפצה.
+   נשמר ב-HQ.tracking כ-{ kind:'ad', … } (בלי הדוגמאות — הן נשלחות ל-AI בלבד). */
+(function(){
+  "use strict";
+  var H=window.__hq; if(!H) return;
+  var $=H.$, $$=H.$$, esc=H.esc, toast=H.toast, C=H.C, LIVE=H.LIVE;
+  var TYPES={ poster:{ l:'מודעה לתלייה', size:'דף A4 לאורך (210×297 מ"מ), להדפסה ולתלייה בלוחות מודעות', css:'@page{size:A4 portrait;margin:0} html,body{margin:0} .ad-page{width:210mm;height:297mm;overflow:hidden;position:relative;box-sizing:border-box}' },
+              newsletter:{ l:'מודעה לידיעון מקומי', size:'מודעה בחצי עמוד לרוחב (190×135 מ"מ) בעיתון / ידיעון מקומי — בולטת גם בשחור-לבן', css:'@page{size:190mm 135mm;margin:0} html,body{margin:0} .ad-page{width:190mm;height:135mm;overflow:hidden;position:relative;box-sizing:border-box}' },
+              email:{ l:'מודעה למייל', size:'מודעה למייל ברוחב 600 פיקסלים, גובה חופשי (עד כ-900), קריאה גם בטלפון', css:'html,body{margin:0} .ad-page{width:600px;max-width:100%;position:relative;box-sizing:border-box;margin:0 auto}' } };
+  var ST={ draft:['טיוטה',''], designed:['עוצב','acc'], approved:['אושר','ok'], sent:['נשלח לעיר','ok'], note:['הערה מהעיר','warn'] };
+  function ads(){ return (H.HQ().tracking||[]).filter(function(t){ return t.kind==='ad'; }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); }); }
+  function find(id){ return ads().filter(function(a){ return a.id===id; })[0]||null; }
+
+  /* ---- ניקוי ה-HTML שחוזר מה-AI: בלי סקריפטים, בלי מאזיני אירועים ובלי משאבים חיצוניים ---- */
+  function cleanHtml(raw){
+    var t=String(raw||''); var m=t.match(/```(?:html)?\s*([\s\S]*?)```/i); if(m) t=m[1];
+    var i=t.search(/<!doctype|<html/i); if(i>0) t=t.slice(i);
+    var doc=new DOMParser().parseFromString(t,'text/html');
+    $$('script,iframe,object,embed,link,meta,base,form,input,button,textarea,select', doc).forEach(function(n){ n.remove(); });
+    $$('*', doc).forEach(function(n){ Array.prototype.slice.call(n.attributes).forEach(function(a){
+      var nm=a.name.toLowerCase(), v=String(a.value||'').trim().toLowerCase();
+      if(nm.indexOf('on')===0) n.removeAttribute(a.name);
+      else if((nm==='src'||nm==='href'||nm==='xlink:href') && !(v.indexOf('data:image/')===0 || v==='{{logo}}' || v.indexOf('#')===0)) n.removeAttribute(a.name);
+    }); });
+    var css=$$('style', doc).map(function(s){ return s.textContent; }).join('\n').replace(/@import[^;]*;?/gi,'').replace(/url\(\s*['"]?(?!data:|#)[^)]*\)/gi,'none');
+    var body=doc.body?doc.body.innerHTML:'';
+    return { css:css, body:body };
+  }
+  function fontFace(base){ base=base||''; return '@font-face{font-family:"Heebo";src:url("'+base+'fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}'+
+    '@font-face{font-family:"Heebo";src:url("'+base+'fonts/heebo-latin.woff2") format("woff2");font-weight:100 900;unicode-range:U+0000-00FF,U+2000-206F}'+
+    '@font-face{font-family:"Assistant";src:url("'+base+'fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800;unicode-range:U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}'+
+    '@font-face{font-family:"Assistant";src:url("'+base+'fonts/assistant-latin.woff2") format("woff2");font-weight:200 800;unicode-range:U+0000-00FF,U+2000-206F}'; }
+  /* מסמך שלם להצגה / להדפסה / לשליחה */
+  function fullDoc(ad, fonts){
+    var ty=TYPES[ad.type]||TYPES.poster; var body=String(ad.body||'').split('{{LOGO}}').join(ad.logo||'').split('{{logo}}').join(ad.logo||'');
+    return '<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>'+esc(ad.title||'מודעת רישום')+'</title><style>'+(fonts||fontFace())+ty.css+'body{font-family:"Heebo","Assistant",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+(ad.css||'')+'img[src=""],img:not([src]){display:none}'+'</style></head><body>'+body+'</body></html>';
+  }
+  function frame(ad, h){ return '<iframe class="ad-frame" sandbox="allow-same-origin allow-modals" style="width:100%;height:'+(h||520)+'px;border:1px solid var(--bd2);border-radius:10px;background:#fff" title="תצוגה מקדימה"></iframe>'; }
+  function fill(ifr, ad){ if(!ifr) return; ifr.srcdoc=fullDoc(ad);
+    ifr.onload=function(){ try{ var d=ifr.contentDocument, p=d.querySelector('.ad-page')||d.body; var w=p.scrollWidth||800, hh=p.scrollHeight||1100; var k=Math.min(1, (ifr.clientWidth-8)/w); d.documentElement.style.zoom=k; ifr.style.height=Math.max(240, Math.round(hh*k)+12)+'px'; }catch(e){} }; }
+  function printAd(ad){ var f=document.createElement('iframe'); f.setAttribute('sandbox','allow-same-origin allow-modals'); f.style.cssText='position:fixed;width:0;height:0;border:0;left:-9999px'; document.body.appendChild(f); f.srcdoc=fullDoc(ad);
+    f.onload=function(){ setTimeout(function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ toast('ההדפסה נחסמה בדפדפן'); } setTimeout(function(){ f.remove(); }, 4000); }, 350); }; }
+  /* לקובץ שנשלח במייל — הגופנים מוטמעים בתוך הקובץ, כדי שייראה זהה בכל מחשב */
+  var FONT_CACHE=null;
+  function embeddedFonts(){
+    if(FONT_CACHE) return Promise.resolve(FONT_CACHE);
+    var files=['heebo-hebrew','assistant-hebrew'];
+    return Promise.all(files.map(function(f){ return fetch('fonts/'+f+'.woff2').then(function(r){ return r.blob(); }).then(function(b){ return new Promise(function(res){ var fr=new FileReader(); fr.onload=function(){ res(fr.result); }; fr.readAsDataURL(b); }); }); }))
+      .then(function(u){ FONT_CACHE='@font-face{font-family:"Heebo";src:url("'+u[0]+'") format("woff2");font-weight:100 900}@font-face{font-family:"Assistant";src:url("'+u[1]+'") format("woff2");font-weight:200 800}'; return FONT_CACHE; })
+      .catch(function(){ return ''; });
+  }
+  function b64utf8(s){ var bytes=new TextEncoder().encode(s), bin=''; for(var i=0;i<bytes.length;i+=8192) bin+=String.fromCharCode.apply(null, bytes.subarray(i,i+8192)); return btoa(bin); }
+  /* תמונה מהמחשב → JPEG/PNG מוקטן (base64), כדי שהבקשה ל-AI והשמירה יישארו קטנות */
+  function shrink(file, max, png){ return new Promise(function(res, rej){ if(!/^image\//.test(file.type)){ rej(new Error('not-image')); return; } var fr=new FileReader(); fr.onerror=rej; fr.onload=function(){ var im=new Image(); im.onerror=rej; im.onload=function(){ var k=Math.min(1, max/Math.max(im.width, im.height)); var cv=document.createElement('canvas'); cv.width=Math.round(im.width*k); cv.height=Math.round(im.height*k); var cx=cv.getContext('2d'); if(!png){ cx.fillStyle='#fff'; cx.fillRect(0,0,cv.width,cv.height); } cx.drawImage(im,0,0,cv.width,cv.height); res(cv.toDataURL(png?'image/png':'image/jpeg', .82)); }; im.src=fr.result; }; fr.readAsDataURL(file); }); }
+
+  var SYSTEM='את/ה מעצב/ת גרפי/ת מקצועי/ת של מודעות רישום לגני ילדים ברשת גנים חרדית. מחזירים מסמך HTML אחד בלבד בתוך בלוק ```html — בלי הסברים.\n'+
+    'כללים מחייבים:\n- עברית, RTL (dir="rtl"), גופנים: "Heebo" לכותרות ו-"Assistant" לטקסט (הם כבר טעונים — לא לקשר לגופנים חיצוניים).\n'+
+    '- כל המודעה בתוך <div class="ad-page"> אחד, בגודל המבוקש. CSS בתוך <style> אחד. בלי JavaScript, בלי קישורים ובלי תמונות חיצוניות.\n'+
+    '- קישוטים רק ב-CSS ובאיורי SVG מוטמעים (צורות, קוביות, צבעים, אותיות א-ב, כוכבים, עיפרונות וכד׳). בלי דמויות אדם בכלל — לא ילדים, לא מבוגרים, לא פנים ולא צלליות.\n'+
+    '- סגנון צנוע, מכובד ושמח, מתאים לציבור החרדי. ניגודיות טובה וקריאוּת גבוהה; כותרת בולטת והיררכיה ברורה.\n'+
+    '- להשתמש בדיוק בטקסט שנמסר — בלי להמציא תאריכים, טלפונים, כתובות או פרטים. מותר לחלק לשורות ולהדגיש.\n'+
+    '- אם יש לוגו: <img src="{{LOGO}}" alt="לוגו"> במקום מתאים (לא לשנות את המחרוזת {{LOGO}}).\n'+
+    '- אם צורפו דוגמאות מהשנה הקודמת — לשמור על רוח העיצוב שלהן (צבעים, מבנה), בלי להעתיק טקסט מהן.';
+  function prompt(ad, refine){
+    var ty=TYPES[ad.type]||TYPES.poster; var c=H.cityById(ad.cityId)||{};
+    var p='סוג: '+ty.l+' — '+ty.size+'.\nעיר: '+(c.name||ad.cityName||'')+'\nכותרת פנימית: '+(ad.title||'')+
+      '\n\nהטקסט שחייב להופיע במודעה:\n"""\n'+(ad.text||'')+'\n"""\n\nגרפיקה וצבעים: '+(ad.style||'לפי שיקולך')+(ad.c1?'\nצבע ראשי: '+ad.c1:'')+(ad.c2?'\nצבע משני: '+ad.c2:'')+(ad.logo?'\nיש לוגו — לשבץ {{LOGO}}.':'\nאין לוגו.');
+    if(refine && ad.body) p+='\n\nזה העיצוב הנוכחי:\n```html\n<style>'+(ad.css||'')+'</style>\n'+ad.body+'\n```\nלתקן לפי ההערה הבאה, ולהחזיר את המסמך המלא המעודכן:\n'+refine;
+    return p;
+  }
+  function design(ad, samples, refine){
+    var model=((H.HQ().settings||{}).adModel)||((H.HQ().settings||{}).aiModel)||'';
+    var imgs=(samples||[]).slice(0,4).map(function(u){ var m=String(u).match(/^data:(image\/[a-z]+);base64,(.*)$/); return m?{ mime:m[1], data:m[2] }:null; }).filter(Boolean);
+    var attempt=function(n){ return LIVE.bridge('adDesign', { system:SYSTEM, prompt:prompt(ad, refine), images:imgs, model:model }).catch(function(e){ var m=String(e&&e.message||''); if(n<2 && /overload/i.test(m)) return new Promise(function(r){ setTimeout(r, 2500*(n+1)); }).then(function(){ return attempt(n+1); }); throw e; }); };
+    return attempt(0).then(function(r){ var x=cleanHtml(r&&r.text); if(!x.body.trim()) throw new Error('empty-design'); return x; });
+  }
+  function aiErr(e){ var m=String(e&&e.message||e||''); if(/no-ai-key/.test(m)) return 'לא הוגדר מפתח AI בגשר (ANTHROPIC_API_KEY או GEMINI_API_KEY)'; if(/unknown|bad-action|not.*supported/i.test(m)) return 'הגשר עדיין בגרסה ישנה — צריך לפרסם אותו מחדש (SETUP.md)'; if(/overload/i.test(m)) return 'שירות ה-AI עמוס כרגע — לנסות שוב בעוד דקה'; return m; }
+
+  /* ---- הרשימה (בראש מסך "הפצה ופרסום") ---- */
+  function render(host){
+    if(!host) return;
+    var ids=H.selCities().map(function(c){ return c.id; });
+    var list=ads().filter(function(a){ return ids.indexOf(a.cityId)>=0; });
+    var ro=!H.canEdit('distribution');
+    host.innerHTML='<div class="card pad" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="sec-title" style="margin:0">🎨 מודעות רישום <span class="hq-count">'+list.length+'</span></div><span class="sp" style="flex:1"></span>'+(ro?'':'<button type="button" class="btn-primary" id="adNew">+ מודעה חדשה</button>')+'</div>'+
+      '<div class="sec-note" style="margin:4px 0 10px">לכל עיר — מודעה לתלייה, לידיעון המקומי ולמייל. כותבים את הטקסט ואת סגנון הגרפיקה, אפשר לצרף דוגמאות משנה קודמת, וה-AI מעצב. אחרי אישור — "שליחה לעיר" מגיעה במייל ובתוכנת העיר, ומסומנת במעקב ההפצה.</div>'+
+      (list.length?'<div class="mini-grid">'+list.map(function(a){ var s=ST[a.status]||ST.draft; return '<div class="city-card"><h4>'+esc(a.title||'מודעה')+' <span class="tag '+s[1]+'">'+s[0]+'</span></h4><div class="hq-count">'+esc(a.cityName||'')+' · '+esc((TYPES[a.type]||TYPES.poster).l)+(a.sentAt?' · נשלח '+esc(H.fmtD(a.sentAt)):'')+'</div>'+(a.cityNote?'<div class="hq-count" style="color:var(--warn)">הערת העיר: '+esc(a.cityNote)+'</div>':'')+
+        (a.body?'<div class="ad-thumb" data-ad-thumb="'+esc(a.id)+'" style="margin-top:8px">'+frame(a, 200)+'</div>':'<div class="hq-count" style="margin:8px 0">עוד לא עוצב.</div>')+
+        '<div class="hq-toolbar" style="margin:8px 0 0"><button type="button" class="btn-mini" data-ad-open="'+esc(a.id)+'">'+(ro?'צפייה':'פתיחה ועריכה')+'</button>'+(ro?'':'<button type="button" class="btn-mini" data-ad-dup="'+esc(a.id)+'">שכפול</button><button type="button" class="btn-mini danger" data-ad-del="'+esc(a.id)+'">✕</button>')+'</div></div>'; }).join('')+'</div>'
+       :'<div class="hq-count">עדיין אין מודעות לערים שנבחרו.</div>')+'</div>';
+    $$('[data-ad-thumb]', host).forEach(function(el){ fill(el.querySelector('iframe'), find(el.dataset.adThumb)); });
+    var b; if((b=$('#adNew'))) b.addEventListener('click', function(){ editor({ type:'poster', cityId:(H.selCities()[0]||{}).id||'' }); });
+    $$('[data-ad-open]', host).forEach(function(x){ x.addEventListener('click', function(){ editor(find(x.dataset.adOpen)); }); });
+    $$('[data-ad-dup]', host).forEach(function(x){ x.addEventListener('click', function(){ var a=find(x.dataset.adDup); if(!a) return; var cp=JSON.parse(JSON.stringify(a)); delete cp.id; delete cp.createdAt; delete cp.sentAt; delete cp.cityNote; cp.status=cp.body?'designed':'draft'; cp.title=(a.title||'')+' (עותק)'; editor(cp); }); });
+    $$('[data-ad-del]', host).forEach(function(x){ x.addEventListener('click', function(){ if(H.confirmBox('למחוק את המודעה?')) H.remove('tracking', x.dataset.adDel, 'המודעה נמחקה'); }); });
+  }
+
+  /* ---- העורך: טופס מימין, תצוגה משמאל ---- */
+  function editor(ad){
+    if(!ad) return; ad=JSON.parse(JSON.stringify(ad)); var samples=[]; var ro=!H.canEdit('distribution');
+    var cityOpts=H.cities().map(function(c){ return '<option value="'+esc(c.id)+'"'+(c.id===ad.cityId?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('');
+    var typeOpts=Object.keys(TYPES).map(function(k){ return '<option value="'+k+'"'+(k===ad.type?' selected':'')+'>'+TYPES[k].l+'</option>'; }).join('');
+    var dis=ro?' disabled':'';
+    var body='<div class="ad-ed" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:16px;align-items:start">'+
+      '<div class="frm" style="display:flex;flex-direction:column;gap:8px">'+
+        '<label>עיר<select class="txtin" id="ad-city"'+dis+'>'+cityOpts+'</select></label>'+
+        '<label>סוג המודעה<select class="txtin" id="ad-type"'+dis+'>'+typeOpts+'</select></label>'+
+        '<label>כותרת פנימית (לזיהוי)<input class="txtin" id="ad-title" value="'+esc(ad.title||'')+'" placeholder="למשל: רישום לגני בנות תשפ״ח"'+dis+'></label>'+
+        '<label>הטקסט שצריך להופיע במודעה<textarea class="txtin" id="ad-text" rows="8" placeholder="כותרת, תאריכי רישום, איך נרשמים, טלפון, כתובת…"'+dis+'>'+esc(ad.text||'')+'</textarea></label>'+
+        '<label>גרפיקה וסגנון<textarea class="txtin" id="ad-style" rows="3" placeholder="למשל: עליז ונקי, הרבה לבן, קוביות צבעוניות בפינות, כותרת גדולה"'+dis+'>'+esc(ad.style||'')+'</textarea></label>'+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap"><label>צבע ראשי <input type="color" id="ad-c1" value="'+esc(ad.c1||'#2f5d4a')+'"'+dis+'></label><label>צבע משני <input type="color" id="ad-c2" value="'+esc(ad.c2||'#c08a1f')+'"'+dis+'></label></div>'+
+        (ro?'':'<label>לוגו (לא חובה)<input type="file" id="ad-logo" accept="image/*"></label>'+(ad.logo?'<div class="hq-count">יש לוגו ✓ <button type="button" class="btn-mini" id="ad-logo-x">הסרה</button></div>':'')+
+        '<label>דוגמאות עיצוב משנה קודמת (לא חובה · עד 4 תמונות)<input type="file" id="ad-samples" accept="image/*" multiple></label><div class="hq-count" id="ad-sm">הדוגמאות נשלחות ל-AI בלבד ואינן נשמרות.</div>')+
+      '</div>'+
+      '<div><div id="ad-prev">'+(ad.body?frame(ad, 560):'<div class="live-note" style="padding:30px;text-align:center">התצוגה תופיע כאן אחרי "✨ עיצוב עם AI".</div>')+'</div>'+
+        (ro?'':'<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><input class="txtin" id="ad-refine" placeholder="הערה לתיקון: למשל ״כותרת גדולה יותר, פחות קישוטים״" style="flex:1;min-width:180px"><button type="button" class="btn-ghost" id="ad-fix"'+(ad.body?'':' disabled')+'>🔄 תיקון לפי ההערה</button></div>')+
+        '<div class="hq-count" id="ad-msg" style="margin-top:6px"></div></div></div>';
+    var foot=(ro?'':'<button type="button" class="btn-primary" id="ad-gen">✨ עיצוב עם AI</button><button type="button" class="btn-ghost" id="ad-save">💾 שמירה</button><button type="button" class="btn-ghost" id="ad-ok"'+(ad.body?'':' disabled')+'>✔️ אישור</button><button type="button" class="btn-primary" id="ad-send"'+(ad.status==='approved'||ad.status==='sent'?'':' disabled')+'>📤 שליחה לעיר</button>')+
+      '<button type="button" class="btn-ghost" id="ad-print"'+(ad.body?'':' disabled')+'>🖨️ הדפסה / PDF</button><button type="button" class="btn-ghost" id="ad-x">סגירה</button>';
+    H.modal(ad.id?'מודעה · '+(ad.title||''):'מודעה חדשה', body, foot, true);
+    var prev=function(){ var ifr=$('#ad-prev iframe'); if(!ifr){ $('#ad-prev').innerHTML=frame(ad,560); ifr=$('#ad-prev iframe'); } fill(ifr, ad); };
+    if(ad.body) prev();
+    var msg=function(t){ var m=$('#ad-msg'); if(m) m.textContent=t||''; };
+    var read=function(){ if(ro) return; ad.cityId=$('#ad-city').value; var c=H.cityById(ad.cityId)||{}; ad.cityName=c.name||''; ad.type=$('#ad-type').value; ad.title=$('#ad-title').value.trim(); ad.text=$('#ad-text').value.trim(); ad.style=$('#ad-style').value.trim(); ad.c1=$('#ad-c1').value; ad.c2=$('#ad-c2').value; };
+    var btns=function(){ var x; if((x=$('#ad-ok'))) x.disabled=!ad.body; if((x=$('#ad-print'))) x.disabled=!ad.body; if((x=$('#ad-fix'))) x.disabled=!ad.body; if((x=$('#ad-send'))) x.disabled=!(ad.status==='approved'||ad.status==='sent'); };
+    var save=function(m){ read(); if(!ad.cityId){ toast('יש לבחור עיר'); return Promise.reject(new Error('no-city')); }
+      var data={ kind:'ad', cityId:ad.cityId, cityName:ad.cityName, type:ad.type, title:ad.title, text:ad.text, style:ad.style, c1:ad.c1, c2:ad.c2, logo:ad.logo||'', css:ad.css||'', body:ad.body||'', status:ad.status||'draft', sentAt:ad.sentAt||0, cityNote:ad.cityNote||'' };
+      if(JSON.stringify(data).length>900000){ toast('המודעה גדולה מדי לשמירה — להקטין את הלוגו'); return Promise.reject(new Error('too-big')); }
+      if(!ad.id) ad.id='ad_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      return H.save('tracking', ad.id, data, m||'✓ המודעה נשמרה'); };
+    $('#ad-x').addEventListener('click', H.closeModal);
+    var b;
+    if((b=$('#ad-logo'))) b.addEventListener('change', function(){ var f=this.files&&this.files[0]; if(!f) return; shrink(f, 360, true).then(function(u){ if(u.length>140000) return shrink(f, 220, false); return u; }).then(function(u){ ad.logo=u; msg('הלוגו נטען ✓'); if(ad.body) prev(); }).catch(function(){ toast('לא ניתן לקרוא את הקובץ כתמונה'); }); });
+    if((b=$('#ad-logo-x'))) b.addEventListener('click', function(){ ad.logo=''; this.parentNode.textContent='הלוגו הוסר'; if(ad.body) prev(); });
+    if((b=$('#ad-samples'))) b.addEventListener('change', function(){ var fs=Array.prototype.slice.call(this.files||[], 0, 4); Promise.all(fs.map(function(f){ return shrink(f, 1100, false).catch(function(){ return null; }); })).then(function(l){ samples=l.filter(Boolean); $('#ad-sm').textContent=samples.length+' דוגמאות יישלחו ל-AI (לא נשמרות).'; }); });
+    var run=function(refine){ read(); if(!ad.text){ toast('יש לכתוב את הטקסט שבמודעה'); return; } if(!ad.cityId){ toast('יש לבחור עיר'); return; }
+      var gb=$('#ad-gen'), fb=$('#ad-fix'); [gb,fb].forEach(function(x){ if(x) x.disabled=true; }); msg('ה-AI מעצב… (עד דקה)');
+      design(ad, samples, refine).then(function(x){ ad.prevCss=ad.css; ad.prevBody=ad.body; ad.css=x.css; ad.body=x.body; ad.status='designed'; prev(); btns(); msg('מוכן ✓ — אפשר לתקן בהערה, לשמור ולאשר.'); return save('✓ העיצוב נשמר'); })
+        .catch(function(e){ msg(''); toast('העיצוב נכשל: '+aiErr(e)); }).then(function(){ if(gb) gb.disabled=false; btns(); }); };
+    if((b=$('#ad-gen'))) b.addEventListener('click', function(){ run(''); });
+    if((b=$('#ad-fix'))) b.addEventListener('click', function(){ var r=$('#ad-refine').value.trim(); if(!r){ toast('יש לכתוב מה לתקן'); return; } run(r); });
+    if((b=$('#ad-save'))) b.addEventListener('click', function(){ save().catch(function(){}); });
+    if((b=$('#ad-ok'))) b.addEventListener('click', function(){ ad.status='approved'; ad.approvedBy=H.me(); save('✓ המודעה אושרה — אפשר לשלוח לעיר').then(btns).catch(function(){}); });
+    if((b=$('#ad-print'))) b.addEventListener('click', function(){ read(); printAd(ad); });
+    if((b=$('#ad-send'))) b.addEventListener('click', function(){ read(); send(ad); });
+  }
+
+  /* ---- שליחה לעיר: מייל עם קובץ + "מהארצי" בתוכנת העיר + סימון במעקב ההפצה ---- */
+  function send(ad){
+    var c=H.cityById(ad.cityId); if(!c){ toast('העיר לא נמצאה'); return; }
+    var to=(window.__hqAsk&&window.__hqAsk.mailTo(c))||[];
+    var f=[{k:'note',l:'הודעה לעיר (תופיע במייל ובתוכנה)',t:'textarea',rows:3,v:'מצורפת '+(TYPES[ad.type]||TYPES.poster).l+' לרישום. להדפסה: לפתוח את הקובץ ← הדפסה. הערות — אפשר להשיב בתוכנת העיר.',full:true},
+           {k:'mail',l:'לשלוח גם במייל'+(to.length?' ('+to.join(', ')+')':' — אין כתובת לעיר'),t:'check',v:!!to.length}];
+    H.promptForm('📤 שליחה ל'+c.name, f, function(o){
+      var me=H.me(), id='ad'+Date.now().toString(36);
+      var file=(ad.title||'מודעת רישום').replace(/[\\/:*?"<>|]+/g,' ').trim()+'.html';
+      LIVE.inboxWrite(c.id, id, function(it){ Object.assign(it, { kind:'ad', at:Date.now(), updatedAt:Date.now(), by:me, byName:H.staffLabel(me), subject:(ad.title||'מודעת רישום')+' · '+(TYPES[ad.type]||TYPES.poster).l, text:o.note||'', adId:ad.id, adType:ad.type, css:ad.css||'', body:String(ad.body||'').split('{{LOGO}}').join(ad.logo||''), status:'open', replies:[] }); })
+        .then(function(){
+          var tr=(H.HQ().tracking||[]).filter(function(x){ return x.id==='dist_'+c.id; })[0]||{ steps:{} }; var steps=Object.assign({}, tr.steps||{}); var now=Date.now();
+          ['brief','design','approve'].forEach(function(k){ if(!(steps[k]&&steps[k].done)) steps[k]={ done:true, at:now, by:me }; });
+          var notes=(tr.notes?tr.notes+'\n':'')+H.fmtD(now)+' · נשלחה '+(TYPES[ad.type]||TYPES.poster).l+': '+(ad.title||'');
+          LIVE.hqSet('tracking', 'dist_'+c.id, { cityId:c.id, cityName:c.name, kind:'distribution', steps:steps, notes:notes, materials:tr.materials||((TYPES[ad.type]||TYPES.poster).l) }).catch(function(){});
+          LIVE.hqSet('tracking', ad.id, { status:'sent', sentAt:now, sentBy:me, inboxId:id }).catch(function(){});
+          LIVE.hqAudit('ad', c.name+' · '+(ad.title||'')+' · '+(TYPES[ad.type]||TYPES.poster).l);
+          if(o.mail && to.length) return embeddedFonts().then(function(fonts){ return LIVE.bridge('mailDoc', { to:to.join(','), subject:'מודעת רישום מהארצי: '+(ad.title||''), body:'שלום,\n\n'+(o.note||'')+'\n\nהמודעה מחכה גם בתוכנת העיר — מסך הבית ← "מהארצי".\n\n'+H.staffLabel(me)+' · מחלקת הרישום', fileName:file, mimeType:'text/html', dataB64:b64utf8(fullDoc(ad, fonts)) }); });
+        })
+        .then(function(){ toast('✓ נשלח ל'+c.name); H.closeModal(); })
+        .catch(function(e){ toast('השליחה נכשלה: '+H.hqErr(e)); });
+    }, 'שליחה');
+  }
+  window.__hqAds={ render:render, open:function(id){ editor(find(id)); }, clean:cleanHtml, fullDoc:fullDoc, TYPES:TYPES };
 })();
 </script>
 

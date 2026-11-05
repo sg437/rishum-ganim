@@ -10162,7 +10162,17 @@ function tzRatio(c, m){ return m ? `${c}/${m}` : String(c); }
    ============================================================ */
 function hqInboxItems(){ const d=(typeof cloudDocs!=="undefined" && cloudDocs.get && cloudDocs.get("hq_inbox"))||{}; const it=d.items||{};
   return Object.keys(it).map(id=>Object.assign({ id }, it[id])).sort((a,b)=>(b.updatedAt||b.at||0)-(a.updatedAt||a.at||0)); }
-function hqInboxOpen(){ return hqInboxItems().filter(x=>(x.kind==="question" && x.status==="open") || (x.kind==="change" && x.status==="open") || (x.kind==="cityask" && x.status==="replied")); }
+function hqInboxOpen(){ return hqInboxItems().filter(x=>(x.kind==="question" && x.status==="open") || (x.kind==="change" && x.status==="open") || (x.kind==="cityask" && x.status==="replied") || (x.kind==="ad" && x.status==="open")); }
+/* 🎨 מודעת רישום שהארצי שלח — מוצגת בחלון מבודד (בלי סקריפטים), להדפסה ולהורדה */
+function hqAdDoc(x){
+  const doc=new DOMParser().parseFromString("<body>"+String(x.body||"")+"</body>","text/html");
+  doc.querySelectorAll("script,iframe,object,embed,link,meta,base,form").forEach(n=>n.remove());
+  doc.querySelectorAll("*").forEach(n=>[...n.attributes].forEach(a=>{ const nm=a.name.toLowerCase(), v=String(a.value||"").trim().toLowerCase();
+    if(nm.startsWith("on") || ((nm==="src"||nm==="href"||nm==="xlink:href") && !(v.startsWith("data:image/")||v.startsWith("#")))) n.removeAttribute(a.name); }));
+  const css=String(x.css||"").replace(/@import[^;]*;?/gi,"").replace(/<\/style/gi,"");
+  const page={ poster:"@page{size:A4 portrait;margin:0}", newsletter:"@page{size:190mm 135mm;margin:0}" }[x.adType]||"";
+  return `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${esc(x.subject||"מודעת רישום")}</title><style>@font-face{font-family:"Heebo";src:url("fonts/heebo-hebrew.woff2") format("woff2");font-weight:100 900}@font-face{font-family:"Assistant";src:url("fonts/assistant-hebrew.woff2") format("woff2");font-weight:200 800}${page}html,body{margin:0}body{font-family:"Heebo","Assistant",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}${css}img[src=""],img:not([src]){display:none}</style></head><body>${doc.body.innerHTML}</body></html>`;
+}
 /* 📤 פנייה לארצי — מתוך תיק (תלמידה / גן / איש צוות) או כללית: נכנסת ל"דורש טיפול" בארצי, נשלחת במייל
    לאחראית בארצי (הכתובת מגיעה מהארצי במסמך hq_rules), ונרשמת ביומן התיק. התשובה חוזרת לכאן ("מהארצי"). */
 function hqMailTo(){ const d=(typeof cloudDocs!=="undefined" && cloudDocs.get && cloudDocs.get("hq_rules"))||{}; return (Array.isArray(d.hqMail)?d.hqMail:[]).filter(isEmail); }
@@ -10205,26 +10215,29 @@ function hqInboxCardHtml(){
     <div class="section-title" style="margin-bottom:6px"><h2>📨 מהארצי <span class="pill warn">${list.length}</span></h2></div>
     <div class="sub">פניות ששואלות אתכם משהו, ושינויים שהארצי עשה בנתוני העיר. אפשר להשיב, לסמן "ראיתי", או להגיש השגה על שינוי.</div>
     ${list.slice(0,8).map(x=>`<div class="note" style="margin:6px 0;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
-      <div style="flex:1;min-width:220px"><b>${x.kind==="question"?"❓ פנייה":x.kind==="cityask"?"↩️ תשובה לפנייה שלכם":"✏️ שינוי"} · ${esc(x.subject||"")}</b>
+      <div style="flex:1;min-width:220px"><b>${x.kind==="question"?"❓ פנייה":x.kind==="cityask"?"↩️ תשובה לפנייה שלכם":x.kind==="ad"?"🎨 מודעת רישום":"✏️ שינוי"} · ${esc(x.subject||"")}</b>
         <div class="hint" style="margin:2px 0 0">${esc(new Date(x.at).toLocaleString("he-IL"))}${x.byName||x.by?" · "+esc(x.byName||x.by):""}${(x.students||[]).length?" · "+x.students.length+" תלמידות":""}${(x.lines||[]).length>1?" · "+x.lines.length+" שינויים":""}</div></div>
-      <button type="button" class="btn sm" data-ib="${esc(x.id)}">${x.kind==="question"?"מענה":x.kind==="cityask"?"קריאה":"צפייה"}</button></div>`).join("")}
+      <button type="button" class="btn sm" data-ib="${esc(x.id)}">${x.kind==="question"?"מענה":x.kind==="cityask"?"קריאה":x.kind==="ad"?"צפייה והדפסה":"צפייה"}</button></div>`).join("")}
     ${list.length>8?`<div class="hint">ועוד ${list.length-8} — במסך "🔔 לטיפול".</div>`:""}
   </div>`;
 }
 function wireHqInboxCard(root){ (root||document).querySelectorAll("[data-ib]").forEach(b=>b.onclick=()=>openHqInbox(b.dataset.ib)); }
 function openHqInbox(id){
   const x=hqInboxItems().find(i=>i.id===id); if(!x) return;
-  const isC=x.kind==="cityask", isQ=x.kind==="question"||isC;
-  modal(`<h3>${isC?"📤 הפנייה שלכם לארצי":isQ?"❓ פנייה מהארצי":"✏️ שינוי מהארצי"}</h3>
+  const isC=x.kind==="cityask", isAd=x.kind==="ad", isQ=x.kind==="question"||isC;
+  modal(`<h3>${isAd?"🎨 מודעת רישום מהארצי":isC?"📤 הפנייה שלכם לארצי":isQ?"❓ פנייה מהארצי":"✏️ שינוי מהארצי"}</h3>
     <div class="sub">${esc(new Date(x.at).toLocaleString("he-IL"))}${x.byName||x.by?" · "+esc(x.byName||x.by):""}</div>
     <div class="note" style="margin-top:8px;white-space:pre-wrap"><b>${esc(x.subject||"")}</b>${x.text?"\n"+esc(x.text):""}${(x.lines||[]).length?"\n"+esc(x.lines.join("\n"))+(x.more?"\n…ועוד "+x.more:""):""}</div>
     ${(x.students||[]).length?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${x.students.slice(0,60).map(r=>`<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px 10px">
         <div style="flex:1;min-width:0"><b>${esc(r.name||"—")}</b><div class="hint" style="margin:2px 0 0">ת"ז ${esc(r.tz||"—")} · ${esc(r.gan||"ללא גן")}</div></div>
         ${DB.students.some(y=>y.id===r.id)?`<button type="button" class="btn ghost sm" data-ibs="${esc(r.id)}">פתיחת התיק</button>`:""}</div>`).join("")}</div>`:""}
     ${(x.replies||[]).length?`<div style="margin-top:8px"><label>התכתבות</label>${x.replies.map(r=>`<div class="hint" style="margin:3px 0;white-space:pre-wrap"><b>${esc(r.from==="city"?"העיר":"הארצי")} · ${esc(r.byName||r.by||"")} · ${esc(new Date(r.at).toLocaleString("he-IL"))}</b>\n${esc(r.text||"")}</div>`).join("")}</div>`:""}
-    <div style="margin-top:8px"><label>${isC?"תגובה נוספת לארצי (לא חובה לסגירה)":isQ?"התשובה לארצי":"השגה / שאלה לארצי על השינוי (לא חובה)"}</label><textarea id="ib-reply" rows="4"></textarea></div>
+    ${isAd?`<iframe id="ib-ad" sandbox="allow-same-origin allow-modals" title="המודעה" style="width:100%;height:460px;border:1px solid var(--border);border-radius:10px;background:#fff;margin-top:8px"></iframe>
+      <div class="row" style="gap:6px;margin-top:6px"><button type="button" class="btn ghost sm" id="ib-ad-print">🖨️ הדפסה / PDF</button><button type="button" class="btn ghost sm" id="ib-ad-dl">⬇️ הורדת הקובץ</button></div>`:""}
+    <div style="margin-top:8px"><label>${isAd?"הערה לארצי על המודעה (לא חובה)":isC?"תגובה נוספת לארצי (לא חובה לסגירה)":isQ?"התשובה לארצי":"השגה / שאלה לארצי על השינוי (לא חובה)"}</label><textarea id="ib-reply" rows="4"></textarea></div>
     <div class="foot"><button class="btn ghost" id="ib-cancel">סגירה</button>
-      ${isC?`<button class="btn ghost" id="ib-done" style="margin-inline-start:auto">✔️ קיבלנו — סגירה</button><button class="btn" id="ib-answer">📤 תגובה לארצי</button>`
+      ${isAd?`<button class="btn ghost" id="ib-seen" style="margin-inline-start:auto">✔️ התקבל — תקין</button><button class="btn" id="ib-object">✉️ הערה לארצי</button>`
+      :isC?`<button class="btn ghost" id="ib-done" style="margin-inline-start:auto">✔️ קיבלנו — סגירה</button><button class="btn" id="ib-answer">📤 תגובה לארצי</button>`
       :isQ?`<button class="btn" id="ib-answer" style="margin-inline-start:auto">📤 שליחת תשובה</button>`
            :`<button class="btn ghost" id="ib-seen" style="margin-inline-start:auto">✔️ ראיתי — תקין</button><button class="btn" id="ib-object">✉️ השגה לארצי</button>`}</div>`);
   $("#ib-cancel").onclick=closeModal;
@@ -10238,9 +10251,15 @@ function openHqInbox(id){
       closeModal(); toast(status==="seen"?"סומן ✓":"נשלח לארצי ✓"); route();
     }catch(e){ toast("השליחה נכשלה: "+(e&&(e.code||e.message)||"")); }
   };
-  if(isC){ $("#ib-answer").onclick=()=>send("open", true); $("#ib-done").onclick=()=>send("closed", false); }
+  if(isAd){
+    const html=hqAdDoc(x), f=$("#ib-ad"); if(f) f.srcdoc=html;
+    $("#ib-ad-print").onclick=()=>{ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){ toast("ההדפסה נחסמה בדפדפן"); } };
+    $("#ib-ad-dl").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([html],{type:"text/html"})); a.download=String(x.subject||"מודעת רישום").replace(/[\\/:*?"<>|]+/g," ").trim()+".html"; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); };
+    $("#ib-seen").onclick=()=>send("seen", false); $("#ib-object").onclick=()=>send("objection", true);
+  }
+  else if(isC){ $("#ib-answer").onclick=()=>send("open", true); $("#ib-done").onclick=()=>send("closed", false); }
   else if(isQ) $("#ib-answer").onclick=()=>send("answered", true);
-  else { $("#ib-seen").onclick=()=>send("seen", false); $("#ib-object").onclick=()=>send("objection", true); }
+  else if(!isAd){ $("#ib-seen").onclick=()=>send("seen", false); $("#ib-object").onclick=()=>send("objection", true); }
 }
 /* ============================================================
    🔔 לטיפול — מרכז ההתראות של העיר
@@ -10294,7 +10313,7 @@ function alertItems(){
   yr.filter(x=>!x.finished && dobAgeMismatch(x)).forEach(x=>add({ key:"dob|"+x.id, topic:"תלמידות", sev:"low", t:"תאריך לידה לא תואם לגיל · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:dobAgeMismatch(x), open:()=>openStudentById(x.id) }));
   yr.filter(x=>!x.finished && retentionNeedsDoc(x)).forEach(x=>add({ key:"ret|"+x.id, topic:"תלמידות", sev:"low", t:"השארות בלי מסמך · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:"אי אפשר לשבץ סופית עד שהמסמך מסומן", open:()=>openStudentById(x.id) }));
   hqInboxOpen().forEach(x=>add({ key:"hq|"+x.id, topic:"מהארצי", sev:x.kind==="question"?"high":"mid",
-    t:(x.kind==="question"?"פנייה מהארצי · ":x.kind==="cityask"?"תשובה מהארצי לפנייה שלכם · ":"שינוי מהארצי · ")+(x.subject||""), s:(x.byName||x.by||"")+((x.students||[]).length?" · "+x.students.length+" תלמידות":""), open:()=>openHqInbox(x.id) }));
+    t:(x.kind==="question"?"פנייה מהארצי · ":x.kind==="cityask"?"תשובה מהארצי לפנייה שלכם · ":x.kind==="ad"?"מודעת רישום מהארצי · ":"שינוי מהארצי · ")+(x.subject||""), s:(x.byName||x.by||"")+((x.students||[]).length?" · "+x.students.length+" תלמידות":""), open:()=>openHqInbox(x.id) }));
   /* משימות ותזכורות ידניות */
   Object.entries(alertsDoc().items||{}).filter(([k,v])=>k.startsWith("task|") && v).forEach(([k,v])=>out.push({ key:k, topic:"משימות", sev:"low", t:v.title||"משימה", s:v.note||"", st:v, manual:true }));
   /* תזכורת שהגיעה — עולה לדחוף */
