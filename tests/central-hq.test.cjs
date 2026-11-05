@@ -301,6 +301,24 @@ const DATA={
     });
     return (r.saved && r.saved.name==='מיכל' && r.saved.cities.indexOf('beitar')>=0 && r.saved.topics.indexOf('requests')>=0) || JSON.stringify(r);
   });
+  await step('הגדרות ← טווחי לידה: שנה לכל שורה, הוספת השנה הבאה, העתקה + שנה, ושליחה לכל הערים (hq_rules)', async()=>{
+    await go('perms'); await pg.click('#hqSettings .tab[data-tab="dob"]'); await pg.waitForTimeout(100);
+    const r=await pg.evaluate(async()=>{
+      const find=(y,a,k)=>[...document.querySelectorAll('#hqSettings .dob-in')].find(x=>x.dataset.y===y&&x.dataset.a===a&&x.dataset.k===k);
+      const f=find('תשפ"ז','3','from'), t=find('תשפ"ז','3','to'); if(!f||!t) return { noRow:true };
+      f.value='2023-01-01'; t.value='2023-12-31';
+      const nx=document.getElementById('dobNext'); const nxTxt=nx?nx.textContent:''; if(nx) nx.click();
+      const kept=(find('תשפ"ז','3','from')||{}).value;
+      const cp=[...document.querySelectorAll('#hqSettings [data-dob-copy]')].find(b=>b.dataset.dobCopy==='תשפ"ח'); if(cp) cp.click();
+      const copied=(find('תשפ"ח','3','to')||{}).value;
+      document.getElementById('dobSave').click(); await new Promise(r=>setTimeout(r,400));
+      const hq=(window.__docs['org/hq']||{}).dobRanges||{};
+      const home=(window.__docs['app/hq_rules']||{}).ageDobRangesByYear||{}, other=(window.__docs['cities/beitar/app/hq_rules']||{}).ageDobRangesByYear||{};
+      return { nxTxt, kept, copied, hq:JSON.stringify(hq), home:JSON.stringify(home), other:JSON.stringify(other) };
+    });
+    const ok=r.kept==='2023-01-01' && /תשפ"ח/.test(r.nxTxt||'') && r.copied==='2024-12-31' && /2024-01-01/.test(r.hq) && /2024-12-31/.test(r.home) && /2023-01-01/.test(r.other);
+    return ok || JSON.stringify(r);
+  });
   await step('דף הבית: כרטיס "סטטוס עבודה מאתמול" — מחכה לי היום, תשובות מהערים, ממתינות לתשובה, ומה נעשה אתמול', async()=>{
     await go('home'); await pg.waitForTimeout(150); const t=await txt('#view-home');
     return (/סטטוס עבודה מאתמול/.test(t) && /מחכה לך היום/.test(t) && /ממתינות לתשובה/.test(t) && /מה נעשה אתמול/.test(t)) || t.slice(0,200);

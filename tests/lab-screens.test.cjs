@@ -62,7 +62,8 @@ function buildApp() {
   const expose = `
 window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; else if(k==='currentUser')currentUser=v; };
 Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
-Object.assign(window,{ route, closeModal });
+Object.assign(window,{ route, closeModal, dobAgeMismatch, dobRangeFor });
+Object.defineProperty(window,'cloudDocs',{get:()=>cloudDocs,configurable:true});
 window.__ready=true;
 `;
   const i = html.lastIndexOf('</script>');
@@ -1293,6 +1294,32 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
       ['בשורת השבבים: ' + paths.fbar + ' · רגיל: ' + paths.plain]);
     else ok('זכוכית המגדלת ב-' + seen + ' שדות חיפוש (' + paths.fbar +
             ' בשורת השבבים, ' + paths.plain + ' רגילים): קו דק, ומחוץ לשטח הטקסט');
+  }
+
+  /* --- טווחי לידה מהארצי: לפי שנת התיק, ובגן רב־גילאי — איחוד הגילאים ------- */
+  {
+    const r = await p.evaluate(() => {
+      const had = cloudDocs.get('hq_rules');
+      cloudDocs.set('hq_rules', { ageDobRangesByYear: {
+        'תשפ"ז': { '3': { from:'2023-01-01', to:'2023-12-31' }, '4': { from:'2022-01-01', to:'2022-12-31' } },
+        'תשפ"ח': { '3': { from:'2024-01-01', to:'2024-12-31' } } } });
+      const g = { id:'gx-multi', age:'3/4' }; DB.gans.push(g);
+      const out = {
+        inRange:   dobAgeMismatch({ age:'3', dob:'2023-05-01', year:'תשפ"ז' }),
+        outRange:  !!dobAgeMismatch({ age:'3', dob:'2022-05-01', year:'תשפ"ז' }),
+        nextYear:  dobAgeMismatch({ age:'3', dob:'2024-05-01', year:'התשפ״ח' }),
+        nextOld:   !!dobAgeMismatch({ age:'3', dob:'2023-05-01', year:'תשפ"ח' }),
+        multiOk:   dobAgeMismatch({ age:'3', dob:'2022-05-01', year:'תשפ"ז', ganId:'gx-multi' }),
+        multiBad:  !!dobAgeMismatch({ age:'3', dob:'2021-05-01', year:'תשפ"ז', ganId:'gx-multi' }),
+        union:     JSON.stringify(dobRangeFor('3/4', 'תשפ"ז'))
+      };
+      DB.gans.splice(DB.gans.indexOf(g), 1);
+      if (had) cloudDocs.set('hq_rules', had); else cloudDocs.delete('hq_rules');
+      return out;
+    });
+    if (r.inRange === '' && r.outRange && r.nextYear === '' && r.nextOld && r.multiOk === '' && r.multiBad && /2022-01-01.*2023-12-31/.test(r.union))
+      ok('טווחי לידה מהארצי: לפי שנת התיק, ובגן דו־גילאי — מהמוקדם עד המאוחר');
+    else bad('טווחי לידה לפי שנה / גן רב־גילאי', [JSON.stringify(r)]);
   }
 
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));

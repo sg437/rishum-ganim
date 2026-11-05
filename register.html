@@ -548,8 +548,10 @@ $("#submitBtn").onclick = async ()=>{
   if(!parentName){ return fail("יש להזין שם ההורה בהצהרה"); }
   if(!signatureDataUrl()){ return fail("יש לחתום בחלון החתימה"); }
   /* תאריך לידה מול הגיל שנבחר — אזהרה (לא חסימה): ייתכן שנבחר גיל לא נכון */
-  { const rg=(CONFIG.ageDobRanges||{})[$("#ageSel").value]||null, dob=$("#dob").value;
-    if(rg && dob && ((rg.from && dob<rg.from) || (rg.to && dob>rg.to)) && !confirm("תאריך הלידה אינו בטווח של גיל "+$("#ageSel").value+". לבדוק את הגיל שנבחר?\n\nאישור = להמשיך בכל זאת · ביטול = לחזור ולתקן")) return; }
+  /* בגן דו־גילאי / רב־גילאי ("3/4") — הטווח של הגן הוא של כל הגילאים יחד */
+  { const sg=GANS.find(x=>str(x.symbol) && str(x.symbol)===$("#ganSymbol").value), gAge=sg&&/\//.test(str(sg.age))?str(sg.age):"";
+    const key=gAge||$("#ageSel").value, rg=(CONFIG.ageDobRanges||{})[key]||null, dob=$("#dob").value;
+    if(rg && dob && ((rg.from && dob<rg.from) || (rg.to && dob>rg.to)) && !confirm("תאריך הלידה אינו בטווח של "+(gAge?"הגן (גיל "+gAge+")":"גיל "+key)+". לבדוק את הגיל והגן שנבחרו?\n\nאישור = להמשיך בכל זאת · ביטול = לחזור ולתקן")) return; }
   const passport=$("#isPassport").checked;
   if(passport && (!$("#fileNispachB").files.length || !$("#filePassChild").files.length || (!$("#filePassDad").files.length && !$("#filePassMom").files.length))){ return fail("בעלי דרכון: יש לצרף נספח ב׳, דרכון של התלמיד/ה ודרכונים של ההורים"); }
   const payOn=$("#insPay").style.display!=="none", insRef=String(($("#insRef")||{}).value||"").trim();
