@@ -3316,3 +3316,19 @@ html.ui-lab td,
 html.ui-lab .stat .v,
 html.ui-lab .lab-bignum,
 html.ui-lab .lh-ratio{ font-variant-numeric:tabular-nums }
+
+/* -- משבצות נתונים: עומק עדין וצבע חלקי חם (כמו בארצי) ------------------- */
+html.ui-lab .lh-kpi:not(.dark),
+html.ui-lab .stat,
+html.ui-lab #stuSummary .stat:not(.lab-hero){
+  --tile-acc:var(--accent);
+  background:
+    linear-gradient(90deg, var(--tile-acc), color-mix(in srgb, var(--tile-acc) 0%, transparent) 75%) top / 100% 3px no-repeat,
+    linear-gradient(165deg, var(--surface) 0%, var(--surface) 45%, color-mix(in srgb, var(--tile-acc) 8%, var(--surface)) 100%);
+  border-color:color-mix(in srgb, var(--tile-acc) 20%, var(--border));
+  box-shadow:0 1px 2px rgba(60,45,20,.07), 0 8px 18px -10px rgba(60,45,20,.24);
+}
+html.ui-lab .lh-kpi:not(.dark):nth-child(2n),
+html.ui-lab .stat:nth-child(2n){ --tile-acc:var(--brass) }
+html.ui-lab #stuSummary .stat.lab-hero{ box-shadow:0 2px 4px rgba(0,0,0,.12), 0 12px 24px -12px rgba(16,40,30,.55) }
+html.ui-lab .lh-kpi.dark{ box-shadow:0 2px 4px rgba(0,0,0,.12), 0 12px 24px -12px rgba(16,40,30,.55) }

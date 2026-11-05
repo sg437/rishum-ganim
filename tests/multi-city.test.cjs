@@ -571,6 +571,18 @@ const server=require('http').createServer((req,res)=>{
       && r.regRows===1 && /קליטה דיגיטלית/.test(r.regTxt) && /ילדה ב/.test(r.un) && /hq@example.com/.test(r.perms) && r.links===0 && /נתונים חיים · 1 ערים/.test(r.ab);
     return ok || JSON.stringify({cityRows:r.cityRows, regRows:r.regRows, links:r.links, ab:r.ab, kpi:r.kpi.slice(0,60), detail:r.detail.slice(0,80), un:r.un.slice(0,40)});
   });
+  await step('המרכזי: משבצות הנתונים של העיר לחיצות ומובילות למה שכתוב בהן', async()=>{
+    const r=await pg2.evaluate(()=>{
+      document.querySelector('[data-view="cities"]').click();
+      const tiles=[...document.querySelectorAll('#cityDetail .stat-row [data-st-go]')].map(b=>b.dataset.stGo+':'+b.textContent.trim());
+      const wait=[...document.querySelectorAll('#cityDetail .stat-row [data-st-go="students"]')].find(b=>/ממתינים/.test(b.textContent));
+      if(wait) wait.click();
+      const active=(document.querySelector('.view.active')||{}).id||'';
+      const place=(document.querySelector('#view-students select[data-f="place"]')||{}).value;
+      return { tiles, active, place, sel:Object.keys(window.__hq.SEL()) };
+    });
+    return (r.tiles.length>=5 && r.active==='view-students' && r.place==='waiting' && r.sel.join()==='modiin-illit') || JSON.stringify(r);
+  });
   await step('המרכזי: תקלת גישה לעיר מוצגת במפורש (ולא נשארת שקטה)', async()=>{
     const r=await pg2.evaluate(()=>{
       document.dispatchEvent(new CustomEvent('central:data',{detail:{ cities:[{ id:'ashdod', name:'אשדוד', region:'', legacy:false, absorption:'local', coordinator:'', phone:'', active:true, year:'', years:[], gans:[], gan:0, spc:0, students:0, special:0, placed:0, unplaced:0, unplacedList:[], muni:0, notMuni:0, todayNew:0, periods:{}, byGender:{}, licenseIssues:0, staffList:[], staff:0, presence:[], admins:[], allowed:[], brand:{}, docs:0, loaded:false, error:'אין הרשאה (permission-denied)', lastUpdate:0, live:true }], errors:[{id:'ashdod',name:'אשדוד',msg:'אין הרשאה (permission-denied)'}], org:{cities:[],users:{}}, user:{email:'hq@example.com'}, hq:true }}));
