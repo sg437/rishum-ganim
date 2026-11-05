@@ -165,7 +165,7 @@
 
   /* ---- הסרגל (248px) — 8 קבוצות, 32 פריטים. #topnav נבנה ב-renderTopNav ---- */
   .topnav{display:none}
-  .tn-nav{flex:1; min-height:0; overflow-y:auto; scrollbar-width:none; padding:6px 8px}
+  .tn-nav{flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; padding:6px 8px}
   .tn-nav::-webkit-scrollbar{width:0; height:0}
   .tn-group{padding-bottom:2px}
   .tn-btn{display:block; width:100%; text-align:right; border:0; background:none; padding:12px 12px 6px; font-size:10.5px; font-weight:700; letter-spacing:.12em; color:var(--ink3); cursor:default}
@@ -784,6 +784,28 @@
     .hq-scroll{max-height:none; overflow:visible; border:0}
     body{background:#fff; color:#000}
     .card{border-color:#ccc; box-shadow:none}
+  }
+  /* ===== טיפוגרפיה של הממשק — נעים יותר לעין (נובמבר 2026) =====
+     שני תפקידים, שני גופנים: הממשק (תפריט, כותרות, לשוניות, כפתורים, תוויות) — Heebo,
+     גדול ומודגש יותר; הנתונים (טבלאות, ערכים, טקסט חופשי) — Assistant, כמו קודם. */
+  .tn-btn{font-family:"Heebo",system-ui,sans-serif; font-size:12px; font-weight:800; letter-spacing:.04em; color:var(--ink2); padding:14px 12px 6px}
+  .tn-item,.navitem{font-family:"Heebo",system-ui,sans-serif; font-size:15px; font-weight:500; padding:10px 12px; color:var(--ink)}
+  .tn-item[aria-current="true"],.navitem[aria-current="true"]{font-weight:700}
+  .tn-item svg,.navitem svg{flex-basis:18px; width:18px; height:18px; opacity:.85}
+  .tn-item .ni,.navitem .ni{flex-basis:18px; width:18px; height:18px; font-size:15px}
+  .tn-scope-l{font-family:"Heebo",system-ui,sans-serif; font-size:13px}
+  .sec-title{font-size:16px; font-weight:700}
+  .hm-title{font-size:16.5px; font-weight:700}
+  .tab,.tabs .tab{font-family:"Heebo",system-ui,sans-serif; font-size:14.5px; font-weight:500}
+  .tab[aria-selected="true"],.tabs .tab[aria-selected="true"]{font-weight:700}
+  .btn-primary,.btn-ghost{font-family:"Heebo",system-ui,sans-serif; font-size:14px; font-weight:600}
+  .btn-mini{font-family:"Heebo",system-ui,sans-serif; font-weight:600}
+  .hq-table th{font-family:"Heebo",system-ui,sans-serif; font-size:13px; font-weight:700; color:var(--ink2)}
+  h2{font-weight:700}
+  .ab-brand .t1,.dr-head .t1{font-size:16.5px; font-weight:700}
+  @media (min-width:1020px){
+    .topnav{width:264px}
+    .wrap,footer{margin-inline-start:264px}
   }
 </style>
 
@@ -3513,7 +3535,7 @@ try{
       {c:'grn', t:'אישור שיבוץ סופי', s:'משובצות לגן, ממתינות לאישור', n:d.waiting, f:{place:'waiting'}}
     ].filter(function(t){ return d.live || !t.liveOnly; });
     var goAttr=function(go,f){ var ok=go==='students'?stuGo:can(go); return ok?' data-hm-go="'+go+'" data-hm-f="'+escH(JSON.stringify(f||{}))+'"':' disabled'; };
-    $('#homeBody').innerHTML=
+    $('#homeBody').innerHTML=yesterdayCard(d, H)+
       '<div class="hm-grid">'+
         '<div class="hm-card">'+
           '<div class="hm-head"><div><div class="hm-title">'+(hasT?'רישום ארצי':'שיבוץ ארצי')+'</div><div class="hm-hero-row"><div class="hm-hero">'+p+'%</div><div class="hm-hero-note">'+(hasT?he(d.total)+' תיקים מתוך יעד '+he(d.target):he(d.placed)+' משובצות מתוך '+he(d.total)+' תיקים')+'</div></div></div>'+
@@ -3544,6 +3566,37 @@ try{
       switchTab(go);
     }); });
     $$('#view-home [data-hm-tab]').forEach(function(b){ b.addEventListener('click',function(){ if(window.__hqReports&&window.__hqReports.openTab) window.__hqReports.openTab(b.dataset.hmTab); else switchTab('breakdowns'); }); });
+  }
+
+  /* ---------- סטטוס עבודה מהיום הקודם — בראש דף הבית, לפי הערים שבבורר "הערים שלי" ----------
+     מה נעשה אתמול (יומן הפעולות), מה מחכה לי היום (תזכורות ופריטים שבאחריותי),
+     תשובות והשגות שהגיעו מהערים, ופניות חדשות. */
+  function yesterdayCard(d, H){
+    if(!d.live || !H || !H.HQ) return '';
+    var HQd=H.HQ()||{}, me=String(H.me()).toLowerCase();
+    var t0=new Date(); t0.setHours(0,0,0,0); var today=t0.getTime(), yst=today-86400000, todayISO=H.todayISO();
+    var ids=H.selCities().map(function(c){ return c.id; });
+    var audit=(HQd.audit||[]).filter(function(a){ return (a.at||0)>=yst && (a.at||0)<today; }).sort(function(a,b){ return (b.at||0)-(a.at||0); });
+    var AL={ place:'שיבוץ מרכזי', import:'ייבוא', ministry:'משרד החינוך', requests:'פניות', ask:'פנייה לעיר', gan:'תפוסת גן' };
+    var due=(HQd.tracking||[]).filter(function(t){ return t.kind==='followup' && t.status==='progress' && t.due && t.due<=todayISO && (!t.owner || String(t.owner).toLowerCase()===me); });
+    var answers=[]; H.selCities().forEach(function(c){ var ib=c.hqInbox||{}; Object.keys(ib).forEach(function(k){ var it=ib[k]||{}; if((it.kind==='question'&&it.status==='answered')||(it.kind==='change'&&it.status==='objection')) answers.push({ c:c, it:it }); }); });
+    var waiting=0; H.selCities().forEach(function(c){ var ib=c.hqInbox||{}; Object.keys(ib).forEach(function(k){ var it=ib[k]||{}; if(it.kind==='question'&&it.status==='open') waiting++; }); });
+    var newReq=(HQd.requests||[]).filter(function(r){ return (r.createdAt||0)>=yst && (r.createdAt||0)<today && (!r.cityId || ids.indexOf(r.cityId)>=0); });
+    var openReq=(HQd.requests||[]).filter(function(r){ return r.status!=='closed' && (!r.cityId || ids.indexOf(r.cityId)>=0); }).length;
+    var nm=(H.staffLabel&&H.staffLabel(me))||me;
+    var item=function(n, t, sub, go, cls){ return '<button type="button" class="hm-exc"'+(go?' data-hm-go="'+go+'"':' disabled')+'><span class="lamp '+(cls||'ok')+'"></span><span class="b"><span class="t" style="display:block">'+t+'</span><span class="s">'+sub+'</span></span><b class="n">'+he(n)+'</b></button>'; };
+    return '<div class="hm-card" style="margin-bottom:14px"><div class="hm-head base"><div class="hm-title">בוקר טוב'+(nm&&nm.indexOf('@')<0?', '+escH(nm):'')+' · סטטוס עבודה מאתמול</div><div class="hm-meta">'+escH(H.selCities().map(function(c){ return c.name; }).join(' · '))+'</div></div>'+
+      '<div class="hm-grid" style="margin:0">'+
+        '<div class="hm-list">'+
+          item(due.length,'מחכה לך היום',due.length?escH(due.slice(0,2).map(function(t){ return t.title||''; }).join(' · ')):'אין תזכורות להיום','followups',due.length?'bad':'ok')+
+          item(answers.length,'תשובות והשגות מהערים',answers.length?escH(answers.slice(0,2).map(function(a){ return a.c.name+': '+(a.it.subject||''); }).join(' · ')):'אין חדש','followups',answers.length?'warn':'ok')+
+          item(waiting,'פניות לערים שממתינות לתשובה','נשלחו מהארצי','followups','wait')+
+          item(newReq.length,'פניות וערעורים חדשים מאתמול',he(openReq)+' פתוחות בסך הכול','requests',newReq.length?'warn':'ok')+
+        '</div>'+
+        '<div class="hm-list"><div class="hm-title" style="font-size:14px;margin:4px 0 6px">מה נעשה אתמול <span class="hm-meta">'+he(audit.length)+' פעולות</span></div>'+
+          (audit.length?audit.slice(0,7).map(function(a){ return '<div class="hm-row"><div class="tm">'+hmTime(a.at)+'</div><div class="tx">'+escH((AL[a.action]||a.action||'')+(a.detail?' · '+a.detail:''))+'</div><div class="who">'+escH((H.staffLabel&&H.staffLabel(a.by))||a.by||'')+'</div></div>'; }).join(''):'<div class="hm-meta" style="padding:8px 0">אתמול לא נרשמו פעולות במרכזי.</div>')+
+        '</div>'+
+      '</div></div>';
   }
 
   /* ---------- FLOATING WINDOWS ---------- */

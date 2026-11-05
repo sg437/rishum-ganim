@@ -547,6 +547,9 @@ $("#submitBtn").onclick = async ()=>{
   if(!ganName || !$("#ganSymbol").value){ return fail("יש לבחור גן מהרשימה (כדי שהסמל יתמלא)"); }
   if(!parentName){ return fail("יש להזין שם ההורה בהצהרה"); }
   if(!signatureDataUrl()){ return fail("יש לחתום בחלון החתימה"); }
+  /* תאריך לידה מול הגיל שנבחר — אזהרה (לא חסימה): ייתכן שנבחר גיל לא נכון */
+  { const rg=(CONFIG.ageDobRanges||{})[$("#ageSel").value]||null, dob=$("#dob").value;
+    if(rg && dob && ((rg.from && dob<rg.from) || (rg.to && dob>rg.to)) && !confirm("תאריך הלידה אינו בטווח של גיל "+$("#ageSel").value+". לבדוק את הגיל שנבחר?\n\nאישור = להמשיך בכל זאת · ביטול = לחזור ולתקן")) return; }
   const passport=$("#isPassport").checked;
   if(passport && (!$("#fileNispachB").files.length || !$("#filePassChild").files.length || (!$("#filePassDad").files.length && !$("#filePassMom").files.length))){ return fail("בעלי דרכון: יש לצרף נספח ב׳, דרכון של התלמיד/ה ודרכונים של ההורים"); }
   const payOn=$("#insPay").style.display!=="none", insRef=String(($("#insRef")||{}).value||"").trim();

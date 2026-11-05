@@ -3071,6 +3071,16 @@ function retentionGateMsg(student){
   return '⚠️ אין אפשרות לשבץ'+(nm?(" את "+nm):"")+' — ילדת השארות בלי מסמך השארות. '
        +'כשהאישור מגיע: תיק התלמידה → "שונות" → "ילדת השארות" → לסמן "מסמך השארות" (ואפשר לצרף את הקובץ).';
 }
+/* טווח תאריכי לידה לכל גיל (הגדרות → כללי העיר): { "3":{from,to}, ... }.
+   ילדה שתאריך הלידה שלה מחוץ לטווח של הגיל שנרשם לה — מוצגת אזהרה בתיק וב"לטיפול". */
+function ageDobRanges(){ return (DB.settings&&DB.settings.ageDobRanges)||{}; }
+function dobAgeMismatch(s){
+  const r=ageDobRanges()[String(s&&s.age||"").trim()]; if(!r || !(r.from||r.to)) return "";
+  const d=normDateVal(s.dob||""); if(!isISODate(d)) return "";
+  if(r.from && d<r.from) return "תאריך הלידה ("+fmtDate(d)+") מוקדם מהטווח של גיל "+s.age+" ("+fmtDate(r.from)+"–"+(r.to?fmtDate(r.to):"…")+")";
+  if(r.to && d>r.to)     return "תאריך הלידה ("+fmtDate(d)+") מאוחר מהטווח של גיל "+s.age+" ("+(r.from?fmtDate(r.from):"…")+"–"+fmtDate(r.to)+")";
+  return "";
+}
 /* מדיניות ילדת השארות בעיר: "space" — רק על בסיס מקום פנוי (רף השיבוץ חל עליה);
    "obligated" — העיר מחויבת לקבל אותה, ולכן היא עוברת את רף השיבוץ (עם אזהרה). */
 function retentionPolicy(){ return (DB.settings&&DB.settings.retentionPolicy)==='obligated' ? 'obligated' : 'space'; }
@@ -7334,7 +7344,7 @@ function openStudent(s){
       <div><label>שם פרטי</label><input id="s-firstName" value="${esc(s.firstName)}"></div>
       <div><label>שם משפחה</label><input id="s-lastName" value="${esc(s.lastName)}"></div>
       <div><label>מספר זהות (ת"ז)</label><input id="s-tz" value="${esc(s.tz)}" inputmode="numeric"><div id="s-tz-warn" class="hint" style="color:var(--bad);font-weight:600"></div></div>
-      <div><label>תאריך לידה</label><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
+      <div><label>תאריך לידה</label><div class="hint" id="s-dob-warn" style="color:var(--bad);font-weight:700;margin:0 0 2px"></div><input id="s-dob" type="date" value="${esc(isISODate(normDateVal(s.dob))?normDateVal(s.dob):'')}">${(s.dob && !isISODate(normDateVal(s.dob)))?`<span class="hint" style="color:var(--danger,#c00)">ערך שהובא: ${esc(s.dob)} — לא זוהה כתאריך, בחר/י מחדש מהלוח</span>`:''}</div>
       <div><label>שם האם</label><input id="s-motherName" value="${esc(s.motherName)}"></div>
       <div><label>שם האב</label><input id="s-fatherName" value="${esc(s.fatherName)}"></div>
       <div><label>טלפון בית</label><div class="fieldwrap tel"><input id="s-phone" value="${esc(s.phone)}" inputmode="tel">${phoneFieldBtns("s-phone")}</div></div>
@@ -7762,6 +7772,8 @@ function openStudent(s){
     out.querySelectorAll(".sib-open").forEach(b=> b.onclick=()=>openStudentById(b.dataset.sid));
   };
   wireJournal("student", s);
+  { const w=$("#s-dob-warn"); const chk=()=>{ if(!w) return; w.textContent=dobAgeMismatch({ dob:($("#s-dob")||{}).value||"", age:($("#s-age")||{}).value||"" }) ? "⚠️ "+dobAgeMismatch({ dob:$("#s-dob").value, age:$("#s-age").value }) : ""; };
+    ["#s-dob","#s-age"].forEach(id=>{ const e=$(id); if(e){ e.addEventListener("change", chk); e.addEventListener("input", chk); } }); chk(); }
   { const lm=$("#s-leftMail"); if(lm) lm.onclick=()=>{ const cur=DB.students.find(x=>x.id===s.id)||s; closeModal(); openLeaveReport(cur); }; }
   if(!isNew) $("#delStu").onclick=()=>{ if(confirm("למחוק את תיק הילדה לצמיתות?")){ DB.students=DB.students.filter(x=>x.id!==s.id); save(); closeModal(); route(); toast("התיק נמחק"); } };
   /* הרשאת עריכה לפי חינוך (הסתרה בממשק): רשומה קיימת בחינוך שאינו מורשה → קריאה בלבד;
@@ -10215,6 +10227,7 @@ function alertItems(){
   assistantBConflicts().forEach(x=>add({ key:"abx|"+x.g.id, topic:"צוות וסייעת ב'", sev:"mid", t:"סייעת ב' משובצת ללא זכאות · "+ganName(x.g.id), s:x.reasons.join(" · "), open:()=>{ active="assign"; route(); } }));
   DB.gans.filter(g=>g.active!==false && licenseExpired(g)).forEach(g=>add({ key:"lic|"+g.id, topic:"רישוי", sev:"mid", t:"רישיון לא בתוקף · "+ganName(g.id), s:"פג ב-"+fmtDate(g.licenseExpiry), open:()=>openGan(JSON.parse(JSON.stringify(g))) }));
   yr.filter(x=>x.leftDate && !x.leftReported).forEach(x=>add({ key:"left|"+x.id, topic:"תלמידות", sev:"mid", t:"עזיבה שלא דווחה · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:"עזבה ב-"+fmtDate(x.leftDate)+" — לשלוח עדכון לעירייה ולמשרד החינוך", open:()=>openLeaveReport(x) }));
+  yr.filter(x=>!x.finished && dobAgeMismatch(x)).forEach(x=>add({ key:"dob|"+x.id, topic:"תלמידות", sev:"low", t:"תאריך לידה לא תואם לגיל · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:dobAgeMismatch(x), open:()=>openStudentById(x.id) }));
   yr.filter(x=>!x.finished && retentionNeedsDoc(x)).forEach(x=>add({ key:"ret|"+x.id, topic:"תלמידות", sev:"low", t:"השארות בלי מסמך · "+[x.lastName,x.firstName].filter(Boolean).join(" "), s:"אי אפשר לשבץ סופית עד שהמסמך מסומן", open:()=>openStudentById(x.id) }));
   hqInboxOpen().forEach(x=>add({ key:"hq|"+x.id, topic:"מהארצי", sev:x.kind==="question"?"high":"mid",
     t:(x.kind==="question"?"פנייה מהארצי · ":"שינוי מהארצי · ")+(x.subject||""), s:(x.byName||x.by||"")+((x.students||[]).length?" · "+x.students.length+" תלמידות":""), open:()=>openHqInbox(x.id) }));
@@ -12176,6 +12189,7 @@ function renderProjection(host){
    לבד — כותרת שכתובה בדיוק כשם השדה תזוהה אוטומטית. */
 const MUNI_FIELD_OPTIONS = [
   { key:"tz",         label:"מספר זהות" },
+  { key:"regDate",    label:"תאריך רישום (בעירייה)" },
   { key:"firstName",  label:"שם פרטי" },
   { key:"dob",        label:"תאריך לידה" },
   { key:"motherName", label:"שם האם" },
@@ -12209,7 +12223,8 @@ const MUNI_HEADER_MAP = {
   "מספרבניין":"building","בניין":"building","מספרבית":"building","מסבית":"building","בית":"building","מסבניין":"building",
   "עיר":"city","יישוב":"city","ישוב":"city",
   "סמלמוסד":"symbol","סמל":"symbol","סמלגן":"symbol","סמלהגן":"symbol","סמלמוסדחינוכי":"symbol","סמלמשרד":"symbol",
-  "חינוך":"education","סוגחינוך":"education"
+  "חינוך":"education","סוגחינוך":"education",
+  "תאריךרישום":"regDate","תאריךהרשמה":"regDate","תאריךביצועהרישום":"regDate","מועדהרשמה":"regDate"
 };
 /* השדות שרשימת העירייה משלימה בתיק, לפי הסדר שבו הם מוצגים בסיכום.
    phone:true — שדה טלפון, שעובר בדיקת כפילות מול כל שדות הטלפון של אותו
@@ -12225,7 +12240,8 @@ const MUNI_FILL_FIELDS = [
   { key:"email",      label:'דוא"ל' },
   { key:"street",     label:"רחוב" },
   { key:"building",   label:"מספר בניין" },
-  { key:"city",       label:"עיר" }
+  { key:"city",       label:"עיר" },
+  { key:"regDate",    label:"תאריך רישום", norm:v=>normDateVal(v) }   /* ברשויות שהרישום נעשה בהן — תאריך ביצוע הרישום בעירייה */
 ];
 /* מפתח השוואה לת"ז. מספר זהות ישראלי הוא בן 9 ספרות, ואקסל מוריד אפסים
    מובילים מכל תא שנשמר כמספר — ולכן "012345678" שבתוכנה מגיע מהקובץ כ-
@@ -12287,6 +12303,7 @@ function muniNewStudent(rec, edu){
   applyMuniRec(st, rec);                            // שם המשפחה ושאר הפרטים משם
   st.absorbedMunicipality=true;
   st.registeredByUs=false;
+  if(st.regDate) st.regChannel="muni";   // נרשמה בעירייה — תאריך ביצוע הרישום מהקובץ
   st.placed=false;
   /* סמל המוסד שבקובץ אינו נכנס לתיק ואינו משבץ לגן — הוא משמש להשוואה
      ולדיווח בלבד. השיבוץ נקבע אצלנו, לא ברשימת העירייה. */
@@ -15523,6 +15540,7 @@ async function regFormPublish(){
     cityId: (typeof CITY!=="undefined" && CITY && CITY.id) || "",
     cityName: mainCityName() || "",
     ages: [...new Set(gans.map(g=>g.age).join("/").split("/").map(x=>x.trim()).filter(Boolean))].sort(),
+    ageDobRanges: ageDobRanges(),
     insurancePayUrl: /^https:\/\//i.test(rf.insurancePayUrl||"") ? rf.insurancePayUrl : "",
     tzaharonOffer: rf.tzaharonOffer!==false,
     appealsOn: true
@@ -17450,6 +17468,9 @@ function viewSettings(root){
         <div class="hint">"רק על בסיס מקום פנוי" — ילדת השארות כפופה לרף השיבוץ כמו כל תלמידה. "מחויבת" — מותר לשבץ אותה גם בגן מלא (מוצגת אזהרה). בשני המצבים נדרש מסמך השארות.</div></div>
       <div></div>
       <div><label>מייל הגורם המטפל בעירייה</label><input id="rl-muniEmail" type="email" dir="ltr" style="text-align:right" value="${esc(reportContacts().muni)}" placeholder="name@city.gov.il" ${dis}></div>
+      <div style="grid-column:1 / -1"><label>טווח תאריכי לידה לכל גיל</label>
+        <div class="hint" style="margin-bottom:6px">ילדה שנרשמת לגיל מסוים ותאריך הלידה שלה מחוץ לטווח — מוקפצת אזהרה בתיק, ב"לטיפול" ובטופס הרישום. ריק = בלי בדיקה.</div>
+        <div class="grid g3">${CHILD_AGES.map(a=>{ const r=ageDobRanges()[a]||{}; return `<div><label style="font-weight:600">גיל ${esc(a)} · מ־ / עד</label><div class="row" style="gap:4px"><input type="date" class="rl-dob" data-age="${esc(a)}" data-k="from" value="${esc(r.from||"")}" ${dis}><input type="date" class="rl-dob" data-age="${esc(a)}" data-k="to" value="${esc(r.to||"")}" ${dis}></div></div>`; }).join("")}</div></div>
       <div><label>מייל הגורם המטפל במשרד החינוך</label><input id="rl-moeEmail" type="email" dir="ltr" style="text-align:right" value="${esc(reportContacts().moe)}" placeholder="name@education.gov.il" ${dis}></div>
     </div>
     <div class="row" style="margin-top:10px"><button class="btn" id="saveRules" ${dis}>💾 שמירה</button></div>
@@ -17717,6 +17738,7 @@ function viewSettings(root){
       const v=id=>String(($("#"+id)||{}).value||"").trim();
       DB.settings.retentionPolicy = v("rl-retention")==='obligated' ? 'obligated' : 'space';
       DB.settings.reportContacts = { muni:v("rl-muniEmail"), moe:v("rl-moeEmail") };
+      { const rg={}; document.querySelectorAll(".rl-dob").forEach(i=>{ const a=i.dataset.age; if(!i.value) return; rg[a]=rg[a]||{}; rg[a][i.dataset.k]=i.value; }); DB.settings.ageDobRanges=rg; }
       save(); toast("כללי העיר ואנשי הקשר נשמרו");
     }; }
   { const b=$("#saveAC");
