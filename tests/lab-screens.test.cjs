@@ -62,7 +62,7 @@ function buildApp() {
   const expose = `
 window.__set=(k,v)=>{ if(k==='active')active=v; else if(k==='eduPicked')eduPicked=v; else if(k==='activeEdu')activeEdu=v; else if(k==='currentUser')currentUser=v; };
 Object.defineProperty(window,'DB',{get:()=>DB,set:v=>{DB=v},configurable:true});
-Object.assign(window,{ route, closeModal, dobAgeMismatch, dobRangeFor });
+Object.assign(window,{ route, closeModal, dobAgeMismatch, dobRangeFor, openAskHq, openHqInbox, hqInboxItems });
 Object.defineProperty(window,'cloudDocs',{get:()=>cloudDocs,configurable:true});
 window.__ready=true;
 `;
@@ -101,7 +101,7 @@ export const doc=()=>({}), setDoc=P, deleteDoc=P, collection=()=>({}), terminate
   clearIndexedDbPersistence=P, disableNetwork=P, enableNetwork=P;
 export const onSnapshot=()=>noop;
 export const writeBatch=()=>({set:noop,delete:noop,commit:P});
-export const runTransaction=P; export class FieldPath{ constructor(...s){ this.segments=s; } } export const getDocsFromServer=async()=>({forEach(){},docs:[]});
+export const runTransaction=async(db,fn)=>fn({ get:async()=>({ exists:()=>false, data:()=>({}) }), set(){}, update(){} }); export class FieldPath{ constructor(...s){ this.segments=s; } } export const getDocsFromServer=async()=>({forEach(){},docs:[]});
 export const initializeAppCheck=()=>({}); export class ReCaptchaV3Provider{}; export const getToken=async()=>({token:""});
 `);
 
@@ -1320,6 +1320,20 @@ const goTab = (p, tab) => p.evaluate(t => { __set('active', t); route(); }, tab)
     if (r.inRange === '' && r.outRange && r.nextYear === '' && r.nextOld && r.multiOk === '' && r.multiBad && /2022-01-01.*2023-12-31/.test(r.union))
       ok('טווחי לידה מהארצי: לפי שנת התיק, ובגן דו־גילאי — מהמוקדם עד המאוחר');
     else bad('טווחי לידה לפי שנה / גן רב־גילאי', [JSON.stringify(r)]);
+  }
+
+  /* --- 📤 פנייה לארצי מהעיר: נכתבת ל-hq_inbox כ-cityask, ותשובת הארצי נפתחת לקריאה ולסגירה --- */
+  {
+    const r = await p.evaluate(async () => {
+      window.openAskHq(); await new Promise(r => setTimeout(r, 50));
+      document.getElementById('ah-subject').value = 'שאלה כללית';
+      document.getElementById('ah-text').value = 'מתי נפתח הרישום?';
+      document.getElementById('ah-send').click(); await new Promise(r => setTimeout(r, 400));
+      const it = window.hqInboxItems().find(x => x.kind === 'cityask' && x.subject === 'שאלה כללית') || {};
+      return { kind: it.kind, status: it.status, text: it.text, modalOpen: document.getElementById('overlay').classList.contains('show') };
+    });
+    if (r.kind === 'cityask' && r.status === 'open' && r.text === 'מתי נפתח הרישום?' && !r.modalOpen) ok('📤 פנייה לארצי מהעיר נשמרת לארצי (cityask) והחלון נסגר');
+    else bad('פנייה לארצי מהעיר', [JSON.stringify(r)]);
   }
 
   const real = errs.filter(e => !/Failed to load resource|net::ERR_/.test(e));
