@@ -7774,7 +7774,7 @@ function openStudent(s){
   wireJournal("student", s);
   { const w=$("#s-dob-warn"); const chk=()=>{ if(!w) return; w.textContent=dobAgeMismatch({ dob:($("#s-dob")||{}).value||"", age:($("#s-age")||{}).value||"" }) ? "⚠️ "+dobAgeMismatch({ dob:$("#s-dob").value, age:$("#s-age").value }) : ""; };
     ["#s-dob","#s-age"].forEach(id=>{ const e=$(id); if(e){ e.addEventListener("change", chk); e.addEventListener("input", chk); } }); chk(); }
-  { const lm=$("#s-leftMail"); if(lm) lm.onclick=()=>{ const cur=DB.students.find(x=>x.id===s.id)||s; closeModal(); openLeaveReport(cur); }; }
+  { const lm=$("#s-leftMail"); if(lm) lm.onclick=()=>{ const cur=DB.students.find(x=>x.id===s.id)||s; openLeaveReport(cur); }; }   /* מחליף את תוכן החלון — closeModal היה מפעיל "חזור" שסוגר גם את החלון החדש */
   if(!isNew) $("#delStu").onclick=()=>{ if(confirm("למחוק את תיק הילדה לצמיתות?")){ DB.students=DB.students.filter(x=>x.id!==s.id); save(); closeModal(); route(); toast("התיק נמחק"); } };
   /* הרשאת עריכה לפי חינוך (הסתרה בממשק): רשומה קיימת בחינוך שאינו מורשה → קריאה בלבד;
      רשומה חדשה למשתמש מוגבל → נעילת שדה החינוך לחינוך המורשה */
@@ -10159,14 +10159,16 @@ function openHqInbox(id){
   modal(`<h3>${isQ?"❓ פנייה מהארצי":"✏️ שינוי מהארצי"}</h3>
     <div class="sub">${esc(new Date(x.at).toLocaleString("he-IL"))}${x.byName||x.by?" · "+esc(x.byName||x.by):""}</div>
     <div class="note" style="margin-top:8px;white-space:pre-wrap"><b>${esc(x.subject||"")}</b>${x.text?"\n"+esc(x.text):""}${(x.lines||[]).length?"\n"+esc(x.lines.join("\n"))+(x.more?"\n…ועוד "+x.more:""):""}</div>
-    ${(x.students||[]).length?`<div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>תלמידה</th><th>ת"ז</th><th>גן</th><th></th></tr></thead><tbody>${x.students.slice(0,60).map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.tz||"—")}</td><td>${esc(r.gan||"—")}</td><td>${DB.students.some(y=>y.id===r.id)?`<button type="button" class="btn ghost sm" data-ibs="${esc(r.id)}">תיק</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:""}
+    ${(x.students||[]).length?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">${x.students.slice(0,60).map(r=>`<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px 10px">
+        <div style="flex:1;min-width:0"><b>${esc(r.name||"—")}</b><div class="hint" style="margin:2px 0 0">ת"ז ${esc(r.tz||"—")} · ${esc(r.gan||"ללא גן")}</div></div>
+        ${DB.students.some(y=>y.id===r.id)?`<button type="button" class="btn ghost sm" data-ibs="${esc(r.id)}">פתיחת התיק</button>`:""}</div>`).join("")}</div>`:""}
     ${(x.replies||[]).length?`<div style="margin-top:8px"><label>התכתבות</label>${x.replies.map(r=>`<div class="hint" style="margin:3px 0;white-space:pre-wrap"><b>${esc(r.from==="city"?"העיר":"הארצי")} · ${esc(r.byName||r.by||"")} · ${esc(new Date(r.at).toLocaleString("he-IL"))}</b>\n${esc(r.text||"")}</div>`).join("")}</div>`:""}
     <div style="margin-top:8px"><label>${isQ?"התשובה לארצי":"השגה / שאלה לארצי על השינוי (לא חובה)"}</label><textarea id="ib-reply" rows="4"></textarea></div>
     <div class="foot"><button class="btn ghost" id="ib-cancel">סגירה</button>
       ${isQ?`<button class="btn" id="ib-answer" style="margin-inline-start:auto">📤 שליחת תשובה</button>`
            :`<button class="btn ghost" id="ib-seen" style="margin-inline-start:auto">✔️ ראיתי — תקין</button><button class="btn" id="ib-object">✉️ השגה לארצי</button>`}</div>`);
   $("#ib-cancel").onclick=closeModal;
-  document.querySelectorAll("[data-ibs]").forEach(b=>b.onclick=()=>{ closeModal(); openStudentById(b.dataset.ibs); });
+  document.querySelectorAll("[data-ibs]").forEach(b=>b.onclick=()=>openStudentById(b.dataset.ibs));   /* מחליף את תוכן החלון — בלי closeModal (ראו למטה) */
   const send=async(status, need)=>{
     const t=String($("#ib-reply").value||"").trim(); if(need && !t){ toast("יש לכתוב תשובה"); return; }
     try{
@@ -10414,7 +10416,7 @@ function openCityRequest(r){
     <div style="margin-top:10px"><label>מעקב</label>${(r.log||[]).slice().reverse().map(l=>`<div class="hint" style="margin:2px 0"><b>${esc(new Date(l.at).toLocaleString("he-IL"))}</b> · ${esc(l.text||"")}${l.by?` · ${esc(l.by)}`:""}</div>`).join("")||'<div class="hint">—</div>'}</div>
     <div class="foot">${st?`<button class="btn" id="rq-open-stu">פתיחת התיק</button>`:""}<button class="btn ghost" id="rq-close" style="margin-inline-start:auto">סגירה</button></div>`);
   $("#rq-close").onclick=closeModal;
-  const b=$("#rq-open-stu"); if(b) b.onclick=()=>{ closeModal(); openStudentById(st.id); };
+  const b=$("#rq-open-stu"); if(b) b.onclick=()=>openStudentById(st.id);
 }
 function viewTzaharon(root){
   const P=tzPlan();
@@ -10979,7 +10981,7 @@ function openGan(g){
   </div>`);
   if(!isNew){ const gs=$("#ganStudents"); if(gs) gs.onclick=()=>viewGanStudents(g.id); }
   if(!isNew) wireJournal("gan", g);
-  if(!isNew){ const ga=$("#ganStaffAssign"); if(ga) ga.onclick=()=>{ closeModal(); openGanAssign(g.id); }; }
+  if(!isNew){ const ga=$("#ganStaffAssign"); if(ga) ga.onclick=()=>openGanAssign(g.id); }
   $("#saveGan").onclick=()=>{
     const val=id=>$("#"+id).value.trim(), chk=id=>$("#"+id).checked;
     const data=Object.assign({},g,{

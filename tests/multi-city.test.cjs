@@ -28,7 +28,7 @@ Object.defineProperty(window,'ORG',{get:()=>ORG,set:v=>{ORG=v},configurable:true
 Object.defineProperty(window,'_pending',{get:()=>_pending,configurable:true});
 Object.defineProperty(window,'currentUser',{get:()=>currentUser,set:v=>{currentUser=v},configurable:true});
 window.__resetCity=()=>{ _cityResolved=false; };
-Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, journalAdd, cityRequests, waitlistReady, viewRequests, alertItems, viewAlerts, alertSave, rgCode, returningMap, isAssistantBRole, asgAssistantB, hqInboxCardHtml, hqInboxOpen, dobAgeMismatch, muniNewStudent, openListReport, openStaff, makeStaff, setCloudDoc:(id,d)=>{ cloudDocs.set(id,d); }, getCloudDoc:(id)=>cloudDocs.get(id), stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
+Object.assign(window,{ switchCity, HOME_CITY, orgCities, cityById, cityIsLegacy, cityRole, cityAccess, myCities, isHQ, isAdmin, myEditScope, emailAllowed, cityRestPath, cityRestBase, cityIdFrom, normOrg, onOrgReady, enterCity, renderCityPick, route, openGan, makeGan, ganGender, GENDERS, GAN_AGES, makeStudent, studentsScopeBase, approveReg, gansScoped, filteredStudents, canAssignStudent, assistantBEligibility, assistantBConflicts, leaveReportText, openStudent, ASSISTANT_B_MIN, journalAdd, cityRequests, waitlistReady, viewRequests, alertItems, viewAlerts, alertSave, rgCode, returningMap, isAssistantBRole, asgAssistantB, hqInboxCardHtml, hqInboxOpen, dobAgeMismatch, muniNewStudent, openHqInbox, openListReport, openStaff, makeStaff, setCloudDoc:(id,d)=>{ cloudDocs.set(id,d); }, getCloudDoc:(id)=>cloudDocs.get(id), stuFilterSet:(o)=>{ Object.assign(stuFilter,o); }, ganFilterSet:(o)=>{ Object.assign(ganFilter,o); }, closeModal, _pendingRestoreOnce, PENDING_LS_KEY, stopDataSync, cityBridgeArgs, defaultSubtitle, appSubtitle, mainCityName, TABS, SETTINGS_SECTIONS, settingsNavHtml, knownEmails });
 window.__ready=true;
 `;
 const endIdx=html.lastIndexOf('</script>');
@@ -487,6 +487,17 @@ const server=require('http').createServer((req,res)=>{
       const st=muniNewStudent({ tz:'123456782', firstName:'חן', lastName:'לוי', regDate:'15/08/2026' }, 'רגיל');
       return /מוקדם/.test(bad) && ok==='' && none==='' && st.regDate==='2026-08-15' && st.regChannel==='muni';
     });
+  });
+
+  await step('פנייה מהארצי: "פתיחת התיק" פותח את תיק התלמידה ונשאר פתוח (לא נסגר ב"חזור")', async()=>{
+    await pg.evaluate(()=>{ DB.students=[]; const st=Object.assign(makeStudent(),{ id:'stuX', firstName:'אביגיל', lastName:'וייסברג', year:DB.activeYear }); DB.students.push(st);
+      setCloudDoc('hq_inbox',{ items:{ q9:{ kind:'question', status:'open', subject:'בירור', at:Date.now(), students:[{ id:'stuX', name:'אביגיל וייסברג', tz:'123', gan:'' }] } } });
+      openHqInbox('q9'); });
+    const listOk=await pg.evaluate(()=>/אביגיל וייסברג/.test(document.getElementById('modal').textContent) && /ת"ז 123/.test(document.getElementById('modal').textContent));
+    await pg.click('[data-ibs="stuX"]'); await pg.waitForTimeout(400);
+    const r=await pg.evaluate(()=>({ open:document.getElementById('overlay').classList.contains('show'), name:(document.getElementById('s-firstName')||{}).value }));
+    await pg.evaluate(()=>{ closeModal(); setCloudDoc('hq_inbox',{ items:{} }); });
+    return (listOk && r.open && r.name==='אביגיל') || JSON.stringify({listOk, r});
   });
 
   /* ---- המרכזי: הפרדת עיצוב ---- */
