@@ -344,6 +344,7 @@ const DATA={
         document.getElementById('ad-city').value='modiin-illit';
         document.getElementById('ad-title').value='רישום תשפ"ח';
         document.getElementById('ad-text').value='הרישום לגני הילדים נפתח!';
+        const sizes=[...document.querySelectorAll('#ad-size option')].map(o=>o.value); const sz=document.getElementById('ad-size'); sz.value='a3p'; sz.dispatchEvent(new Event('change'));
         document.getElementById('ad-gen').click(); await new Promise(r=>setTimeout(r,500));
         const key=Object.keys(window.__docs).find(k=>/^org\/hq\/tracking\/ad_/.test(k)); const ad=window.__docs[key]||{};
         const clean=!/script|onclick|evil\.example/.test((ad.body||'')+(ad.css||'')) && /רישום לגנים/.test(ad.body||'') && /\{\{LOGO\}\}/.test(ad.body||'');
@@ -355,10 +356,10 @@ const DATA={
         document.getElementById('pf-ok').click(); await new Promise(r=>setTimeout(r,500));
         const ib=Object.values((window.__docs['app/hq_inbox']||{}).items||{}).filter(x=>x.kind==='ad')[0]||{};
         const dist=window.__docs['org/hq/tracking/dist_modiin-illit']||{};
-        return { calls, clean, prev, st1, st2:(window.__docs[key]||{}).status, ibKind:ib.kind, ibBody:/רישום לגנים/.test(ib.body||''), ibLogo:/TkVUTE9HTw==/.test(ib.body||''), netShown, design:!!((dist.steps||{}).design||{}).done, approve:!!((dist.steps||{}).approve||{}).done, cards:document.querySelectorAll('#adStudio [data-ad-open]').length };
+        return { calls, clean, prev, st1, st2:(window.__docs[key]||{}).status, ibKind:ib.kind, ibBody:/רישום לגנים/.test(ib.body||''), ibLogo:/TkVUTE9HTw==/.test(ib.body||''), netShown, sizes:sizes.join(), pw:ib.pw, ph:ib.ph, savedSize:(window.__docs[key]||{}).size, design:!!((dist.steps||{}).design||{}).done, approve:!!((dist.steps||{}).approve||{}).done, cards:document.querySelectorAll('#adStudio [data-ad-open]').length };
       } finally { L.bridge=orig; }
     });
-    return (r.calls && r.calls.indexOf('adDesign')>=0 && r.clean && r.prev && r.st1==='approved' && r.st2==='sent' && r.ibKind==='ad' && r.ibBody && r.ibLogo && r.netShown && r.design && r.approve && r.cards>=1) || JSON.stringify(r);
+    return (r.calls && r.calls.indexOf('adDesign')>=0 && r.clean && r.prev && r.st1==='approved' && r.st2==='sent' && r.ibKind==='ad' && r.ibBody && r.ibLogo && r.netShown && /a4p,a3p/.test(r.sizes) && r.pw===297 && r.ph===420 && r.savedSize==='a3p' && r.design && r.approve && r.cards>=1) || JSON.stringify(r);
   });
   await step('אחראיות: לשונית בהגדרות — שם, ערים באחריות ונושאים — נשמרת, ובורר "הערים שלי" בתפריט הצד', async()=>{
     await go('perms'); await pg.click('#hqSettings .tab[data-tab="staff"]'); await pg.waitForTimeout(100);
