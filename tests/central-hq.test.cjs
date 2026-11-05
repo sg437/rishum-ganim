@@ -337,6 +337,8 @@ const DATA={
       const L=window.__centralLive, orig=L.bridge; const calls=[];
       L.bridge=async(a,p)=>{ calls.push(a); if(a==='adDesign') return { ok:true, text:'הנה:\n```html\n<!doctype html><html><head><style>.ad-page{color:#123;background:url(https://evil.example/x.png)}</style><link rel="stylesheet" href="https://evil.example/a.css"></head><body><div class="ad-page" onclick="steal()"><h1>רישום לגנים</h1><script>alert(1)</script><img src="https://evil.example/p.png"><img src="{{LOGO}}" alt="לוגו"></div></body></html>\n```' }; return { ok:true }; };
       try{
+        await window.__hq.saveSettings({ adNetLogo:'data:image/png;base64,TkVUTE9HTw==' }); await new Promise(r=>setTimeout(r,300));
+        const netShown=!!document.querySelector('#adStudio img[alt="לוגו הרשת"]');
         const nb=document.getElementById('adNew'); if(!nb) return { noBtn:true };
         nb.click(); await new Promise(r=>setTimeout(r,80));
         document.getElementById('ad-city').value='modiin-illit';
@@ -353,10 +355,10 @@ const DATA={
         document.getElementById('pf-ok').click(); await new Promise(r=>setTimeout(r,500));
         const ib=Object.values((window.__docs['app/hq_inbox']||{}).items||{}).filter(x=>x.kind==='ad')[0]||{};
         const dist=window.__docs['org/hq/tracking/dist_modiin-illit']||{};
-        return { calls, clean, prev, st1, st2:(window.__docs[key]||{}).status, ibKind:ib.kind, ibBody:/רישום לגנים/.test(ib.body||''), design:!!((dist.steps||{}).design||{}).done, approve:!!((dist.steps||{}).approve||{}).done, cards:document.querySelectorAll('#adStudio [data-ad-open]').length };
+        return { calls, clean, prev, st1, st2:(window.__docs[key]||{}).status, ibKind:ib.kind, ibBody:/רישום לגנים/.test(ib.body||''), ibLogo:/TkVUTE9HTw==/.test(ib.body||''), netShown, design:!!((dist.steps||{}).design||{}).done, approve:!!((dist.steps||{}).approve||{}).done, cards:document.querySelectorAll('#adStudio [data-ad-open]').length };
       } finally { L.bridge=orig; }
     });
-    return (r.calls && r.calls.indexOf('adDesign')>=0 && r.clean && r.prev && r.st1==='approved' && r.st2==='sent' && r.ibKind==='ad' && r.ibBody && r.design && r.approve && r.cards>=1) || JSON.stringify(r);
+    return (r.calls && r.calls.indexOf('adDesign')>=0 && r.clean && r.prev && r.st1==='approved' && r.st2==='sent' && r.ibKind==='ad' && r.ibBody && r.ibLogo && r.netShown && r.design && r.approve && r.cards>=1) || JSON.stringify(r);
   });
   await step('אחראיות: לשונית בהגדרות — שם, ערים באחריות ונושאים — נשמרת, ובורר "הערים שלי" בתפריט הצד', async()=>{
     await go('perms'); await pg.click('#hqSettings .tab[data-tab="staff"]'); await pg.waitForTimeout(100);
